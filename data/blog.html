@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Блог - Список статей</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --border-color: #000000;
+            --card-bg: #ffffff;
+            --hover-bg: #000000;
+            --hover-text: #ffffff;
+        }
+        
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --border-color: #ffffff;
+            --card-bg: #000000;
+            --hover-bg: #ffffff;
+            --hover-text: #000000;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            line-height: 1.6;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        .subtitle {
+            color: var(--text-color);
+            font-size: 1.1em;
+            opacity: 0.7;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        .theme-toggle:hover {
+            background: var(--hover-bg);
+            color: var(--hover-text);
+        }
+
+        .editor-link-btn {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            padding: 10px 20px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            z-index: 100;
+        }
+
+        .editor-link-btn:hover {
+            background: var(--hover-bg);
+            color: var(--hover-text);
+        }
+
+        #posts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .post-card {
+            padding: 24px;
+            border: 2px solid var(--border-color);
+            border-radius: 0;
+            background: var(--card-bg);
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: var(--text-color);
+            display: block;
+        }
+
+        .post-card:hover {
+            background: var(--hover-bg);
+            color: var(--hover-text);
+        }
+
+        .post-card h2 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+        }
+
+        .post-date {
+            color: inherit;
+            font-size: 0.9em;
+            margin-top: 8px;
+            opacity: 0.7;
+        }
+
+        .post-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--text-color);
+            color: var(--bg-color);
+            padding: 4px 12px;
+            border-radius: 0;
+            font-size: 0.75em;
+            font-weight: 600;
+            min-width: 40px;
+        }
+
+        .post-card:hover .post-number {
+            background: var(--hover-text);
+            color: var(--hover-bg);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-color);
+            font-size: 1.2em;
+            opacity: 0.7;
+        }
+
+        .no-posts {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-color);
+        }
+
+        .no-posts h2 {
+            margin-bottom: 10px;
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        .editor-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            text-decoration: none;
+            border: 2px solid var(--border-color);
+            border-radius: 0;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .editor-link:hover {
+            background: var(--hover-bg);
+            color: var(--hover-text);
+        }
+
+        .powered-by {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 12px;
+            color: var(--text-color);
+            opacity: 0.4;
+            transition: opacity 0.2s ease;
+            z-index: 50;
+        }
+
+        .powered-by:hover {
+            opacity: 0.7;
+        }
+
+        
+        .powered-by {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 12px;
+            color: var(--text-color);
+            opacity: 0.4;
+            transition: opacity 0.2s ease;
+            z-index: 50;
+        }
+
+        .powered-by:hover {
+            opacity: 0.7;
+        }
+
+        
+        .powered-by {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 12px;
+            color: var(--text-color);
+            opacity: 0.4;
+            transition: opacity 0.2s ease;
+            z-index: 50;
+        }
+
+        .powered-by:hover {
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .theme-toggle,
+            .editor-link-btn {
+                position: static;
+                margin: 10px auto;
+                display: block;
+                width: fit-content;
+            }
+            
+            header {
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">Тема</button>
+    
+    <header>
+        <h1>Блог</h1>
+        <p class="subtitle">Все статьи</p>
+    </header>
+
+    <div id="posts-container">
+        <div class="loading">Загрузка статей...</div>
+    </div>
+
+
+    <div class="powered-by">Powered by NPBlog</div>
+
+    <script>
+        // Тема
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Загрузка сохраненной темы
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // Загрузка списка статей из posts-meta.json
+        async function loadPosts() {
+            const container = document.getElementById('posts-container');
+            
+            try {
+                // Добавляем timestamp для предотвращения кэширования
+                const response = await fetch('blog/posts-meta.json?t=' + Date.now());
+                if (!response.ok) {
+                    throw new Error('Failed to load posts');
+                }
+                
+                const posts = await response.json();
+                
+                if (!posts || posts.length === 0) {
+                    container.innerHTML = `
+                        <div class="no-posts">
+                            <h2>Пока нет статей</h2>
+                            <p>Создайте свою первую статью в редакторе</p>
+                            <a href="index.php" class="editor-link">Перейти к редактору</a>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Сортируем статьи по ID в обратном порядке (новые первыми)
+                posts.sort((a, b) => b.id - a.id);
+                
+                container.innerHTML = posts.map(post => `
+                    <a href="blog/${post.filename}" class="post-card">
+                        <h2>
+                            <span class="post-number">#${post.id}</span>
+                            ${escapeHtml(post.title)}
+                        </h2>
+                        <div class="post-date"> ${escapeHtml(post.date)}</div>
+                    </a>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Ошибка загрузки статей:', error);
+                container.innerHTML = `
+                    <div class="no-posts">
+                        <h2>Пока нет статей</h2>
+                        <p>Создайте свою первую статью в редакторе</p>
+                        <a href="../index.php" class="editor-link">Перейти к редактору</a>
+                    </div>
+                `;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Загружаем статьи при загрузке страницы
+        loadPosts();
+        
+        // Автоматически обновляем список каждые 5 секунд, если страница активна
+        let autoRefreshInterval;
+        
+        function startAutoRefresh() {
+            autoRefreshInterval = setInterval(() => {
+                if (!document.hidden) {
+                    loadPosts();
+                }
+            }, 5000);
+        }
+        
+        // Останавливаем обновление когда страница неактивна
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+            } else {
+                loadPosts();
+                startAutoRefresh();
+            }
+        });
+        
+        // Запускаем автообновление
+        startAutoRefresh();
+    </script>
+</body>
+</html>
