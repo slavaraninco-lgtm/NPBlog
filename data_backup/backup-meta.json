@@ -1,7 +1,7 @@
 {
-    "1": {
-        "postId": 1,
-        "postTitle": "тест",
+    "deleted_1_1785356215": {
+        "postId": "deleted_1_1785356215",
+        "postTitle": "[УДАЛЕНО] тест",
         "backups": [
             {
                 "backupNumber": 1,
@@ -21,6 +21,8 @@
                 "date": "27.07.2026 01:38",
                 "title": "тест"
             }
-        ]
+        ],
+        "deleted": true,
+        "deletedAt": "29.07.2026 22:16"
     }
 }
