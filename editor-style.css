@@ -5234,3 +5234,43 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     background: var(--primary-color, #4CAF50) !important;
     color: #ffffff !important;
 }
+
+/* --- Black action buttons in all dialogs and modals --- */
+.dialog-buttons button:first-child:not(:last-child),
+.save-include-btn.save,
+.delete-confirm-btn.delete,
+.numbering-check-btn.fix,
+.tutorial-btn.next,
+.global-action-btn-primary,
+#saveTemplateDropdownBtn {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2)) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+    text-shadow: none !important;
+    font-weight: 600 !important;
+}
+
+.dialog-buttons button:first-child:not(:last-child):hover,
+.save-include-btn.save:hover,
+.delete-confirm-btn.delete:hover,
+.numbering-check-btn.fix:hover,
+.tutorial-btn.next:hover,
+.global-action-btn-primary:hover,
+#saveTemplateDropdownBtn:hover {
+    background: #1c1c1e !important;
+    border-color: rgba(255, 255, 255, 0.45) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02) !important;
+}
+
+.dialog-buttons button:first-child:not(:last-child):active,
+.save-include-btn.save:active,
+.delete-confirm-btn.delete:active,
+.numbering-check-btn.fix:active,
+.tutorial-btn.next:active,
+.global-action-btn-primary:active,
+#saveTemplateDropdownBtn:active {
+    background: #000000 !important;
+    transform: translateY(0) scale(0.98) !important;
+}

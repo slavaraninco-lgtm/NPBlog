@@ -1263,11 +1263,11 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
                 <input type="range" id="overlayOpacity" min="0" max="100" value="90" oninput="updateOpacityValue()" style="width: 100%; margin-bottom: 15px;">
             </div>
             
-            <button type="button" onclick="saveOverlaySettings()" style="padding: 10px 20px; background: var(--text-color); color: var(--bg-color); border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Сохранить настройки подложки</button>
+            <button type="button" class="global-action-btn global-action-btn-primary" onclick="saveOverlaySettings()">Сохранить настройки подложки</button>
         </div>
         
         <div style="text-align: right; margin-top: 20px;">
-            <button type="button" onclick="closeAdditionalSettings()" style="padding: 10px 20px; background: var(--text-color); color: var(--bg-color); border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Закрыть</button>
+            <button type="button" class="global-action-btn" onclick="closeAdditionalSettings()">Закрыть</button>
         </div>
     </div>
 </div>
