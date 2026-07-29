@@ -1290,49 +1290,57 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
 
 <!-- Модальное окно глобальных параметров -->
 <div id="globalSettingsModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 900px; width: 90%; height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; overflow: hidden;">
-        <!-- Навигация слева -->
-        <div style="width: 200px; background: rgba(0,0,0,0.05); border-right: 2px solid var(--border-color); padding: 20px; overflow-y: auto;">
-            <h3 style="margin: 0 0 20px 0; color: var(--text-color); font-size: 18px;">Навигация</h3>
-            <button type="button" id="nav-btn-backgrounds" onclick="showGlobalSection('backgrounds')" class="global-nav-btn active" data-section="backgrounds" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                Фон статей
-            </button>
-            <button type="button" id="nav-btn-blogview" onclick="showGlobalSection('blogview')" class="global-nav-btn" data-section="blogview" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                Вид blog.html
-            </button>
-            <button type="button" onclick="showGlobalSection('autosave')" class="global-nav-btn" data-section="autosave" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                Автосохранение
-            </button>
-            <button type="button" onclick="showGlobalSection('appearance')" class="global-nav-btn" data-section="appearance" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                Внешний вид
-            </button>
-            <button type="button" onclick="showGlobalSection('experimental')" class="global-nav-btn" data-section="experimental" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                Экспериментальные
-            </button>
-            <button type="button" onclick="showGlobalSection('rss')" class="global-nav-btn" data-section="rss" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                RSS Виджет
-            </button>
-            <button type="button" id="nav-btn-rss_feed" onclick="showGlobalSection('rss_feed')" class="global-nav-btn" data-section="rss_feed" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                RSS Лента
-            </button>
-            <button type="button" id="nav-btn-paths" onclick="showGlobalSection('paths')" class="global-nav-btn" data-section="paths" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                Пути
-            </button>
-            <button type="button" id="nav-btn-security" onclick="showGlobalSection('security')" class="global-nav-btn" data-section="security" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                Безопасность
-            </button>
-            <button type="button" onclick="showGlobalSection('seo')" class="global-nav-btn" data-section="seo" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
-                SEO и соцсети
-            </button>
-            <!-- Здесь можно добавить другие пункты навигации -->
+    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 900px; width: 90%; height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 1px solid var(--border-color);">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                <span>⚙️</span> Параметры
+            </h3>
+            <button type="button" onclick="closeGlobalSettings()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;">×</button>
         </div>
-        
-        <!-- Контент справа -->
-        <div style="flex: 1; padding: 30px; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; color: var(--text-color); font-size: 20px;" id="globalSectionTitle">Фон статей</h3>
-                <button type="button" onclick="closeGlobalSettings()" style="background: transparent; border: none; font-size: 28px; color: var(--text-color); cursor: pointer; line-height: 1;">×</button>
+
+        <div style="flex: 1; display: flex; overflow: hidden;">
+            <!-- Навигация слева -->
+            <div style="width: 200px; background: rgba(0,0,0,0.05); border-right: 2px solid var(--border-color); padding: 20px; overflow-y: auto;">
+                <h3 style="margin: 0 0 20px 0; color: var(--text-color); font-size: 18px;">Навигация</h3>
+                <button type="button" id="nav-btn-backgrounds" onclick="showGlobalSection('backgrounds')" class="global-nav-btn active" data-section="backgrounds" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    Фон статей
+                </button>
+                <button type="button" id="nav-btn-blogview" onclick="showGlobalSection('blogview')" class="global-nav-btn" data-section="blogview" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    Вид blog.html
+                </button>
+                <button type="button" onclick="showGlobalSection('autosave')" class="global-nav-btn" data-section="autosave" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    Автосохранение
+                </button>
+                <button type="button" onclick="showGlobalSection('appearance')" class="global-nav-btn" data-section="appearance" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    Внешний вид
+                </button>
+                <button type="button" onclick="showGlobalSection('experimental')" class="global-nav-btn" data-section="experimental" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    Экспериментальные
+                </button>
+                <button type="button" onclick="showGlobalSection('rss')" class="global-nav-btn" data-section="rss" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    RSS Виджет
+                </button>
+                <button type="button" id="nav-btn-rss_feed" onclick="showGlobalSection('rss_feed')" class="global-nav-btn" data-section="rss_feed" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    RSS Лента
+                </button>
+                <button type="button" id="nav-btn-paths" onclick="showGlobalSection('paths')" class="global-nav-btn" data-section="paths" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    Пути
+                </button>
+                <button type="button" id="nav-btn-security" onclick="showGlobalSection('security')" class="global-nav-btn" data-section="security" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    Безопасность
+                </button>
+                <button type="button" onclick="showGlobalSection('seo')" class="global-nav-btn" data-section="seo" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    SEO и соцсети
+                </button>
+                <!-- Здесь можно добавить другие пункты навигации -->
             </div>
+            
+            <!-- Контент справа -->
+            <div style="flex: 1; padding: 30px; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: var(--text-color); font-size: 20px;" id="globalSectionTitle">Фон статей</h3>
+                </div>
             
             <!-- Секция: Фон статей -->
             <div id="globalSection-backgrounds" class="global-section">
@@ -1805,6 +1813,7 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
                     <button type="button" onclick="regenerateAllPostsMeta(this)" class="global-action-btn global-action-btn-secondary">Перегенерировать метатеги статей</button>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 </div>
