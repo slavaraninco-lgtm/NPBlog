@@ -627,7 +627,7 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
             <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
-                <span>🖼️</span> Добавить изображение
+                Добавить изображение
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <button type="button" onclick="closeImageDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
@@ -745,7 +745,7 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
             <h3 id="customButtonDialogTitle" style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
-                <span>🔗</span> Вставить кнопку со ссылкой
+                Вставить кнопку со ссылкой
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <button type="button" onclick="closeCustomButtonDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
@@ -971,7 +971,7 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
             <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
-                <span>🎬</span> Добавить медиа
+                Добавить медиа
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <button type="button" onclick="closeMediaDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
@@ -1294,7 +1294,7 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
             <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
-                <span>⚙️</span> Параметры
+                Параметры
             </h3>
             <button type="button" onclick="closeGlobalSettings()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;">×</button>
         </div>

@@ -1705,7 +1705,7 @@
         }
         
         .global-action-btn-secondary {
-            opacity: 0.8;
+            opacity: 1;
         }
         
         .global-action-btn-accent {
@@ -5251,6 +5251,18 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     font-weight: 600 !important;
 }
 
+[data-theme="dark"] .dialog-buttons button:first-child:not(:last-child),
+[data-theme="dark"] .save-include-btn.save,
+[data-theme="dark"] .delete-confirm-btn.delete,
+[data-theme="dark"] .numbering-check-btn.fix,
+[data-theme="dark"] .tutorial-btn.next,
+[data-theme="dark"] .global-action-btn-primary,
+[data-theme="dark"] #saveTemplateDropdownBtn {
+    background: var(--bg-color) !important;
+    color: var(--text-color) !important;
+    border: 2px solid #ffffff !important;
+}
+
 .dialog-buttons button:first-child:not(:last-child):hover,
 .save-include-btn.save:hover,
 .delete-confirm-btn.delete:hover,
@@ -5264,6 +5276,18 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     transform: translateY(-2px) scale(1.02) !important;
 }
 
+[data-theme="dark"] .dialog-buttons button:first-child:not(:last-child):hover,
+[data-theme="dark"] .save-include-btn.save:hover,
+[data-theme="dark"] .delete-confirm-btn.delete:hover,
+[data-theme="dark"] .numbering-check-btn.fix:hover,
+[data-theme="dark"] .tutorial-btn.next:hover,
+[data-theme="dark"] .global-action-btn-primary:hover,
+[data-theme="dark"] #saveTemplateDropdownBtn:hover {
+    background: var(--text-color) !important;
+    color: var(--bg-color) !important;
+    border-color: #ffffff !important;
+}
+
 .dialog-buttons button:first-child:not(:last-child):active,
 .save-include-btn.save:active,
 .delete-confirm-btn.delete:active,
@@ -5273,4 +5297,15 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 #saveTemplateDropdownBtn:active {
     background: #000000 !important;
     transform: translateY(0) scale(0.98) !important;
+}
+
+[data-theme="dark"] .dialog-buttons button:first-child:not(:last-child):active,
+[data-theme="dark"] .save-include-btn.save:active,
+[data-theme="dark"] .delete-confirm-btn.delete:active,
+[data-theme="dark"] .numbering-check-btn.fix:active,
+[data-theme="dark"] .tutorial-btn.next:active,
+[data-theme="dark"] .global-action-btn-primary:active,
+[data-theme="dark"] #saveTemplateDropdownBtn:active {
+    background: var(--bg-color) !important;
+    opacity: 0.8 !important;
 }
