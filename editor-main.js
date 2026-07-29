@@ -8327,7 +8327,6 @@ function escapeHtmlJS(str) {
 
 window.openSmileSetsDialog = openSmileSetsDialog;
 window.closeSmileSetsDialog = closeSmileSetsDialog;
-window.toggleSmileUploadMode = toggleSmileUploadMode;
 window.handleSmileSetUpload = handleSmileSetUpload;
 window.deleteSmileSet = deleteSmileSet;
 window.toggleSmilesSubmenu = toggleSmilesSubmenu;
@@ -8351,7 +8350,7 @@ function openInsertButtonDialog() {
     if (urlInput) urlInput.value = 'https://example.com';
     if (targetInput) targetInput.checked = true;
 
-    applyBtnPreset('primary');
+    applyBtnPreset('editor');
 
     const dialog = document.getElementById('customButtonDialog');
     if (!dialog) return;
@@ -8697,3 +8696,13 @@ window.applyBtnPreset = applyBtnPreset;
 window.updateCustomBtnPreview = updateCustomBtnPreview;
 window.syncFromRawCode = syncFromRawCode;
 window.insertCustomButtonToEditor = insertCustomButtonToEditor;
+
+// Expose key dialogue actions to window explicitly
+window.addLink = addLink;
+window.closeLinkDialog = closeLinkDialog;
+window.insertLinkFromDialog = insertLinkFromDialog;
+window.showImageUpload = showImageUpload;
+window.showMediaDialog = showMediaDialog;
+window.closeMediaDialog = closeMediaDialog;
+window.insertMedia = insertMedia;
+window.openFileUploadDialog = openFileUploadDialog;
