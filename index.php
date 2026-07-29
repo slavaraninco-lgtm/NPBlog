@@ -1005,19 +1005,23 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
                 <div class="media-type-toggle">
                     <label>
                         <input type="radio" name="mediaType" value="video-url" checked>
-                        📺 Видео (URL)
+                        <span style="font-size: 18px; display: block; margin-bottom: 2px;">📺</span>
+                        <span style="font-weight: 600; font-size: 13px;">Видео (URL)</span>
                     </label>
                     <label>
                         <input type="radio" name="mediaType" value="video-file">
-                        📁 Видео файл
+                        <span style="font-size: 18px; display: block; margin-bottom: 2px;">📁</span>
+                        <span style="font-weight: 600; font-size: 13px;">Видео файл</span>
                     </label>
                     <label>
                         <input type="radio" name="mediaType" value="audio">
-                        🎵 Аудио файл
+                        <span style="font-size: 18px; display: block; margin-bottom: 2px;">🎵</span>
+                        <span style="font-weight: 600; font-size: 13px;">Аудио файл</span>
                     </label>
                     <label>
                         <input type="radio" name="mediaType" value="audio-stream">
-                        📻 Аудио поток
+                        <span style="font-size: 18px; display: block; margin-bottom: 2px;">📻</span>
+                        <span style="font-weight: 600; font-size: 13px;">Аудио поток</span>
                     </label>
                 </div>
             </div>

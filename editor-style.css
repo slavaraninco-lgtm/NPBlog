@@ -1369,8 +1369,7 @@
         display: inline-block;
         width: 70px;
     }
-    .image-source-toggle,
-    .media-type-toggle {
+    .image-source-toggle {
         display: flex;
         background: rgba(128, 128, 128, 0.08);
         border-radius: 10px;
@@ -1378,9 +1377,15 @@
         gap: 4px;
         margin-bottom: 20px;
     }
+    
+    .media-type-toggle {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
 
-    .image-source-toggle label,
-    .media-type-toggle label {
+    .image-source-toggle label {
         flex: 1;
         text-align: center;
         padding: 8px 12px;
@@ -1400,28 +1405,52 @@
     }
 
     .media-type-toggle label {
-        font-size: 13px;
-        min-width: 110px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 8px;
+        border-radius: 8px;
+        border: 1.5px solid var(--border-color, rgba(255,255,255,0.15));
+        background: var(--glass-bg, rgba(255, 255, 255, 0.03));
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        color: var(--text-color);
+        opacity: 0.8;
+        text-align: center;
+        gap: 4px;
+        user-select: none;
     }
 
-    .image-source-toggle label:hover,
+    .image-source-toggle label:hover {
+        opacity: 1;
+    }
     .media-type-toggle label:hover {
         opacity: 1;
+        border-color: rgba(255, 255, 255, 0.35);
+        transform: translateY(-2px);
     }
     .image-source-toggle input[type="radio"],
     .media-type-toggle input[type="radio"] {
         display: none;
     }
-    .image-source-toggle label:has(input[type="radio"]:checked),
-    .media-type-toggle label:has(input[type="radio"]:checked) {
+    .image-source-toggle label:has(input[type="radio"]:checked) {
         background: var(--bg-color);
         color: var(--text-color);
         opacity: 1;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-    [data-theme="dark"] .image-source-toggle label:has(input[type="radio"]:checked),
-    [data-theme="dark"] .media-type-toggle label:has(input[type="radio"]:checked) {
+    .media-type-toggle label:has(input[type="radio"]:checked) {
+        background: var(--bg-color);
+        border-color: var(--text-color);
+        opacity: 1;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+    }
+    [data-theme="dark"] .image-source-toggle label:has(input[type="radio"]:checked) {
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    [data-theme="dark"] .media-type-toggle label:has(input[type="radio"]:checked) {
+        box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1);
     }
 
     .image-url-input {
