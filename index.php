@@ -738,180 +738,181 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
 </div>
 
 <!-- Диалог вставки кнопки со ссылкой -->
-<!-- Диалог вставки кнопки со ссылкой -->
 <div id="customButtonDialog" class="dialog">
-    <div class="dialog-content" style="max-width: 680px; width: 95%; box-sizing: border-box;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 id="customButtonDialogTitle" style="margin: 0; font-size: 1.25rem; font-weight: 600;">Вставить кнопку со ссылкой</h3>
-            <button type="button" onclick="closeCustomButtonDialog()" style="background: transparent; border: none; font-size: 22px; cursor: pointer; color: var(--text-color); padding: 4px 8px; line-height: 1; box-shadow: none; transform: none;">✕</button>
+    <div class="dialog-content" style="max-width: 680px; width: 95%; box-sizing: border-box; padding: 0; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 id="customButtonDialogTitle" style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                <span>🔗</span> Вставить кнопку со ссылкой
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeCustomButtonDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
+                <button type="button" id="customButtonSubmitBtn" onclick="insertCustomButtonToEditor()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить кнопку</button>
+            </div>
         </div>
         
-        <!-- Live Real-time Preview Area -->
-        <div style="margin-bottom: 20px; padding: 20px; border-radius: var(--glass-radius-md, 16px); border: 1px solid var(--glass-border, rgba(255,255,255,0.18)); background: rgba(0,0,0,0.35); text-align: center;">
-            <div style="font-size: 12px; opacity: 0.75; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;">Предпросмотр кнопки в реальном времени</div>
-            <div id="customBtnPreviewContainer" style="padding: 28px; min-height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(255,255,255,0.03); transition: all 0.2s;">
-                <a id="customBtnPreview" href="#" target="_blank" class="custom-blog-btn" onclick="event.preventDefault()">Текст кнопки</a>
-            </div>
-            <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px; font-size: 12px; align-items: center;">
-                <span style="opacity: 0.6; font-size: 12px;">Фон предпросмотра:</span>
-                <button type="button" onclick="setBtnBgPreview('dark')" style="padding: 4px 10px; font-size: 11px; margin: 0;">Тёмный</button>
-                <button type="button" onclick="setBtnBgPreview('light')" style="padding: 4px 10px; font-size: 11px; margin: 0;">Светлый</button>
-                <button type="button" onclick="setBtnBgPreview('grid')" style="padding: 4px 10px; font-size: 11px; margin: 0;">Сетка</button>
-            </div>
-        </div>
-
-        <!-- Mode Toggle Tabs: Конструктор / HTML & CSS код -->
-        <style>
-            .btn-dialog-tab {
-                display: inline-flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                gap: 6px !important;
-                padding: 9px 18px !important;
-                font-size: 13px !important;
-                font-weight: 600 !important;
-                border-radius: 10px !important;
-                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.18)) !important;
-                background: rgba(255, 255, 255, 0.05) !important;
-                color: var(--text-color, #ffffff) !important;
-                cursor: pointer !important;
-                white-space: nowrap !important;
-                transition: all 0.2s ease !important;
-                box-shadow: none !important;
-                transform: none !important;
-            }
-            .btn-dialog-tab:hover {
-                background: rgba(255, 255, 255, 0.12) !important;
-                transform: translateY(-1px) !important;
-            }
-            .btn-dialog-tab.active {
-                background: var(--primary-color, #6366f1) !important;
-                color: #ffffff !important;
-                border-color: rgba(255, 255, 255, 0.4) !important;
-                box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45) !important;
-            }
-            .preset-btn {
-                padding: 6px 12px !important;
-                font-size: 12px !important;
-                font-weight: 500 !important;
-                border-radius: 8px !important;
-                margin: 0 !important;
-                transform: none !important;
-            }
-            .btn-code-editor {
-                width: 100% !important;
-                max-width: 100% !important;
-                min-width: 100% !important;
-                box-sizing: border-box !important;
-                font-family: Consolas, Monaco, 'Courier New', monospace !important;
-                font-size: 13px !important;
-                line-height: 1.5 !important;
-                padding: 12px 14px !important;
-                background: rgba(10, 15, 26, 0.85) !important;
-                color: #818cf8 !important;
-                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2)) !important;
-                border-radius: 10px !important;
-                height: 115px !important;
-                resize: vertical !important;
-                box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
-                white-space: pre-wrap !important;
-                word-break: break-all !important;
-            }
-            .btn-code-editor:focus {
-                outline: none !important;
-                border-color: var(--primary-color, #6366f1) !important;
-                box-shadow: 0 0 16px rgba(129, 140, 248, 0.4), inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
-            }
-        </style>
-
-        <div style="display: flex; gap: 10px; margin-bottom: 18px; border-bottom: 1px solid var(--glass-border, rgba(255,255,255,0.15)); padding-bottom: 12px;">
-            <button type="button" id="btnTabGui" onclick="switchBtnTab('gui')" class="btn-dialog-tab active">🎨 Конструктор</button>
-            <button type="button" id="btnTabCode" onclick="switchBtnTab('code')" class="btn-dialog-tab">💻 HTML & CSS Код</button>
-        </div>
-
-        <!-- Tab 1: GUI Constructor -->
-        <div id="btnTabGuiContent">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
-                <div>
-                    <label style="display: block; font-size: 13px; margin-bottom: 6px; font-weight: 500;">Текст кнопки:</label>
-                    <input type="text" id="btnTextInput" value="Перейти на сайт" placeholder="Например: Читать далее" oninput="updateCustomBtnPreview()">
+        <div style="padding: 24px 28px 24px;">
+            <!-- Live Real-time Preview Area -->
+            <div style="margin-bottom: 20px; padding: 20px; border-radius: var(--glass-radius-md, 16px); border: 1px solid var(--glass-border, rgba(255,255,255,0.18)); background: rgba(0,0,0,0.35); text-align: center;">
+                <div style="font-size: 12px; opacity: 0.75; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;">Предпросмотр кнопки в реальном времени</div>
+                <div id="customBtnPreviewContainer" style="padding: 28px; min-height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(255,255,255,0.03); transition: all 0.2s;">
+                    <a id="customBtnPreview" href="#" target="_blank" class="custom-blog-btn" onclick="event.preventDefault()">Текст кнопки</a>
                 </div>
-                <div>
-                    <label style="display: block; font-size: 13px; margin-bottom: 6px; font-weight: 500;">Ссылка (URL):</label>
-                    <input type="text" id="btnUrlInput" value="https://example.com" placeholder="https://..." oninput="updateCustomBtnPreview()">
+                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px; font-size: 12px; align-items: center;">
+                    <span style="opacity: 0.6; font-size: 12px;">Фон предпросмотра:</span>
+                    <button type="button" onclick="setBtnBgPreview('dark')" style="padding: 4px 10px; font-size: 11px; margin: 0;">Тёмный</button>
+                    <button type="button" onclick="setBtnBgPreview('light')" style="padding: 4px 10px; font-size: 11px; margin: 0;">Светлый</button>
+                    <button type="button" onclick="setBtnBgPreview('grid')" style="padding: 4px 10px; font-size: 11px; margin: 0;">Сетка</button>
                 </div>
             </div>
 
-            <div style="margin-bottom: 14px;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
-                    <input type="checkbox" id="btnTargetInput" checked onchange="updateCustomBtnPreview()" style="width: 18px; height: 18px; margin: 0;">
-                    <span>Открывать ссылку в новой вкладке (target="_blank")</span>
-                </label>
+            <!-- Mode Toggle Tabs: Конструктор / HTML & CSS код -->
+            <style>
+                .btn-dialog-tab {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 6px !important;
+                    padding: 9px 18px !important;
+                    font-size: 13px !important;
+                    font-weight: 600 !important;
+                    border-radius: 10px !important;
+                    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.18)) !important;
+                    background: rgba(255, 255, 255, 0.05) !important;
+                    color: var(--text-color, #ffffff) !important;
+                    cursor: pointer !important;
+                    white-space: nowrap !important;
+                    transition: all 0.2s ease !important;
+                    box-shadow: none !important;
+                    transform: none !important;
+                }
+                .btn-dialog-tab:hover {
+                    background: rgba(255, 255, 255, 0.12) !important;
+                    transform: translateY(-1px) !important;
+                }
+                .btn-dialog-tab.active {
+                    background: var(--primary-color, #6366f1) !important;
+                    color: #ffffff !important;
+                    border-color: rgba(255, 255, 255, 0.4) !important;
+                    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45) !important;
+                }
+                .preset-btn {
+                    padding: 6px 12px !important;
+                    font-size: 12px !important;
+                    font-weight: 500 !important;
+                    border-radius: 8px !important;
+                    margin: 0 !important;
+                    transform: none !important;
+                }
+                .btn-code-editor {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 100% !important;
+                    box-sizing: border-box !important;
+                    font-family: Consolas, Monaco, 'Courier New', monospace !important;
+                    font-size: 13px !important;
+                    line-height: 1.5 !important;
+                    padding: 12px 14px !important;
+                    background: rgba(10, 15, 26, 0.85) !important;
+                    color: #818cf8 !important;
+                    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2)) !important;
+                    border-radius: 10px !important;
+                    height: 115px !important;
+                    resize: vertical !important;
+                    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
+                    white-space: pre-wrap !important;
+                    word-break: break-all !important;
+                }
+                .btn-code-editor:focus {
+                    outline: none !important;
+                    border-color: var(--primary-color, #6366f1) !important;
+                    box-shadow: 0 0 16px rgba(129, 140, 248, 0.4), inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
+                }
+            </style>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 18px; border-bottom: 1px solid var(--glass-border, rgba(255,255,255,0.15)); padding-bottom: 12px;">
+                <button type="button" id="btnTabGui" onclick="switchBtnTab('gui')" class="btn-dialog-tab active">🎨 Конструктор</button>
+                <button type="button" id="btnTabCode" onclick="switchBtnTab('code')" class="btn-dialog-tab">💻 HTML & CSS Код</button>
             </div>
 
-            <!-- Presets -->
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Готовые стили (Пресеты):</label>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="button" class="preset-btn" onclick="applyBtnPreset('editor')">🔳 Стандартная</button>
-                    <button type="button" class="preset-btn" onclick="applyBtnPreset('gradient')">🌈 Градиент</button>
-                    <button type="button" class="preset-btn" onclick="applyBtnPreset('success')">🟢 Зелёная</button>
-                    <button type="button" class="preset-btn" onclick="applyBtnPreset('outline')">⚪ Контур</button>
-                    <button type="button" class="preset-btn" onclick="applyBtnPreset('neon')">🟣 Неон</button>
-                    <button type="button" class="preset-btn" onclick="applyBtnPreset('danger')">🔴 Красная</button>
-                </div>
-            </div>
-
-            <!-- Fine-tuning fields -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
-                <div>
-                    <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Цвет фона:</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="color" id="btnBgColor" value="#0f1624" style="width: 44px; height: 40px; padding: 2px; cursor: pointer; border-radius: 8px; border: 1px solid var(--glass-border, rgba(255,255,255,0.2)); background: transparent;" oninput="document.getElementById('btnBgColorText').value=this.value; updateCustomBtnPreview();">
-                        <input type="text" id="btnBgColorText" value="rgba(15, 22, 36, 0.72)" placeholder="rgba(15, 22, 36, 0.72)" style="flex: 1;" oninput="document.getElementById('btnBgColor').value=this.value; updateCustomBtnPreview();">
+            <!-- Tab 1: GUI Constructor -->
+            <div id="btnTabGuiContent">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                    <div>
+                        <label style="display: block; font-size: 13px; margin-bottom: 6px; font-weight: 500;">Текст кнопки:</label>
+                        <input type="text" id="btnTextInput" value="Перейти на сайт" placeholder="Например: Читать далее" oninput="updateCustomBtnPreview()">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 13px; margin-bottom: 6px; font-weight: 500;">Ссылка (URL):</label>
+                        <input type="text" id="btnUrlInput" value="https://example.com" placeholder="https://..." oninput="updateCustomBtnPreview()">
                     </div>
                 </div>
-                <div>
-                    <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Цвет текста:</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="color" id="btnTextColor" value="#f3f4f6" style="width: 44px; height: 40px; padding: 2px; cursor: pointer; border-radius: 8px; border: 1px solid var(--glass-border, rgba(255,255,255,0.2)); background: transparent;" oninput="document.getElementById('btnTextColorText').value=this.value; updateCustomBtnPreview();">
-                        <input type="text" id="btnTextColorText" value="#f3f4f6" placeholder="#f3f4f6" style="flex: 1;" oninput="document.getElementById('btnTextColor').value=this.value; updateCustomBtnPreview();">
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+                        <input type="checkbox" id="btnTargetInput" checked onchange="updateCustomBtnPreview()" style="width: 18px; height: 18px; margin: 0;">
+                        <span>Открывать ссылку в новой вкладке (target="_blank")</span>
+                    </label>
+                </div>
+
+                <!-- Presets -->
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Готовые стили (Пресеты):</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="preset-btn" onclick="applyBtnPreset('editor')">🔳 Стандартная</button>
+                        <button type="button" class="preset-btn" onclick="applyBtnPreset('gradient')">🌈 Градиент</button>
+                        <button type="button" class="preset-btn" onclick="applyBtnPreset('success')">🟢 Зелёная</button>
+                        <button type="button" class="preset-btn" onclick="applyBtnPreset('outline')">⚪ Контур</button>
+                        <button type="button" class="preset-btn" onclick="applyBtnPreset('neon')">🟣 Неон</button>
+                        <button type="button" class="preset-btn" onclick="applyBtnPreset('danger')">🔴 Красная</button>
+                    </div>
+                </div>
+
+                <!-- Fine-tuning fields -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                    <div>
+                        <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Цвет фона:</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="color" id="btnBgColor" value="#0f1624" style="width: 44px; height: 40px; padding: 2px; cursor: pointer; border-radius: 8px; border: 1px solid var(--glass-border, rgba(255,255,255,0.2)); background: transparent;" oninput="document.getElementById('btnBgColorText').value=this.value; updateCustomBtnPreview();">
+                            <input type="text" id="btnBgColorText" value="rgba(15, 22, 36, 0.72)" placeholder="rgba(15, 22, 36, 0.72)" style="flex: 1;" oninput="document.getElementById('btnBgColor').value=this.value; updateCustomBtnPreview();">
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Цвет текста:</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="color" id="btnTextColor" value="#f3f4f6" style="width: 44px; height: 40px; padding: 2px; cursor: pointer; border-radius: 8px; border: 1px solid var(--glass-border, rgba(255,255,255,0.2)); background: transparent;" oninput="document.getElementById('btnTextColorText').value=this.value; updateCustomBtnPreview();">
+                            <input type="text" id="btnTextColorText" value="#f3f4f6" placeholder="#f3f4f6" style="flex: 1;" oninput="document.getElementById('btnTextColor').value=this.value; updateCustomBtnPreview();">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div>
+                        <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Скруглять углы:</label>
+                        <input type="text" id="btnBorderRadius" value="8px" placeholder="8px" oninput="updateCustomBtnPreview()">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Отступы (Padding):</label>
+                        <input type="text" id="btnPadding" value="12px 24px" placeholder="12px 24px" oninput="updateCustomBtnPreview()">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Размер шрифта:</label>
+                        <input type="text" id="btnFontSize" value="15px" placeholder="15px" oninput="updateCustomBtnPreview()">
                     </div>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-                <div>
-                    <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Скруглять углы:</label>
-                    <input type="text" id="btnBorderRadius" value="8px" placeholder="8px" oninput="updateCustomBtnPreview()">
+            <!-- Tab 2: Raw HTML & CSS Code -->
+            <div id="btnTabCodeContent" style="display: none;">
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 13px; margin-bottom: 6px; font-weight: 500;">HTML код кнопки:</label>
+                    <textarea id="btnRawHtml" class="btn-code-editor" oninput="syncFromRawCode()"></textarea>
                 </div>
-                <div>
-                    <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Отступы (Padding):</label>
-                    <input type="text" id="btnPadding" value="12px 24px" placeholder="12px 24px" oninput="updateCustomBtnPreview()">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 12px; margin-bottom: 6px; opacity: 0.9;">Размер шрифта:</label>
-                    <input type="text" id="btnFontSize" value="15px" placeholder="15px" oninput="updateCustomBtnPreview()">
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 13px; margin-bottom: 6px; font-weight: 500;">CSS стили (inline style):</label>
+                    <textarea id="btnRawCss" class="btn-code-editor" oninput="syncFromRawCode()"></textarea>
                 </div>
             </div>
-        </div>
-
-        <!-- Tab 2: Raw HTML & CSS Code -->
-        <div id="btnTabCodeContent" style="display: none;">
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 13px; margin-bottom: 6px; font-weight: 500;">HTML код кнопки:</label>
-                <textarea id="btnRawHtml" class="btn-code-editor" oninput="syncFromRawCode()"></textarea>
-            </div>
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 13px; margin-bottom: 6px; font-weight: 500;">CSS стили (inline style):</label>
-                <textarea id="btnRawCss" class="btn-code-editor" oninput="syncFromRawCode()"></textarea>
-            </div>
-        </div>
-
-        <!-- Dialog Footer Actions -->
-        <div class="dialog-buttons">
-            <button type="button" id="customButtonSubmitBtn" onclick="insertCustomButtonToEditor()">Вставить кнопку</button>
-            <button type="button" onclick="closeCustomButtonDialog()">Отмена</button>
         </div>
     </div>
 </div>
