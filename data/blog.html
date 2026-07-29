@@ -351,6 +351,43 @@
                     } else {
                         document.body.style.backgroundImage = 'none';
                     }
+                    // Кнопки перехода между блогами
+                    const header = document.querySelector('header');
+                    let navContainer = document.getElementById('cross-blog-nav');
+                    if (settings.crossBlogNav && settings.crossBlogNav.length > 0) {
+                        if (!navContainer && header) {
+                            navContainer = document.createElement('div');
+                            navContainer.id = 'cross-blog-nav';
+                            navContainer.style.marginTop = '15px';
+                            navContainer.style.display = 'flex';
+                            navContainer.style.justifyContent = 'center';
+                            navContainer.style.flexWrap = 'wrap';
+                            navContainer.style.gap = '10px';
+                            header.appendChild(navContainer);
+                        }
+                        if (navContainer) {
+                            navContainer.innerHTML = '';
+                            settings.crossBlogNav.forEach(btn => {
+                                const a = document.createElement('a');
+                                a.href = btn.url;
+                                a.textContent = btn.text;
+                                a.style.display = 'inline-block';
+                                a.style.padding = '6px 12px';
+                                a.style.background = 'transparent';
+                                a.style.color = 'var(--text-color)';
+                                a.style.border = '1px solid var(--border-color)';
+                                a.style.textDecoration = 'none';
+                                a.style.fontSize = '14px';
+                                a.style.borderRadius = '4px';
+                                a.style.transition = 'all 0.2s';
+                                a.onmouseover = () => { a.style.background = 'var(--text-color)'; a.style.color = 'var(--bg-color)'; };
+                                a.onmouseout = () => { a.style.background = 'transparent'; a.style.color = 'var(--text-color)'; };
+                                navContainer.appendChild(a);
+                            });
+                        }
+                    } else if (navContainer) {
+                        navContainer.remove();
+                    }
                 }
             } catch (error) {
                 // Используем значение по умолчанию

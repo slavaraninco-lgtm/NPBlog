@@ -70,6 +70,32 @@ if (isset($data['data_path'])) {
     $existingSettings['data_path'] = trim($data['data_path']);
 }
 
+if (isset($data['blog_paths']) && is_array($data['blog_paths'])) {
+    $cleanPaths = [];
+    foreach ($data['blog_paths'] as $p) {
+        $trimmed = trim($p);
+        if ($trimmed !== '') {
+            $cleanPaths[] = $trimmed;
+        }
+    }
+    $existingSettings['blog_paths'] = array_values(array_unique($cleanPaths));
+    
+    if (!empty($cleanPaths)) {
+        if (empty($existingSettings['active_blog_path']) || !in_array($existingSettings['active_blog_path'], $cleanPaths)) {
+            $existingSettings['active_blog_path'] = $cleanPaths[0];
+            $_SESSION['active_blog_path'] = $cleanPaths[0];
+        }
+    }
+}
+
+if (isset($data['active_blog_path'])) {
+    $activePath = trim($data['active_blog_path']);
+    $existingSettings['active_blog_path'] = $activePath;
+    $_SESSION['active_blog_path'] = $activePath;
+    // Set data_path for backwards compatibility
+    $existingSettings['data_path'] = $activePath;
+}
+
 if (isset($data['rss_enabled'])) {
     $existingSettings['rss_enabled'] = (bool)$data['rss_enabled'];
 }
@@ -150,7 +176,10 @@ if (isset($data['password_enabled'])) {
 if (file_put_contents($settingsFile, json_encode($existingSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
     require_once __DIR__ . '/rss_helper.php';
     generateRssFeed();
-    echo json_encode(['success' => true]);
+    echo json_encode([
+        'success' => true,
+        'blogUrl' => getDataUrl('blog.html')
+    ]);
 } else {
     echo json_encode(['success' => false, 'error' => 'Не удалось сохранить настройки']);
 }

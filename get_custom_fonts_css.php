@@ -9,15 +9,7 @@ function getCustomFontsCss() {
         $files = scandir($fontsDir);
         
         // Resolve data directory name for correct web path
-        $editorSettingsFile = __DIR__ . '/editor_settings.json';
-        $editorSettings = [];
-        if (file_exists($editorSettingsFile)) {
-            $editorSettings = json_decode(file_get_contents($editorSettingsFile), true) ?: [];
-        }
-        $dataDir = isset($editorSettings['data_path']) ? $editorSettings['data_path'] : '';
-        if (empty($dataDir)) {
-            $dataDir = __DIR__ . '/data/';
-        }
+        $dataDir = getDataPath();
         $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
         
         foreach ($files as $file) {

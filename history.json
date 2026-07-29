@@ -12,7 +12,111 @@
                 "start": 0,
                 "end": 0
             }
+        },
+        {
+            "visual": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\" data-image-id=\"button-1785254886847-k8ccb9710\"><div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\" data-media-type=\"button\"><a href=\"https:\/\/example.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"custom-blog-btn\" style=\"display: inline-block; padding: 12px 24px; background: rgba(15, 22, 36, 0.72); color: #f3f4f6; font-size: 15px; text-decoration: none; border-radius: 8px; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2); backdrop-filter: blur(16px) saturate(190%); -webkit-backdrop-filter: blur(16px) saturate(190%)\" contenteditable=\"false\">Перейти на сайт<\/a><\/div><\/div><div><br><\/div>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 15,
+                "end": 15
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\" data-image-id=\"button-1785254886847-k8ccb9710\"><div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\" data-media-type=\"button\"><a href=\"https:\/\/example.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"custom-blog-btn\" style=\"display: inline-block; padding: 12px 24px; background: rgba(15, 22, 36, 0.72); color: #f3f4f6; font-size: 15px; text-decoration: none; border-radius: 8px; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2); backdrop-filter: blur(16px) saturate(190%); -webkit-backdrop-filter: blur(16px) saturate(190%)\" contenteditable=\"false\">Перейти на сайт<\/a><\/div><\/div><div>папапапппа<\/div>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 25,
+                "end": 25
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\" data-image-id=\"button-1785254886847-k8ccb9710\"><div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\" data-media-type=\"button\"><a href=\"https:\/\/example.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"custom-blog-btn\" style=\"display: inline-block; padding: 12px 24px; background: rgba(15, 22, 36, 0.72); color: #f3f4f6; font-size: 15px; text-decoration: none; border-radius: 8px; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2); backdrop-filter: blur(16px) saturate(190%); -webkit-backdrop-filter: blur(16px) saturate(190%)\" contenteditable=\"false\">Перейти на сайт<\/a><\/div><\/div><div>папапапппа<\/div><p><br><\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 25,
+                "end": 25
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\" data-image-id=\"button-1785254886847-k8ccb9710\"><div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\" data-media-type=\"button\"><a href=\"https:\/\/example.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"custom-blog-btn\" style=\"display: inline-block; padding: 12px 24px; background: rgba(15, 22, 36, 0.72); color: #f3f4f6; font-size: 15px; text-decoration: none; border-radius: 8px; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2); backdrop-filter: blur(16px) saturate(190%); -webkit-backdrop-filter: blur(16px) saturate(190%)\" contenteditable=\"false\">Перейти на сайт<\/a><\/div><\/div><div>папапапппа<\/div><p>аппапаапаппаап<\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 39,
+                "end": 39
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\" data-image-id=\"button-1785254886847-k8ccb9710\"><div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\" data-media-type=\"button\"><a href=\"https:\/\/example.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"custom-blog-btn\" style=\"display: inline-block; padding: 12px 24px; background: rgba(15, 22, 36, 0.72); color: #f3f4f6; font-size: 15px; text-decoration: none; border-radius: 8px; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2); backdrop-filter: blur(16px) saturate(190%); -webkit-backdrop-filter: blur(16px) saturate(190%)\" contenteditable=\"false\">Перейти на сайт<\/a><\/div><\/div><div>папапапппа<\/div><p>аппапаапаппаап<\/p><p><br><\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 39,
+                "end": 39
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\" data-image-id=\"button-1785254886847-k8ccb9710\"><div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\" data-media-type=\"button\"><a href=\"https:\/\/example.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"custom-blog-btn\" style=\"display: inline-block; padding: 12px 24px; background: rgba(15, 22, 36, 0.72); color: #f3f4f6; font-size: 15px; text-decoration: none; border-radius: 8px; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2); backdrop-filter: blur(16px) saturate(190%); -webkit-backdrop-filter: blur(16px) saturate(190%)\" contenteditable=\"false\">Перейти на сайт<\/a><\/div><\/div><div>папапапппа<\/div><p>аппапаапаппаап<\/p><p>паапаппаппааппа<\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 54,
+                "end": 54
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "\n<div>папапапппа<\/div>\n<p>аппапаапаппаап<\/p>\n<p>паапаппаппааппа<\/p>",
+            "code": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\">\n    <div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\"><a href=\"https:\/\/example.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"custom-blog-btn\" style=\"display: inline-block; padding: 12px 24px; background: rgba(15, 22, 36, 0.72); color: #f3f4f6; font-size: 15px; text-decoration: none; border-radius: 8px; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2); backdrop-filter: blur(16px) saturate(190%); -webkit-backdrop-filter: blur(16px) saturate(190%)\">Перейти на сайт<\/a><\/div>\n<\/div>\n<div>папапапппа<\/div>\n<p>аппапаапаппаап<\/p>\n<p>паапаппаппааппа<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 935,
+                "end": 935
+            }
+        },
+        {
+            "visual": "<br>",
+            "code": "<div>папапапппа<\/div>\n<p>аппапаапаппаап<\/p>\n<p>паапаппаппааппа<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 66,
+                "end": 66
+            }
         }
     ],
-    "index": 0
+    "index": 8
 }

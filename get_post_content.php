@@ -86,15 +86,7 @@ try {
     $rawContent = extractPostContentFromHtml($content, $postId);
 
     // Конвертируем статические пути к папке data в пути через serve_data.php, чтобы картинки загружались в редакторе
-    $editorSettingsFile = __DIR__ . '/editor_settings.json';
-    $editorSettings = [];
-    if (file_exists($editorSettingsFile)) {
-        $editorSettings = json_decode(file_get_contents($editorSettingsFile), true) ?: [];
-    }
-    $dataDir = isset($editorSettings['data_path']) ? $editorSettings['data_path'] : '';
-    if (empty($dataDir)) {
-        $dataDir = __DIR__ . '/data/';
-    }
+    $dataDir = getDataPath();
     $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
     $pattern = '/(src|href|poster)=(["\'])(?:\/)?' . preg_quote($dirName, '/') . '\//i';
     $rawContent = preg_replace($pattern, '$1=$2serve_data.php?file=', $rawContent);

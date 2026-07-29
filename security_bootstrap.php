@@ -8,8 +8,9 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Automatically validate CSRF token on POST requests (excluding CLI)
-if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// Automatically validate CSRF token on POST requests (excluding CLI and login.php)
+$currentScript = basename($_SERVER['SCRIPT_NAME']);
+if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && $currentScript !== 'login.php') {
     $csrfHeader = isset($_SERVER['HTTP_X_CSRF_TOKEN']) ? $_SERVER['HTTP_X_CSRF_TOKEN'] : '';
     $sessionToken = isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : '';
     if (empty($sessionToken) || empty($csrfHeader) || !hash_equals($sessionToken, $csrfHeader)) {
@@ -106,46 +107,80 @@ if (!function_exists('validateSafePath')) {
 }
 
 function getDataPath($subpath = '') {
-    static $dataDir = null;
-    if ($dataDir === null) {
-        $settingsFile = __DIR__ . '/editor_settings.json';
-        $settings = [];
-        if (file_exists($settingsFile)) {
-            $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
-        }
-        $dataDir = isset($settings['data_path']) ? $settings['data_path'] : '/var/www/html/data';
-        if (!is_dir($dataDir)) {
-            if (!@mkdir($dataDir, 0777, true)) {
-                $dataDir = __DIR__ . '/data/';
-            }
-        } elseif (!is_writable($dataDir)) {
+    $settingsFile = __DIR__ . '/editor_settings.json';
+    $settings = [];
+    if (file_exists($settingsFile)) {
+        $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+    }
+    
+    $activePath = '';
+    if (!empty($_SESSION['active_blog_path'])) {
+        $activePath = $_SESSION['active_blog_path'];
+    } elseif (!empty($settings['active_blog_path'])) {
+        $activePath = $settings['active_blog_path'];
+        $_SESSION['active_blog_path'] = $activePath;
+    } elseif (!empty($settings['blog_paths']) && is_array($settings['blog_paths']) && count($settings['blog_paths']) > 0) {
+        $activePath = $settings['blog_paths'][0];
+        $_SESSION['active_blog_path'] = $activePath;
+    } elseif (!empty($settings['data_path'])) {
+        $activePath = $settings['data_path'];
+        $_SESSION['active_blog_path'] = $activePath;
+    } else {
+        $activePath = __DIR__ . '/data';
+    }
+
+    $dataDir = $activePath;
+    
+    // Make absolute if relative
+    if (strpos($dataDir, '/') !== 0 && strpos($dataDir, ':\\') !== 1) {
+        $dataDir = __DIR__ . '/' . ltrim($dataDir, '/');
+    }
+
+    if (!is_dir($dataDir)) {
+        if (!@mkdir($dataDir, 0777, true)) {
+            // Only fallback if we literally cannot create the directory
             $dataDir = __DIR__ . '/data/';
         }
-        // Ensure trailing slash and correct path separators
-        $dataDir = rtrim(str_replace('\\', '/', $dataDir), '/') . '/';
+    } else {
+        if (!is_writable($dataDir)) {
+            $isApiRequest = (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) || 
+                            ($_SERVER['REQUEST_METHOD'] === 'POST') || 
+                            (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+            if ($isApiRequest) {
+                header('HTTP/1.1 403 Forbidden');
+                header('Content-Type: application/json; charset=utf-8');
+                die(json_encode([
+                    'success' => false,
+                    'error' => 'permission_denied',
+                    'message' => 'Нет прав на запись к папке блога: ' . $dataDir
+                ], JSON_UNESCAPED_UNICODE));
+            } else {
+                die('<html><head><meta charset="utf-8"><title>Ошибка доступа</title></head><body style="padding:40px;font-family:sans-serif;background:#fff;color:#333;"><h2>Ошибка доступа</h2><p>У веб-сервера нет прав на запись к папке блога: <b>' . htmlspecialchars($dataDir) . '</b></p><p>Пожалуйста, настройте права доступа (например, chmod 777 или chown), чтобы редактор мог сохранять статьи.</p><p><button onclick="window.history.back()">Вернуться назад</button></p></body></html>');
+            }
+        }
     }
+    
+    // Ensure trailing slash and correct path separators
+    $dataDir = rtrim(str_replace('\\', '/', $dataDir), '/') . '/';
     return $dataDir . $subpath;
 }
 
 function getDataUrl($subpath = '') {
-    static $webPrefix = null;
-    if ($webPrefix === null) {
-        $dataDir = getDataPath();
-        $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']) : '';
-        $docRoot = rtrim($docRoot, '/');
-        
-        if (!empty($docRoot) && strpos($dataDir, $docRoot) === 0) {
-            $webPrefix = '/' . ltrim(substr($dataDir, strlen($docRoot)), '/');
-            $webPrefix = rtrim($webPrefix, '/') . '/';
-        } else {
-            // Find script directory prefix to handle subfolders correctly
-            $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
-            $subDir = '';
-            if (!empty($scriptName) && php_sapi_name() !== 'cli') {
-                $subDir = rtrim(dirname($scriptName), '/\\');
-            }
-            $webPrefix = (!empty($subDir) ? $subDir : '') . '/serve_data.php?file=';
+    $dataDir = getDataPath();
+    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']) : '';
+    $docRoot = rtrim($docRoot, '/');
+    
+    if (!empty($docRoot) && strpos($dataDir, $docRoot) === 0) {
+        $webPrefix = '/' . ltrim(substr($dataDir, strlen($docRoot)), '/');
+        $webPrefix = rtrim($webPrefix, '/') . '/';
+    } else {
+        // Find script directory prefix to handle subfolders correctly
+        $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
+        $subDir = '';
+        if (!empty($scriptName) && php_sapi_name() !== 'cli') {
+            $subDir = rtrim(dirname($scriptName), '/\\');
         }
+        $webPrefix = (!empty($subDir) ? $subDir : '') . '/serve_data.php?file=';
     }
     return $webPrefix . $subpath;
 }

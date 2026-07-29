@@ -7,7 +7,7 @@ require_once 'background_functions.php';
 // Функция для перенумерации статей (копия из renumber_posts.php)
 function renumberPostsAfterDelete() {
     $metaFile = validateSafePath(getDataPath('blog/'), 'posts-meta.json');
-    $backupMetaFile = validateSafePath('data_backup/', 'backup-meta.json');
+    $backupMetaFile = validateSafePath(__DIR__ . '/data_backup/', 'backup-meta.json');
     
     if (!file_exists($metaFile)) {
         return ['success' => false, 'error' => 'Файл метаданных не найден'];
@@ -80,8 +80,8 @@ function renumberPostsAfterDelete() {
             }
             
             // Переименовываем папку с бэкапами (только если статья существует)
-            $oldBackupDir = validateSafePath('data_backup/', (string)$oldId) . '/';
-            $newBackupDir = validateSafePath('data_backup/', (string)$newId) . '/';
+            $oldBackupDir = validateSafePath(__DIR__ . '/data_backup/', (string)$oldId) . '/';
+            $newBackupDir = validateSafePath(__DIR__ . '/data_backup/', (string)$newId) . '/';
             
             if (is_dir($oldBackupDir)) {
                 if (!is_dir($newBackupDir)) {
@@ -155,7 +155,7 @@ $postId = intval($data['id']);
 
 // Загружаем метаданные
 $metaFile = validateSafePath(getDataPath('blog/'), 'posts-meta.json');
-$backupMetaFile = validateSafePath('data_backup/', 'backup-meta.json');
+$backupMetaFile = validateSafePath(__DIR__ . '/data_backup/', 'backup-meta.json');
 
 if (!file_exists($metaFile)) {
     echo json_encode(['success' => false, 'error' => 'Метаданные не найдены']);
@@ -204,8 +204,8 @@ if (file_exists($backupMetaFile)) {
     
     if (isset($backupMeta[$postId])) {
         // Переименовываем папку с бэкапов
-        $oldBackupDir = validateSafePath('data_backup/', (string)$postId) . '/';
-        $newBackupDir = validateSafePath('data_backup/', 'deleted_' . $postId . '_' . time()) . '/';
+        $oldBackupDir = validateSafePath(__DIR__ . '/data_backup/', (string)$postId) . '/';
+        $newBackupDir = validateSafePath(__DIR__ . '/data_backup/', 'deleted_' . $postId . '_' . time()) . '/';
         
         if (is_dir($oldBackupDir)) {
             rename($oldBackupDir, $newBackupDir);

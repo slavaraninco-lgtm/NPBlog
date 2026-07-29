@@ -1,1 +1,26 @@
-[]
+{
+    "1": {
+        "postId": 1,
+        "postTitle": "тест",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "1-1.html",
+                "date": "27.07.2026 01:34",
+                "title": "тест"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "1-2.html",
+                "date": "27.07.2026 01:38",
+                "title": "тест"
+            },
+            {
+                "backupNumber": 3,
+                "filename": "1-3.html",
+                "date": "27.07.2026 01:38",
+                "title": "тест"
+            }
+        ]
+    }
+}
