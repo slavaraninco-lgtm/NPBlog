@@ -371,7 +371,17 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
                     <?php if (!empty($passwordHash)): ?>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="lockEditor()" style="color: #ef4444; font-weight: 600; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">Заблокировать</button>
                     <?php endif; ?>
-                    <div class="editor-menu-version">ver 2.217</div>
+                    <?php
+                    $editorVersion = 'unknown';
+                    $versionFile = __DIR__ . '/version.json';
+                    if (file_exists($versionFile)) {
+                        $versionData = json_decode(file_get_contents($versionFile), true);
+                        if (!empty($versionData['version'])) {
+                            $editorVersion = $versionData['version'];
+                        }
+                    }
+                    ?>
+                    <div class="editor-menu-version">ver <?php echo htmlspecialchars($editorVersion); ?></div>
                 </div>
             </div>
         </div>
