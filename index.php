@@ -13,6 +13,15 @@ if (file_exists($settingsFile)) {
     }
 }
 $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
+
+$isDevBuild = false;
+$versionFile = __DIR__ . '/version.json';
+if (file_exists($versionFile)) {
+    $versionData = json_decode(file_get_contents($versionFile), true);
+    if (!empty($versionData['dev']) && ($versionData['dev'] === true || $versionData['dev'] === 'true')) {
+        $isDevBuild = true;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html<?php echo $amoled ? ' data-amoled="true"' : ''; ?>>
@@ -31,6 +40,7 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
         }
         if(/Android/i.test(navigator.userAgent)) document.documentElement.classList.add('is-android');
         const DATA_URL_PREFIX = '<?php echo getDataUrl(); ?>';
+        window.isDevBuild = <?php echo $isDevBuild ? 'true' : 'false'; ?>;
         
         // Global Fetch Interceptor to automatically append CSRF Token headers
         // Global Fetch Interceptor to automatically append CSRF Token headers and handle session expiration
@@ -1298,6 +1308,30 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
         
         <div style="text-align: right; margin-top: 20px;">
             <button type="button" class="global-action-btn" onclick="closeAdditionalSettings()">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно предупреждения о DEV сборке -->
+<div id="devWarningDialog" class="dialog" style="display: none; justify-content: center; align-items: center; z-index: 12000;">
+    <div class="dialog-content" style="width: 480px; max-width: 95vw; padding: 0 !important; overflow: hidden; border: 1.5px solid #ff9800; box-shadow: 0 10px 30px rgba(255, 152, 0, 0.2);">
+        <!-- Заголовок -->
+        <div style="padding: 18px 25px; border-bottom: 2.5px solid #ff9800; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 152, 0, 0.1);">
+            <h3 style="margin: 0; color: #ff9800; font-size: 20px; display: flex; align-items: center; gap: 10px; font-weight: 700;">
+                ⚠️ DEV-версия системы
+            </h3>
+        </div>
+
+        <div style="padding: 24px 28px 24px;">
+            <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: var(--text-color); font-weight: 500;">
+                Вы используете **Development (разрабатываемую)** сборку NPBlog.
+            </p>
+            <p style="margin: 0 0 20px 0; font-size: 13px; line-height: 1.6; color: var(--text-color); opacity: 0.85;">
+                Эта версия может быть **нестабильной**, содержать недоработки и незавершенные функции. Настоятельно рекомендуется периодически делать бэкапы ваших статей и файлов.
+            </p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" onclick="confirmDevWarning()" class="global-action-btn global-action-btn-primary" style="padding: 10px 24px; font-size: 14px; background: #ff9800; color: #fff; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f57c00'" onmouseout="this.style.background='#ff9800'">Я понимаю риски</button>
+            </div>
         </div>
     </div>
 </div>

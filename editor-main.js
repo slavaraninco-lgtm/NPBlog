@@ -5010,6 +5010,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Применяем экспериментальные настройки
     applyExperimentalSettings();
+
+    // Проверяем предупреждение о DEV сборке
+    checkDevWarning();
 });
 
 // ——— Система includes ———
@@ -8741,3 +8744,26 @@ window.showMediaDialog = showMediaDialog;
 window.closeMediaDialog = closeMediaDialog;
 window.insertMedia = insertMedia;
 window.openFileUploadDialog = openFileUploadDialog;
+
+function checkDevWarning() {
+    if (window.isDevBuild) {
+        const warningAccepted = localStorage.getItem('devWarningAccepted');
+        if (!warningAccepted) {
+            const devWarningDialog = document.getElementById('devWarningDialog');
+            if (devWarningDialog) {
+                devWarningDialog.style.display = 'flex';
+            }
+        }
+    }
+}
+
+function confirmDevWarning() {
+    localStorage.setItem('devWarningAccepted', 'true');
+    const devWarningDialog = document.getElementById('devWarningDialog');
+    if (devWarningDialog) {
+        devWarningDialog.style.display = 'none';
+    }
+}
+
+window.checkDevWarning = checkDevWarning;
+window.confirmDevWarning = confirmDevWarning;
