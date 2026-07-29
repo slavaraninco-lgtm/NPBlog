@@ -8387,6 +8387,7 @@ function openInsertButtonDialog() {
     const dialog = document.getElementById('customButtonDialog');
     if (!dialog) return;
     dialog.style.display = 'flex';
+    dialog.classList.add('show');
     switchBtnTab('gui');
     updateCustomBtnPreview();
 }
@@ -8459,6 +8460,7 @@ function openEditCustomButtonDialog(customBtn) {
     const dialog = document.getElementById('customButtonDialog');
     if (!dialog) return;
     dialog.style.display = 'flex';
+    dialog.classList.add('show');
     switchBtnTab('gui');
     updateCustomBtnPreview();
 }
@@ -8467,6 +8469,7 @@ function closeCustomButtonDialog() {
     const dialog = document.getElementById('customButtonDialog');
     if (!dialog) return;
     dialog.style.display = 'none';
+    dialog.classList.remove('show');
     editingCustomBtnTarget = null;
 }
 
