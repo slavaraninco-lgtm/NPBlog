@@ -7994,26 +7994,154 @@ window.getCurrentEditId = function() {
     window.closeTemplateInstructions = closeTemplateInstructions;
 
 // --- Наборы смайлов ---
+let smileFilesToUpload = [];
+let smileSetNameTarget = '';
+
 function openSmileSetsDialog() {
     document.getElementById('smileSetsDialog').style.display = 'block';
     loadSmileSetsList();
+    resetSmileUploadState();
 }
 
 function closeSmileSetsDialog() {
     document.getElementById('smileSetsDialog').style.display = 'none';
-    document.getElementById('smileFolderInput').value = '';
-    document.getElementById('smileFilesInput').value = '';
-    document.getElementById('smileSetNameInput').value = '';
+    resetSmileUploadState();
 }
 
-function toggleSmileUploadMode(mode) {
-    if (mode === 'folder') {
-        document.getElementById('smileUploadFolderContainer').style.display = 'block';
-        document.getElementById('smileUploadFilesContainer').style.display = 'none';
-    } else {
-        document.getElementById('smileUploadFolderContainer').style.display = 'none';
-        document.getElementById('smileUploadFilesContainer').style.display = 'block';
+function handleSmileDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById('smileDropzone');
+    if (zone) {
+        zone.style.borderColor = 'var(--text-color)';
+        zone.style.background = 'rgba(255, 255, 255, 0.05)';
     }
+}
+
+function handleSmileDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById('smileDropzone');
+    if (zone) {
+        zone.style.borderColor = 'var(--border-color)';
+        zone.style.background = 'rgba(0, 0, 0, 0.02)';
+    }
+}
+
+async function handleSmileDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById('smileDropzone');
+    if (zone) {
+        zone.style.borderColor = 'var(--border-color)';
+        zone.style.background = 'rgba(0, 0, 0, 0.02)';
+    }
+
+    const files = [];
+    if (e.dataTransfer.items) {
+        const entries = [];
+        for (let i = 0; i < e.dataTransfer.items.length; i++) {
+            const item = e.dataTransfer.items[i];
+            if (item.kind === 'file') {
+                const entry = item.webkitGetAsEntry();
+                if (entry) {
+                    entries.push(entry);
+                }
+            }
+        }
+        await readSmileEntries(entries, files);
+    } else {
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+            files.push(e.dataTransfer.files[i]);
+        }
+    }
+
+    processSelectedSmiles(files);
+}
+
+async function readSmileEntries(entries, fileList) {
+    for (const entry of entries) {
+        if (entry.isFile) {
+            const file = await new Promise((resolve) => entry.file(resolve));
+            file.customRelativePath = entry.fullPath ? entry.fullPath.replace(/^\//, '') : file.name;
+            fileList.push(file);
+        } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            const childEntries = await new Promise((resolve) => {
+                reader.readEntries(resolve);
+            });
+            await readSmileEntries(childEntries, fileList);
+        }
+    }
+}
+
+function handleSmileFileSelect(e) {
+    const input = e.target;
+    if (input && input.files.length > 0) {
+        processSelectedSmiles(Array.from(input.files));
+    }
+}
+
+function processSelectedSmiles(files) {
+    smileFilesToUpload = files.filter(file => file.name.toLowerCase().endsWith('.gif'));
+    
+    if (smileFilesToUpload.length === 0) {
+        showNotification('В выбранных файлах не найдено изображений формата .gif', 'warning');
+        resetSmileUploadState();
+        return;
+    }
+
+    let detectedName = '';
+    const firstFile = smileFilesToUpload[0];
+    const relPath = firstFile.customRelativePath || firstFile.webkitRelativePath;
+    
+    if (relPath && relPath.includes('/')) {
+        detectedName = relPath.split('/')[0];
+    }
+
+    const nameField = document.getElementById('smileSetNameField');
+    const nameInput = document.getElementById('smileSetNameInput');
+    const infoText = document.getElementById('smileSelectedFilesInfo');
+    const countSpan = document.getElementById('smileSelectedCount');
+    const btnContainer = document.getElementById('smileUploadBtnContainer');
+
+    if (detectedName) {
+        smileSetNameTarget = detectedName;
+        nameInput.value = detectedName;
+        if (nameField) nameField.style.display = 'block';
+    } else {
+        smileSetNameTarget = '';
+        nameInput.value = '';
+        if (nameField) nameField.style.display = 'block';
+    }
+
+    if (countSpan) countSpan.textContent = smileFilesToUpload.length;
+    if (infoText) infoText.style.display = 'block';
+    if (btnContainer) btnContainer.style.display = 'block';
+    
+    const dropzoneText = document.getElementById('smileDropzoneText');
+    if (dropzoneText) dropzoneText.textContent = 'Файлы успешно выбраны';
+}
+
+function resetSmileUploadState() {
+    smileFilesToUpload = [];
+    smileSetNameTarget = '';
+    
+    const folderInput = document.getElementById('smileFolderInput');
+    const filesInput = document.getElementById('smileFilesInput');
+    const nameInput = document.getElementById('smileSetNameInput');
+    const nameField = document.getElementById('smileSetNameField');
+    const infoText = document.getElementById('smileSelectedFilesInfo');
+    const btnContainer = document.getElementById('smileUploadBtnContainer');
+    const dropzoneText = document.getElementById('smileDropzoneText');
+
+    if (folderInput) folderInput.value = '';
+    if (filesInput) filesInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (nameField) nameField.style.display = 'none';
+    if (infoText) infoText.style.display = 'none';
+    if (btnContainer) btnContainer.style.display = 'none';
+    if (dropzoneText) dropzoneText.textContent = 'Перетащите папку со смайлами сюда';
 }
 
 async function loadSmileSetsList() {
@@ -8031,9 +8159,9 @@ async function loadSmileSetsList() {
             } else {
                 listContainer.innerHTML = setNames.map(name => {
                     const count = data.sets[name].length;
-                    return `<div class="smile-set-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); color: var(--text-color);">
-                        <span class="smile-set-name">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.6; margin-left: 8px;">(${count} смайлов)</span></span>
-                        <button type="button" class="smile-set-delete-btn" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">Удалить</button>
+                    return `<div class="smile-set-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-color); transition: background 0.2s;" onmouseover="this.style.background='rgba(128,128,128,0.04)'" onmouseout="this.style.background='transparent'">
+                        <span class="smile-set-name" style="font-weight: 500; font-size: 14px;">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.5; margin-left: 8px;">(${count} шт.)</span></span>
+                        <button type="button" class="smile-set-delete-btn" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(239,68,68,0.4)'" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">Удалить</button>
                     </div>`;
                 }).join('');
             }
@@ -8047,50 +8175,23 @@ async function loadSmileSetsList() {
 }
 
 async function handleSmileSetUpload() {
-    const uploadType = document.querySelector('input[name="smileUploadType"]:checked').value;
     const formData = new FormData();
-    let files = [];
-    let setName = '';
+    let files = smileFilesToUpload;
+    let setName = document.getElementById('smileSetNameInput').value.trim();
 
-    if (uploadType === 'folder') {
-        const folderInput = document.getElementById('smileFolderInput');
-        files = Array.from(folderInput.files);
-        if (files.length === 0) {
-            showNotification('Выберите папку для загрузки', 'warning');
-            return;
-        }
-        if (files[0].webkitRelativePath) {
-            setName = files[0].webkitRelativePath.split('/')[0];
-        } else {
-            setName = 'default_set';
-        }
-    } else {
-        const filesInput = document.getElementById('smileFilesInput');
-        files = Array.from(filesInput.files);
-        setName = document.getElementById('smileSetNameInput').value.trim();
-        if (files.length === 0) {
-            showNotification('Выберите GIF-файлы для загрузки', 'warning');
-            return;
-        }
-        if (!setName) {
-            showNotification('Введите название для набора', 'warning');
-            return;
-        }
+    if (files.length === 0) {
+        showNotification('Выберите файлы или папку для загрузки', 'warning');
+        return;
+    }
+    if (!setName) {
+        showNotification('Введите название для набора', 'warning');
+        return;
     }
 
     formData.append('setName', setName);
-    let hasGif = false;
     files.forEach(file => {
-        if (file.name.toLowerCase().endsWith('.gif')) {
-            formData.append('smiles[]', file);
-            hasGif = true;
-        }
+        formData.append('smiles[]', file);
     });
-
-    if (!hasGif) {
-        showNotification('В выбранных файлах нет изображений формата .gif', 'warning');
-        return;
-    }
 
     try {
         showNotification('Загрузка смайлов...', 'info');
@@ -8102,9 +8203,7 @@ async function handleSmileSetUpload() {
         if (data.success) {
             showNotification(`Набор "${setName}" успешно загружен (${data.count} смайлов)`, 'success');
             loadSmileSetsList();
-            document.getElementById('smileFolderInput').value = '';
-            document.getElementById('smileFilesInput').value = '';
-            document.getElementById('smileSetNameInput').value = '';
+            resetSmileUploadState();
         } else {
             showNotification('Ошибка загрузки: ' + data.error, 'error');
         }
@@ -8113,6 +8212,15 @@ async function handleSmileSetUpload() {
         showNotification('Ошибка сети при загрузке набора', 'error');
     }
 }
+
+// Expose functions to window
+window.openSmileSetsDialog = openSmileSetsDialog;
+window.closeSmileSetsDialog = closeSmileSetsDialog;
+window.handleSmileDragOver = handleSmileDragOver;
+window.handleSmileDragLeave = handleSmileDragLeave;
+window.handleSmileDrop = handleSmileDrop;
+window.handleSmileFileSelect = handleSmileFileSelect;
+window.handleSmileSetUpload = handleSmileSetUpload;
 
 async function deleteSmileSet(setName) {
     showConfirm(`Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`).then(async (result) => {

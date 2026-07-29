@@ -716,25 +716,39 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
 </div>
 
     <div id="codeDialog" class="dialog code-dialog">
-    <div class="dialog-content">
-        <h3 id="codeDialogTitle">Вставить код</h3>
-        <select id="codeLanguage" class="language-select">
-            <option value="javascript">JavaScript</option>
-            <option value="php">PHP</option>
-            <option value="html">HTML</option>
-            <option value="css">CSS</option>
-            <option value="python">Python</option>
-            <option value="sql">SQL</option>
-            <option value="java">Java</option>
-            <option value="cpp">C++</option>
-            <option value="csharp">C#</option>
-            <option value="ruby">Ruby</option>
-            <option value="plain">Текст</option>
-        </select>
-        <textarea id="codeInput" class="code-input" placeholder="Вставьте ваш код сюда..."></textarea>
-        <div class="dialog-buttons">
-            <button id="codeDialogSubmitBtn" onclick="insertCodeBlock()">Вставить</button>
-            <button onclick="closeCodeDialog()">Отмена</button>
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 id="codeDialogTitle" style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                Вставить код
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeCodeDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
+                <button type="button" id="codeDialogSubmitBtn" onclick="insertCodeBlock()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить</button>
+            </div>
+        </div>
+
+        <div style="padding: 24px 28px 24px;">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="codeLanguage" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Язык программирования:</label>
+                <select id="codeLanguage" class="language-select">
+                    <option value="javascript">JavaScript</option>
+                    <option value="php">PHP</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="python">Python</option>
+                    <option value="sql">SQL</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="csharp">C#</option>
+                    <option value="ruby">Ruby</option>
+                    <option value="plain">Текст</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="codeInput" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Код:</label>
+                <textarea id="codeInput" class="code-input" placeholder="Вставьте ваш код сюда..." style="height: 180px;"></textarea>
+            </div>
         </div>
     </div>
 </div>
@@ -921,35 +935,41 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
 
 <!-- Диалог загрузки файлов -->
 <div id="fileUploadDialog" class="file-upload-dialog">
-    <div class="dialog-content">
-        <h3>Загрузить файл</h3>
-        
-        <div class="form-group">
-            <div id="fileDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('documentFile').click()">
-                <input type="file" id="documentFile" style="display: none;" onchange="handleFileSelect(this)">
-                <div class="dropzone-icon">📤</div>
-                <div class="dropzone-text">Выберите файл или перетащите его сюда</div>
-                <div id="documentFileName" class="dropzone-filename">Файл не выбран</div>
-                <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('documentFile').click()">Обзор...</button>
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                Загрузить файл
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeFileUploadDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Закрыть</button>
             </div>
         </div>
-        
-        <div class="form-group">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin: 14px 0;">
-                <input type="checkbox" id="insertAsHyperlink" style="cursor: pointer;">
-                <span style="font-size: 13px; font-weight: 500; opacity: 0.9;">Вставить как гиперссылку</span>
-            </label>
-        </div>
-        
-        <div class="form-group">
-            <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block;">Загруженные файлы:</label>
-            <div class="file-upload-list" id="fileUploadList">
-                <div class="file-upload-empty">Загрузка списка файлов...</div>
+
+        <div style="padding: 24px 28px 24px;">
+            <div class="form-group">
+                <div id="fileDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('documentFile').click()">
+                    <input type="file" id="documentFile" style="display: none;" onchange="handleFileSelect(this)">
+                    <div class="dropzone-icon">📤</div>
+                    <div class="dropzone-text">Выберите файл или перетащите его сюда</div>
+                    <div id="documentFileName" class="dropzone-filename">Файл не выбран</div>
+                    <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('documentFile').click()">Обзор...</button>
+                </div>
             </div>
-        </div>
-        
-        <div class="dialog-buttons">
-            <button onclick="closeFileUploadDialog()">Закрыть</button>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin: 14px 0;">
+                    <input type="checkbox" id="insertAsHyperlink" style="cursor: pointer;">
+                    <span style="font-size: 13px; font-weight: 500; opacity: 0.9; color: var(--text-color);">Вставить как гиперссылку</span>
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; color: var(--text-color);">Загруженные файлы:</label>
+                <div class="file-upload-list" id="fileUploadList">
+                    <div class="file-upload-empty">Загрузка списка файлов...</div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1068,52 +1088,68 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
 </div>
 
 <div id="markerDialog" class="dialog">
-    <div class="dialog-content">
-        <h3>Выделить маркером</h3>
-        <label>Выберите стиль:</label>
-        <div class="marker-styles">
-            <button class="marker-style-btn active" data-style="straight" title="Ровное">
-                <span class="marker-style-preview marker-preview-straight">Текст</span>
-            </button>
-            <button class="marker-style-btn" data-style="rough" title="Кривое">
-                <span class="marker-style-preview marker-preview-rough">Текст</span>
-            </button>
-            <button class="marker-style-btn" data-style="zigzag" title="Зигзагом">
-                <span class="marker-style-preview marker-preview-zigzag">Текст</span>
-            </button>
-            <button class="marker-style-btn" data-style="wavy" title="Волнистое">
-                <span class="marker-style-preview marker-preview-wavy">Текст</span>
-            </button>
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                Выделить маркером
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeMarkerDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
+            </div>
         </div>
-        <label style="margin-top: 16px;">Выберите цвет:</label>
-        <div class="marker-colors">
-            <button class="marker-color-btn" data-color="#ffeb3b" style="background: #ffeb3b;" title="Желтый"></button>
-            <button class="marker-color-btn" data-color="#4caf50" style="background: #4caf50;" title="Зеленый"></button>
-            <button class="marker-color-btn" data-color="#2196f3" style="background: #2196f3;" title="Синий"></button>
-            <button class="marker-color-btn" data-color="#ff9800" style="background: #ff9800;" title="Оранжевый"></button>
-            <button class="marker-color-btn" data-color="#e91e63" style="background: #e91e63;" title="Розовый"></button>
-            <button class="marker-color-btn" data-color="#9c27b0" style="background: #9c27b0;" title="Фиолетовый"></button>
-        </div>
-        <div class="dialog-buttons">
-            <button onclick="closeMarkerDialog()">Отмена</button>
+
+        <div style="padding: 24px 28px 24px;">
+            <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Выберите стиль:</label>
+            <div class="marker-styles">
+                <button class="marker-style-btn active" data-style="straight" title="Ровное">
+                    <span class="marker-style-preview marker-preview-straight">Текст</span>
+                </button>
+                <button class="marker-style-btn" data-style="rough" title="Кривое">
+                    <span class="marker-style-preview marker-preview-rough">Текст</span>
+                </button>
+                <button class="marker-style-btn" data-style="zigzag" title="Зигзагом">
+                    <span class="marker-style-preview marker-preview-zigzag">Текст</span>
+                </button>
+                <button class="marker-style-btn" data-style="wavy" title="Волнистое">
+                    <span class="marker-style-preview marker-preview-wavy">Текст</span>
+                </button>
+            </div>
+            <label style="display: block; margin-top: 16px; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Выберите цвет:</label>
+            <div class="marker-colors">
+                <button class="marker-color-btn" data-color="#ffeb3b" style="background: #ffeb3b;" title="Желтый"></button>
+                <button class="marker-color-btn" data-color="#4caf50" style="background: #4caf50;" title="Зеленый"></button>
+                <button class="marker-color-btn" data-color="#2196f3" style="background: #2196f3;" title="Синий"></button>
+                <button class="marker-color-btn" data-color="#ff9800" style="background: #ff9800;" title="Оранжевый"></button>
+                <button class="marker-color-btn" data-color="#e91e63" style="background: #e91e63;" title="Розовый"></button>
+                <button class="marker-color-btn" data-color="#9c27b0" style="background: #9c27b0;" title="Фиолетовый"></button>
+            </div>
         </div>
     </div>
 </div>
 
 <div id="tableDialog" class="dialog">
-    <div class="dialog-content">
-        <h3>Вставить таблицу</h3>
-        <div class="form-group">
-            <label for="tableRows">Количество строк:</label>
-            <input type="number" id="tableRows" class="form-control" min="1" max="20" value="3" placeholder="Введите количество строк">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                Вставить таблицу
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeTableDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
+                <button type="button" onclick="insertTable()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить</button>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="tableCols">Количество столбцов:</label>
-            <input type="number" id="tableCols" class="form-control" min="1" max="7" value="3" placeholder="Введите количество столбцов">
-        </div>
-        <div class="dialog-buttons">
-            <button onclick="insertTable()">Вставить</button>
-            <button onclick="closeTableDialog()">Отмена</button>
+
+        <div style="padding: 24px 28px 24px;">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="tableRows" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Количество строк:</label>
+                <input type="number" id="tableRows" class="form-control" min="1" max="20" value="3" placeholder="Введите количество строк">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="tableCols" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Количество столбцов:</label>
+                <input type="number" id="tableCols" class="form-control" min="1" max="7" value="3" placeholder="Введите количество столбцов">
+            </div>
         </div>
     </div>
 </div>
@@ -1148,62 +1184,76 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
 </div>
 
 <div id="linkDialog" class="dialog">
-    <div class="dialog-content">
-        <h3>Вставить ссылку</h3>
-        <div class="form-group">
-            <label for="linkUrl">URL</label>
-            <input type="text" id="linkUrl" class="form-control" placeholder="https://">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                Вставить ссылку
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeLinkDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
+                <button type="button" onclick="insertLinkFromDialog()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить</button>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="linkText">Текст ссылки (необязательно)</label>
-            <input type="text" id="linkText" class="form-control" placeholder="Оставьте пустым — будет использован выделенный текст">
-        </div>
-        <div class="dialog-buttons">
-            <button onclick="insertLinkFromDialog()">Вставить</button>
-            <button onclick="closeLinkDialog()">Отмена</button>
+
+        <div style="padding: 24px 28px 24px;">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="linkUrl" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">URL</label>
+                <input type="text" id="linkUrl" class="form-control" placeholder="https://">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="linkText" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Текст ссылки (необязательно)</label>
+                <input type="text" id="linkText" class="form-control" placeholder="Оставьте пустым — будет использован выделенный текст">
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Модальное окно управления наборами смайлов -->
 <div id="smileSetsDialog" class="dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw;">
-        <h3 style="margin-top: 0; color: var(--text-color);">Управление наборами смайлов</h3>
-        
-        <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
-            <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-color);">Загрузить новый набор:</div>
-            <div style="display: flex; gap: 15px; margin-bottom: 12px; color: var(--text-color);">
-                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                    <input type="radio" name="smileUploadType" value="folder" checked onclick="toggleSmileUploadMode('folder')">
-                    Загрузить папку
-                </label>
-                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                    <input type="radio" name="smileUploadType" value="files" onclick="toggleSmileUploadMode('files')">
-                    Загрузить файлы (.gif)
-                </label>
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                Управление наборами смайлов
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeSmileSetsDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Закрыть</button>
             </div>
-            
-            <div id="smileUploadFolderContainer">
-                <input type="file" id="smileFolderInput" webkitdirectory directory multiple style="width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
-                <small style="display: block; opacity: 0.6; margin-top: 4px; color: var(--text-color);">Выберите папку со смайлами на компьютере. Имя папки станет названием набора.</small>
-            </div>
-            
-            <div id="smileUploadFilesContainer" style="display: none;">
-                <input type="file" id="smileFilesInput" accept="image/gif" multiple style="width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px; margin-bottom: 8px;">
-                <input type="text" id="smileSetNameInput" placeholder="Название набора" style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
-                <small style="display: block; opacity: 0.6; margin-top: 4px; color: var(--text-color);">Выберите GIF-файлы и введите название для набора.</small>
-            </div>
-            
-            <button type="button" onclick="handleSmileSetUpload()" style="margin-top: 12px; padding: 10px 20px; background: var(--primary-color, #4CAF50); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s;">Загрузить</button>
         </div>
-        
-        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-color);">Доступные наборы:</div>
-        <div id="smileSetsList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-color);">
-            <div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">Загрузка наборов...</div>
-        </div>
-        
-        <div class="dialog-buttons" style="margin-top: 20px;">
-            <button onclick="closeSmileSetsDialog()">Закрыть</button>
+
+        <div style="padding: 24px 28px 24px;">
+            <!-- Drag and Drop Dropzone -->
+            <div style="margin-bottom: 24px; border: 2px dashed var(--border-color); border-radius: 12px; padding: 24px; text-align: center; background: rgba(0, 0, 0, 0.02); transition: all 0.3s ease; position: relative;" id="smileDropzone" ondragover="handleSmileDragOver(event)" ondragleave="handleSmileDragLeave(event)" ondrop="handleSmileDrop(event)">
+                <input type="file" id="smileFolderInput" webkitdirectory directory multiple style="display: none;" onchange="handleSmileFileSelect(event)">
+                <input type="file" id="smileFilesInput" accept="image/gif" multiple style="display: none;" onchange="handleSmileFileSelect(event)">
+                <div style="font-size: 40px; margin-bottom: 12px;">📁</div>
+                <div style="font-size: 14px; font-weight: 600; color: var(--text-color); margin-bottom: 6px;" id="smileDropzoneText">Перетащите папку со смайлами сюда</div>
+                <div style="font-size: 12px; opacity: 0.6; color: var(--text-color); margin-bottom: 14px;">Или выберите файлы / папку на диске</div>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                    <button type="button" class="global-action-btn" onclick="document.getElementById('smileFolderInput').click()" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;">Выбрать папку</button>
+                    <button type="button" class="global-action-btn" onclick="document.getElementById('smileFilesInput').click()" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;">Выбрать GIF-файлы</button>
+                </div>
+                
+                <!-- Поле ввода имени для набора -->
+                <div id="smileSetNameField" style="display: none; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                    <label for="smileSetNameInput" style="display: block; font-size: 13px; font-weight: 500; text-align: left; margin-bottom: 8px; color: var(--text-color);">Название для нового набора смайлов:</label>
+                    <input type="text" id="smileSetNameInput" placeholder="Например: Аниме" style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
+                </div>
+
+                <div id="smileSelectedFilesInfo" style="display: none; margin-top: 12px; font-size: 13px; font-weight: 500; color: #4CAF50;">
+                    Выбрано файлов: <span id="smileSelectedCount">0</span>
+                </div>
+
+                <div style="margin-top: 16px; display: none;" id="smileUploadBtnContainer">
+                    <button type="button" onclick="handleSmileSetUpload()" class="global-action-btn global-action-btn-primary" style="padding: 8px 20px; font-size: 13px; background: var(--accent-color, #4CAF50); border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">Загрузить набор</button>
+                </div>
+            </div>
+            
+            <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-color);">Доступные наборы:</div>
+            <div id="smileSetsList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-color);">
+                <div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">Загрузка наборов...</div>
+            </div>
         </div>
     </div>
 </div>
@@ -5962,63 +6012,66 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Модальное окно: Менеджер тем -->
 <div class="dialog" id="themeManagerModal" style="display: none;">
-    <div class="dialog-content" style="max-width: 580px; width: 95%;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--text-color);">Менеджер тем оформления</h3>
-            <button type="button" onclick="closeThemeManager()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-color); opacity: 0.7;">×</button>
-        </div>
-        
-        <!-- Сетка тем -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px;">
-            <!-- Стандартная Темная -->
-            <div id="themeCardDark" onclick="selectThemeOption('dark')" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 16px 12px; cursor: pointer; text-align: center; background: #121212; color: #ffffff; transition: all 0.2s ease;">
-                <div style="font-size: 28px; margin-bottom: 8px;">🌙</div>
-                <div style="font-weight: 600; font-size: 14px;">Темная</div>
-                <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">Стандартная тема</div>
-            </div>
-            
-            <!-- Стандартная Светлая -->
-            <div id="themeCardLight" onclick="selectThemeOption('light')" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 16px 12px; cursor: pointer; text-align: center; background: #ffffff; color: #121212; transition: all 0.2s ease;">
-                <div style="font-size: 28px; margin-bottom: 8px;">☀️</div>
-                <div style="font-weight: 600; font-size: 14px;">Светлая</div>
-                <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">Белая тема</div>
-            </div>
-            
-            <!-- Кастомная тема -->
-            <div id="themeCardCustom" onclick="selectThemeOption('custom')" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 16px 12px; cursor: pointer; text-align: center; background: var(--bg-color); color: var(--text-color); transition: all 0.2s ease;">
-                <div style="font-size: 28px; margin-bottom: 8px;">🎨</div>
-                <div style="font-weight: 600; font-size: 14px;">Кастомная</div>
-                <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">Пользовательская CSS</div>
+    <div class="dialog-content" style="max-width: 580px; width: 95%; padding: 0 !important; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                Темы оформления
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeThemeManager()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Закрыть</button>
+                <button type="button" onclick="saveSelectedTheme()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Применить тему</button>
             </div>
         </div>
 
-        <!-- Управление CSS темой -->
-        <div style="background: rgba(128,128,128,0.06); border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--border-color);">
-            <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--text-color);">Файлы и настройки CSS</h4>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
-                <!-- Кнопка Скачать стандартный CSS -->
-                <a href="download_theme.php" download="editor-style-template.css" class="global-action-btn global-action-btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px;">
-                    📥 Скачать стандартный CSS темы
-                </a>
+        <div style="padding: 24px 28px 24px;">
+            <!-- Сетка тем -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+                <!-- Стандартная Темная -->
+                <div id="themeCardDark" onclick="selectThemeOption('dark')" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 16px 12px; cursor: pointer; text-align: center; background: #121212; color: #ffffff; transition: all 0.2s ease;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">🌙</div>
+                    <div style="font-weight: 600; font-size: 14px;">Темная</div>
+                    <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">Стандартная тема</div>
+                </div>
                 
-                <!-- Кнопка Загрузить кастомный CSS файл -->
-                <label class="global-action-btn global-action-btn-primary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; margin: 0;">
-                    📤 Загрузить CSS файл темы
-                    <input type="file" id="customThemeFileInput" accept=".css" style="display: none;" onchange="handleCustomThemeFileUpload(event)">
-                </label>
+                <!-- Стандартная Светлая -->
+                <div id="themeCardLight" onclick="selectThemeOption('light')" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 16px 12px; cursor: pointer; text-align: center; background: #ffffff; color: #121212; transition: all 0.2s ease;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">☀️</div>
+                    <div style="font-weight: 600; font-size: 14px;">Светлая</div>
+                    <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">Белая тема</div>
+                </div>
+                
+                <!-- Кастомная тема -->
+                <div id="themeCardCustom" onclick="selectThemeOption('custom')" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 16px 12px; cursor: pointer; text-align: center; background: var(--bg-color); color: var(--text-color); transition: all 0.2s ease;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">🎨</div>
+                    <div style="font-weight: 600; font-size: 14px;">Кастомная</div>
+                    <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">Пользовательская CSS</div>
+                </div>
             </div>
-            
-            <!-- Поле просмотра/редактирования кастомного CSS -->
-            <div id="customCssContainer" style="display: none;">
-                <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-color);">Код кастомных CSS стилей:</label>
-                <textarea id="customCssEditor" placeholder="/* Вставьте ваш CSS код здесь */&#10;:root {&#10;    --bg-color: #1e1e2e;&#10;    --text-color: #cdd6f4;&#10;}" style="width: 100%; height: 140px; box-sizing: border-box; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); resize: vertical; margin-bottom: 10px;"></textarea>
-                <button type="button" onclick="saveCustomCssCode()" class="global-action-btn global-action-btn-primary" style="padding: 6px 14px; font-size: 12px;">Применить код CSS</button>
-            </div>
-        </div>
 
-        <div class="dialog-buttons" style="margin-top: 0; padding-top: 14px;">
-            <button type="button" onclick="saveSelectedTheme()" class="global-action-btn global-action-btn-primary">Применить тему</button>
-            <button type="button" onclick="closeThemeManager()" class="global-action-btn global-action-btn-secondary">Закрыть</button>
+            <!-- Управление CSS темой -->
+            <div style="background: rgba(128,128,128,0.06); border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--text-color);">Файлы и настройки CSS</h4>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
+                    <!-- Кнопка Скачать стандартный CSS -->
+                    <a href="download_theme.php" download="editor-style-template.css" class="global-action-btn global-action-btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px;">
+                        📥 Скачать стандартный CSS темы
+                    </a>
+                    
+                    <!-- Кнопка Загрузить кастомный CSS файл -->
+                    <label class="global-action-btn global-action-btn-primary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; margin: 0;">
+                        📤 Загрузить CSS файл темы
+                        <input type="file" id="customThemeFileInput" accept=".css" style="display: none;" onchange="handleCustomThemeFileUpload(event)">
+                    </label>
+                </div>
+                
+                <!-- Поле просмотра/редактирования кастомного CSS -->
+                <div id="customCssContainer" style="display: none;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-color);">Код кастомных CSS стилей:</label>
+                    <textarea id="customCssEditor" placeholder="/* Вставьте ваш CSS код здесь */&#10;:root {&#10;    --bg-color: #1e1e2e;&#10;    --text-color: #cdd6f4;&#10;}" style="width: 100%; height: 140px; box-sizing: border-box; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); resize: vertical; margin-bottom: 10px;"></textarea>
+                    <button type="button" onclick="saveCustomCssCode()" class="global-action-btn global-action-btn-primary" style="padding: 6px 14px; font-size: 12px;">Применить код CSS</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
