@@ -4358,22 +4358,43 @@ function extractVimeoId(url) {
     function setTextColor(color) {
         if (editorMode === 'code') {
             var ta = document.getElementById('content');
-            var start = colorInsertStart;
-            var end = colorInsertEnd;
+            var start = (ta.selectionStart !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionStart : colorInsertStart;
+            var end = (ta.selectionEnd !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionEnd : colorInsertEnd;
             var selectedText = ta.value.substring(start, end);
             if (selectedText) {
                 var colorSpan = '<span style="color: ' + color + ';">' + selectedText + '</span>';
                 ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(end);
+                ta.selectionStart = start;
+                ta.selectionEnd = start + colorSpan.length;
+                ta.focus();
+                saveToHistory();
+            } else {
+                var colorSpan = '<span style="color: ' + color + ';"></span>';
+                ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(start);
+                ta.selectionStart = ta.selectionEnd = start + colorSpan.length - 7;
                 ta.focus();
                 saveToHistory();
             }
         } else {
-            var text = (savedRange && savedRange.toString()) || document.getSelection().toString();
-            if (text) {
-                var html = '<span style="color: ' + color + ';">' + text + '</span>';
-                insertHtmlAtCaret(html);
-                saveToHistory();
+            var ve = document.getElementById('contentVisual');
+            if (!ve) return;
+            ve.focus();
+            if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+                var sel = window.getSelection();
+                if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(savedRange);
+                }
             }
+            try {
+                document.execCommand('styleWithCSS', false, true);
+            } catch (e) {}
+            document.execCommand('foreColor', false, color);
+            var sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                savedRange = sel.getRangeAt(0).cloneRange();
+            }
+            saveToHistory();
         }
     }
 
@@ -4450,6 +4471,8 @@ function extractVimeoId(url) {
                         var ta = document.getElementById('content');
                         colorInsertStart = ta.selectionStart;
                         colorInsertEnd = ta.selectionEnd;
+                    } else {
+                        saveSelection();
                     }
                 });
                 btn.addEventListener('click', function(e) {
@@ -4458,15 +4481,24 @@ function extractVimeoId(url) {
                 });
             }
             if (popover) {
+                popover.addEventListener('mousedown', function(e) {
+                    if (e.target.tagName !== 'INPUT') {
+                        e.preventDefault();
+                    }
+                });
                 popover.addEventListener('click', function(e) {
                     e.stopPropagation();
                     var swatch = e.target.closest('.color-swatch');
                     if (swatch && swatch.dataset.color) applyColorAndClose(swatch.dataset.color, wrap);
                 });
             }
-            if (customInput) customInput.addEventListener('change', function() {
-                applyColorAndClose(this.value, wrap);
-            });
+            if (customInput) {
+                ['change', 'input'].forEach(function(evtType) {
+                    customInput.addEventListener(evtType, function() {
+                        applyColorAndClose(this.value, wrap);
+                    });
+                });
+            }
         });
         document.addEventListener('click', closeAllColorPickers);
     })();
