@@ -621,87 +621,94 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
     </div>
 
     <div id="imageUploadDialog" class="dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw;">
-        <h3>Добавить изображение</h3>
-        
-        <div class="image-source-toggle">
-            <label>
-                <input type="radio" name="imageSource" value="file" checked>
-                📁 Загрузить файл
-            </label>
-            <label>
-                <input type="radio" name="imageSource" value="url">
-                🔗 Вставить ссылку
-            </label>
-        </div>
-
-        <div id="fileUploadContainer">
-            <div id="imageDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON' && !event.target.closest('#imageFilesPreview')) document.getElementById('imageFile').click()">
-                <input type="file" id="imageFile" accept="image/*" multiple style="display: none;" onchange="handleImageFileSelect(this)">
-                <div class="dropzone-icon">🖼️</div>
-                <div class="dropzone-text" id="imageDropzoneText">Выберите изображения или перетащите их сюда</div>
-                <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются JPG, PNG, GIF, WEBP</div>
-                <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('imageFile').click()">Обзор...</button>
-                <div id="imageFilesPreview" style="display: none; width: 100%; margin-top: 15px; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; max-height: 150px; overflow-y: auto; padding: 5px;"></div>
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                <span>🖼️</span> Добавить изображение
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeImageDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
+                <button type="button" onclick="processImage()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Добавить</button>
             </div>
         </div>
-
-        <div id="imageGridPreviewContainer" style="display: none; margin: 15px 0;"></div>
-
-        <div id="urlContainer" style="display: none;">
-            <input type="text" id="imageUrl" placeholder="Введите URL изображения (несколько — с новой строки или через запятую)" class="image-url-input">
-        </div>
         
-        <div class="form-group">
-            <label for="imageCaption">Подпись к изображению:</label>
-            <input type="text" id="imageCaption" class="form-control" placeholder="Введите подпись (необязательно)">
-        </div>
+        <div style="padding: 24px 28px 24px;">
+            <div class="image-source-toggle">
+                <label>
+                    <input type="radio" name="imageSource" value="file" checked>
+                    📁 Загрузить файл
+                </label>
+                <label>
+                    <input type="radio" name="imageSource" value="url">
+                    🔗 Вставить ссылку
+                </label>
+            </div>
 
-        <div class="image-size-controls">
-            <label>
-                Размер:
-                <select id="imageSize">
-                    <option value="small">Маленький</option>
-                    <option value="medium" selected>Средний</option>
-                    <option value="large">Большой</option>
-                    <option value="custom">Свой размер</option>
-                </select>
-            </label>
-            <label>
-                Расположение:
-                <select id="gridLayout">
-                    <option value="">Обычное</option>
-                    <option value="2x1">2×1</option>
-                    <option value="2x2">2×2</option>
-                    <option value="3x1">3×1</option>
-                    <option value="3x2">3×2</option>
-                    <option value="3x3">3×3</option>
-                </select>
-            </label>
-            <div id="customSizeInputs" style="display: none;">
-                <div class="size-input-group">
-                    <input type="number" id="customWidth" placeholder="Ширина">
-                    <select id="widthUnit">
-                        <option value="px">px</option>
-                        <option value="%">%</option>
-                    </select>
-                </div>
-                <div class="size-input-group">
-                    <input type="number" id="customHeight" placeholder="Высота">
-                    <select id="heightUnit">
-                        <option value="px">px</option>
-                        <option value="%">%</option>
-                    </select>
+            <div id="fileUploadContainer">
+                <div id="imageDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON' && !event.target.closest('#imageFilesPreview')) document.getElementById('imageFile').click()">
+                    <input type="file" id="imageFile" accept="image/*" multiple style="display: none;" onchange="handleImageFileSelect(this)">
+                    <div class="dropzone-icon">🖼️</div>
+                    <div class="dropzone-text" id="imageDropzoneText">Выберите изображения или перетащите их сюда</div>
+                    <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются JPG, PNG, GIF, WEBP</div>
+                    <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('imageFile').click()">Обзор...</button>
+                    <div id="imageFilesPreview" style="display: none; width: 100%; margin-top: 15px; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; max-height: 150px; overflow-y: auto; padding: 5px;"></div>
                 </div>
             </div>
-        </div>
-        <div style="margin: 15px 0; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="noBorderRadius" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-            <label for="noBorderRadius" style="margin: 0; cursor: pointer; font-size: 14px; user-select: none;">Убрать закругление по краям</label>
-        </div>
-        <div class="dialog-buttons">
-            <button onclick="processImage()">Добавить</button>
-            <button onclick="closeImageDialog()">Отмена</button>
+
+            <div id="imageGridPreviewContainer" style="display: none; margin: 15px 0;"></div>
+
+            <div id="urlContainer" style="display: none;">
+                <input type="text" id="imageUrl" placeholder="Введите URL изображения (несколько — с новой строки или через запятую)" class="image-url-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="imageCaption">Подпись к изображению:</label>
+                <input type="text" id="imageCaption" class="form-control" placeholder="Введите подпись (необязательно)">
+            </div>
+
+            <div class="image-size-controls">
+                <label>
+                    Размер:
+                    <select id="imageSize">
+                        <option value="small">Маленький</option>
+                        <option value="medium" selected>Средний</option>
+                        <option value="large">Большой</option>
+                        <option value="custom">Свой размер</option>
+                    </select>
+                </label>
+                <label>
+                    Расположение:
+                    <select id="gridLayout">
+                        <option value="">Обычное</option>
+                        <option value="2x1">2×1</option>
+                        <option value="2x2">2×2</option>
+                        <option value="3x1">3×1</option>
+                        <option value="3x2">3×2</option>
+                        <option value="3x3">3×3</option>
+                    </select>
+                </label>
+                <div id="customSizeInputs" style="display: none;">
+                    <div class="size-input-group">
+                        <input type="number" id="customWidth" placeholder="Ширина">
+                        <select id="widthUnit">
+                            <option value="px">px</option>
+                            <option value="%">%</option>
+                        </select>
+                    </div>
+                    <div class="size-input-group">
+                        <input type="number" id="customHeight" placeholder="Высота">
+                        <select id="heightUnit">
+                            <option value="px">px</option>
+                            <option value="%">%</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div style="margin: 15px 0 0 0; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="noBorderRadius" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                <label for="noBorderRadius" style="margin: 0; cursor: pointer; font-size: 14px; user-select: none;">Убрать закругление по краям</label>
+            </div>
         </div>
     </div>
 </div>
@@ -957,84 +964,90 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
 
 
 <div id="mediaDialog" class="dialog">
-    <div class="dialog-content" style="width: 550px; max-width: 95vw;">
-        <h3>Добавить медиа</h3>
-        
-        <div class="form-group" style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Тип медиа:</label>
-            <div class="media-type-toggle">
-                <label>
-                    <input type="radio" name="mediaType" value="video-url" checked>
-                    📺 Видео (URL)
-                </label>
-                <label>
-                    <input type="radio" name="mediaType" value="video-file">
-                    📁 Видео файл
-                </label>
-                <label>
-                    <input type="radio" name="mediaType" value="audio">
-                    🎵 Аудио файл
-                </label>
-                <label>
-                    <input type="radio" name="mediaType" value="audio-stream">
-                    📻 Аудио поток
-                </label>
+    <div class="dialog-content" style="width: 550px; max-width: 95vw; padding: 0; overflow: hidden;">
+        <!-- Заголовок -->
+        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                <span>🎬</span> Добавить медиа
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="closeMediaDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
+                <button type="button" onclick="insertMedia()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить</button>
             </div>
-        </div>
-        
-        <div id="videoUrlSection">
-            <input type="text" id="mediaUrl" placeholder="Вставьте ссылку на YouTube или Vimeo" class="media-input">
         </div>
 
-        <div id="audioStreamSection" style="display: none;">
-            <input type="text" id="audioStreamUrl" placeholder="Вставьте ссылку на аудиопоток (например, радио или прямой URL)" class="media-input">
-        </div>
-        
-        <div id="videoFileSection" style="display: none;">
-            <div class="form-group">
-                <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загрузить видео файл:</label>
-                <div id="videoDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('videoFile').click()">
-                    <input type="file" id="videoFile" accept="video/*" style="display: none;" onchange="handleMediaFileChange(this, 'video')">
-                    <div class="dropzone-icon">🎥</div>
-                    <div class="dropzone-text" id="videoDropzoneText">Выберите видео или перетащите его сюда</div>
-                    <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются MP4, WebM, OGG</div>
-                    <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('videoFile').click()">Обзор...</button>
-                    <div id="videoFileName" class="dropzone-filename" style="display: none;"></div>
+        <div style="padding: 24px 28px 24px;">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Тип медиа:</label>
+                <div class="media-type-toggle">
+                    <label>
+                        <input type="radio" name="mediaType" value="video-url" checked>
+                        📺 Видео (URL)
+                    </label>
+                    <label>
+                        <input type="radio" name="mediaType" value="video-file">
+                        📁 Видео файл
+                    </label>
+                    <label>
+                        <input type="radio" name="mediaType" value="audio">
+                        🎵 Аудио файл
+                    </label>
+                    <label>
+                        <input type="radio" name="mediaType" value="audio-stream">
+                        📻 Аудио поток
+                    </label>
                 </div>
             </div>
             
-            <div class="form-group" style="margin-top: 20px;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загруженные видео файлы:</label>
-                <div id="videoFilesList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px;">
-                    <div style="color: var(--text-color); opacity: 0.6;">Загрузка списка...</div>
-                </div>
+            <div id="videoUrlSection">
+                <input type="text" id="mediaUrl" placeholder="Вставьте ссылку на YouTube или Vimeo" class="media-input">
             </div>
-        </div>
-        
-        <div id="audioMediaSection" style="display: none;">
-            <div class="form-group">
-                <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загрузить аудио файл:</label>
-                <div id="audioDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('audioFile').click()">
-                    <input type="file" id="audioFile" accept="audio/*" style="display: none;" onchange="handleMediaFileChange(this, 'audio')">
-                    <div class="dropzone-icon">🎵</div>
-                    <div class="dropzone-text" id="audioDropzoneText">Выберите аудио или перетащите его сюда</div>
-                    <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются MP3, WAV, OGG</div>
-                    <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('audioFile').click()">Обзор...</button>
-                    <div id="audioFileName" class="dropzone-filename" style="display: none;"></div>
+
+            <div id="audioStreamSection" style="display: none;">
+                <input type="text" id="audioStreamUrl" placeholder="Вставьте ссылку на аудиопоток (например, радио или прямой URL)" class="media-input">
+            </div>
+            
+            <div id="videoFileSection" style="display: none;">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загрузить видео файл:</label>
+                    <div id="videoDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('videoFile').click()">
+                        <input type="file" id="videoFile" accept="video/*" style="display: none;" onchange="handleMediaFileChange(this, 'video')">
+                        <div class="dropzone-icon">🎥</div>
+                        <div class="dropzone-text" id="videoDropzoneText">Выберите видео или перетащите его сюда</div>
+                        <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются MP4, WebM, OGG</div>
+                        <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('videoFile').click()">Обзор...</button>
+                        <div id="videoFileName" class="dropzone-filename" style="display: none;"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загруженные видео файлы:</label>
+                    <div id="videoFilesList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px;">
+                        <div style="color: var(--text-color); opacity: 0.6;">Загрузка списка...</div>
+                    </div>
                 </div>
             </div>
             
-            <div class="form-group" style="margin-top: 20px;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загруженные аудио файлы:</label>
-                <div id="audioFilesList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px;">
-                    <div style="color: var(--text-color); opacity: 0.6;">Загрузка списка...</div>
+            <div id="audioMediaSection" style="display: none;">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загрузить аудио файл:</label>
+                    <div id="audioDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('audioFile').click()">
+                        <input type="file" id="audioFile" accept="audio/*" style="display: none;" onchange="handleMediaFileChange(this, 'audio')">
+                        <div class="dropzone-icon">🎵</div>
+                        <div class="dropzone-text" id="audioDropzoneText">Выберите аудио или перетащите его сюда</div>
+                        <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются MP3, WAV, OGG</div>
+                        <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('audioFile').click()">Обзор...</button>
+                        <div id="audioFileName" class="dropzone-filename" style="display: none;"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загруженные аудио файлы:</label>
+                    <div id="audioFilesList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px;">
+                        <div style="color: var(--text-color); opacity: 0.6;">Загрузка списка...</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="dialog-buttons">
-            <button onclick="insertMedia()">Вставить</button>
-            <button onclick="closeMediaDialog()">Отмена</button>
         </div>
     </div>
 </div>
