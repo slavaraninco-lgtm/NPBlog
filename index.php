@@ -376,7 +376,9 @@ $customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
                     $versionFile = __DIR__ . '/version.json';
                     if (file_exists($versionFile)) {
                         $versionData = json_decode(file_get_contents($versionFile), true);
-                        if (!empty($versionData['version'])) {
+                        if (!empty($versionData['dev']) && ($versionData['dev'] === true || $versionData['dev'] === 'true')) {
+                            $editorVersion = 'dev';
+                        } elseif (!empty($versionData['version'])) {
                             $editorVersion = $versionData['version'];
                         }
                     }
@@ -4549,8 +4551,14 @@ function openSystemUpdateModal() {
             return response.json();
         })
         .then(data => {
-            if (data && data.version) {
-                document.getElementById('currentSysVersion').textContent = data.version;
+            if (data) {
+                if (data.dev === true || data.dev === 'true') {
+                    document.getElementById('currentSysVersion').textContent = 'dev';
+                } else if (data.version) {
+                    document.getElementById('currentSysVersion').textContent = data.version;
+                } else {
+                    document.getElementById('currentSysVersion').textContent = 'Неизвестно';
+                }
             } else {
                 document.getElementById('currentSysVersion').textContent = 'Неизвестно';
             }
