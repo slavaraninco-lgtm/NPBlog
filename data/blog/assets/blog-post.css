@@ -89,7 +89,7 @@ h1 {
     display: block;
     max-width: 100% !important;
     height: auto !important;
-    vertical-align: middle;
+   /* vertical-align: middle; не надо, т.к. display: block; стоит*/ 
     border-radius: 8px;
     margin: 0 !important;
     border: 2px solid var(--border-color) !important;
@@ -669,8 +669,8 @@ html.is-android .blog-ascii-art {
 .code-block::before {
     content: attr(data-language);
     position: absolute;
-    top: -12px;
-    right: 10px;
+    top: 2px;
+    right: 5px;
     background: #fff;
     padding: 0 5px;
     font-size: 12px;
