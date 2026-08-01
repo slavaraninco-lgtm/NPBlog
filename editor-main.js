@@ -1810,6 +1810,7 @@
                 }
             });
             renderImagePreviews();
+            checkInsertGalleryVisibility();
         }
         input.value = '';
     }
@@ -2000,14 +2001,50 @@ document.querySelectorAll('input[name="imageSource"]').forEach(radio => {
         
         document.getElementById('urlContainer').style.display = 
             this.value === 'url' ? 'block' : 'none';
+        
+        // Обновляем видимость checkbox при переключении источника
+        checkInsertGalleryVisibility();
     });
 });
 
+// Обработчик изменения URL для проверки множественности
+const imageUrlInput = document.getElementById('imageUrl');
+if (imageUrlInput) {
+    imageUrlInput.addEventListener('input', checkInsertGalleryVisibility);
+}
+
+function checkInsertGalleryVisibility() {
+    const insertGalleryContainer = document.getElementById('insertGalleryContainer');
+    if (!insertGalleryContainer) return;
+    
+    const imageSource = document.querySelector('input[name="imageSource"]:checked')?.value;
+    
+    if (imageSource === 'file') {
+        // Для файлов проверяем количество выбранных файлов
+        if (selectedImageFiles.length > 1) {
+            insertGalleryContainer.style.display = 'flex';
+        } else {
+            insertGalleryContainer.style.display = 'none';
+        }
+    } else if (imageSource === 'url') {
+        // Для URL проверяем количество введённых адресов
+        const urlInput = document.getElementById('imageUrl').value.trim();
+        const urls = urlInput.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+        if (urls.length > 1) {
+            insertGalleryContainer.style.display = 'flex';
+        } else {
+            insertGalleryContainer.style.display = 'none';
+        }
+    } else {
+        insertGalleryContainer.style.display = 'none';
+    }
+}
 function processImage() {
     const imageSource = document.querySelector('input[name="imageSource"]:checked').value;
     const gridLayout = document.getElementById('gridLayout').value;
     const sizeSelect = document.getElementById('imageSize');
     const sizeValue = sizeSelect.value;
+    const insertGallery = document.getElementById('insertGallery')?.checked || false;
 
     let width, widthUnit = 'px';
     if (sizeValue === 'custom') {
@@ -2046,7 +2083,11 @@ function processImage() {
         if (urls.length === 1) {
             insertImage(urls[0], width, '', widthUnit, '', caption, noBorderRadius);
         } else {
-            insertImagesInGrid(urls, gridLayout, caption, width, widthUnit, noBorderRadius);
+            if (insertGallery) {
+                insertImagesAsGallery(urls, caption, width, widthUnit, noBorderRadius);
+            } else {
+                insertImagesInGrid(urls, gridLayout, caption, width, widthUnit, noBorderRadius);
+            }
             closeImageDialog();
         }
         return;
@@ -2094,7 +2135,11 @@ function processImage() {
             if (data.urls.length === 1 && !data.gridLayout) {
                 insertImage(data.urls[0], width, '', widthUnit, '', caption, noBorderRadius);
             } else {
-                insertImagesInGrid(data.urls, data.gridLayout, caption, width, widthUnit, noBorderRadius);
+                if (insertGallery && data.urls.length > 1) {
+                    insertImagesAsGallery(data.urls, caption, width, widthUnit, noBorderRadius);
+                } else {
+                    insertImagesInGrid(data.urls, data.gridLayout, caption, width, widthUnit, noBorderRadius);
+                }
             }
         } else {
             showNotification('Ошибка при загрузке изображений: ' + data.error, 'error');
@@ -2138,6 +2183,44 @@ function insertImagesInGrid(urls, layout, caption = '', width = '', widthUnit = 
         insertImageBlockAtCaret(html);
     }
 
+    closeImageDialog();
+}
+
+function insertImagesAsGallery(urls, caption = '', width = '', widthUnit = 'px', noBorderRadius = false) {
+    if (!urls || urls.length === 0) return;
+    
+    const galleryId = 'gallery-' + Date.now();
+    const radiusStyle = noBorderRadius ? 'border-radius: 0px !important;' : 'border-radius: 8px;';
+    const widthStyle = width ? `width: ${width}${widthUnit}; max-width: 100%;` : 'max-width: 100%;';
+    
+    let galleryHtml = `<div class="image-gallery" id="${galleryId}" style="position: relative; ${widthStyle} margin: 0;">`;
+    
+    urls.forEach((url, index) => {
+        const displayStyle = index === 0 ? 'display: block;' : 'display: none;';
+        galleryHtml += `<img src="${url}" style="width: 100%; height: auto; ${displayStyle} margin: 0; ${radiusStyle}" class="blog-image${noBorderRadius ? ' no-radius' : ''}" data-gallery="${galleryId}" data-index="${index}">`;
+    });
+    
+    if (urls.length > 1) {
+        galleryHtml += `
+            <button type="button" class="gallery-nav gallery-prev" onclick="event.stopPropagation(); window.navigateGallery('${galleryId}', -1);" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; user-select: none;">‹</button>
+            <button type="button" class="gallery-nav gallery-next" onclick="event.stopPropagation(); window.navigateGallery('${galleryId}', 1);" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; user-select: none;">›</button>
+            <div class="gallery-indicator" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 5px 12px; border-radius: 12px; font-size: 12px; z-index: 10; user-select: none; pointer-events: none;">1 / ${urls.length}</div>
+        `;
+    }
+    
+    galleryHtml += `</div>`;
+    
+    // Оборачиваем галерею в blog-image-wrap для поддержки тулбара и изменения размера
+    const wrappedHtml = wrapImageWithHint(galleryHtml, caption);
+    
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const cursorPos = ta.selectionStart;
+        ta.value = ta.value.substring(0, cursorPos) + wrappedHtml + '\n' + ta.value.substring(cursorPos);
+    } else {
+        insertImageBlockAtCaret(wrappedHtml);
+    }
+    
     closeImageDialog();
 }
 
@@ -2190,9 +2273,53 @@ function wrapExistingEditorImages() {
         el.parentNode.removeChild(el);
     });
     
+    // Обрабатываем галереи отдельно
+    var galleries = ve.querySelectorAll('.image-gallery');
+    galleries.forEach(function(gallery) {
+        var wrap = gallery.closest('.blog-image-wrap');
+        var alignWrap = gallery.closest('.blog-image-align-wrap');
+        
+        // Если галерея не обёрнута, оборачиваем её
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.className = 'blog-image-wrap';
+            wrap.setAttribute('data-media-type', 'gallery');
+            gallery.parentNode.insertBefore(wrap, gallery);
+            wrap.appendChild(gallery);
+        } else {
+            wrap.setAttribute('data-media-type', 'gallery');
+        }
+        
+        wrap.style.position = 'relative';
+        wrap.style.display = 'inline-block';
+        wrap.style.maxWidth = '100%';
+        wrap.style.verticalAlign = 'top';
+        wrap.style.textAlign = 'center';
+        
+        if (!alignWrap) {
+            alignWrap = document.createElement('div');
+            alignWrap.className = 'blog-image-align-wrap';
+            alignWrap.style.textAlign = 'left';
+            alignWrap.setAttribute('data-image-id', 'gallery-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+            wrap.parentNode.insertBefore(alignWrap, wrap);
+            alignWrap.appendChild(wrap);
+        }
+        
+        alignWrap.style.display = 'block';
+        alignWrap.style.margin = '14px 0';
+        alignWrap.style.width = '100%';
+        alignWrap.style.clear = 'both';
+        alignWrap.style.position = 'relative';
+    });
+    
     var imgs = ve.querySelectorAll('img.blog-image, img[src], video, audio, iframe, pre.code-block, a.custom-blog-btn');
     for (var i = 0; i < imgs.length; i++) {
         var img = imgs[i];
+        
+        // Пропускаем изображения внутри галерей
+        if (img.closest('.image-gallery')) {
+            continue;
+        }
         
         // Пропускаем, если элемент является частью каких-то других управляющих структур
         if (img.closest('.image-toolbar') || img.closest('.image-align-dropdown') || img.closest('.editor-context-menu')) {
@@ -2284,12 +2411,13 @@ function showGlobalMediaOverlay(mediaWrap) {
     overlay.style.display = 'block';
     updateOverlayPosition();
     
-    var innerMedia = mediaWrap.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block, a.custom-blog-btn');
+    var innerMedia = mediaWrap.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block, a.custom-blog-btn, .image-gallery');
     var isImg = innerMedia && innerMedia.tagName.toLowerCase() === 'img';
     var isFile = innerMedia && innerMedia.classList.contains('blog-file-button');
     var isAscii = innerMedia && innerMedia.classList.contains('blog-ascii-art');
     var isCode = innerMedia && innerMedia.tagName.toLowerCase() === 'pre';
     var isBtn = innerMedia && innerMedia.classList.contains('custom-blog-btn');
+    var isGallery = innerMedia && innerMedia.classList.contains('image-gallery');
     var isGrid = activeTarget.closest('.grid-container') !== null;
     
     var editBtn = overlay.querySelector('.image-toolbar-btn[data-action="edit"]');
@@ -2297,7 +2425,8 @@ function showGlobalMediaOverlay(mediaWrap) {
     var sizeIndicator = overlay.querySelector('.image-size-indicator');
     var resizeHandles = overlay.querySelectorAll('.image-resize-handle');
     
-    if (editBtn) editBtn.style.display = (isImg || isAscii || isCode || isBtn) ? 'flex' : 'none';
+    // Для галереи показываем только редактирование первого изображения
+    if (editBtn) editBtn.style.display = (isImg || isAscii || isCode || isBtn || isGallery) ? 'flex' : 'none';
     if (resizeBtn) resizeBtn.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'flex';
     if (sizeIndicator) sizeIndicator.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'block';
     resizeHandles.forEach(h => h.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'block');
@@ -2342,11 +2471,22 @@ function updateOverlayPosition() {
     overlay.style.width = rect.width + 'px';
     overlay.style.height = rect.height + 'px';
     
-    var innerMedia = activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art');
+    var innerMedia = activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, .image-gallery');
     var sizeIndicator = overlay.querySelector('.image-size-indicator');
+    
     if (innerMedia && sizeIndicator) {
-        var w = innerMedia.offsetWidth;
-        var h = innerMedia.offsetHeight;
+        // Для галереи берём размер самой галереи, а не первого изображения
+        var isGallery = innerMedia.classList && innerMedia.classList.contains('image-gallery');
+        var w, h;
+        
+        if (isGallery) {
+            w = innerMedia.offsetWidth;
+            h = innerMedia.offsetHeight;
+        } else {
+            w = innerMedia.offsetWidth;
+            h = innerMedia.offsetHeight;
+        }
+        
         if (innerMedia.classList.contains('blog-file-button') || innerMedia.classList.contains('blog-ascii-art')) {
             sizeIndicator.style.display = 'none';
         } else if (w && h) {
@@ -2362,10 +2502,11 @@ function updateOverlayPosition() {
 }
 
 function showImageResizeDialog(img) {
+    var isGallery = img.classList && img.classList.contains('image-gallery');
     var currentWidth = img.offsetWidth || (img.naturalWidth || img.videoWidth || 0);
     var isAudio = img.tagName.toLowerCase() === 'audio';
     var isVideo = img.tagName.toLowerCase() === 'video';
-    var label = isAudio ? 'плеера аудио' : (isVideo ? 'плеера видео' : 'изображения');
+    var label = isGallery ? 'галереи' : (isAudio ? 'плеера аудио' : (isVideo ? 'плеера видео' : 'изображения'));
     
     var newWidth = prompt('Введите новую ширину ' + label + ' (в пикселях):', currentWidth);
     if (newWidth && !isNaN(newWidth) && newWidth > 0) {
@@ -2374,11 +2515,25 @@ function showImageResizeDialog(img) {
         if (newWidth > maxLimit) {
             newWidth = maxLimit;
         }
-        img.style.width = newWidth + 'px';
-        if (isAudio) {
-            img.style.height = '';
+        
+        if (isGallery) {
+            // Для галереи изменяем размер самой галереи
+            img.style.width = newWidth + 'px';
+            img.style.maxWidth = '100%';
+            
+            // И обновляем размер всех изображений внутри
+            var galleryImages = img.querySelectorAll('img');
+            galleryImages.forEach(function(image) {
+                image.style.width = '100%';
+                image.style.height = 'auto';
+            });
         } else {
-            img.style.height = 'auto';
+            img.style.width = newWidth + 'px';
+            if (isAudio) {
+                img.style.height = '';
+            } else {
+                img.style.height = 'auto';
+            }
         }
         updateOverlayPosition();
     }
@@ -2453,15 +2608,29 @@ function initGlobalMediaOverlayDOM() {
                     }
                 }
             } else if (action === 'resize') {
-                var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe') : null;
+                var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe, .image-gallery') : null;
                 if (innerMedia) {
                     showImageResizeDialog(innerMedia);
                 }
             } else if (action === 'edit') {
-                var img = activeTarget ? activeTarget.querySelector('img') : null;
+                var gallery = activeTarget ? activeTarget.querySelector('.image-gallery') : null;
+                var img = null;
+                
+                if (gallery) {
+                    // Для галереи редактируем первое видимое изображение
+                    img = gallery.querySelector('img[style*="display: block"], img:not([style*="display: none"])');
+                    if (!img) {
+                        // Если нет видимого, берём первое
+                        img = gallery.querySelector('img');
+                    }
+                } else {
+                    img = activeTarget ? activeTarget.querySelector('img') : null;
+                }
+                
                 var ascii = activeTarget ? activeTarget.querySelector('.blog-ascii-wrap') : null;
                 var codeBlock = activeTarget ? activeTarget.querySelector('pre.code-block') : null;
                 var customBtn = activeTarget ? activeTarget.querySelector('a.custom-blog-btn') : null;
+                
                 if (img) {
                     openImageEditorModal(img);
                 } else if (ascii) {
@@ -2472,7 +2641,7 @@ function initGlobalMediaOverlayDOM() {
                     openEditCustomButtonDialog(customBtn);
                 }
             } else if (action === 'delete') {
-                var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block, a.custom-blog-btn') : null;
+                var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block, a.custom-blog-btn, .image-gallery') : null;
                 var isImg = innerMedia && innerMedia.tagName.toLowerCase() === 'img';
                 var isVideo = innerMedia && innerMedia.tagName.toLowerCase() === 'video';
                 var isIframe = innerMedia && innerMedia.tagName.toLowerCase() === 'iframe';
@@ -2480,7 +2649,8 @@ function initGlobalMediaOverlayDOM() {
                 var isAscii = innerMedia && innerMedia.classList.contains('blog-ascii-art');
                 var isCode = innerMedia && innerMedia.tagName.toLowerCase() === 'pre';
                 var isCustomBtn = innerMedia && innerMedia.classList.contains('custom-blog-btn');
-                var label = isImg ? 'изображение' : (isVideo || isIframe ? 'видео' : (isFile ? 'файл' : (isAscii ? 'ASCII-арт' : (isCode ? 'блок кода' : (isCustomBtn ? 'кнопку со ссылкой' : 'аудио')))));
+                var isGallery = innerMedia && innerMedia.classList.contains('image-gallery');
+                var label = isGallery ? 'галерею' : (isImg ? 'изображение' : (isVideo || isIframe ? 'видео' : (isFile ? 'файл' : (isAscii ? 'ASCII-арт' : (isCode ? 'блок кода' : (isCustomBtn ? 'кнопку со ссылкой' : 'аудио'))))));
                 
                 var targetToDelete = activeTarget;
                 
@@ -2573,7 +2743,7 @@ function initImageAlignmentHandlers() {
 
 document.addEventListener('mousemove', function(e) {
     if (isResizingMedia && activeTarget) {
-        var innerMedia = activeTarget.querySelector('img, video, audio, iframe');
+        var innerMedia = activeTarget.querySelector('img, video, audio, iframe, .image-gallery');
         if (!innerMedia) return;
         
         e.preventDefault();
@@ -2585,6 +2755,7 @@ document.addEventListener('mousemove', function(e) {
             deltaX = -deltaX;
         }
         
+        var isGallery = innerMedia.classList && innerMedia.classList.contains('image-gallery');
         var isAudio = innerMedia.tagName.toLowerCase() === 'audio';
         var isIframe = innerMedia.tagName.toLowerCase() === 'iframe';
         var isVideo = innerMedia.tagName.toLowerCase() === 'video';
@@ -2596,15 +2767,28 @@ document.addEventListener('mousemove', function(e) {
         }
         
         if (newWidth > 50 && newWidth <= maxLimit) {
-            innerMedia.style.width = newWidth + 'px';
-            if (isAudio) {
-                innerMedia.style.height = '';
-            } else if (isIframe || isVideo) {
-                var aspectRatio = startHeight / startWidth;
-                var newHeight = newWidth * aspectRatio;
-                innerMedia.style.height = newHeight + 'px';
+            if (isGallery) {
+                // Для галереи изменяем размер самой галереи
+                innerMedia.style.width = newWidth + 'px';
+                innerMedia.style.maxWidth = '100%';
+                
+                // И обновляем размер всех изображений внутри
+                var galleryImages = innerMedia.querySelectorAll('img');
+                galleryImages.forEach(function(img) {
+                    img.style.width = '100%';
+                    img.style.height = 'auto';
+                });
             } else {
-                innerMedia.style.height = 'auto';
+                innerMedia.style.width = newWidth + 'px';
+                if (isAudio) {
+                    innerMedia.style.height = '';
+                } else if (isIframe || isVideo) {
+                    var aspectRatio = startHeight / startWidth;
+                    var newHeight = newWidth * aspectRatio;
+                    innerMedia.style.height = newHeight + 'px';
+                } else {
+                    innerMedia.style.height = 'auto';
+                }
             }
             updateOverlayPosition();
         }
@@ -3032,6 +3216,10 @@ function closeImageDialog() {
     document.getElementById('gridLayout').value = '';
     const noRadiusChk = document.getElementById('noBorderRadius');
     if (noRadiusChk) noRadiusChk.checked = localStorage.getItem('noBorderRadius') === 'true';
+    const insertGalleryChk = document.getElementById('insertGallery');
+    if (insertGalleryChk) insertGalleryChk.checked = false;
+    const insertGalleryContainer = document.getElementById('insertGalleryContainer');
+    if (insertGalleryContainer) insertGalleryContainer.style.display = 'none';
     document.querySelector('input[name="imageSource"][value="file"]').checked = true;
     document.getElementById('fileUploadContainer').style.display = 'block';
     document.getElementById('imageGridPreviewContainer').style.display = 'none';
@@ -8767,3 +8955,107 @@ function confirmDevWarning() {
 
 window.checkDevWarning = checkDevWarning;
 window.confirmDevWarning = confirmDevWarning;
+
+
+// Глобальная функция навигации по галерее
+window.navigateGallery = function(galleryId, direction) {
+    const gallery = document.getElementById(galleryId);
+    if (!gallery) return;
+    
+    const images = gallery.querySelectorAll(`img[data-gallery="${galleryId}"]`);
+    if (images.length <= 1) return;
+    
+    let currentIndex = -1;
+    images.forEach((img, index) => {
+        if (img.style.display !== 'none') {
+            currentIndex = index;
+        }
+    });
+    
+    if (currentIndex === -1) currentIndex = 0;
+    
+    let newIndex = currentIndex + direction;
+    if (newIndex < 0) newIndex = images.length - 1;
+    if (newIndex >= images.length) newIndex = 0;
+    
+    images[currentIndex].style.display = 'none';
+    images[newIndex].style.display = 'block';
+    
+    const indicator = gallery.querySelector('.gallery-indicator');
+    if (indicator) {
+        indicator.textContent = `${newIndex + 1} / ${images.length}`;
+    }
+};
+
+// Поддержка свайпов на мобильных устройствах для галерей
+document.addEventListener('DOMContentLoaded', function() {
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let targetGallery = null;
+    
+    document.addEventListener('touchstart', function(e) {
+        const gallery = e.target.closest('.image-gallery');
+        if (gallery) {
+            targetGallery = gallery;
+            touchStartX = e.changedTouches[0].screenX;
+        }
+    }, { passive: true });
+    
+    document.addEventListener('touchend', function(e) {
+        if (!targetGallery) return;
+        
+        touchEndX = e.changedTouches[0].screenX;
+        const galleryId = targetGallery.id;
+        
+        const swipeThreshold = 50;
+        if (touchStartX - touchEndX > swipeThreshold) {
+            // Свайп влево - следующее изображение
+            window.navigateGallery(galleryId, 1);
+        } else if (touchEndX - touchStartX > swipeThreshold) {
+            // Свайп вправо - предыдущее изображение
+            window.navigateGallery(galleryId, -1);
+        }
+        
+        targetGallery = null;
+    }, { passive: true });
+    
+    // Поддержка клавиатуры (стрелки) для активной галереи в редакторе
+    const contentVisual = document.getElementById('contentVisual');
+    if (contentVisual) {
+        contentVisual.addEventListener('keydown', function(e) {
+            // Проверяем, находится ли фокус внутри галереи или рядом с ней
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) return;
+            
+            let node = selection.anchorNode;
+            while (node && node !== contentVisual) {
+                if (node.classList && node.classList.contains('image-gallery')) {
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        window.navigateGallery(node.id, -1);
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        window.navigateGallery(node.id, 1);
+                    }
+                    break;
+                }
+                node = node.parentNode;
+            }
+        });
+        
+        // Добавляем возможность наведения для фокуса на галерее
+        contentVisual.addEventListener('mouseenter', function(e) {
+            const gallery = e.target.closest('.image-gallery');
+            if (gallery) {
+                gallery.setAttribute('data-focused', 'true');
+            }
+        }, true);
+        
+        contentVisual.addEventListener('mouseleave', function(e) {
+            const gallery = e.target.closest('.image-gallery');
+            if (gallery) {
+                gallery.removeAttribute('data-focused');
+            }
+        }, true);
+    }
+});

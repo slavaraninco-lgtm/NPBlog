@@ -721,6 +721,10 @@ if (file_exists($versionFile)) {
                 <input type="checkbox" id="noBorderRadius" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
                 <label for="noBorderRadius" style="margin: 0; cursor: pointer; font-size: 14px; user-select: none;">Убрать закругление по краям</label>
             </div>
+            <div id="insertGalleryContainer" style="margin: 10px 0 0 0; display: none; align-items: center; gap: 8px;">
+                <input type="checkbox" id="insertGallery" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                <label for="insertGallery" style="margin: 0; cursor: pointer; font-size: 14px; user-select: none;">Галерея с пролистыванием</label>
+            </div>
         </div>
     </div>
 </div>

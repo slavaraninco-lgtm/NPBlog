@@ -28,6 +28,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Инициализация галерей
+    initGalleries();
+    
     // Подгрузка глобального фона и шрифтов
     applyGlobalSettings();
 });
@@ -291,3 +294,146 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+// Инициализация галерей с пролистыванием
+function initGalleries() {
+    const galleries = document.querySelectorAll('.image-gallery');
+    galleries.forEach(gallery => {
+        const galleryId = gallery.id;
+        if (!galleryId) return;
+        
+        // Добавляем обработчики для изображений - клик открывает модальное окно
+        const images = gallery.querySelectorAll(`img[data-gallery="${galleryId}"]`);
+        images.forEach(img => {
+            if (!img.hasAttribute('data-gallery-initialized')) {
+                img.setAttribute('data-gallery-initialized', 'true');
+                img.style.cursor = 'pointer';
+                img.addEventListener('click', function(e) {
+                    // Только если клик не по кнопке навигации
+                    if (!e.target.closest('.gallery-nav')) {
+                        openImageModal(this.src);
+                    }
+                });
+            }
+        });
+        
+        // Убираем старые обработчики с кнопок, чтобы не было дублирования
+        const prevBtn = gallery.querySelector('.gallery-prev');
+        const nextBtn = gallery.querySelector('.gallery-next');
+        
+        if (prevBtn) {
+            prevBtn.removeAttribute('onclick');
+            if (!prevBtn.hasAttribute('data-initialized')) {
+                prevBtn.setAttribute('data-initialized', 'true');
+                prevBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    window.navigateGallery(galleryId, -1);
+                });
+            }
+        }
+        
+        if (nextBtn) {
+            nextBtn.removeAttribute('onclick');
+            if (!nextBtn.hasAttribute('data-initialized')) {
+                nextBtn.setAttribute('data-initialized', 'true');
+                nextBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    window.navigateGallery(galleryId, 1);
+                });
+            }
+        }
+        
+        // Поддержка клавиатуры (стрелки влево/вправо) при наведении на галерею
+        gallery.addEventListener('mouseenter', function() {
+            gallery.setAttribute('data-focused', 'true');
+        });
+        
+        gallery.addEventListener('mouseleave', function() {
+            gallery.removeAttribute('data-focused');
+        });
+    });
+    
+    // Глобальный обработчик клавиатуры для активной галереи
+    document.addEventListener('keydown', function(e) {
+        const focusedGallery = document.querySelector('.image-gallery[data-focused="true"]');
+        if (focusedGallery) {
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                window.navigateGallery(focusedGallery.id, -1);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                window.navigateGallery(focusedGallery.id, 1);
+            }
+        }
+    });
+}
+
+// Навигация по галерее
+function navigateGallery(galleryId, direction) {
+    const gallery = document.getElementById(galleryId);
+    if (!gallery) return;
+    
+    const images = gallery.querySelectorAll(`img[data-gallery="${galleryId}"]`);
+    if (images.length <= 1) return;
+    
+    let currentIndex = -1;
+    images.forEach((img, index) => {
+        const computedDisplay = window.getComputedStyle(img).display;
+        if (computedDisplay === 'block' || (computedDisplay !== 'none' && index === 0)) {
+            currentIndex = index;
+        }
+    });
+    
+    if (currentIndex === -1) currentIndex = 0;
+    
+    let newIndex = currentIndex + direction;
+    if (newIndex < 0) newIndex = images.length - 1;
+    if (newIndex >= images.length) newIndex = 0;
+    
+    images[currentIndex].style.display = 'none';
+    images[newIndex].style.display = 'block';
+    
+    const indicator = gallery.querySelector('.gallery-indicator');
+    if (indicator) {
+        indicator.textContent = `${newIndex + 1} / ${images.length}`;
+    }
+}
+
+// Экспортируем функцию в глобальный scope
+window.navigateGallery = navigateGallery;
+
+// Поддержка свайпов на мобильных устройствах
+(function() {
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let targetGallery = null;
+    
+    document.addEventListener('touchstart', function(e) {
+        const gallery = e.target.closest('.image-gallery');
+        if (gallery) {
+            targetGallery = gallery;
+            touchStartX = e.changedTouches[0].screenX;
+        }
+    }, { passive: true });
+    
+    document.addEventListener('touchend', function(e) {
+        if (!targetGallery) return;
+        
+        touchEndX = e.changedTouches[0].screenX;
+        const galleryId = targetGallery.id;
+        
+        const swipeThreshold = 50;
+        if (touchStartX - touchEndX > swipeThreshold) {
+            // Свайп влево - следующее изображение
+            navigateGallery(galleryId, 1);
+        } else if (touchEndX - touchStartX > swipeThreshold) {
+            // Свайп вправо - предыдущее изображение
+            navigateGallery(galleryId, -1);
+        }
+        
+        targetGallery = null;
+    }, { passive: true });
+})();
