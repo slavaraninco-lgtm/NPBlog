@@ -273,6 +273,7 @@ async function applyGlobalSettings() {
         }
         
         // Применяем настройки
+        resetBackgrounds();
         let appliedBg = false;
         if (postId && postBackgrounds[postId]) {
             const bgSettings = postBackgrounds[postId];
@@ -294,46 +295,77 @@ async function applyGlobalSettings() {
     }
 }
 
+function resetBackgrounds() {
+    document.documentElement.style.backgroundImage = '';
+    document.documentElement.style.backgroundRepeat = '';
+    document.documentElement.style.backgroundPosition = '';
+    document.documentElement.style.backgroundSize = '';
+    document.documentElement.style.backgroundAttachment = '';
+    
+    document.body.style.backgroundImage = '';
+    document.body.style.backgroundRepeat = '';
+    document.body.style.backgroundPosition = '';
+    document.body.style.backgroundSize = '';
+    document.body.style.backgroundAttachment = '';
+    document.body.style.backgroundColor = '';
+}
+
 function applyBackground(settings) {
     const bgFile = settings.background;
     const bgMode = settings.backgroundMode || 'cover';
     const bgScope = settings.backgroundScope || 'content';
     
-    let backgroundStyle = '';
-    if (bgMode === 'repeat') {
-        backgroundStyle = `url('../backgrounds/${bgFile}') repeat auto`;
-    } else if (bgMode === 'contain') {
-        backgroundStyle = `url('../backgrounds/${bgFile}') no-repeat center/contain`;
-    } else { // cover
-        backgroundStyle = `url('../backgrounds/${bgFile}') no-repeat center/cover`;
+    let targetElement;
+    if (bgScope === 'fullpage') {
+        targetElement = document.documentElement;
+        // Make body transparent
+        document.body.style.background = 'transparent';
+        document.body.style.backgroundColor = 'transparent';
+    } else {
+        let contentWrapper = document.querySelector('.content-wrapper');
+        if (!contentWrapper) {
+            contentWrapper = document.createElement('div');
+            contentWrapper.className = 'content-wrapper';
+            
+            const h1 = document.querySelector('h1');
+            if (h1) {
+                const backLink = document.querySelector('.back-link');
+                let node = h1;
+                const nodesToMove = [];
+                while (node) {
+                    nodesToMove.push(node);
+                    if (node === backLink) break;
+                    node = node.nextSibling;
+                }
+                h1.parentNode.insertBefore(contentWrapper, h1);
+                nodesToMove.forEach(n => contentWrapper.appendChild(n));
+            }
+        }
+        targetElement = contentWrapper;
+        
+        // Clean up root html element background
+        document.documentElement.style.backgroundImage = '';
+        document.body.style.background = '';
     }
     
-    if (bgScope === 'fullpage') {
-        document.body.style.background = backgroundStyle;
-        document.body.style.backgroundAttachment = 'fixed';
-    } else {
-        const contentWrapper = document.createElement('div');
-        contentWrapper.className = 'content-wrapper';
-        contentWrapper.style.background = backgroundStyle;
-        contentWrapper.style.minHeight = '100vh';
-        
-        // Move children
-        const h1 = document.querySelector('h1');
-        if (!h1) return;
-        
-        // wrap from h1 to back-link
-        const backLink = document.querySelector('.back-link');
-        
-        let node = h1;
-        const nodesToMove = [];
-        while (node) {
-            nodesToMove.push(node);
-            if (node === backLink) break;
-            node = node.nextSibling;
+    if (targetElement) {
+        targetElement.style.backgroundImage = `url('../backgrounds/${bgFile}')`;
+        if (bgMode === 'repeat') {
+            targetElement.style.backgroundRepeat = 'repeat';
+            targetElement.style.backgroundPosition = 'center';
+            targetElement.style.backgroundSize = 'auto';
+            targetElement.style.backgroundAttachment = 'scroll';
+        } else if (bgMode === 'contain') {
+            targetElement.style.backgroundRepeat = 'no-repeat';
+            targetElement.style.backgroundPosition = 'center';
+            targetElement.style.backgroundSize = 'contain';
+            targetElement.style.backgroundAttachment = 'fixed';
+        } else { // cover
+            targetElement.style.backgroundRepeat = 'no-repeat';
+            targetElement.style.backgroundPosition = 'center';
+            targetElement.style.backgroundSize = 'cover';
+            targetElement.style.backgroundAttachment = 'fixed';
         }
-        
-        h1.parentNode.insertBefore(contentWrapper, h1);
-        nodesToMove.forEach(n => contentWrapper.appendChild(n));
     }
 }
 

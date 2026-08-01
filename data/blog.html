@@ -330,26 +330,30 @@
                     }
                     if (settings.background) {
                         const bgPath = 'backgrounds/' + settings.background;
-                        document.body.style.backgroundImage = 'url(' + bgPath + ')';
+                        document.documentElement.style.backgroundImage = 'url(' + bgPath + ')';
+                        document.body.style.background = 'transparent';
+                        document.body.style.backgroundColor = 'transparent';
                         
                         if (settings.backgroundMode === 'cover') {
-                            document.body.style.backgroundSize = 'cover';
-                            document.body.style.backgroundPosition = 'center';
-                            document.body.style.backgroundAttachment = 'fixed';
-                            document.body.style.backgroundRepeat = 'no-repeat';
+                            document.documentElement.style.backgroundSize = 'cover';
+                            document.documentElement.style.backgroundPosition = 'center';
+                            document.documentElement.style.backgroundAttachment = 'fixed';
+                            document.documentElement.style.backgroundRepeat = 'no-repeat';
                         } else if (settings.backgroundMode === 'contain') {
-                            document.body.style.backgroundSize = 'contain';
-                            document.body.style.backgroundPosition = 'center';
-                            document.body.style.backgroundAttachment = 'fixed';
-                            document.body.style.backgroundRepeat = 'no-repeat';
+                            document.documentElement.style.backgroundSize = 'contain';
+                            document.documentElement.style.backgroundPosition = 'center';
+                            document.documentElement.style.backgroundAttachment = 'fixed';
+                            document.documentElement.style.backgroundRepeat = 'no-repeat';
                         } else if (settings.backgroundMode === 'repeat') {
-                            document.body.style.backgroundSize = 'auto';
-                            document.body.style.backgroundPosition = 'top left';
-                            document.body.style.backgroundAttachment = 'scroll';
-                            document.body.style.backgroundRepeat = 'repeat';
+                            document.documentElement.style.backgroundSize = 'auto';
+                            document.documentElement.style.backgroundPosition = 'top left';
+                            document.documentElement.style.backgroundAttachment = 'scroll';
+                            document.documentElement.style.backgroundRepeat = 'repeat';
                         }
                     } else {
-                        document.body.style.backgroundImage = 'none';
+                        document.documentElement.style.backgroundImage = 'none';
+                        document.documentElement.style.background = '';
+                        document.body.style.background = '';
                     }
                     // Кнопки перехода между блогами
                     const header = document.querySelector('header');
