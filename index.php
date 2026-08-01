@@ -2441,7 +2441,7 @@ function showGlobalSection(sectionName) {
         'experimental': 'Экспериментальные функции',
         'rss': 'Интеграция RSS (Виджет)',
         'rss_feed': 'RSS Лента (XML)',
-        'paths': 'Пути к благам',
+        'paths': 'Пути к блoгам',
         'security': 'Безопасность и доступ',
         'seo': 'SEO и соцсети'
     };
