@@ -285,7 +285,7 @@ h1 {
     max-width: none;
     max-height: none;
     object-fit: contain;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, opacity 0.15s ease;
     user-select: none;
     -webkit-user-drag: none;
     pointer-events: auto;
@@ -314,6 +314,62 @@ h1 {
 
 .image-modal-close:hover {
     background: rgba(255, 255, 255, 0.2);
+}
+
+/* Навигация в модальном окне */
+.image-modal-nav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    color: #fff;
+    font-size: 36px;
+    line-height: 52px;
+    cursor: pointer;
+    display: none; /* Контролируется JS в зависимости от количества фото */
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1002;
+    padding: 0;
+    user-select: none;
+}
+
+.image-modal-nav:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.image-modal-nav:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.image-modal-prev {
+    left: 30px;
+}
+
+.image-modal-next {
+    right: 30px;
+}
+
+@media (max-width: 768px) {
+    .image-modal-nav {
+        width: 48px;
+        height: 48px;
+        font-size: 28px;
+        line-height: 42px;
+    }
+    .image-modal-prev {
+        left: 15px;
+    }
+    .image-modal-next {
+        right: 15px;
+    }
 }
 
 .image-modal-toolbar {

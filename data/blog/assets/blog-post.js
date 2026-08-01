@@ -18,15 +18,29 @@ let currentZoom = 1;
 let currentImageSrc = '';
 let isDragging = false;
 let startX, startY, translateX = 0, translateY = 0;
+let currentFittedWidth = 0;
+let currentFittedHeight = 0;
+
+let modalImages = [];
+let currentModalIndex = 0;
 
 document.addEventListener('DOMContentLoaded', function() {
-    const contentImages = document.querySelectorAll('.content img');
-    contentImages.forEach(function(img) {
+    // Collect all valid images in content (exclude smiles/emojis)
+    const contentImages = Array.from(document.querySelectorAll('.content img')).filter(function(img) {
+        return !img.classList.contains('blog-smile');
+    });
+    
+    modalImages = contentImages.map(img => img.src);
+    
+    contentImages.forEach(function(img, index) {
         img.addEventListener('click', function(e) {
             e.stopPropagation();
-            openImageModal(this.src);
+            openImageModalAtIndex(index);
         });
     });
+    
+    // Dynamically insert navigation arrows if they are not in the DOM
+    ensureModalNavigation();
     
     // Инициализация галерей
     initGalleries();
@@ -36,28 +50,45 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function openImageModal(src) {
-    currentImageSrc = src;
+    let index = modalImages.indexOf(src);
+    if (index === -1) {
+        modalImages.push(src);
+        index = modalImages.length - 1;
+    }
+    openImageModalAtIndex(index);
+}
+
+function openImageModalAtIndex(index) {
+    if (index < 0 || index >= modalImages.length) return;
+    currentModalIndex = index;
+    currentImageSrc = modalImages[index];
+    
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
-    const container = document.getElementById('imageContainer');
+    if (!modal || !modalImg) return;
     
-    modalImg.src = src;
+    modalImg.src = currentImageSrc;
     modal.classList.add('show');
     document.body.style.overflow = 'hidden';
     
     currentZoom = 1;
     translateX = 0;
     translateY = 0;
-    updateImageTransform();
     
     modalImg.onload = function() {
         centerImage();
     };
+    
+    if (modalImg.complete) {
+        centerImage();
+    }
+    
+    updateModalNavigationVisibility();
 }
 
 function closeImageModal() {
     const modal = document.getElementById('imageModal');
-    modal.classList.remove('show');
+    if (modal) modal.classList.remove('show');
     document.body.style.overflow = '';
     currentZoom = 1;
     translateX = 0;
@@ -67,20 +98,41 @@ function closeImageModal() {
 function centerImage() {
     const modalImg = document.getElementById('modalImage');
     const container = document.getElementById('imageContainer');
+    if (!modalImg || !container) return;
+    
     const containerRect = container.getBoundingClientRect();
-    const imgWidth = modalImg.naturalWidth * currentZoom;
-    const imgHeight = modalImg.naturalHeight * currentZoom;
+    const naturalWidth = modalImg.naturalWidth || 800;
+    const naturalHeight = modalImg.naturalHeight || 600;
+    
+    // Fit the image in the container (only shrink, don't upscale beyond natural size)
+    const ratio = Math.min(containerRect.width / naturalWidth, containerRect.height / naturalHeight, 1);
+    
+    currentFittedWidth = naturalWidth * ratio;
+    currentFittedHeight = naturalHeight * ratio;
+    
+    const imgWidth = currentFittedWidth * currentZoom;
+    const imgHeight = currentFittedHeight * currentZoom;
     
     translateX = (containerRect.width - imgWidth) / 2;
     translateY = (containerRect.height - imgHeight) / 2;
+    
     updateImageTransform();
 }
 
 function updateImageTransform() {
     const modalImg = document.getElementById('modalImage');
     const zoomLevel = document.getElementById('zoomLevel');
+    if (!modalImg) return;
+    
+    if (currentFittedWidth && currentFittedHeight) {
+        modalImg.style.width = currentFittedWidth + 'px';
+        modalImg.style.height = currentFittedHeight + 'px';
+    }
+    
     modalImg.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + currentZoom + ')';
-    zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+    if (zoomLevel) {
+        zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+    }
 }
 
 function zoomIn() {
@@ -110,6 +162,83 @@ function downloadImage() {
     link.click();
     document.body.removeChild(link);
 }
+
+function navigateModalImage(direction) {
+    if (modalImages.length <= 1) return;
+    
+    let newIndex = currentModalIndex + direction;
+    if (newIndex < 0) newIndex = modalImages.length - 1;
+    if (newIndex >= modalImages.length) newIndex = 0;
+    
+    const modalImg = document.getElementById('modalImage');
+    if (modalImg) {
+        modalImg.style.opacity = 0;
+        setTimeout(() => {
+            openImageModalAtIndex(newIndex);
+            modalImg.style.opacity = 1;
+        }, 150);
+    }
+}
+
+function ensureModalNavigation() {
+    const modal = document.getElementById('imageModal');
+    if (!modal) return;
+    
+    if (!document.querySelector('.image-modal-prev')) {
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'image-modal-nav image-modal-prev';
+        prevBtn.innerHTML = '‹';
+        prevBtn.title = 'Предыдущее изображение';
+        prevBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navigateModalImage(-1);
+        });
+        modal.appendChild(prevBtn);
+    }
+    
+    if (!document.querySelector('.image-modal-next')) {
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'image-modal-nav image-modal-next';
+        nextBtn.innerHTML = '›';
+        nextBtn.title = 'Следующее изображение';
+        nextBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navigateModalImage(1);
+        });
+        modal.appendChild(nextBtn);
+    }
+}
+
+function updateModalNavigationVisibility() {
+    const prevBtn = document.querySelector('.image-modal-prev');
+    const nextBtn = document.querySelector('.image-modal-next');
+    
+    if (prevBtn && nextBtn) {
+        if (modalImages.length > 1) {
+            prevBtn.style.display = 'flex';
+            nextBtn.style.display = 'flex';
+        } else {
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+        }
+    }
+}
+
+window.addEventListener('resize', function() {
+    const modal = document.getElementById('imageModal');
+    if (modal && modal.classList.contains('show')) {
+        centerImage();
+    }
+});
+
+// Export to global scope
+window.openImageModal = openImageModal;
+window.closeImageModal = closeImageModal;
+window.zoomIn = zoomIn;
+window.zoomOut = zoomOut;
+window.resetZoom = resetZoom;
+window.downloadImage = downloadImage;
+window.navigateModalImage = navigateModalImage;
 
 // Загрузка глобальных настроек (фон, шрифты)
 async function applyGlobalSettings() {
@@ -279,8 +408,15 @@ document.addEventListener('mouseup', function() {
 });
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeImageModal();
+    const modal = document.getElementById('imageModal');
+    if (modal && modal.classList.contains('show')) {
+        if (e.key === 'Escape') {
+            closeImageModal();
+        } else if (e.key === 'ArrowLeft') {
+            navigateModalImage(-1);
+        } else if (e.key === 'ArrowRight') {
+            navigateModalImage(1);
+        }
     }
 });
 
@@ -437,3 +573,46 @@ window.navigateGallery = navigateGallery;
         targetGallery = null;
     }, { passive: true });
 })();
+
+// Поддержка свайпов внутри модального окна просмотра изображений
+(function() {
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let touchStartY = 0;
+    let touchEndY = 0;
+    
+    document.addEventListener('touchstart', function(e) {
+        const modal = document.getElementById('imageModal');
+        if (modal && modal.classList.contains('show')) {
+            // Разрешаем свайп только если нет зума
+            if (typeof currentZoom !== 'undefined' && currentZoom === 1) {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }
+        }
+    }, { passive: true });
+    
+    document.addEventListener('touchend', function(e) {
+        const modal = document.getElementById('imageModal');
+        if (modal && modal.classList.contains('show') && typeof currentZoom !== 'undefined' && currentZoom === 1) {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            
+            const diffX = touchStartX - touchEndX;
+            const diffY = touchStartY - touchEndY;
+            
+            const swipeThreshold = 50;
+            // Проверяем, что свайп горизонтальный и превышает порог
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > swipeThreshold) {
+                if (diffX > 0) {
+                    // Свайп влево -> Следующее изображение
+                    navigateModalImage(1);
+                } else {
+                    // Свайп вправо -> Предыдущее изображение
+                    navigateModalImage(-1);
+                }
+            }
+        }
+    }, { passive: true });
+})();
+

@@ -12,20 +12,7 @@
                 "start": 0,
                 "end": 0
             }
-        },
-        {
-            "visual": "",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 0,
-                "end": 0
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
         }
     ],
-    "index": 1
+    "index": 0
 }

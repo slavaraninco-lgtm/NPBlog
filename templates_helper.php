@@ -57,6 +57,8 @@ function initTemplatesSystem() {
     <div class="powered-by">Powered by NPBlog</div>
     <div class="image-modal" id="imageModal">
         <button class="image-modal-close" onclick="closeImageModal()">×</button>
+        <button class="image-modal-nav image-modal-prev" onclick="navigateModalImage(-1)" title="Предыдущее изображение">‹</button>
+        <button class="image-modal-nav image-modal-next" onclick="navigateModalImage(1)" title="Следующее изображение">›</button>
         <div class="image-modal-container" id="imageContainer">
             <img class="image-modal-content" id="modalImage" src="" alt="">
         </div>
