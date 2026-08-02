@@ -330,12 +330,12 @@
                     }
                     if (settings.background) {
                         const bgPath = 'backgrounds/' + settings.background;
-                        document.documentElement.style.backgroundImage = 'url(' + bgPath + ')';
+                        document.documentElement.style.backgroundImage = 'url(' + bgPath + '?t=' + Date.now() + ')';
                         document.body.style.background = 'transparent';
                         document.body.style.backgroundColor = 'transparent';
                         
                         if (settings.backgroundMode === 'cover') {
-                            document.documentElement.style.backgroundSize = 'cover';
+                            document.documentElement.style.backgroundSize = '100% 100%';
                             document.documentElement.style.backgroundPosition = 'center';
                             document.documentElement.style.backgroundAttachment = 'fixed';
                             document.documentElement.style.backgroundRepeat = 'no-repeat';

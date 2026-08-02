@@ -47,7 +47,9 @@ function updatePostBackground($postId) {
         $bgMode = isset($postData['backgroundMode']) ? $postData['backgroundMode'] : 'cover';
         $bgScope = isset($postData['backgroundScope']) ? $postData['backgroundScope'] : 'content';
         
-        $bgUrl = getDataUrl("backgrounds/{$postData['background']}");
+        $bgPath = getDataPath("backgrounds/{$postData['background']}");
+        $bgVer = file_exists($bgPath) ? filemtime($bgPath) : time();
+        $bgUrl = getDataUrl("backgrounds/{$postData['background']}") . '?v=' . $bgVer;
         if ($bgMode === 'repeat') {
             $backgroundStyle = "background-image: url('{$bgUrl}'); background-repeat: repeat; background-size: auto;";
         } elseif ($bgMode === 'contain') {

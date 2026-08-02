@@ -67,7 +67,9 @@ function applyBackgroundToHtml($htmlFile, $bgSettings) {
         $bgMode = isset($bgSettings['backgroundMode']) ? $bgSettings['backgroundMode'] : 'cover';
         $bgScope = isset($bgSettings['backgroundScope']) ? $bgSettings['backgroundScope'] : 'content';
         
-        $bgUrl = getDataUrl("backgrounds/{$bgFile}");
+        $bgPath = getDataPath("backgrounds/{$bgFile}");
+        $bgVer = file_exists($bgPath) ? filemtime($bgPath) : time();
+        $bgUrl = getDataUrl("backgrounds/{$bgFile}") . '?v=' . $bgVer;
         if ($bgMode === 'repeat') {
             $backgroundStyle = "background-image: url('{$bgUrl}'); background-repeat: repeat; background-size: auto;";
         } elseif ($bgMode === 'contain') {

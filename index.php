@@ -5960,6 +5960,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
+
+        // Интерактивное превью выбранного фонового изображения
+        const setupBgPreview = (inputId, previewId, wrapperId = null) => {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            if (input && preview) {
+                input.addEventListener('change', function() {
+                    const file = this.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            preview.src = e.target.result;
+                            if (wrapperId) {
+                                const wrapper = document.getElementById(wrapperId);
+                                if (wrapper) wrapper.style.display = 'block';
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        };
+        setupBgPreview('backgroundInput', 'currentBackgroundPreview', 'currentBackgroundInfo');
+        setupBgPreview('globalBackgroundInput', 'currentGlobalBackgroundPreview');
+        setupBgPreview('blogBackgroundInput', 'currentBlogBackgroundPreview');
     });
 
     // Закрытие контекстных меню при клике в любое место

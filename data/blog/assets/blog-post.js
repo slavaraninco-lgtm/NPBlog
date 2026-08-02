@@ -349,7 +349,7 @@ function applyBackground(settings) {
     }
     
     if (targetElement) {
-        targetElement.style.backgroundImage = `url('../backgrounds/${bgFile}')`;
+        targetElement.style.backgroundImage = `url('../backgrounds/${bgFile}?t=${Date.now()}')`;
         if (bgMode === 'repeat') {
             targetElement.style.backgroundRepeat = 'repeat';
             targetElement.style.backgroundPosition = 'center';
@@ -363,7 +363,7 @@ function applyBackground(settings) {
         } else { // cover
             targetElement.style.backgroundRepeat = 'no-repeat';
             targetElement.style.backgroundPosition = 'center';
-            targetElement.style.backgroundSize = 'cover';
+            targetElement.style.backgroundSize = '100% 100%';
             targetElement.style.backgroundAttachment = 'fixed';
         }
     }

@@ -864,3 +864,24 @@ html.is-android .blog-ascii-art {
     opacity: 1;
     position: relative;
 }
+
+/* Поддержка растягивания фона на весь экран */
+body[style*="background-image"] {
+    max-width: none !important;
+    margin: 0 !important;
+}
+
+body[style*="background-image"] > h1,
+body[style*="background-image"] > .date,
+body[style*="background-image"] > article.content,
+body[style*="background-image"] > .back-link {
+    max-width: 920px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+body[style*="background-image"] > .back-link {
+    display: block;
+    width: fit-content;
+}
+
