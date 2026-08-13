@@ -35,15 +35,10 @@
     const themeToggle = document.getElementById('theme-toggle');
     const docEl = document.documentElement;
 
-    themeToggle.addEventListener('click', () => {
-        if (docEl.getAttribute('data-theme') === 'dark') {
-            docEl.removeAttribute('data-theme');
-            localStorage.setItem('theme', 'light');
-        } else {
-            docEl.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
-        }
-        if (typeof updateAmoledState === 'function') {
-            updateAmoledState();
-        }
-    });
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            if (typeof openThemeManager === 'function') {
+                openThemeManager();
+            }
+        });
+    }

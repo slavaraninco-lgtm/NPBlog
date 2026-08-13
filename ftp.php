@@ -57,9 +57,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    $blogToUpload = $_POST['blogToUpload'] ?? '';
+    
+    // Validate blog path
+    $settingsFile = __DIR__ . '/editor_settings.json';
+    $settings = file_exists($settingsFile) ? (json_decode(file_get_contents($settingsFile), true) ?: []) : [];
+    $blogPaths = isset($settings['blog_paths']) ? $settings['blog_paths'] : [];
+    if (empty($blogPaths)) {
+        $blogPaths = [isset($settings['data_path']) ? $settings['data_path'] : 'data'];
+    }
+    
     $localDataDir = rtrim(getDataPath(), '/\\');
+    if (!empty($blogToUpload) && in_array($blogToUpload, $blogPaths)) {
+        $localDataDir = $blogToUpload;
+        if (strpos($localDataDir, '/') !== 0 && strpos($localDataDir, ':\\') !== 1) {
+            $localDataDir = __DIR__ . '/' . ltrim($localDataDir, '/');
+        }
+        $localDataDir = rtrim($localDataDir, '/\\');
+    }
+
     if (!is_dir($localDataDir)) {
-        echo json_encode(['success' => false, 'message' => 'Папка data не найдена']);
+        echo json_encode(['success' => false, 'message' => 'Выбранная папка блога не найдена: ' . basename($localDataDir)]);
         exit;
     }
 
@@ -123,8 +141,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return ['uploaded' => $uploaded, 'failed' => $failed];
     }
 
-    // Загружаем папку data
-    $result = uploadDirectory($connId, $localDataDir, $ftpDirectory . '/data');
+    // Загружаем выбранную папку блога
+    $remoteFolderName = basename($localDataDir);
+    $result = uploadDirectory($connId, $localDataDir, $ftpDirectory . '/' . $remoteFolderName);
     
     ftp_close($connId);
     
@@ -138,13 +157,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         echo json_encode([
             'success' => true, 
-            'message' => "Папка data успешно загружена! Загружено файлов: {$result['uploaded']}"
+            'message' => "Папка $remoteFolderName успешно загружена! Загружено файлов: {$result['uploaded']}"
         ]);
     }
     exit;
 }
 
 $savedCredentials = loadCredentials();
+
+// Загружаем доступные пути для селектора
+$settingsFile = __DIR__ . '/editor_settings.json';
+$settings = file_exists($settingsFile) ? (json_decode(file_get_contents($settingsFile), true) ?: []) : [];
+$availableBlogPaths = isset($settings['blog_paths']) && is_array($settings['blog_paths']) ? $settings['blog_paths'] : [];
+if (empty($availableBlogPaths)) {
+    $availableBlogPaths = [isset($settings['data_path']) ? $settings['data_path'] : 'data'];
+}
+$currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_path'] : (isset($settings['active_blog_path']) ? $settings['active_blog_path'] : $availableBlogPaths[0]);
+
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -641,6 +670,21 @@ $savedCredentials = loadCredentials();
     
     <div class="form-container">
         <form id="uploadForm">
+            <?php if (count($availableBlogPaths) > 0): ?>
+            <div class="form-group" style="background: rgba(33, 150, 243, 0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(33, 150, 243, 0.2); margin-bottom: 25px;">
+                <label for="blogToUpload">Выберите блог для загрузки</label>
+                <select id="blogToUpload" name="blogToUpload" style="width: 100%; padding: 12px 16px; background-color: var(--bg-color); color: var(--text-color); border: 2px solid var(--text-color); border-radius: 8px; font-size: 14px; cursor: pointer; outline: none;">
+                    <?php foreach ($availableBlogPaths as $path): ?>
+                        <?php $folderName = basename(str_replace('\\', '/', $path)); ?>
+                        <option value="<?= htmlspecialchars($path) ?>" <?= $path === $currentActiveBlog ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($folderName) ?> (<?= htmlspecialchars($path) ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="filename-note">Выбранная папка блога будет загружена целиком на FTP.</p>
+            </div>
+            <?php endif; ?>
+
             <div class="form-group">
                 <label for="ftpServer">FTP Сервер *</label>
                 <input type="text" id="ftpServer" name="ftpServer" 
@@ -685,7 +729,7 @@ $savedCredentials = loadCredentials();
             </div>
             
             <div class="button-group">
-                <button type="button" id="uploadBtn" class="primary">📤 Загрузить папку data</button>
+                <button type="button" id="uploadBtn" class="primary">📤 Загрузить выбранный блог</button>
                 <button type="button" id="resetBtn" class="danger">🗑️ Сбросить настройки</button>
             </div>
         </form>
@@ -797,6 +841,8 @@ $savedCredentials = loadCredentials();
                 });
             }
             
+            const blogToUpload = document.getElementById('blogToUpload') ? document.getElementById('blogToUpload').value : '';
+            
             function addLog(message, level = 'info') {
                 const logEntry = document.createElement('div');
                 logEntry.className = `log-entry ${level}`;
@@ -819,6 +865,7 @@ $savedCredentials = loadCredentials();
             formData.append('ftpDirectory', ftpDirectory);
             formData.append('ftpSsl', ftpSsl);
             formData.append('ftpSkipExisting', ftpSkipExisting);
+            formData.append('blogToUpload', blogToUpload);
             
             fetch('ftp_upload_stream.php', {
                 method: 'POST',
@@ -836,7 +883,7 @@ $savedCredentials = loadCredentials();
                         if (done) {
                             uploadBtn.disabled = false;
                             resetBtn.disabled = false;
-                            uploadBtn.textContent = '📤 Загрузить папку data';
+                            uploadBtn.textContent = '📤 Загрузить выбранный блог';
                             return;
                         }
                         

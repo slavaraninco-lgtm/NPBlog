@@ -1,0 +1,699 @@
+@font-face {
+    font-family: 'InputMono-Light';
+    src: url('data/fonts/InputMono-Light.ttf') format('truetype');
+    font-display: swap;
+}
+
+:root {
+    --bg-color: #0b0f19;
+    --text-color: #f3f4f6;
+    --primary-color: rgba(129, 140, 248, 0.95);
+    --primary-color2: #ffffff;
+    --border-color: rgba(255, 255, 255, 0.18);
+    
+    /* Dark Liquid Glass System Tokens */
+    --glass-bg: rgba(15, 22, 36, 0.72);
+    --glass-bg-hover: rgba(26, 36, 58, 0.86);
+    --glass-bg-active: rgba(38, 52, 80, 0.96);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-border-light: rgba(255, 255, 255, 0.35);
+    --glass-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px 0 rgba(255, 255, 255, 0.25), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.5);
+    --glass-shadow-hover: 0 24px 60px -8px rgba(0, 0, 0, 0.85), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.4);
+    --glass-blur: blur(28px) saturate(210%);
+    --glass-blur-sm: blur(16px) saturate(190%);
+    --glass-radius-lg: 24px;
+    --glass-radius-md: 16px;
+    --glass-radius-sm: 12px;
+    --glass-glow: 0 0 32px rgba(129, 140, 248, 0.5);
+}
+
+/* AMOLED Deep Dark Variant Override */
+[data-amoled="true"] {
+    --bg-color: #000000;
+    --glass-bg: rgba(8, 10, 16, 0.85);
+    --glass-bg-hover: rgba(16, 20, 32, 0.92);
+    --glass-border: rgba(255, 255, 255, 0.22);
+    --glass-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.95), inset 0 1px 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Animations */
+@keyframes dialogOverlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes dialogContentIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes popoverIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes contextMenuIn {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes dialogScaleIn {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Body with Vibrant Dark Ambient Mesh Background */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--bg-color);
+    background-image: 
+        radial-gradient(circle at 10% 12%, rgba(99, 102, 241, 0.28) 0%, transparent 48%),
+        radial-gradient(circle at 90% 18%, rgba(236, 72, 153, 0.22) 0%, transparent 48%),
+        radial-gradient(circle at 50% 85%, rgba(56, 189, 248, 0.22) 0%, transparent 52%),
+        radial-gradient(circle at 82% 80%, rgba(168, 85, 247, 0.2) 0%, transparent 45%);
+    background-attachment: fixed;
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+textarea {
+    min-height: 200px;
+    padding: 10px;
+    line-height: 1.6;
+    font-size: 14px;
+    font-family: inherit;
+    white-space: pre-wrap;
+    resize: vertical;
+}
+
+#title,
+#content,
+#contentVisual,
+.editor-toolbar-wrap {
+    max-width: 920px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Side Drawer: Manage Posts */
+.manage-posts {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 360px;
+    max-width: 95vw;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    color: var(--text-color);
+    border-left: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-lg) 0 0 var(--glass-radius-lg);
+    padding: 0;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--glass-shadow);
+    z-index: 1005;
+}
+
+.manage-posts.active {
+    transform: translateX(0);
+}
+
+.manage-posts-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 20px 20px 16px;
+    background: rgba(15, 22, 36, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.manage-posts h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.manage-posts .close-manage {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s ease;
+}
+
+.manage-posts .close-manage:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.05);
+}
+
+.post-list {
+    list-style: none;
+    padding: 16px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.post-item {
+    padding: 16px;
+    border-radius: var(--glass-radius-md);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.post-item:hover {
+    background: var(--glass-bg-hover);
+    box-shadow: var(--glass-shadow-hover);
+    transform: translateY(-3px) scale(1.01);
+    border-color: var(--glass-border-light);
+}
+
+.post-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 0 0 6px 0;
+    color: var(--text-color);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.post-item-date {
+    display: block;
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.65;
+    margin-bottom: 12px;
+}
+
+.post-item-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.post-item .edit-btn,
+.post-item .additional-btn,
+.post-item .delete-btn {
+    position: static;
+    transform: none;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: var(--glass-radius-sm);
+    cursor: pointer;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    color: var(--text-color);
+    backdrop-filter: var(--glass-blur-sm);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.post-item .edit-btn {
+    background: var(--primary-color);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: var(--glass-glow);
+}
+
+.post-item .edit-btn:hover {
+    background: rgba(147, 156, 249, 1);
+    transform: translateY(-2px);
+}
+
+.post-item .additional-btn:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-light);
+    transform: translateY(-2px);
+}
+
+.post-item .delete-btn:hover {
+    background: rgba(239, 68, 68, 0.85);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+    transform: translateY(-2px);
+}
+
+.posts-search-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-sm);
+    font-size: 14px;
+    background: rgba(10, 15, 26, 0.4);
+    backdrop-filter: blur(12px);
+    color: var(--text-color);
+    box-sizing: border-box;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.posts-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: var(--glass-glow), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+/* Modals & Dialog Overlays Centering */
+.dialog,
+.modal-overlay,
+.file-upload-dialog,
+.integrity-error-overlay,
+.delete-confirm-overlay,
+.save-include-overlay,
+#fontFamilyDialog {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(0, 0, 0, 0.72) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    z-index: 10000 !important;
+}
+
+.dialog.show,
+.dialog.active,
+.dialog[style*="display: block"],
+.dialog[style*="display: flex"],
+.modal-overlay.show,
+.modal-overlay.active,
+.modal-overlay[style*="display: block"],
+.modal-overlay[style*="display: flex"],
+.file-upload-dialog[style*="display: block"],
+.integrity-error-overlay.show,
+.delete-confirm-overlay.show,
+.save-include-overlay.show,
+#fontFamilyDialog[style*="display: block"] {
+    display: flex !important;
+}
+
+.dialog-content,
+.modal-content,
+.integrity-error-dialog,
+.delete-confirm-dialog,
+.save-include-dialog,
+#fontFamilyDialog .dialog-content {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    margin: auto !important;
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    -webkit-backdrop-filter: var(--glass-blur) !important;
+    color: var(--text-color) !important;
+    padding: 28px !important;
+    border-radius: var(--glass-radius-lg) !important;
+    min-width: 320px !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+
+.dialog-content h3 {
+    margin: 0 0 20px 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+/* Inset Glass Input Fields */
+.editor-field,
+#title.editor-field,
+#content.editor-field,
+#contentVisual.editor-field,
+.form-control,
+.dialog input[type="text"],
+.dialog input[type="number"],
+.code-input,
+.image-url-input,
+.media-input,
+.font-size-custom input,
+.font-family-custom input,
+select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    font-family: inherit;
+    background: rgba(10, 15, 26, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-sm);
+    color: var(--text-color);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editor-field:focus,
+.form-control:focus,
+.dialog input[type="text"]:focus,
+.dialog input[type="number"]:focus,
+.code-input:focus,
+.image-url-input:focus,
+.media-input:focus,
+select:focus {
+    outline: none;
+    background: var(--glass-bg-hover);
+    border-color: var(--primary-color);
+    box-shadow: var(--glass-glow), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+/* Glass Buttons */
+button,
+.format-btn,
+.global-action-btn,
+.editor-menu-btn,
+.manage-btn,
+.theme-btn,
+.upd-btn,
+.ftp-btn,
+.image-toolbar-btn,
+.marker-style-btn,
+.dialog-buttons button {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    color: var(--text-color);
+    border-radius: var(--glass-radius-sm);
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:hover,
+.format-btn:hover,
+.global-action-btn:hover,
+.editor-menu-btn:hover,
+.manage-btn:hover,
+.theme-btn:hover,
+.upd-btn:hover,
+.ftp-btn:hover,
+.image-toolbar-btn:hover,
+.marker-style-btn:hover,
+.dialog-buttons button:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-light);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px) scale(1.02);
+}
+
+button:active,
+.format-btn:active,
+.global-action-btn:active,
+.editor-menu-btn:active,
+.dialog-buttons button:active {
+    transform: translateY(0) scale(0.98);
+    background: var(--glass-bg-active);
+}
+
+.format-btn.active,
+.mode-toggle .format-btn.active,
+.image-toolbar-btn.active,
+.marker-style-btn.active {
+    background: var(--primary-color) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    box-shadow: var(--glass-glow), inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Floating Toolbar */
+.formatting-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 12px 18px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-md);
+    margin-bottom: 12px;
+    box-shadow: var(--glass-shadow);
+}
+
+.formatting-buttons.is-floating {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    width: 100%;
+    max-width: 920px;
+    border-radius: 0 0 var(--glass-radius-md) var(--glass-radius-md);
+    border-top: none;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+/* Popovers & Floating Menus */
+.editor-menu-dropdown,
+.more-menu-dropdown,
+.color-palette-popover,
+.font-size-popover,
+.font-family-popover,
+.image-align-dropdown,
+.editor-context-menu {
+    position: absolute;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-md);
+    padding: 8px;
+    box-shadow: var(--glass-shadow);
+    z-index: 1100;
+}
+
+.editor-context-item,
+.editor-menu-item,
+.font-size-item,
+.font-family-item,
+.image-align-option {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.editor-context-item:hover,
+.editor-menu-item:hover,
+.font-size-item:hover,
+.font-family-item:hover,
+.image-align-option:hover {
+    background: var(--glass-bg-hover);
+    transform: translateX(4px);
+}
+
+/* Spoilers & Code Blocks */
+.spoiler-block {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-md);
+    margin: 15px 0;
+    overflow: hidden;
+    box-shadow: var(--glass-shadow);
+}
+
+.spoiler-title {
+    display: block;
+    padding: 14px 18px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    transition: background 0.2s ease;
+}
+
+.spoiler-title:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.code-block,
+#contentVisual .code-block {
+    background: rgba(12, 17, 28, 0.75) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--glass-radius-md) !important;
+    padding: 16px;
+    margin: 16px 0;
+    color: #e5e7eb;
+    box-shadow: var(--glass-shadow);
+}
+
+/* Tables */
+#contentVisual table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    border-radius: var(--glass-radius-md);
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+}
+
+#contentVisual table th {
+    background: var(--glass-bg-hover);
+    backdrop-filter: var(--glass-blur);
+    color: var(--text-color);
+    font-weight: 600;
+    padding: 14px;
+    border-bottom: 2px solid var(--glass-border);
+}
+
+#contentVisual table td {
+    padding: 12px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Badges */
+#autosaveBadge {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: var(--glass-shadow), var(--glass-glow);
+}
+
+/* --- Black action buttons in all dialogs and modals --- */
+.dialog-buttons button:first-child:not(:last-child),
+.save-include-btn.save,
+.delete-confirm-btn.delete,
+.numbering-check-btn.fix,
+.tutorial-btn.next,
+.global-action-btn-primary,
+#saveTemplateDropdownBtn {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2)) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+    text-shadow: none !important;
+    font-weight: 600 !important;
+}
+
+[data-theme="dark"] .dialog-buttons button:first-child:not(:last-child),
+[data-theme="dark"] .save-include-btn.save,
+[data-theme="dark"] .delete-confirm-btn.delete,
+[data-theme="dark"] .numbering-check-btn.fix,
+[data-theme="dark"] .tutorial-btn.next,
+[data-theme="dark"] .global-action-btn-primary,
+[data-theme="dark"] #saveTemplateDropdownBtn {
+    background: var(--glass-bg, var(--bg-color)) !important;
+    color: var(--text-color) !important;
+    border: 2px solid #ffffff !important;
+}
+
+.dialog-buttons button:first-child:not(:last-child):hover,
+.save-include-btn.save:hover,
+.delete-confirm-btn.delete:hover,
+.numbering-check-btn.fix:hover,
+.tutorial-btn.next:hover,
+.global-action-btn-primary:hover,
+#saveTemplateDropdownBtn:hover {
+    background: #1c1c1e !important;
+    border-color: rgba(255, 255, 255, 0.45) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02) !important;
+}
+
+[data-theme="dark"] .dialog-buttons button:first-child:not(:last-child):hover,
+[data-theme="dark"] .save-include-btn.save:hover,
+[data-theme="dark"] .delete-confirm-btn.delete:hover,
+[data-theme="dark"] .numbering-check-btn.fix:hover,
+[data-theme="dark"] .tutorial-btn.next:hover,
+[data-theme="dark"] .global-action-btn-primary:hover,
+[data-theme="dark"] #saveTemplateDropdownBtn:hover {
+    background: var(--text-color) !important;
+    color: var(--bg-color) !important;
+    border-color: #ffffff !important;
+}
+
+.dialog-buttons button:first-child:not(:last-child):active,
+.save-include-btn.save:active,
+.delete-confirm-btn.delete:active,
+.numbering-check-btn.fix:active,
+.tutorial-btn.next:active,
+.global-action-btn-primary:active,
+#saveTemplateDropdownBtn:active {
+    background: #000000 !important;
+    transform: translateY(0) scale(0.98) !important;
+}
+
+[data-theme="dark"] .dialog-buttons button:first-child:not(:last-child):active,
+[data-theme="dark"] .save-include-btn.save:active,
+[data-theme="dark"] .delete-confirm-btn.delete:active,
+[data-theme="dark"] .numbering-check-btn.fix:active,
+[data-theme="dark"] .tutorial-btn.next:active,
+[data-theme="dark"] .global-action-btn-primary:active,
+[data-theme="dark"] #saveTemplateDropdownBtn:active {
+    background: var(--glass-bg-active, var(--bg-color)) !important;
+    transform: translateY(0) scale(0.98) !important;
+}

@@ -64,15 +64,7 @@ foreach ($files as $file) {
     }
     
     // Заменяем все пути serve_data.php на статические прямые пути для готовой статьи
-    $editorSettingsFile = __DIR__ . '/editor_settings.json';
-    $editorSettings = [];
-    if (file_exists($editorSettingsFile)) {
-        $editorSettings = json_decode(file_get_contents($editorSettingsFile), true) ?: [];
-    }
-    $dataDir = isset($editorSettings['data_path']) ? $editorSettings['data_path'] : '';
-    if (empty($dataDir)) {
-        $dataDir = __DIR__ . '/data/';
-    }
+    $dataDir = getDataPath();
     $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
     $staticPrefix = '/' . $dirName . '/';
     $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data.php\?file=/i', $staticPrefix, $content);

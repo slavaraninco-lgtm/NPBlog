@@ -1810,6 +1810,7 @@
                 }
             });
             renderImagePreviews();
+            checkInsertGalleryVisibility();
         }
         input.value = '';
     }
@@ -2000,14 +2001,50 @@ document.querySelectorAll('input[name="imageSource"]').forEach(radio => {
         
         document.getElementById('urlContainer').style.display = 
             this.value === 'url' ? 'block' : 'none';
+        
+        // Обновляем видимость checkbox при переключении источника
+        checkInsertGalleryVisibility();
     });
 });
 
+// Обработчик изменения URL для проверки множественности
+const imageUrlInput = document.getElementById('imageUrl');
+if (imageUrlInput) {
+    imageUrlInput.addEventListener('input', checkInsertGalleryVisibility);
+}
+
+function checkInsertGalleryVisibility() {
+    const insertGalleryContainer = document.getElementById('insertGalleryContainer');
+    if (!insertGalleryContainer) return;
+    
+    const imageSource = document.querySelector('input[name="imageSource"]:checked')?.value;
+    
+    if (imageSource === 'file') {
+        // Для файлов проверяем количество выбранных файлов
+        if (selectedImageFiles.length > 1) {
+            insertGalleryContainer.style.display = 'flex';
+        } else {
+            insertGalleryContainer.style.display = 'none';
+        }
+    } else if (imageSource === 'url') {
+        // Для URL проверяем количество введённых адресов
+        const urlInput = document.getElementById('imageUrl').value.trim();
+        const urls = urlInput.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+        if (urls.length > 1) {
+            insertGalleryContainer.style.display = 'flex';
+        } else {
+            insertGalleryContainer.style.display = 'none';
+        }
+    } else {
+        insertGalleryContainer.style.display = 'none';
+    }
+}
 function processImage() {
     const imageSource = document.querySelector('input[name="imageSource"]:checked').value;
     const gridLayout = document.getElementById('gridLayout').value;
     const sizeSelect = document.getElementById('imageSize');
     const sizeValue = sizeSelect.value;
+    const insertGallery = document.getElementById('insertGallery')?.checked || false;
 
     let width, widthUnit = 'px';
     if (sizeValue === 'custom') {
@@ -2046,7 +2083,11 @@ function processImage() {
         if (urls.length === 1) {
             insertImage(urls[0], width, '', widthUnit, '', caption, noBorderRadius);
         } else {
-            insertImagesInGrid(urls, gridLayout, caption, width, widthUnit, noBorderRadius);
+            if (insertGallery) {
+                insertImagesAsGallery(urls, caption, width, widthUnit, noBorderRadius);
+            } else {
+                insertImagesInGrid(urls, gridLayout, caption, width, widthUnit, noBorderRadius);
+            }
             closeImageDialog();
         }
         return;
@@ -2094,7 +2135,11 @@ function processImage() {
             if (data.urls.length === 1 && !data.gridLayout) {
                 insertImage(data.urls[0], width, '', widthUnit, '', caption, noBorderRadius);
             } else {
-                insertImagesInGrid(data.urls, data.gridLayout, caption, width, widthUnit, noBorderRadius);
+                if (insertGallery && data.urls.length > 1) {
+                    insertImagesAsGallery(data.urls, caption, width, widthUnit, noBorderRadius);
+                } else {
+                    insertImagesInGrid(data.urls, data.gridLayout, caption, width, widthUnit, noBorderRadius);
+                }
             }
         } else {
             showNotification('Ошибка при загрузке изображений: ' + data.error, 'error');
@@ -2138,6 +2183,44 @@ function insertImagesInGrid(urls, layout, caption = '', width = '', widthUnit = 
         insertImageBlockAtCaret(html);
     }
 
+    closeImageDialog();
+}
+
+function insertImagesAsGallery(urls, caption = '', width = '', widthUnit = 'px', noBorderRadius = false) {
+    if (!urls || urls.length === 0) return;
+    
+    const galleryId = 'gallery-' + Date.now();
+    const radiusStyle = noBorderRadius ? 'border-radius: 0px !important;' : 'border-radius: 8px;';
+    const widthStyle = width ? `width: ${width}${widthUnit}; max-width: 100%;` : 'max-width: 100%;';
+    
+    let galleryHtml = `<div class="image-gallery" id="${galleryId}" style="position: relative; ${widthStyle} margin: 0;">`;
+    
+    urls.forEach((url, index) => {
+        const displayStyle = index === 0 ? 'display: block;' : 'display: none;';
+        galleryHtml += `<img src="${url}" style="width: 100%; height: auto; ${displayStyle} margin: 0; ${radiusStyle}" class="blog-image${noBorderRadius ? ' no-radius' : ''}" data-gallery="${galleryId}" data-index="${index}">`;
+    });
+    
+    if (urls.length > 1) {
+        galleryHtml += `
+            <button type="button" class="gallery-nav gallery-prev" onclick="event.stopPropagation(); window.navigateGallery('${galleryId}', -1);" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; user-select: none;">‹</button>
+            <button type="button" class="gallery-nav gallery-next" onclick="event.stopPropagation(); window.navigateGallery('${galleryId}', 1);" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; user-select: none;">›</button>
+            <div class="gallery-indicator" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 5px 12px; border-radius: 12px; font-size: 12px; z-index: 10; user-select: none; pointer-events: none;">1 / ${urls.length}</div>
+        `;
+    }
+    
+    galleryHtml += `</div>`;
+    
+    // Оборачиваем галерею в blog-image-wrap для поддержки тулбара и изменения размера
+    const wrappedHtml = wrapImageWithHint(galleryHtml, caption);
+    
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const cursorPos = ta.selectionStart;
+        ta.value = ta.value.substring(0, cursorPos) + wrappedHtml + '\n' + ta.value.substring(cursorPos);
+    } else {
+        insertImageBlockAtCaret(wrappedHtml);
+    }
+    
     closeImageDialog();
 }
 
@@ -2190,9 +2273,53 @@ function wrapExistingEditorImages() {
         el.parentNode.removeChild(el);
     });
     
-    var imgs = ve.querySelectorAll('img.blog-image, img[src], video, audio, iframe, pre.code-block');
+    // Обрабатываем галереи отдельно
+    var galleries = ve.querySelectorAll('.image-gallery');
+    galleries.forEach(function(gallery) {
+        var wrap = gallery.closest('.blog-image-wrap');
+        var alignWrap = gallery.closest('.blog-image-align-wrap');
+        
+        // Если галерея не обёрнута, оборачиваем её
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.className = 'blog-image-wrap';
+            wrap.setAttribute('data-media-type', 'gallery');
+            gallery.parentNode.insertBefore(wrap, gallery);
+            wrap.appendChild(gallery);
+        } else {
+            wrap.setAttribute('data-media-type', 'gallery');
+        }
+        
+        wrap.style.position = 'relative';
+        wrap.style.display = 'inline-block';
+        wrap.style.maxWidth = '100%';
+        wrap.style.verticalAlign = 'top';
+        wrap.style.textAlign = 'center';
+        
+        if (!alignWrap) {
+            alignWrap = document.createElement('div');
+            alignWrap.className = 'blog-image-align-wrap';
+            alignWrap.style.textAlign = 'left';
+            alignWrap.setAttribute('data-image-id', 'gallery-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+            wrap.parentNode.insertBefore(alignWrap, wrap);
+            alignWrap.appendChild(wrap);
+        }
+        
+        alignWrap.style.display = 'block';
+        alignWrap.style.margin = '14px 0';
+        alignWrap.style.width = '100%';
+        alignWrap.style.clear = 'both';
+        alignWrap.style.position = 'relative';
+    });
+    
+    var imgs = ve.querySelectorAll('img.blog-image, img[src], video, audio, iframe, pre.code-block, a.custom-blog-btn');
     for (var i = 0; i < imgs.length; i++) {
         var img = imgs[i];
+        
+        // Пропускаем изображения внутри галерей
+        if (img.closest('.image-gallery')) {
+            continue;
+        }
         
         // Пропускаем, если элемент является частью каких-то других управляющих структур
         if (img.closest('.image-toolbar') || img.closest('.image-align-dropdown') || img.closest('.editor-context-menu')) {
@@ -2200,7 +2327,7 @@ function wrapExistingEditorImages() {
         }
         
         var isImg = img.tagName.toLowerCase() === 'img';
-        var type = img.tagName.toLowerCase();
+        var type = img.classList.contains('custom-blog-btn') ? 'button' : img.tagName.toLowerCase();
         
         var wrap = img.closest && img.closest('.blog-image-wrap');
         var alignWrap = img.closest && img.closest('.blog-image-align-wrap');
@@ -2259,7 +2386,7 @@ function wrapExistingEditorImages() {
             img.style.height = 'auto';
         }
 
-        if (type === 'pre') {
+        if (type === 'pre' || type === 'button') {
             img.setAttribute('contenteditable', 'false');
         }
     }
@@ -2284,11 +2411,13 @@ function showGlobalMediaOverlay(mediaWrap) {
     overlay.style.display = 'block';
     updateOverlayPosition();
     
-    var innerMedia = mediaWrap.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block');
+    var innerMedia = mediaWrap.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block, a.custom-blog-btn, .image-gallery');
     var isImg = innerMedia && innerMedia.tagName.toLowerCase() === 'img';
     var isFile = innerMedia && innerMedia.classList.contains('blog-file-button');
     var isAscii = innerMedia && innerMedia.classList.contains('blog-ascii-art');
     var isCode = innerMedia && innerMedia.tagName.toLowerCase() === 'pre';
+    var isBtn = innerMedia && innerMedia.classList.contains('custom-blog-btn');
+    var isGallery = innerMedia && innerMedia.classList.contains('image-gallery');
     var isGrid = activeTarget.closest('.grid-container') !== null;
     
     var editBtn = overlay.querySelector('.image-toolbar-btn[data-action="edit"]');
@@ -2296,10 +2425,11 @@ function showGlobalMediaOverlay(mediaWrap) {
     var sizeIndicator = overlay.querySelector('.image-size-indicator');
     var resizeHandles = overlay.querySelectorAll('.image-resize-handle');
     
-    if (editBtn) editBtn.style.display = (isImg || isAscii || isCode) ? 'flex' : 'none';
-    if (resizeBtn) resizeBtn.style.display = (isFile || isAscii || isCode || isGrid) ? 'none' : 'flex';
-    if (sizeIndicator) sizeIndicator.style.display = (isFile || isAscii || isCode || isGrid) ? 'none' : 'block';
-    resizeHandles.forEach(h => h.style.display = (isFile || isAscii || isCode || isGrid) ? 'none' : 'block');
+    // Для галереи показываем только редактирование первого изображения
+    if (editBtn) editBtn.style.display = (isImg || isAscii || isCode || isBtn || isGallery) ? 'flex' : 'none';
+    if (resizeBtn) resizeBtn.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'flex';
+    if (sizeIndicator) sizeIndicator.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'block';
+    resizeHandles.forEach(h => h.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'block');
     
     var alignWrap = mediaWrap.closest('.blog-image-align-wrap');
     var align = alignWrap ? (alignWrap.style.textAlign || 'left') : 'left';
@@ -2341,11 +2471,22 @@ function updateOverlayPosition() {
     overlay.style.width = rect.width + 'px';
     overlay.style.height = rect.height + 'px';
     
-    var innerMedia = activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art');
+    var innerMedia = activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, .image-gallery');
     var sizeIndicator = overlay.querySelector('.image-size-indicator');
+    
     if (innerMedia && sizeIndicator) {
-        var w = innerMedia.offsetWidth;
-        var h = innerMedia.offsetHeight;
+        // Для галереи берём размер самой галереи, а не первого изображения
+        var isGallery = innerMedia.classList && innerMedia.classList.contains('image-gallery');
+        var w, h;
+        
+        if (isGallery) {
+            w = innerMedia.offsetWidth;
+            h = innerMedia.offsetHeight;
+        } else {
+            w = innerMedia.offsetWidth;
+            h = innerMedia.offsetHeight;
+        }
+        
         if (innerMedia.classList.contains('blog-file-button') || innerMedia.classList.contains('blog-ascii-art')) {
             sizeIndicator.style.display = 'none';
         } else if (w && h) {
@@ -2361,10 +2502,11 @@ function updateOverlayPosition() {
 }
 
 function showImageResizeDialog(img) {
+    var isGallery = img.classList && img.classList.contains('image-gallery');
     var currentWidth = img.offsetWidth || (img.naturalWidth || img.videoWidth || 0);
     var isAudio = img.tagName.toLowerCase() === 'audio';
     var isVideo = img.tagName.toLowerCase() === 'video';
-    var label = isAudio ? 'плеера аудио' : (isVideo ? 'плеера видео' : 'изображения');
+    var label = isGallery ? 'галереи' : (isAudio ? 'плеера аудио' : (isVideo ? 'плеера видео' : 'изображения'));
     
     var newWidth = prompt('Введите новую ширину ' + label + ' (в пикселях):', currentWidth);
     if (newWidth && !isNaN(newWidth) && newWidth > 0) {
@@ -2373,11 +2515,25 @@ function showImageResizeDialog(img) {
         if (newWidth > maxLimit) {
             newWidth = maxLimit;
         }
-        img.style.width = newWidth + 'px';
-        if (isAudio) {
-            img.style.height = '';
+        
+        if (isGallery) {
+            // Для галереи изменяем размер самой галереи
+            img.style.width = newWidth + 'px';
+            img.style.maxWidth = '100%';
+            
+            // И обновляем размер всех изображений внутри
+            var galleryImages = img.querySelectorAll('img');
+            galleryImages.forEach(function(image) {
+                image.style.width = '100%';
+                image.style.height = 'auto';
+            });
         } else {
-            img.style.height = 'auto';
+            img.style.width = newWidth + 'px';
+            if (isAudio) {
+                img.style.height = '';
+            } else {
+                img.style.height = 'auto';
+            }
         }
         updateOverlayPosition();
     }
@@ -2452,30 +2608,49 @@ function initGlobalMediaOverlayDOM() {
                     }
                 }
             } else if (action === 'resize') {
-                var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe') : null;
+                var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe, .image-gallery') : null;
                 if (innerMedia) {
                     showImageResizeDialog(innerMedia);
                 }
             } else if (action === 'edit') {
-                var img = activeTarget ? activeTarget.querySelector('img') : null;
+                var gallery = activeTarget ? activeTarget.querySelector('.image-gallery') : null;
+                var img = null;
+                
+                if (gallery) {
+                    // Для галереи редактируем первое видимое изображение
+                    img = gallery.querySelector('img[style*="display: block"], img:not([style*="display: none"])');
+                    if (!img) {
+                        // Если нет видимого, берём первое
+                        img = gallery.querySelector('img');
+                    }
+                } else {
+                    img = activeTarget ? activeTarget.querySelector('img') : null;
+                }
+                
                 var ascii = activeTarget ? activeTarget.querySelector('.blog-ascii-wrap') : null;
                 var codeBlock = activeTarget ? activeTarget.querySelector('pre.code-block') : null;
+                var customBtn = activeTarget ? activeTarget.querySelector('a.custom-blog-btn') : null;
+                
                 if (img) {
                     openImageEditorModal(img);
                 } else if (ascii) {
                     openAsciiDrawer(ascii);
                 } else if (codeBlock) {
                     openEditCodeBlockDialog(codeBlock);
+                } else if (customBtn) {
+                    openEditCustomButtonDialog(customBtn);
                 }
             } else if (action === 'delete') {
-                var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block') : null;
+                var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block, a.custom-blog-btn, .image-gallery') : null;
                 var isImg = innerMedia && innerMedia.tagName.toLowerCase() === 'img';
                 var isVideo = innerMedia && innerMedia.tagName.toLowerCase() === 'video';
                 var isIframe = innerMedia && innerMedia.tagName.toLowerCase() === 'iframe';
                 var isFile = innerMedia && innerMedia.classList.contains('blog-file-button');
                 var isAscii = innerMedia && innerMedia.classList.contains('blog-ascii-art');
                 var isCode = innerMedia && innerMedia.tagName.toLowerCase() === 'pre';
-                var label = isImg ? 'изображение' : (isVideo || isIframe ? 'видео' : (isFile ? 'файл' : (isAscii ? 'ASCII-арт' : (isCode ? 'блок кода' : 'аудио'))));
+                var isCustomBtn = innerMedia && innerMedia.classList.contains('custom-blog-btn');
+                var isGallery = innerMedia && innerMedia.classList.contains('image-gallery');
+                var label = isGallery ? 'галерею' : (isImg ? 'изображение' : (isVideo || isIframe ? 'видео' : (isFile ? 'файл' : (isAscii ? 'ASCII-арт' : (isCode ? 'блок кода' : (isCustomBtn ? 'кнопку со ссылкой' : 'аудио'))))));
                 
                 var targetToDelete = activeTarget;
                 
@@ -2568,7 +2743,7 @@ function initImageAlignmentHandlers() {
 
 document.addEventListener('mousemove', function(e) {
     if (isResizingMedia && activeTarget) {
-        var innerMedia = activeTarget.querySelector('img, video, audio, iframe');
+        var innerMedia = activeTarget.querySelector('img, video, audio, iframe, .image-gallery');
         if (!innerMedia) return;
         
         e.preventDefault();
@@ -2580,6 +2755,7 @@ document.addEventListener('mousemove', function(e) {
             deltaX = -deltaX;
         }
         
+        var isGallery = innerMedia.classList && innerMedia.classList.contains('image-gallery');
         var isAudio = innerMedia.tagName.toLowerCase() === 'audio';
         var isIframe = innerMedia.tagName.toLowerCase() === 'iframe';
         var isVideo = innerMedia.tagName.toLowerCase() === 'video';
@@ -2591,15 +2767,28 @@ document.addEventListener('mousemove', function(e) {
         }
         
         if (newWidth > 50 && newWidth <= maxLimit) {
-            innerMedia.style.width = newWidth + 'px';
-            if (isAudio) {
-                innerMedia.style.height = '';
-            } else if (isIframe || isVideo) {
-                var aspectRatio = startHeight / startWidth;
-                var newHeight = newWidth * aspectRatio;
-                innerMedia.style.height = newHeight + 'px';
+            if (isGallery) {
+                // Для галереи изменяем размер самой галереи
+                innerMedia.style.width = newWidth + 'px';
+                innerMedia.style.maxWidth = '100%';
+                
+                // И обновляем размер всех изображений внутри
+                var galleryImages = innerMedia.querySelectorAll('img');
+                galleryImages.forEach(function(img) {
+                    img.style.width = '100%';
+                    img.style.height = 'auto';
+                });
             } else {
-                innerMedia.style.height = 'auto';
+                innerMedia.style.width = newWidth + 'px';
+                if (isAudio) {
+                    innerMedia.style.height = '';
+                } else if (isIframe || isVideo) {
+                    var aspectRatio = startHeight / startWidth;
+                    var newHeight = newWidth * aspectRatio;
+                    innerMedia.style.height = newHeight + 'px';
+                } else {
+                    innerMedia.style.height = 'auto';
+                }
             }
             updateOverlayPosition();
         }
@@ -3027,6 +3216,10 @@ function closeImageDialog() {
     document.getElementById('gridLayout').value = '';
     const noRadiusChk = document.getElementById('noBorderRadius');
     if (noRadiusChk) noRadiusChk.checked = localStorage.getItem('noBorderRadius') === 'true';
+    const insertGalleryChk = document.getElementById('insertGallery');
+    if (insertGalleryChk) insertGalleryChk.checked = false;
+    const insertGalleryContainer = document.getElementById('insertGalleryContainer');
+    if (insertGalleryContainer) insertGalleryContainer.style.display = 'none';
     document.querySelector('input[name="imageSource"][value="file"]').checked = true;
     document.getElementById('fileUploadContainer').style.display = 'block';
     document.getElementById('imageGridPreviewContainer').style.display = 'none';
@@ -3980,6 +4173,9 @@ function extractVimeoId(url) {
         managePanel.classList.toggle('active');
         
         if (managePanel.classList.contains('active')) {
+            if (typeof updateBlogSelectorUI === 'function' && window.allBlogPaths) {
+                updateBlogSelectorUI(window.allBlogPaths, window.currentActiveBlogPath);
+            }
             loadPosts();
         } else {
             // Очищаем поле поиска при закрытии панели
@@ -4350,22 +4546,43 @@ function extractVimeoId(url) {
     function setTextColor(color) {
         if (editorMode === 'code') {
             var ta = document.getElementById('content');
-            var start = colorInsertStart;
-            var end = colorInsertEnd;
+            var start = (ta.selectionStart !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionStart : colorInsertStart;
+            var end = (ta.selectionEnd !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionEnd : colorInsertEnd;
             var selectedText = ta.value.substring(start, end);
             if (selectedText) {
                 var colorSpan = '<span style="color: ' + color + ';">' + selectedText + '</span>';
                 ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(end);
+                ta.selectionStart = start;
+                ta.selectionEnd = start + colorSpan.length;
+                ta.focus();
+                saveToHistory();
+            } else {
+                var colorSpan = '<span style="color: ' + color + ';"></span>';
+                ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(start);
+                ta.selectionStart = ta.selectionEnd = start + colorSpan.length - 7;
                 ta.focus();
                 saveToHistory();
             }
         } else {
-            var text = (savedRange && savedRange.toString()) || document.getSelection().toString();
-            if (text) {
-                var html = '<span style="color: ' + color + ';">' + text + '</span>';
-                insertHtmlAtCaret(html);
-                saveToHistory();
+            var ve = document.getElementById('contentVisual');
+            if (!ve) return;
+            ve.focus();
+            if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+                var sel = window.getSelection();
+                if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(savedRange);
+                }
             }
+            try {
+                document.execCommand('styleWithCSS', false, true);
+            } catch (e) {}
+            document.execCommand('foreColor', false, color);
+            var sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                savedRange = sel.getRangeAt(0).cloneRange();
+            }
+            saveToHistory();
         }
     }
 
@@ -4442,6 +4659,8 @@ function extractVimeoId(url) {
                         var ta = document.getElementById('content');
                         colorInsertStart = ta.selectionStart;
                         colorInsertEnd = ta.selectionEnd;
+                    } else {
+                        saveSelection();
                     }
                 });
                 btn.addEventListener('click', function(e) {
@@ -4450,15 +4669,24 @@ function extractVimeoId(url) {
                 });
             }
             if (popover) {
+                popover.addEventListener('mousedown', function(e) {
+                    if (e.target.tagName !== 'INPUT') {
+                        e.preventDefault();
+                    }
+                });
                 popover.addEventListener('click', function(e) {
                     e.stopPropagation();
                     var swatch = e.target.closest('.color-swatch');
                     if (swatch && swatch.dataset.color) applyColorAndClose(swatch.dataset.color, wrap);
                 });
             }
-            if (customInput) customInput.addEventListener('change', function() {
-                applyColorAndClose(this.value, wrap);
-            });
+            if (customInput) {
+                ['change', 'input'].forEach(function(evtType) {
+                    customInput.addEventListener(evtType, function() {
+                        applyColorAndClose(this.value, wrap);
+                    });
+                });
+            }
         });
         document.addEventListener('click', closeAllColorPickers);
     })();
@@ -4970,6 +5198,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Применяем экспериментальные настройки
     applyExperimentalSettings();
+
+    // Проверяем предупреждение о DEV сборке
+    checkDevWarning();
 });
 
 // ——— Система includes ———
@@ -7986,26 +8217,154 @@ window.getCurrentEditId = function() {
     window.closeTemplateInstructions = closeTemplateInstructions;
 
 // --- Наборы смайлов ---
+let smileFilesToUpload = [];
+let smileSetNameTarget = '';
+
 function openSmileSetsDialog() {
     document.getElementById('smileSetsDialog').style.display = 'block';
     loadSmileSetsList();
+    resetSmileUploadState();
 }
 
 function closeSmileSetsDialog() {
     document.getElementById('smileSetsDialog').style.display = 'none';
-    document.getElementById('smileFolderInput').value = '';
-    document.getElementById('smileFilesInput').value = '';
-    document.getElementById('smileSetNameInput').value = '';
+    resetSmileUploadState();
 }
 
-function toggleSmileUploadMode(mode) {
-    if (mode === 'folder') {
-        document.getElementById('smileUploadFolderContainer').style.display = 'block';
-        document.getElementById('smileUploadFilesContainer').style.display = 'none';
-    } else {
-        document.getElementById('smileUploadFolderContainer').style.display = 'none';
-        document.getElementById('smileUploadFilesContainer').style.display = 'block';
+function handleSmileDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById('smileDropzone');
+    if (zone) {
+        zone.style.borderColor = 'var(--text-color)';
+        zone.style.background = 'rgba(255, 255, 255, 0.05)';
     }
+}
+
+function handleSmileDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById('smileDropzone');
+    if (zone) {
+        zone.style.borderColor = 'var(--border-color)';
+        zone.style.background = 'rgba(0, 0, 0, 0.02)';
+    }
+}
+
+async function handleSmileDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById('smileDropzone');
+    if (zone) {
+        zone.style.borderColor = 'var(--border-color)';
+        zone.style.background = 'rgba(0, 0, 0, 0.02)';
+    }
+
+    const files = [];
+    if (e.dataTransfer.items) {
+        const entries = [];
+        for (let i = 0; i < e.dataTransfer.items.length; i++) {
+            const item = e.dataTransfer.items[i];
+            if (item.kind === 'file') {
+                const entry = item.webkitGetAsEntry();
+                if (entry) {
+                    entries.push(entry);
+                }
+            }
+        }
+        await readSmileEntries(entries, files);
+    } else {
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+            files.push(e.dataTransfer.files[i]);
+        }
+    }
+
+    processSelectedSmiles(files);
+}
+
+async function readSmileEntries(entries, fileList) {
+    for (const entry of entries) {
+        if (entry.isFile) {
+            const file = await new Promise((resolve) => entry.file(resolve));
+            file.customRelativePath = entry.fullPath ? entry.fullPath.replace(/^\//, '') : file.name;
+            fileList.push(file);
+        } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            const childEntries = await new Promise((resolve) => {
+                reader.readEntries(resolve);
+            });
+            await readSmileEntries(childEntries, fileList);
+        }
+    }
+}
+
+function handleSmileFileSelect(e) {
+    const input = e.target;
+    if (input && input.files.length > 0) {
+        processSelectedSmiles(Array.from(input.files));
+    }
+}
+
+function processSelectedSmiles(files) {
+    smileFilesToUpload = files.filter(file => file.name.toLowerCase().endsWith('.gif'));
+    
+    if (smileFilesToUpload.length === 0) {
+        showNotification('В выбранных файлах не найдено изображений формата .gif', 'warning');
+        resetSmileUploadState();
+        return;
+    }
+
+    let detectedName = '';
+    const firstFile = smileFilesToUpload[0];
+    const relPath = firstFile.customRelativePath || firstFile.webkitRelativePath;
+    
+    if (relPath && relPath.includes('/')) {
+        detectedName = relPath.split('/')[0];
+    }
+
+    const nameField = document.getElementById('smileSetNameField');
+    const nameInput = document.getElementById('smileSetNameInput');
+    const infoText = document.getElementById('smileSelectedFilesInfo');
+    const countSpan = document.getElementById('smileSelectedCount');
+    const btnContainer = document.getElementById('smileUploadBtnContainer');
+
+    if (detectedName) {
+        smileSetNameTarget = detectedName;
+        nameInput.value = detectedName;
+        if (nameField) nameField.style.display = 'block';
+    } else {
+        smileSetNameTarget = '';
+        nameInput.value = '';
+        if (nameField) nameField.style.display = 'block';
+    }
+
+    if (countSpan) countSpan.textContent = smileFilesToUpload.length;
+    if (infoText) infoText.style.display = 'block';
+    if (btnContainer) btnContainer.style.display = 'block';
+    
+    const dropzoneText = document.getElementById('smileDropzoneText');
+    if (dropzoneText) dropzoneText.textContent = 'Файлы успешно выбраны';
+}
+
+function resetSmileUploadState() {
+    smileFilesToUpload = [];
+    smileSetNameTarget = '';
+    
+    const folderInput = document.getElementById('smileFolderInput');
+    const filesInput = document.getElementById('smileFilesInput');
+    const nameInput = document.getElementById('smileSetNameInput');
+    const nameField = document.getElementById('smileSetNameField');
+    const infoText = document.getElementById('smileSelectedFilesInfo');
+    const btnContainer = document.getElementById('smileUploadBtnContainer');
+    const dropzoneText = document.getElementById('smileDropzoneText');
+
+    if (folderInput) folderInput.value = '';
+    if (filesInput) filesInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (nameField) nameField.style.display = 'none';
+    if (infoText) infoText.style.display = 'none';
+    if (btnContainer) btnContainer.style.display = 'none';
+    if (dropzoneText) dropzoneText.textContent = 'Перетащите папку со смайлами сюда';
 }
 
 async function loadSmileSetsList() {
@@ -8023,9 +8382,9 @@ async function loadSmileSetsList() {
             } else {
                 listContainer.innerHTML = setNames.map(name => {
                     const count = data.sets[name].length;
-                    return `<div class="smile-set-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); color: var(--text-color);">
-                        <span class="smile-set-name">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.6; margin-left: 8px;">(${count} смайлов)</span></span>
-                        <button type="button" class="smile-set-delete-btn" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">Удалить</button>
+                    return `<div class="smile-set-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-color); transition: background 0.2s;" onmouseover="this.style.background='rgba(128,128,128,0.04)'" onmouseout="this.style.background='transparent'">
+                        <span class="smile-set-name" style="font-weight: 500; font-size: 14px;">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.5; margin-left: 8px;">(${count} шт.)</span></span>
+                        <button type="button" class="smile-set-delete-btn" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(239,68,68,0.4)'" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">Удалить</button>
                     </div>`;
                 }).join('');
             }
@@ -8039,50 +8398,23 @@ async function loadSmileSetsList() {
 }
 
 async function handleSmileSetUpload() {
-    const uploadType = document.querySelector('input[name="smileUploadType"]:checked').value;
     const formData = new FormData();
-    let files = [];
-    let setName = '';
+    let files = smileFilesToUpload;
+    let setName = document.getElementById('smileSetNameInput').value.trim();
 
-    if (uploadType === 'folder') {
-        const folderInput = document.getElementById('smileFolderInput');
-        files = Array.from(folderInput.files);
-        if (files.length === 0) {
-            showNotification('Выберите папку для загрузки', 'warning');
-            return;
-        }
-        if (files[0].webkitRelativePath) {
-            setName = files[0].webkitRelativePath.split('/')[0];
-        } else {
-            setName = 'default_set';
-        }
-    } else {
-        const filesInput = document.getElementById('smileFilesInput');
-        files = Array.from(filesInput.files);
-        setName = document.getElementById('smileSetNameInput').value.trim();
-        if (files.length === 0) {
-            showNotification('Выберите GIF-файлы для загрузки', 'warning');
-            return;
-        }
-        if (!setName) {
-            showNotification('Введите название для набора', 'warning');
-            return;
-        }
+    if (files.length === 0) {
+        showNotification('Выберите файлы или папку для загрузки', 'warning');
+        return;
+    }
+    if (!setName) {
+        showNotification('Введите название для набора', 'warning');
+        return;
     }
 
     formData.append('setName', setName);
-    let hasGif = false;
     files.forEach(file => {
-        if (file.name.toLowerCase().endsWith('.gif')) {
-            formData.append('smiles[]', file);
-            hasGif = true;
-        }
+        formData.append('smiles[]', file);
     });
-
-    if (!hasGif) {
-        showNotification('В выбранных файлах нет изображений формата .gif', 'warning');
-        return;
-    }
 
     try {
         showNotification('Загрузка смайлов...', 'info');
@@ -8094,9 +8426,7 @@ async function handleSmileSetUpload() {
         if (data.success) {
             showNotification(`Набор "${setName}" успешно загружен (${data.count} смайлов)`, 'success');
             loadSmileSetsList();
-            document.getElementById('smileFolderInput').value = '';
-            document.getElementById('smileFilesInput').value = '';
-            document.getElementById('smileSetNameInput').value = '';
+            resetSmileUploadState();
         } else {
             showNotification('Ошибка загрузки: ' + data.error, 'error');
         }
@@ -8105,6 +8435,15 @@ async function handleSmileSetUpload() {
         showNotification('Ошибка сети при загрузке набора', 'error');
     }
 }
+
+// Expose functions to window
+window.openSmileSetsDialog = openSmileSetsDialog;
+window.closeSmileSetsDialog = closeSmileSetsDialog;
+window.handleSmileDragOver = handleSmileDragOver;
+window.handleSmileDragLeave = handleSmileDragLeave;
+window.handleSmileDrop = handleSmileDrop;
+window.handleSmileFileSelect = handleSmileFileSelect;
+window.handleSmileSetUpload = handleSmileSetUpload;
 
 async function deleteSmileSet(setName) {
     showConfirm(`Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`).then(async (result) => {
@@ -8211,8 +8550,512 @@ function escapeHtmlJS(str) {
 
 window.openSmileSetsDialog = openSmileSetsDialog;
 window.closeSmileSetsDialog = closeSmileSetsDialog;
-window.toggleSmileUploadMode = toggleSmileUploadMode;
 window.handleSmileSetUpload = handleSmileSetUpload;
 window.deleteSmileSet = deleteSmileSet;
 window.toggleSmilesSubmenu = toggleSmilesSubmenu;
 window.insertSmile = insertSmile;
+
+// --- Вставка и редактирование кастомной кнопки со ссылкой ---
+let isUpdatingBtnFromRaw = false;
+let editingCustomBtnTarget = null;
+
+function openInsertButtonDialog() {
+    editingCustomBtnTarget = null;
+    const dialogTitle = document.getElementById('customButtonDialogTitle');
+    if (dialogTitle) dialogTitle.textContent = 'Вставить кнопку со ссылкой';
+    const submitBtn = document.getElementById('customButtonSubmitBtn');
+    if (submitBtn) submitBtn.textContent = 'Вставить кнопку';
+
+    const textInput = document.getElementById('btnTextInput');
+    const urlInput = document.getElementById('btnUrlInput');
+    const targetInput = document.getElementById('btnTargetInput');
+    if (textInput) textInput.value = 'Перейти на сайт';
+    if (urlInput) urlInput.value = 'https://example.com';
+    if (targetInput) targetInput.checked = true;
+
+    applyBtnPreset('editor');
+
+    const dialog = document.getElementById('customButtonDialog');
+    if (!dialog) return;
+    dialog.style.display = 'flex';
+    dialog.classList.add('show');
+    switchBtnTab('gui');
+    updateCustomBtnPreview();
+}
+
+function openEditCustomButtonDialog(customBtn) {
+    if (!customBtn) return;
+    editingCustomBtnTarget = customBtn;
+
+    const dialogTitle = document.getElementById('customButtonDialogTitle');
+    if (dialogTitle) dialogTitle.textContent = 'Редактировать кнопку';
+    const submitBtn = document.getElementById('customButtonSubmitBtn');
+    if (submitBtn) submitBtn.textContent = 'Сохранить изменения';
+
+    const text = customBtn.textContent.trim();
+    const url = customBtn.getAttribute('href') || '';
+    const target = customBtn.getAttribute('target') === '_blank';
+    const styleStr = customBtn.getAttribute('style') || '';
+
+    const textInput = document.getElementById('btnTextInput');
+    const urlInput = document.getElementById('btnUrlInput');
+    const targetInput = document.getElementById('btnTargetInput');
+    if (textInput) textInput.value = text;
+    if (urlInput) urlInput.value = url;
+    if (targetInput) targetInput.checked = target;
+
+    // Считываем инлайн-стили если они есть
+    const bgMatch = styleStr.match(/background\s*:\s*([^;]+)/i);
+    if (bgMatch && bgMatch[1]) {
+        const bgVal = bgMatch[1].trim();
+        const bgText = document.getElementById('btnBgColorText');
+        const bgPicker = document.getElementById('btnBgColor');
+        if (bgText) bgText.value = bgVal;
+        if (bgPicker && bgVal.startsWith('#') && (bgVal.length === 4 || bgVal.length === 7)) {
+            bgPicker.value = bgVal;
+        }
+    }
+    const colorMatch = styleStr.match(/color\s*:\s*([^;]+)/i);
+    if (colorMatch && colorMatch[1]) {
+        const colorVal = colorMatch[1].trim();
+        const colorText = document.getElementById('btnTextColorText');
+        const colorPicker = document.getElementById('btnTextColor');
+        if (colorText) colorText.value = colorVal;
+        if (colorPicker && colorVal.startsWith('#') && (colorVal.length === 4 || colorVal.length === 7)) {
+            colorPicker.value = colorVal;
+        }
+    }
+    const radiusMatch = styleStr.match(/border-radius\s*:\s*([^;]+)/i);
+    if (radiusMatch && radiusMatch[1]) {
+        const radiusInput = document.getElementById('btnBorderRadius');
+        if (radiusInput) radiusInput.value = radiusMatch[1].trim();
+    }
+    const paddingMatch = styleStr.match(/padding\s*:\s*([^;]+)/i);
+    if (paddingMatch && paddingMatch[1]) {
+        const paddingInput = document.getElementById('btnPadding');
+        if (paddingInput) paddingInput.value = paddingMatch[1].trim();
+    }
+    const fontMatch = styleStr.match(/font-size\s*:\s*([^;]+)/i);
+    if (fontMatch && fontMatch[1]) {
+        const fontInput = document.getElementById('btnFontSize');
+        if (fontInput) fontInput.value = fontMatch[1].trim();
+    }
+
+    const rawHtmlEl = document.getElementById('btnRawHtml');
+    const rawCssEl = document.getElementById('btnRawCss');
+    if (rawHtmlEl && rawCssEl) {
+        rawHtmlEl.value = customBtn.outerHTML;
+        rawCssEl.value = styleStr;
+    }
+
+    const dialog = document.getElementById('customButtonDialog');
+    if (!dialog) return;
+    dialog.style.display = 'flex';
+    dialog.classList.add('show');
+    switchBtnTab('gui');
+    updateCustomBtnPreview();
+}
+
+function closeCustomButtonDialog() {
+    const dialog = document.getElementById('customButtonDialog');
+    if (!dialog) return;
+    dialog.style.display = 'none';
+    dialog.classList.remove('show');
+    editingCustomBtnTarget = null;
+}
+
+function switchBtnTab(tab) {
+    const guiContent = document.getElementById('btnTabGuiContent');
+    const codeContent = document.getElementById('btnTabCodeContent');
+    const guiBtn = document.getElementById('btnTabGui');
+    const codeBtn = document.getElementById('btnTabCode');
+    
+    if (!guiContent || !codeContent) return;
+
+    if (tab === 'code') {
+        guiContent.style.display = 'none';
+        codeContent.style.display = 'block';
+        if (guiBtn) guiBtn.classList.remove('active');
+        if (codeBtn) codeBtn.classList.add('active');
+    } else {
+        guiContent.style.display = 'block';
+        codeContent.style.display = 'none';
+        if (guiBtn) guiBtn.classList.add('active');
+        if (codeBtn) codeBtn.classList.remove('active');
+    }
+}
+
+function setBtnBgPreview(mode) {
+    const container = document.getElementById('customBtnPreviewContainer');
+    if (!container) return;
+    if (mode === 'dark') {
+        container.style.background = '#0d1117';
+    } else if (mode === 'light') {
+        container.style.background = '#ffffff';
+    } else if (mode === 'grid') {
+        container.style.background = 'repeating-conic-gradient(#222 0% 25%, #333 0% 50%) 50% / 16px 16px';
+    }
+}
+
+function applyBtnPreset(preset) {
+    const bgInput = document.getElementById('btnBgColorText');
+    const bgColorPicker = document.getElementById('btnBgColor');
+    const textInput = document.getElementById('btnTextColorText');
+    const textColorPicker = document.getElementById('btnTextColor');
+    const radiusInput = document.getElementById('btnBorderRadius');
+    const paddingInput = document.getElementById('btnPadding');
+    const fontInput = document.getElementById('btnFontSize');
+
+    if (!bgInput || !textInput) return;
+
+    if (preset === 'editor') {
+        bgInput.value = 'rgba(15, 22, 36, 0.72)';
+        if (bgColorPicker) bgColorPicker.value = '#0f1624';
+        textInput.value = '#f3f4f6';
+        if (textColorPicker) textColorPicker.value = '#f3f4f6';
+        if (radiusInput) radiusInput.value = '12px';
+        if (paddingInput) paddingInput.value = '10px 18px';
+        if (fontInput) fontInput.value = '14px';
+    } else if (preset === 'gradient') {
+        bgInput.value = 'linear-gradient(135deg, rgba(129, 140, 248, 0.95) 0%, #ec4899 100%)';
+        textInput.value = '#ffffff';
+        if (textColorPicker) textColorPicker.value = '#ffffff';
+        if (radiusInput) radiusInput.value = '12px';
+        if (paddingInput) paddingInput.value = '12px 28px';
+        if (fontInput) fontInput.value = '15px';
+    } else if (preset === 'success') {
+        bgInput.value = '#10b981';
+        if (bgColorPicker) bgColorPicker.value = '#10b981';
+        textInput.value = '#ffffff';
+        if (textColorPicker) textColorPicker.value = '#ffffff';
+        if (radiusInput) radiusInput.value = '12px';
+        if (paddingInput) paddingInput.value = '12px 24px';
+        if (fontInput) fontInput.value = '15px';
+    } else if (preset === 'outline') {
+        bgInput.value = 'transparent';
+        textInput.value = 'rgba(129, 140, 248, 0.95)';
+        if (textColorPicker) textColorPicker.value = '#818cf8';
+        if (radiusInput) radiusInput.value = '12px';
+        if (paddingInput) paddingInput.value = '10px 22px';
+        if (fontInput) fontInput.value = '15px';
+    } else if (preset === 'neon') {
+        bgInput.value = '#0f172a';
+        textInput.value = '#38bdf8';
+        if (textColorPicker) textColorPicker.value = '#38bdf8';
+        if (radiusInput) radiusInput.value = '30px';
+        if (paddingInput) paddingInput.value = '12px 26px';
+        if (fontInput) fontInput.value = '15px';
+    } else if (preset === 'danger') {
+        bgInput.value = '#ef4444';
+        if (bgColorPicker) bgColorPicker.value = '#ef4444';
+        textInput.value = '#ffffff';
+        if (textColorPicker) textColorPicker.value = '#ffffff';
+        if (radiusInput) radiusInput.value = '12px';
+        if (paddingInput) paddingInput.value = '12px 24px';
+        if (fontInput) fontInput.value = '15px';
+    }
+    updateCustomBtnPreview();
+}
+
+function updateCustomBtnPreview() {
+    if (isUpdatingBtnFromRaw) return;
+
+    const textInput = document.getElementById('btnTextInput');
+    const urlInput = document.getElementById('btnUrlInput');
+    const targetInput = document.getElementById('btnTargetInput');
+    const bgInput = document.getElementById('btnBgColorText');
+    const textColInput = document.getElementById('btnTextColorText');
+    const radiusInput = document.getElementById('btnBorderRadius');
+    const paddingInput = document.getElementById('btnPadding');
+    const fontInput = document.getElementById('btnFontSize');
+
+    if (!textInput || !urlInput) return;
+
+    const text = textInput.value || 'Текст кнопки';
+    const url = urlInput.value || '#';
+    const targetBlank = targetInput ? targetInput.checked : true;
+    
+    const bgColor = bgInput ? (bgInput.value || 'rgba(15, 22, 36, 0.72)') : 'rgba(15, 22, 36, 0.72)';
+    const textColor = textColInput ? (textColInput.value || '#f3f4f6') : '#f3f4f6';
+    const radius = radiusInput ? (radiusInput.value || '12px') : '12px';
+    const padding = paddingInput ? (paddingInput.value || '10px 18px') : '10px 18px';
+    const fontSize = fontInput ? (fontInput.value || '14px') : '14px';
+
+    const previewContainer = document.getElementById('customBtnPreviewContainer');
+    if (!previewContainer) return;
+
+    let cssRules = [];
+    cssRules.push(`display: inline-block`);
+    cssRules.push(`padding: ${padding}`);
+    cssRules.push(`background: ${bgColor}`);
+    cssRules.push(`color: ${textColor}`);
+    cssRules.push(`font-size: ${fontSize}`);
+    cssRules.push(`text-decoration: none`);
+    cssRules.push(`border-radius: ${radius}`);
+    cssRules.push(`transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1)`);
+
+    if (bgColor.includes('15, 22, 36') || bgColor === '#0f1624') {
+        cssRules.push(`font-weight: 500`);
+        cssRules.push(`border: 1px solid rgba(255, 255, 255, 0.18)`);
+        cssRules.push(`box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2)`);
+        cssRules.push(`backdrop-filter: blur(16px) saturate(190%)`);
+        cssRules.push(`-webkit-backdrop-filter: blur(16px) saturate(190%)`);
+    } else {
+        cssRules.push(`font-weight: 600`);
+        if (bgColor.includes('129, 140, 248') || bgColor === '#818cf8' || bgColor === '#6366f1') {
+            cssRules.push(`border: 1px solid rgba(255, 255, 255, 0.4)`);
+            cssRules.push(`box-shadow: 0 0 24px rgba(129, 140, 248, 0.5), 0 4px 14px rgba(0, 0, 0, 0.25)`);
+        } else if (bgColor === 'transparent') {
+            cssRules.push(`border: 2px solid ${textColor}`);
+            cssRules.push(`box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15)`);
+        } else if (bgColor === '#0f172a') {
+            cssRules.push(`border: 1px solid #38bdf8`);
+            cssRules.push(`box-shadow: 0 0 16px rgba(56, 189, 248, 0.4)`);
+        } else {
+            cssRules.push(`border: 1px solid rgba(255, 255, 255, 0.25)`);
+            cssRules.push(`box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2)`);
+        }
+    }
+
+    const inlineStyle = cssRules.join('; ');
+    const targetAttr = targetBlank ? ' target="_blank" rel="noopener noreferrer"' : '';
+    const generatedHtml = `<a href="${url}"${targetAttr} class="custom-blog-btn" style="${inlineStyle}" contenteditable="false" onclick="event.preventDefault()">${text}</a>`;
+
+    previewContainer.innerHTML = generatedHtml;
+
+    const rawHtmlEl = document.getElementById('btnRawHtml');
+    const rawCssEl = document.getElementById('btnRawCss');
+    if (rawHtmlEl && rawCssEl) {
+        const cleanHtml = `<a href="${url}"${targetAttr} class="custom-blog-btn" style="${inlineStyle}" contenteditable="false">${text}</a>`;
+        rawHtmlEl.value = cleanHtml;
+        rawCssEl.value = inlineStyle;
+    }
+}
+
+function syncFromRawCode() {
+    isUpdatingBtnFromRaw = true;
+    const rawHtmlEl = document.getElementById('btnRawHtml');
+    const previewContainer = document.getElementById('customBtnPreviewContainer');
+    if (rawHtmlEl && previewContainer) {
+        previewContainer.innerHTML = rawHtmlEl.value;
+        const btn = previewContainer.querySelector('a, button');
+        if (btn) {
+            btn.onclick = (e) => e.preventDefault();
+        }
+    }
+    isUpdatingBtnFromRaw = false;
+}
+
+function insertCustomButtonToEditor() {
+    const rawHtmlEl = document.getElementById('btnRawHtml');
+    let btnHtml = '';
+
+    if (rawHtmlEl && rawHtmlEl.value.trim() !== '') {
+        btnHtml = rawHtmlEl.value.trim();
+    } else {
+        updateCustomBtnPreview();
+        btnHtml = rawHtmlEl ? rawHtmlEl.value.trim() : '';
+    }
+
+    if (!btnHtml) {
+        if (typeof showNotification === 'function') {
+            showNotification('Пожалуйста, введите текст и ссылку для кнопки', 'warning');
+        }
+        return;
+    }
+
+    if (editingCustomBtnTarget) {
+        // Редактирование существующей кнопки
+        const temp = document.createElement('div');
+        temp.innerHTML = btnHtml;
+        const newBtn = temp.firstElementChild;
+        if (newBtn && editingCustomBtnTarget.parentNode) {
+            editingCustomBtnTarget.parentNode.replaceChild(newBtn, editingCustomBtnTarget);
+        } else {
+            editingCustomBtnTarget.outerHTML = btnHtml;
+        }
+        editingCustomBtnTarget = null;
+        if (typeof hideGlobalMediaOverlay === 'function') {
+            hideGlobalMediaOverlay();
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('Кнопка со ссылкой успешно обновлена!', 'success');
+        }
+    } else {
+        // Вставка новой кнопки с оберткой медиа-элементов
+        const wrappedHtml = wrapMediaWithControls(btnHtml, 'button');
+
+        if (typeof editorMode !== 'undefined' && editorMode === 'code') {
+            const ta = document.getElementById('content');
+            if (ta) {
+                const cursorPos = ta.selectionStart;
+                ta.value = ta.value.substring(0, cursorPos) + '\n' + btnHtml + '\n' + ta.value.substring(cursorPos);
+            }
+        } else {
+            if (typeof insertImageBlockAtCaret === 'function') {
+                insertImageBlockAtCaret(wrappedHtml);
+            } else if (typeof insertHtmlAtCaret === 'function') {
+                insertHtmlAtCaret(wrappedHtml);
+            } else {
+                const ve = document.getElementById('contentVisual');
+                if (ve) ve.insertAdjacentHTML('beforeend', wrappedHtml);
+            }
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('Кнопка со ссылкой успешно вставлена!', 'success');
+        }
+    }
+
+    if (typeof saveToHistory === 'function') {
+        saveToHistory();
+    }
+
+    closeCustomButtonDialog();
+}
+
+window.openInsertButtonDialog = openInsertButtonDialog;
+window.openEditCustomButtonDialog = openEditCustomButtonDialog;
+window.closeCustomButtonDialog = closeCustomButtonDialog;
+window.switchBtnTab = switchBtnTab;
+window.setBtnBgPreview = setBtnBgPreview;
+window.applyBtnPreset = applyBtnPreset;
+window.updateCustomBtnPreview = updateCustomBtnPreview;
+window.syncFromRawCode = syncFromRawCode;
+window.insertCustomButtonToEditor = insertCustomButtonToEditor;
+
+// Expose key dialogue actions to window explicitly
+window.addLink = addLink;
+window.closeLinkDialog = closeLinkDialog;
+window.insertLinkFromDialog = insertLinkFromDialog;
+window.showImageUpload = showImageUpload;
+window.showMediaDialog = showMediaDialog;
+window.closeMediaDialog = closeMediaDialog;
+window.insertMedia = insertMedia;
+window.openFileUploadDialog = openFileUploadDialog;
+
+function checkDevWarning() {
+    if (window.isDevBuild) {
+        const warningAccepted = localStorage.getItem('devWarningAccepted');
+        if (!warningAccepted) {
+            const devWarningDialog = document.getElementById('devWarningDialog');
+            if (devWarningDialog) {
+                devWarningDialog.style.display = 'flex';
+            }
+        }
+    }
+}
+
+function confirmDevWarning() {
+    localStorage.setItem('devWarningAccepted', 'true');
+    const devWarningDialog = document.getElementById('devWarningDialog');
+    if (devWarningDialog) {
+        devWarningDialog.style.display = 'none';
+    }
+}
+
+window.checkDevWarning = checkDevWarning;
+window.confirmDevWarning = confirmDevWarning;
+
+
+// Глобальная функция навигации по галерее
+window.navigateGallery = function(galleryId, direction) {
+    const gallery = document.getElementById(galleryId);
+    if (!gallery) return;
+    
+    const images = gallery.querySelectorAll(`img[data-gallery="${galleryId}"]`);
+    if (images.length <= 1) return;
+    
+    let currentIndex = -1;
+    images.forEach((img, index) => {
+        if (img.style.display !== 'none') {
+            currentIndex = index;
+        }
+    });
+    
+    if (currentIndex === -1) currentIndex = 0;
+    
+    let newIndex = currentIndex + direction;
+    if (newIndex < 0) newIndex = images.length - 1;
+    if (newIndex >= images.length) newIndex = 0;
+    
+    images[currentIndex].style.display = 'none';
+    images[newIndex].style.display = 'block';
+    
+    const indicator = gallery.querySelector('.gallery-indicator');
+    if (indicator) {
+        indicator.textContent = `${newIndex + 1} / ${images.length}`;
+    }
+};
+
+// Поддержка свайпов на мобильных устройствах для галерей
+document.addEventListener('DOMContentLoaded', function() {
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let targetGallery = null;
+    
+    document.addEventListener('touchstart', function(e) {
+        const gallery = e.target.closest('.image-gallery');
+        if (gallery) {
+            targetGallery = gallery;
+            touchStartX = e.changedTouches[0].screenX;
+        }
+    }, { passive: true });
+    
+    document.addEventListener('touchend', function(e) {
+        if (!targetGallery) return;
+        
+        touchEndX = e.changedTouches[0].screenX;
+        const galleryId = targetGallery.id;
+        
+        const swipeThreshold = 50;
+        if (touchStartX - touchEndX > swipeThreshold) {
+            // Свайп влево - следующее изображение
+            window.navigateGallery(galleryId, 1);
+        } else if (touchEndX - touchStartX > swipeThreshold) {
+            // Свайп вправо - предыдущее изображение
+            window.navigateGallery(galleryId, -1);
+        }
+        
+        targetGallery = null;
+    }, { passive: true });
+    
+    // Поддержка клавиатуры (стрелки) для активной галереи в редакторе
+    const contentVisual = document.getElementById('contentVisual');
+    if (contentVisual) {
+        contentVisual.addEventListener('keydown', function(e) {
+            // Проверяем, находится ли фокус внутри галереи или рядом с ней
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) return;
+            
+            let node = selection.anchorNode;
+            while (node && node !== contentVisual) {
+                if (node.classList && node.classList.contains('image-gallery')) {
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        window.navigateGallery(node.id, -1);
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        window.navigateGallery(node.id, 1);
+                    }
+                    break;
+                }
+                node = node.parentNode;
+            }
+        });
+        
+        // Добавляем возможность наведения для фокуса на галерее
+        contentVisual.addEventListener('mouseenter', function(e) {
+            const gallery = e.target.closest('.image-gallery');
+            if (gallery) {
+                gallery.setAttribute('data-focused', 'true');
+            }
+        }, true);
+        
+        contentVisual.addEventListener('mouseleave', function(e) {
+            const gallery = e.target.closest('.image-gallery');
+            if (gallery) {
+                gallery.removeAttribute('data-focused');
+            }
+        }, true);
+    }
+});

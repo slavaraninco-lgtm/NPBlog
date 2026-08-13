@@ -15,15 +15,7 @@ $allowedTags = '<b><i><u><s><sup><sub><h2><ul><li><a><p><br><img><pre><span><div
 $content = $data['content'];
 
 // Заменяем все пути serve_data.php на статические прямые пути для готовой статьи
-$editorSettingsFile = __DIR__ . '/editor_settings.json';
-$editorSettings = [];
-if (file_exists($editorSettingsFile)) {
-    $editorSettings = json_decode(file_get_contents($editorSettingsFile), true) ?: [];
-}
-$dataDir = isset($editorSettings['data_path']) ? $editorSettings['data_path'] : '';
-if (empty($dataDir)) {
-    $dataDir = __DIR__ . '/data/';
-}
+$dataDir = getDataPath();
 $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
 $staticPrefix = '/' . $dirName . '/';
 $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data.php\?file=/i', $staticPrefix, $content);
@@ -134,7 +126,7 @@ $filename = validateSafePath($blogDir, 'post-' . $nextId . '.html');
 file_put_contents($filename, $articleHtml);
 
 // Создаем бэкап новой статьи
-$backupDir = validateSafePath('data_backup/', (string)$nextId) . '/';
+$backupDir = validateSafePath(__DIR__ . '/data_backup/', (string)$nextId) . '/';
 if (!is_dir($backupDir)) {
     mkdir($backupDir, 0755, true);
 }
@@ -144,7 +136,7 @@ $backupFilename = validateSafePath($backupDir, $nextId . '-' . $backupNumber . '
 file_put_contents($backupFilename, $articleHtml);
 
 // Сохраняем метаданные бэкапа
-$backupMetaFile = validateSafePath('data_backup/', 'backup-meta.json');
+$backupMetaFile = validateSafePath(__DIR__ . '/data_backup/', 'backup-meta.json');
 $backupMeta = [];
 if (file_exists($backupMetaFile)) {
     $backupMeta = json_decode(file_get_contents($backupMetaFile), true) ?: [];

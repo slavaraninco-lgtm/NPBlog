@@ -86,11 +86,28 @@ if (empty($ftpServer) || empty($ftpUsername) || empty($ftpDirectory)) {
     exit;
 }
 
+$blogToUpload = $_POST['blogToUpload'] ?? '';
+$settingsFile = __DIR__ . '/editor_settings.json';
+$settings = file_exists($settingsFile) ? (json_decode(file_get_contents($settingsFile), true) ?: []) : [];
+$blogPaths = isset($settings['blog_paths']) ? $settings['blog_paths'] : [];
+if (empty($blogPaths)) {
+    $blogPaths = [isset($settings['data_path']) ? $settings['data_path'] : 'data'];
+}
+
 $localDataDir = rtrim(getDataPath(), '/\\');
+if (!empty($blogToUpload) && in_array($blogToUpload, $blogPaths)) {
+    $localDataDir = $blogToUpload;
+    if (strpos($localDataDir, '/') !== 0 && strpos($localDataDir, ':\\') !== 1) {
+        $localDataDir = __DIR__ . '/' . ltrim($localDataDir, '/');
+    }
+    $localDataDir = rtrim($localDataDir, '/\\');
+}
+
 if (!is_dir($localDataDir)) {
-    sendEvent('error', ['message' => 'Папка data не найдена']);
+    sendEvent('error', ['message' => 'Выбранная папка блога не найдена: ' . basename($localDataDir)]);
     exit;
 }
+$remoteFolderName = basename($localDataDir);
 
 sendEvent('log', ['message' => 'Подключение к FTP серверу...', 'level' => 'info']);
 
@@ -135,6 +152,7 @@ $failedCount = 0;
 
 // Рекурсивная функция загрузки с умной синхронизацией, авто-переподключением по ссылке (&$connId)
 function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$failedCount, $totalFiles, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl) {
+    global $localDataDir, $remoteFolderName;
     // Проверяем, живое ли соединение. Если нет, пробуем переподключить
     if (!$connId) {
         $connId = getFtpConnection($ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
@@ -178,7 +196,7 @@ function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$fai
                 return false;
             }
         } else {
-            $relativePath = 'data/' . ltrim(substr($localPath, strlen($localDataDir)), '/\\');
+            $relativePath = $remoteFolderName . '/' . ltrim(substr($localPath, strlen($localDataDir)), '/\\');
             $localSize = filesize($localPath);
             
             // Умная синхронизация: пропускаем файлы, если размер на сервере совпадает
@@ -243,8 +261,8 @@ function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$fai
     return true;
 }
 
-// Начинаем загрузку папки data
-$success = uploadDirectory($connId, $localDataDir, $ftpDirectory . '/data', $uploadedCount, $failedCount, $totalFiles, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
+// Начинаем загрузку выбранной папки
+$success = uploadDirectory($connId, $localDataDir, $ftpDirectory . '/' . $remoteFolderName, $uploadedCount, $failedCount, $totalFiles, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
 
 if ($connId) {
     @ftp_close($connId);

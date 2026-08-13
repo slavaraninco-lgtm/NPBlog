@@ -43,7 +43,15 @@ if (password_verify($password, $passwordHash)) {
     $_SESSION['authenticated'] = true;
     $_SESSION['auth_time'] = time();
     
-    echo json_encode(['success' => true]);
+    // Ensure CSRF token is in session
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'csrf_token' => $_SESSION['csrf_token']
+    ]);
 } else {
     // Increment failed attempts
     $attempts = isset($settings['failed_attempts']) ? (int)$settings['failed_attempts'] : 0;

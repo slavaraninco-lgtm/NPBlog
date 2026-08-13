@@ -127,8 +127,12 @@ if ($action === 'preview') {
             // Check version
             if ($actualPath === 'version.json') {
                 $vData = @json_decode(file_get_contents($tmpDir . $f), true);
-                if ($vData && isset($vData['version'])) {
-                    $newVersion = $vData['version'];
+                if ($vData) {
+                    if (!empty($vData['dev']) && ($vData['dev'] === true || $vData['dev'] === 'true')) {
+                        $newVersion = 'dev';
+                    } elseif (isset($vData['version'])) {
+                        $newVersion = $vData['version'];
+                    }
                 }
             }
             
@@ -141,8 +145,12 @@ if ($action === 'preview') {
         $currentVersion = 'Unknown';
         if (file_exists('version.json')) {
             $currData = @json_decode(file_get_contents('version.json'), true);
-            if ($currData && isset($currData['version'])) {
-                $currentVersion = $currData['version'];
+            if ($currData) {
+                if (!empty($currData['dev']) && ($currData['dev'] === true || $currData['dev'] === 'true')) {
+                    $currentVersion = 'dev';
+                } elseif (isset($currData['version'])) {
+                    $currentVersion = $currData['version'];
+                }
             }
         }
         
@@ -344,10 +352,12 @@ elseif ($action === 'update') {
     
     // 6. Обновление version.json
     if ($newVersionData) {
-        file_put_contents('version.json', json_encode([
-            'version' => $newVersionData['version'],
+        $verPayload = [
+            'version' => $newVersionData['version'] ?? 'Unknown',
+            'dev' => isset($newVersionData['dev']) ? (bool)$newVersionData['dev'] : false,
             'last_updated' => date('Y-m-d\TH:i:s\Z')
-        ], JSON_PRETTY_PRINT));
+        ];
+        file_put_contents('version.json', json_encode($verPayload, JSON_PRETTY_PRINT));
     }
     
     // Очистка

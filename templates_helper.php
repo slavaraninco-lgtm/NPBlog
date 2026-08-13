@@ -57,6 +57,8 @@ function initTemplatesSystem() {
     <div class="powered-by">Powered by NPBlog</div>
     <div class="image-modal" id="imageModal">
         <button class="image-modal-close" onclick="closeImageModal()">×</button>
+        <button class="image-modal-nav image-modal-prev" onclick="navigateModalImage(-1)" title="Предыдущее изображение">‹</button>
+        <button class="image-modal-nav image-modal-next" onclick="navigateModalImage(1)" title="Следующее изображение">›</button>
         <div class="image-modal-container" id="imageContainer">
             <img class="image-modal-content" id="modalImage" src="" alt="">
         </div>
@@ -507,15 +509,7 @@ function regeneratePostWithTemplate($postId, $templateFile) {
     $content = extractPostContentFromHtml($html, $postId);
 
     // Заменяем все пути serve_data.php на статические прямые пути для готовой статьи
-    $editorSettingsFile = __DIR__ . '/editor_settings.json';
-    $editorSettings = [];
-    if (file_exists($editorSettingsFile)) {
-        $editorSettings = json_decode(file_get_contents($editorSettingsFile), true) ?: [];
-    }
-    $dataDir = isset($editorSettings['data_path']) ? $editorSettings['data_path'] : '';
-    if (empty($dataDir)) {
-        $dataDir = __DIR__ . '/data/';
-    }
+    $dataDir = getDataPath();
     $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
     $staticPrefix = '/' . $dirName . '/';
 $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data.php\?file=/i', $staticPrefix, $content);
