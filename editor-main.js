@@ -9200,23 +9200,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function getAvailableDropdownSpace(wrapper) {
+        const trigger = wrapper.querySelector('.custom-select-trigger') || wrapper;
+        const rect = trigger.getBoundingClientRect();
+        
+        let container = wrapper.parentElement;
+        let containerTop = 0;
+        let containerBottom = window.innerHeight;
+        
+        while (container && container !== document.body && container !== document.documentElement) {
+            const style = window.getComputedStyle(container);
+            const overflow = (style.overflow || '') + (style.overflowY || '');
+            if (/auto|scroll|hidden/.test(overflow) || 
+                container.classList.contains('dialog-content') || 
+                container.classList.contains('modal-content') || 
+                container.classList.contains('manage-posts')) {
+                const cRect = container.getBoundingClientRect();
+                containerTop = Math.max(containerTop, cRect.top);
+                containerBottom = Math.min(containerBottom, cRect.bottom);
+                break;
+            }
+            container = container.parentElement;
+        }
+        
+        const spaceBelow = containerBottom - rect.bottom;
+        const spaceAbove = rect.top - containerTop;
+        return { spaceBelow, spaceAbove };
+    }
+
     function openCustomSelect(wrapper) {
         closeAllCustomSelects(wrapper);
         
         const popover = wrapper.querySelector('.custom-select-popover');
+        const popoverInner = wrapper.querySelector('.custom-select-popover-inner');
         const trigger = wrapper.querySelector('.custom-select-trigger');
         if (!popover || !trigger) return;
         
-        // Smart flip positioning calculation
-        const rect = wrapper.getBoundingClientRect();
-        const popoverHeight = Math.min(220, popover.scrollHeight || 200);
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
+        // Smart flip positioning calculation based on container bounds
+        const { spaceBelow, spaceAbove } = getAvailableDropdownSpace(wrapper);
+        const estimatedHeight = Math.min(200, popover.scrollHeight || 160);
         
-        if (spaceBelow < popoverHeight + 10 && spaceAbove > spaceBelow) {
+        const shouldDropUp = (spaceBelow < estimatedHeight + 10 && spaceAbove > spaceBelow) || (spaceBelow < 120 && spaceAbove >= 100);
+        
+        if (shouldDropUp) {
             popover.classList.add('drop-up');
+            if (popoverInner) {
+                const maxHeight = Math.max(90, Math.min(200, spaceAbove - 16));
+                popoverInner.style.maxHeight = maxHeight + 'px';
+            }
         } else {
             popover.classList.remove('drop-up');
+            if (popoverInner) {
+                const maxHeight = Math.max(90, Math.min(200, spaceBelow - 16));
+                popoverInner.style.maxHeight = maxHeight + 'px';
+            }
         }
         
         wrapper.classList.add('is-open');

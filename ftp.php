@@ -665,8 +665,8 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
 
         .custom-select-trigger {
             width: 100%;
-            min-height: 44px;
-            padding: 10px 14px;
+            min-height: 42px;
+            padding: 9px 14px;
             background: var(--bg-color);
             border: 2px solid var(--text-color);
             border-radius: 8px;
@@ -681,14 +681,15 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             gap: 10px;
             text-align: left;
             box-sizing: border-box;
-            transition: all 0.2s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
             user-select: none;
             outline: none;
         }
 
         .custom-select-trigger:hover,
         .custom-select-wrapper.is-open .custom-select-trigger {
-            border-color: #2196F3;
+            border-color: var(--text-color);
+            box-shadow: 0 0 0 2px rgba(128, 128, 128, 0.2);
         }
 
         .custom-select-value {
@@ -719,7 +720,6 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
         .custom-select-wrapper.is-open .custom-select-arrow {
             transform: rotate(180deg);
             opacity: 1;
-            color: #2196F3;
         }
 
         .custom-select-popover {
@@ -731,15 +731,15 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             width: 100%;
             box-sizing: border-box;
             z-index: 1000;
-            background: var(--bg-color);
+            background: var(--bg-color) !important;
             border: 2px solid var(--text-color);
             border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
             opacity: 0;
             visibility: hidden;
-            transform: translateY(-6px);
+            transform: translateY(-4px);
             pointer-events: none;
-            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
             overflow: hidden;
             padding: 4px;
         }
@@ -751,8 +751,18 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             pointer-events: auto;
         }
 
+        .custom-select-popover.drop-up {
+            top: auto;
+            bottom: calc(100% + 5px);
+            transform: translateY(4px);
+        }
+
+        .custom-select-wrapper.is-open .custom-select-popover.drop-up {
+            transform: translateY(0);
+        }
+
         .custom-select-popover-inner {
-            max-height: 220px;
+            max-height: 200px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
@@ -765,7 +775,7 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             justify-content: space-between;
             gap: 10px;
             width: 100%;
-            padding: 9px 12px;
+            padding: 8px 12px;
             border: none;
             border-radius: 6px;
             background: transparent;
@@ -774,17 +784,17 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             font-weight: 500;
             text-align: left;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: background 0.12s ease;
             box-sizing: border-box;
             outline: none;
         }
 
         .custom-select-option:hover {
-            background: rgba(33, 150, 243, 0.15);
+            background: rgba(128, 128, 128, 0.12);
         }
 
         .custom-select-option.is-selected {
-            background: rgba(33, 150, 243, 0.25);
+            background: rgba(128, 128, 128, 0.2);
             font-weight: 600;
         }
 
@@ -792,11 +802,11 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             font-size: 13px;
             font-weight: bold;
             opacity: 0;
+            color: var(--text-color);
         }
 
         .custom-select-option.is-selected .custom-option-check {
             opacity: 1;
-            color: #2196F3;
         }
     </style>
 </head>
@@ -1192,7 +1202,17 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                         e.stopPropagation();
                         const isOpen = wrapper.classList.contains('is-open');
                         document.querySelectorAll('.custom-select-wrapper.is-open').forEach(w => w.classList.remove('is-open'));
-                        if (!isOpen) wrapper.classList.add('is-open');
+                        if (!isOpen) {
+                            const rect = trigger.getBoundingClientRect();
+                            const spaceBelow = window.innerHeight - rect.bottom;
+                            const spaceAbove = rect.top;
+                            if (spaceBelow < 180 && spaceAbove > spaceBelow) {
+                                popover.classList.add('drop-up');
+                            } else {
+                                popover.classList.remove('drop-up');
+                            }
+                            wrapper.classList.add('is-open');
+                        }
                     });
                 });
             }
