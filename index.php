@@ -106,7 +106,7 @@ if (file_exists($versionFile)) {
             };
         })();
     </script>
-    <link rel="stylesheet" href="editor-style.css?v=1779014532">
+    <link rel="stylesheet" href="editor-style.css?v=<?php echo file_exists(__DIR__ . '/editor-style.css') ? filemtime(__DIR__ . '/editor-style.css') : time(); ?>">
     <link rel="stylesheet" id="customThemeStyleLink" href="data/custom_editor_theme.css?v=<?php echo $customCssExists ? filemtime(__DIR__ . '/data/custom_editor_theme.css') : '1'; ?>" <?php echo ($activeTheme === 'custom' && $customCssExists) ? '' : 'disabled'; ?>>
 </head>
 <body>
@@ -1236,9 +1236,9 @@ if (file_exists($versionFile)) {
     </div>
 </div>
 
-<script src="editor-main.js?v=1779014531"></script>
+<script src="editor-main.js?v=<?php echo file_exists(__DIR__ . '/editor-main.js') ? filemtime(__DIR__ . '/editor-main.js') : time(); ?>"></script>
 
-<script src="editor-img.js?v=1779014519"></script>
+<script src="editor-img.js?v=<?php echo file_exists(__DIR__ . '/editor-img.js') ? filemtime(__DIR__ . '/editor-img.js') : time(); ?>"></script>
 
 <!-- Модальное окно дополнительных настроек -->
 <div id="additionalSettingsModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
