@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/security_bootstrap.php';
 // Скрипт для регенерации старых статей (со старым HTML-кодом) в новый шаблонный формат
+if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('HTTP/1.1 405 Method Not Allowed');
+    die("Method not allowed. Use POST or CLI.");
+}
 header('Content-Type: text/plain; charset=utf-8');
 
 $blogDir = getDataPath('blog/');

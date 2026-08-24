@@ -43,9 +43,9 @@ if (!is_writable($uploadsDir)) {
 $fileName = $file['name'];
 $fileType = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-$allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
+$allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
 if (!in_array($fileType, $allowedTypes)) {
-    echo json_encode(['success' => false, 'error' => 'Недопустимый тип файла']);
+    echo json_encode(['success' => false, 'error' => 'Недопустимый тип файла. Разрешены: jpg, jpeg, png, gif, webp, svg']);
     exit;
 }
 

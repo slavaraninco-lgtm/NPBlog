@@ -42,6 +42,13 @@ if (!is_writable($uploadDir)) {
     exit;
 }
 
+$allowedVideoExts = ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi'];
+$extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+if (!in_array($extension, $allowedVideoExts)) {
+    echo json_encode(['success' => false, 'error' => 'Недопустимое расширение видео файла. Разрешены только: ' . implode(', ', $allowedVideoExts)]);
+    exit;
+}
+
 // Проверяем тип файла безопасно
 $mimeType = '';
 if (function_exists('finfo_open')) {
@@ -54,21 +61,20 @@ if (function_exists('finfo_open')) {
 if (empty($mimeType) && function_exists('mime_content_type')) {
     $mimeType = @mime_content_type($file['tmp_name']);
 }
-if (empty($mimeType)) {
-    $mimeType = $file['type'];
-}
 
-$allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/mpeg', 'video/quicktime'];
-if (empty($mimeType) || (!in_array($mimeType, $allowedTypes) && !in_array($file['type'], $allowedTypes))) {
+$allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/mpeg', 'video/quicktime', 'video/x-matroska', 'video/x-msvideo', 'application/octet-stream'];
+if (!empty($mimeType) && !in_array($mimeType, $allowedTypes)) {
     echo json_encode(['success' => false, 'error' => 'Недопустимый тип файла. Разрешены только видео файлы.']);
     exit;
 }
 
 // Генерируем безопасное имя файла
-$extension = pathinfo($file['name'], PATHINFO_EXTENSION);
 $baseName = pathinfo($file['name'], PATHINFO_FILENAME);
 // Удаляем только опасные символы, сохраняя кириллицу
-$safeName = preg_replace('/[\/\\\:*?"<>|]/', '_', $baseName);
+$safeName = preg_replace('/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/u', '_', $baseName);
+if (empty($safeName)) {
+    $safeName = 'video_' . uniqid();
+}
 $fileName = $safeName . '.' . $extension;
 
 // Проверяем, существует ли файл с таким именем

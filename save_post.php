@@ -123,7 +123,7 @@ $articleHtml = str_replace('{{CONTENT}}', $wrappedContent, $articleHtml);
 
 // Сохраняем файл статьи
 $filename = validateSafePath($blogDir, 'post-' . $nextId . '.html');
-file_put_contents($filename, $articleHtml);
+file_put_contents($filename, $articleHtml, LOCK_EX);
 
 // Создаем бэкап новой статьи
 $backupDir = validateSafePath(__DIR__ . '/data_backup/', (string)$nextId) . '/';
@@ -133,7 +133,7 @@ if (!is_dir($backupDir)) {
 
 $backupNumber = 1;
 $backupFilename = validateSafePath($backupDir, $nextId . '-' . $backupNumber . '.html');
-file_put_contents($backupFilename, $articleHtml);
+file_put_contents($backupFilename, $articleHtml, LOCK_EX);
 
 // Сохраняем метаданные бэкапа
 $backupMetaFile = validateSafePath(__DIR__ . '/data_backup/', 'backup-meta.json');
@@ -157,7 +157,7 @@ $backupMeta[$nextId]['backups'][] = [
     'title' => $data['title']
 ];
 
-file_put_contents($backupMetaFile, json_encode($backupMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+safeWriteJson($backupMetaFile, $backupMeta);
 
 // Обновляем posts-meta.json для статического хостинга
 $metaFile = validateSafePath($blogDir, 'posts-meta.json');
@@ -173,7 +173,7 @@ $meta[] = [
     'filename' => 'post-' . $nextId . '.html'
 ];
 
-file_put_contents($metaFile, json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+safeWriteJson($metaFile, $meta);
 
 require_once __DIR__ . '/rss_helper.php';
 generateRssFeed();

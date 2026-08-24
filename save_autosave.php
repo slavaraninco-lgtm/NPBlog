@@ -43,7 +43,7 @@ $autosave = [
     'date' => date('Y-m-d H:i:s', $timestamp)
 ];
 
-if (file_put_contents($filepath, json_encode($autosave, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT))) {
+if (safeWriteJson($filepath, $autosave)) {
     echo json_encode([
         'success' => true,
         'id' => $id,

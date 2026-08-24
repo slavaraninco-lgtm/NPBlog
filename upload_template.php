@@ -112,9 +112,42 @@ function findHtmlFileInDir($dir) {
 $templatePathInSettings = '';
 
 if ($ext === 'zip') {
-    // Unpack ZIP
+    // Unpack ZIP with strict security validation
     $zip = new ZipArchive;
     if ($zip->open($uploadedFile['tmp_name']) === TRUE) {
+        $realDest = realpath($destSubdir);
+        if (!$realDest) {
+            $realDest = str_replace('\\', '/', $destSubdir);
+        } else {
+            $realDest = str_replace('\\', '/', $realDest);
+        }
+        $realDest = rtrim($realDest, '/') . '/';
+
+        $blockedExts = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'phar', 'inc', 'pht', 'cgi', 'pl', 'py', 'jsp', 'asp', 'aspx', 'exe', 'bat', 'sh', 'cmd', 'htaccess', 'htpasswd'];
+        
+        // 1. First pass: Validate ALL files before extracting anything
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            $normalized = str_replace('\\', '/', $entryName);
+            
+            // Check for directory traversal / Zip Slip
+            if (strpos($normalized, '../') !== false || strpos($normalized, '/..') !== false || strpos($normalized, '..') === 0 || strpos($normalized, '/') === 0) {
+                $zip->close();
+                deleteUploadedTemplateDir($destSubdir);
+                echo json_encode(['success' => false, 'error' => 'Архив содержит недопустимые пути к файлам (Zip Slip обнаружен)']);
+                exit;
+            }
+            
+            $entryExt = strtolower(pathinfo($normalized, PATHINFO_EXTENSION));
+            if (in_array($entryExt, $blockedExts)) {
+                $zip->close();
+                deleteUploadedTemplateDir($destSubdir);
+                echo json_encode(['success' => false, 'error' => 'Архив содержит запрещенные исполняемые файлы (.' . $entryExt . ')']);
+                exit;
+            }
+        }
+        
+        // 2. Safe extraction
         $zip->extractTo($destSubdir);
         $zip->close();
     } else {

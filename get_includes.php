@@ -22,7 +22,7 @@ $fileList = [];
 foreach ($files as $file) {
     $filename = basename($file);
     
-    // Пропускаем файл метаданных (если он .txt)
+    // Пропускаем файл метаданных
     if ($filename === 'includes-meta.json') continue;
     
     $displayName = isset($meta[$filename]) ? $meta[$filename] : pathinfo($filename, PATHINFO_FILENAME);
@@ -33,9 +33,12 @@ foreach ($files as $file) {
     ];
 }
 
-// Сортируем по имени
+// Сортируем по имени с учетом UTF-8 кириллицы
 usort($fileList, function($a, $b) {
-    return strcmp($a['displayName'], $b['displayName']);
+    if (function_exists('mb_strcasecmp')) {
+        return mb_strcasecmp($a['displayName'], $b['displayName'], 'UTF-8');
+    }
+    return strcasecmp(mb_strtolower($a['displayName'], 'UTF-8'), mb_strtolower($b['displayName'], 'UTF-8'));
 });
 
 echo json_encode(['success' => true, 'files' => $fileList], JSON_UNESCAPED_UNICODE);

@@ -16,7 +16,7 @@ function loadBackgrounds() {
 
 function saveBackgrounds($backgrounds) {
     $file = getBackgroundsFile();
-    file_put_contents($file, json_encode($backgrounds, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    safeWriteJson($file, $backgrounds);
 }
 
 function getPostBackground($postId) {
@@ -106,15 +106,15 @@ function applyBackgroundToHtml($htmlFile, $bgSettings) {
         
         $overlayStyle = "background: rgba($r, $g, $b, $alpha); padding: 40px; border-radius: 12px;";
         
-        // Оборачиваем от h1 до кнопки "Назад" в div с подложкой
+        // Оборачиваем от h1 до кнопки "Назад" в div с подложкой (поддерживает как <div class="content">, так и <article ...>)
         $html = preg_replace(
-            '/(<h1>.*?<\/h1>.*?<div class="date">.*?<\/div>.*?<div class="content">.*?<\/div>.*?<a href="(?:\.\.\/\.\.\/data\/|\.\.\/)blog\.html" class="back-link">.*?<\/a>)/s',
+            '/(<h1>.*?<\/h1>.*?<div class="date">.*?<\/div>.*?(?:<div class="content">|<article[^>]*class="[^"]*content[^"]*"[^>]*>).*?<\/(?:div|article)>.*?<a href="(?:\.\.\/\.\.\/data\/|\.\.\/)blog\.html" class="back-link">.*?<\/a>)/s',
             '<div class="overlay-wrapper" style="' . $overlayStyle . '">$1</div>',
             $html
         );
     }
     
-    file_put_contents($htmlFile, $html);
+    file_put_contents($htmlFile, $html, LOCK_EX);
     return true;
 }
 

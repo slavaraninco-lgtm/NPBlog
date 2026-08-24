@@ -10,17 +10,22 @@ $action = $_POST['action'] ?? 'save';
 $buttonsJson = $_POST['buttons'] ?? '[]';
 $buttons = json_decode($buttonsJson, true);
 
-if (!is_array($buttons)) {
-    $buttons = [];
+// Санитизация кнопок навигации против XSS
+$sanitizedButtons = [];
+foreach ($buttons as $btn) {
+    if (!isset($btn['url']) || !isset($btn['text'])) continue;
+    $url = trim((string)$btn['url']);
+    $text = trim((string)$btn['text']);
+    // Запрещаем опасные псевдопротоколы (javascript:, data:, vbscript:)
+    if (preg_match('/^(?:javascript|data|vbscript):/i', $url)) {
+        continue;
+    }
+    $sanitizedButtons[] = [
+        'url' => $url,
+        'text' => $text
+    ];
 }
-
-// Поиск и получение всех доступных путей к блогам
-$editorSettingsFile = __DIR__ . '/editor_settings.json';
-$editorSettings = file_exists($editorSettingsFile) ? (json_decode(file_get_contents($editorSettingsFile), true) ?: []) : [];
-$blogPaths = isset($editorSettings['blog_paths']) ? $editorSettings['blog_paths'] : [];
-if (empty($blogPaths)) {
-    $blogPaths = [isset($editorSettings['data_path']) ? $editorSettings['data_path'] : 'data'];
-}
+$buttons = $sanitizedButtons;
 
 // JS-код для рендеринга кнопок, который мы будем вставлять в blog.html
 $jsInjection = <<<'JS'
@@ -41,8 +46,12 @@ $jsInjection = <<<'JS'
                         if (navContainer) {
                             navContainer.innerHTML = '';
                             settings.crossBlogNav.forEach(btn => {
+                                const safeUrl = String(btn.url || '').trim();
+                                if (/^(?:javascript|data|vbscript):/i.test(safeUrl)) {
+                                    return;
+                                }
                                 const a = document.createElement('a');
-                                a.href = btn.url;
+                                a.href = safeUrl;
                                 a.textContent = btn.text;
                                 a.style.display = 'inline-block';
                                 a.style.padding = '6px 12px';

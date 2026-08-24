@@ -11,8 +11,8 @@ if (!isset($data['history']) || !is_array($data['history'])) {
 
 $historyFile = 'history.json';
 
-// Сохраняем историю в файл
-$result = file_put_contents($historyFile, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+// Сохраняем историю в файл атомарно
+$result = safeWriteJson($historyFile, $data);
 
 if ($result === false) {
     echo json_encode(['success' => false, 'error' => 'Ошибка записи файла']);

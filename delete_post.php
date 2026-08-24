@@ -134,14 +134,14 @@ function renumberPostsAfterDelete() {
     }
     
     // Сохраняем обновленные метаданные
-    file_put_contents($metaFile, json_encode($newMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    safeWriteJson($metaFile, $newMeta);
     
     // Сохраняем обновленные настройки фонов
     saveBackgrounds($newBackgrounds);
     
     // Сортируем бэкапы по ключам и сохраняем
     ksort($backupMeta);
-    file_put_contents($backupMetaFile, json_encode($backupMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    safeWriteJson($backupMetaFile, $backupMeta);
     
     return [
         'success' => true,
@@ -221,13 +221,13 @@ if (file_exists($backupMetaFile)) {
         
         unset($backupMeta[$postId]);
         
-        file_put_contents($backupMetaFile, json_encode($backupMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        safeWriteJson($backupMetaFile, $backupMeta);
     }
 }
 
 // Удаляем из метаданных
 array_splice($meta, $postIndex, 1);
-file_put_contents($metaFile, json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+safeWriteJson($metaFile, $meta);
 
 // Автоматическая перенумерация после удаления
 $renumberResult = renumberPostsAfterDelete();

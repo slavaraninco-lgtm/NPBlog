@@ -187,15 +187,32 @@ function getDataUrl($subpath = '') {
 
 if (!function_exists('getClientIp')) {
     function getClientIp() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-            $ip = trim($ips[0]);
-        } else {
-            $ip = $_SERVER['REMOTE_ADDR'];
+        return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
+    }
+}
+
+if (!function_exists('safeWriteJson')) {
+    function safeWriteJson($filePath, $data) {
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            return false;
         }
-        return $ip;
+        $dir = dirname($filePath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        $tmpFile = $filePath . '.' . uniqid('tmp_', true);
+        if (@file_put_contents($tmpFile, $json, LOCK_EX) === false) {
+            return false;
+        }
+        @chmod($tmpFile, 0666);
+        if (@rename($tmpFile, $filePath)) {
+            return true;
+        }
+        // Fallback if rename fails (e.g. on some Windows file locks)
+        $res = @file_put_contents($filePath, $json, LOCK_EX) !== false;
+        @unlink($tmpFile);
+        return $res;
     }
 }
 
@@ -400,10 +417,28 @@ if (!empty($passwordHash) && php_sapi_name() !== 'cli') {
     }
 }
 
+function getClientLockoutInfo() {
+    $lockoutFile = getDataPath('login_lockouts.json');
+    $clientIp = getClientIp();
+    $key = hash('sha256', $clientIp);
+    $data = [];
+    if (file_exists($lockoutFile)) {
+        $data = json_decode(@file_get_contents($lockoutFile), true) ?: [];
+    }
+    if (isset($data[$key])) {
+        $lockoutUntil = isset($data[$key]['lockout_until']) ? (int)$data[$key]['lockout_until'] : 0;
+        $attempts = isset($data[$key]['attempts']) ? (int)$data[$key]['attempts'] : 0;
+        if ($lockoutUntil > time()) {
+            return ['is_locked' => true, 'remaining' => $lockoutUntil - time(), 'attempts' => $attempts];
+        }
+    }
+    return ['is_locked' => false, 'remaining' => 0, 'attempts' => 0];
+}
+
 function renderLoginPage($settings) {
-    $lockout_until = isset($settings['lockout_until']) ? (int)$settings['lockout_until'] : 0;
-    $remaining_lockout = $lockout_until - time();
-    $is_locked = $remaining_lockout > 0;
+    $lockoutInfo = getClientLockoutInfo();
+    $remaining_lockout = $lockoutInfo['remaining'];
+    $is_locked = $lockoutInfo['is_locked'];
     
     $lockout_msg = '';
     if ($is_locked) {

@@ -172,8 +172,8 @@ if (isset($data['password_enabled'])) {
     }
 }
 
-// Сохраняем настройки
-if (file_put_contents($settingsFile, json_encode($existingSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+// Сохраняем настройки атомарно
+if (safeWriteJson($settingsFile, $existingSettings)) {
     require_once __DIR__ . '/rss_helper.php';
     generateRssFeed();
     echo json_encode([

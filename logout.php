@@ -1,8 +1,11 @@
 <?php
+require_once __DIR__ . '/security_bootstrap.php';
 header('Content-Type: application/json; charset=utf-8');
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('HTTP/1.1 405 Method Not Allowed');
+    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    exit();
 }
 
 $_SESSION = [];

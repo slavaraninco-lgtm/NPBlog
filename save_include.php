@@ -49,7 +49,7 @@ function transliterate($text) {
     return $text;
 }
 
-// Очищаем имя файла от недопустимых символов, оставляем кириллицу
+// Очищаем имя файла от недопустимых символов
 $filename = transliterate($data['name']);
 $filename = trim($filename);
 
@@ -58,7 +58,7 @@ if (empty($filename)) {
     exit;
 }
 
-$filepath = $includesDir . $filename . '.txt';
+$filepath = validateSafePath($includesDir, $filename . '.txt');
 
 // Проверяем, существует ли файл
 if (file_exists($filepath)) {
@@ -67,10 +67,10 @@ if (file_exists($filepath)) {
 }
 
 // Сохраняем контент с правильной кодировкой
-if (file_put_contents($filepath, $data['content'])) {
+if (file_put_contents($filepath, $data['content'], LOCK_EX) !== false) {
     // Сохраняем метаданные
     $meta[$filename . '.txt'] = $data['name'];
-    file_put_contents($metaFile, json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    safeWriteJson($metaFile, $meta);
     
     echo json_encode(['success' => true, 'filename' => $filename . '.txt', 'displayName' => $data['name']], JSON_UNESCAPED_UNICODE);
 } else {

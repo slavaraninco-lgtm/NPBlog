@@ -5,7 +5,7 @@
     "autosaveInterval": 60,
     "tutorialCompleted": true,
     "amoledTheme": false,
-    "data_path": "\/opt\/lampp\/htdocs\/data",
+    "data_path": "data",
     "password_hash": "",
     "failed_attempts": 0,
     "lockout_until": 0,

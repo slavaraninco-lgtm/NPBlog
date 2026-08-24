@@ -12,7 +12,7 @@ if (file_exists($settingsFile)) {
         $activeTheme = $settings['activeTheme'];
     }
 }
-$customCssExists = file_exists(__DIR__ . '/data/custom_editor_theme.css');
+$customCssExists = file_exists(getDataPath('custom_editor_theme.css'));
 
 $isDevBuild = false;
 $versionFile = __DIR__ . '/version.json';

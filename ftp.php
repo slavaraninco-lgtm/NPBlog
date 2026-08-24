@@ -5,7 +5,7 @@ define('CREDENTIALS_FILE', 'ftp.json');
 
 function saveCredentials($data) {
     $data['saved_at'] = date('Y-m-d H:i:s');
-    file_put_contents(CREDENTIALS_FILE, json_encode($data, JSON_PRETTY_PRINT));
+    safeWriteJson(CREDENTIALS_FILE, $data);
 }
 
 function loadCredentials() {
@@ -21,9 +21,10 @@ function resetCredentials() {
     }
 }
 
-if (isset($_GET['reset'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reset') {
+    header('Content-Type: application/json; charset=utf-8');
     resetCredentials();
-    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?'));
+    echo json_encode(['success' => true]);
     exit;
 }
 
@@ -943,7 +944,16 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
         // Reset handler
         document.getElementById('resetBtn').addEventListener('click', function() {
             if (confirm('Вы уверены, что хотите сбросить сохранённые настройки FTP?')) {
-                window.location.href = window.location.href + '?reset=1';
+                const formData = new FormData();
+                formData.append('action', 'reset');
+                fetch('ftp.php', {
+                    method: 'POST',
+                    body: formData
+                }).then(() => {
+                    window.location.reload();
+                }).catch(() => {
+                    window.location.reload();
+                });
             }
         });
 

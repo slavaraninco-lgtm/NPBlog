@@ -22,7 +22,7 @@ if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
         $type = 'jpg';
     }
 
-    if (!in_array($type, ['jpg', 'png', 'gif'])) {
+    if (!in_array($type, ['jpg', 'png', 'gif', 'webp'])) {
         echo json_encode(['success' => false, 'error' => 'Недопустимый формат изображения']);
         exit;
     }
