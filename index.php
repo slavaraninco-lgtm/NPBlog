@@ -433,7 +433,7 @@ if (file_exists($versionFile)) {
         </div>
         <div id="blogSelectorContainer" style="display: none; padding: 12px 16px 0;">
             <label style="display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; opacity: 0.8; color: var(--text-color);">Блог:</label>
-            <select id="blogSelector" onchange="selectActiveBlog(this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 13px; font-weight: 500; cursor: pointer; box-sizing: border-box;">
+            <select id="blogSelector" onchange="selectActiveBlog(this.value)">
             </select>
         </div>
         <div style="padding: 16px 16px 0;">
@@ -1276,14 +1276,14 @@ if (file_exists($versionFile)) {
             <input type="file" id="backgroundInput" accept="image/*" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 10px;">
             
             <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Режим отображения:</label>
-            <select id="backgroundMode" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 15px;">
+            <select id="backgroundMode" style="margin-bottom: 15px;">
                 <option value="cover">Растянуть (cover)</option>
                 <option value="contain">По размеру (contain)</option>
                 <option value="repeat">Замостить (repeat)</option>
             </select>
             
             <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Область фона:</label>
-            <select id="backgroundScope" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 15px;">
+            <select id="backgroundScope" style="margin-bottom: 15px;">
                 <option value="content">Только статья (920px)</option>
                 <option value="fullpage">Вся страница</option>
             </select>
@@ -1411,14 +1411,14 @@ if (file_exists($versionFile)) {
                     <input type="file" id="globalBackgroundInput" accept="image/*" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 10px;">
                     
                     <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Режим отображения:</label>
-                    <select id="globalBackgroundMode" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 15px;">
+                    <select id="globalBackgroundMode" style="margin-bottom: 15px;">
                         <option value="cover">Растянуть (cover)</option>
                         <option value="contain">По размеру (contain)</option>
                         <option value="repeat">Замостить (repeat)</option>
                     </select>
                     
                     <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Область фона:</label>
-                    <select id="globalBackgroundScope" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 20px;">
+                    <select id="globalBackgroundScope" style="margin-bottom: 20px;">
                         <option value="content">Только статья (920px)</option>
                         <option value="fullpage">Вся страница</option>
                     </select>
@@ -1469,7 +1469,7 @@ if (file_exists($versionFile)) {
                     <input type="file" id="blogBackgroundInput" accept="image/*" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 10px;">
                     
                     <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Режим отображения:</label>
-                    <select id="blogBackgroundMode" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 20px;">
+                    <select id="blogBackgroundMode" style="margin-bottom: 20px;">
                         <option value="cover">Растянуть (cover)</option>
                         <option value="contain">По размеру (contain)</option>
                         <option value="repeat">Замостить (repeat)</option>
@@ -4872,7 +4872,7 @@ function startSystemUpdateProcess() {
                 <!-- Размер сетки -->
                 <div>
                     <h4 style="margin: 0 0 10px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">Размер сетки</h4>
-                    <select id="asciiGridSize" onchange="changeAsciiGridSize(this.value)" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-weight: 500; cursor: pointer; margin-bottom: 8px;">
+                    <select id="asciiGridSize" onchange="changeAsciiGridSize(this.value)" style="margin-bottom: 8px;">
                         <option value="20x10">Маленький (20x10)</option>
                         <option value="40x15" selected>Средний (40x15)</option>
                         <option value="60x20">Большой (60x20)</option>

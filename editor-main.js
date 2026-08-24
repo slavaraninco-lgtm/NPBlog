@@ -9059,3 +9059,419 @@ document.addEventListener('DOMContentLoaded', function() {
         }, true);
     }
 });
+
+/* ==========================================================================
+   Custom Select Dropdown Engine
+   ========================================================================== */
+(function() {
+    // Intercept HTMLSelectElement.prototype.value and selectedIndex to auto-sync custom UI
+    const originalValueDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    if (originalValueDescriptor && originalValueDescriptor.set) {
+        Object.defineProperty(HTMLSelectElement.prototype, 'value', {
+            get: function() {
+                return originalValueDescriptor.get.call(this);
+            },
+            set: function(val) {
+                const res = originalValueDescriptor.set.call(this, val);
+                if (this.dataset && this.dataset.customSelectInitialized === 'true') {
+                    syncCustomSelectFromNative(this);
+                }
+                return res;
+            },
+            configurable: true,
+            enumerable: true
+        });
+    }
+
+    const originalIndexDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
+    if (originalIndexDescriptor && originalIndexDescriptor.set) {
+        Object.defineProperty(HTMLSelectElement.prototype, 'selectedIndex', {
+            get: function() {
+                return originalIndexDescriptor.get.call(this);
+            },
+            set: function(val) {
+                const res = originalIndexDescriptor.set.call(this, val);
+                if (this.dataset && this.dataset.customSelectInitialized === 'true') {
+                    syncCustomSelectFromNative(this);
+                }
+                return res;
+            },
+            configurable: true,
+            enumerable: true
+        });
+    }
+
+    function createChevronSvg() {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    }
+
+    function getSelectedOptionData(select) {
+        const selectedOption = select.options[select.selectedIndex] || select.options[0];
+        return {
+            text: selectedOption ? (selectedOption.textContent || selectedOption.innerText || '') : '',
+            value: selectedOption ? selectedOption.value : ''
+        };
+    }
+
+    function rebuildCustomSelectOptions(select, wrapper) {
+        const popoverInner = wrapper.querySelector('.custom-select-popover-inner');
+        if (!popoverInner) return;
+        
+        popoverInner.innerHTML = '';
+        const currentValue = select.value;
+        
+        Array.from(select.options).forEach((opt, index) => {
+            const optBtn = document.createElement('button');
+            optBtn.type = 'button';
+            optBtn.className = 'custom-select-option' + (opt.value === currentValue || (!currentValue && index === 0) ? ' is-selected' : '');
+            optBtn.dataset.value = opt.value;
+            optBtn.dataset.index = index;
+            optBtn.setAttribute('role', 'option');
+            optBtn.setAttribute('aria-selected', opt.value === currentValue ? 'true' : 'false');
+            if (opt.disabled) {
+                optBtn.disabled = true;
+                optBtn.style.opacity = '0.4';
+                optBtn.style.cursor = 'not-allowed';
+            }
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'custom-option-text';
+            textSpan.textContent = opt.textContent || opt.innerText;
+            
+            const checkSpan = document.createElement('span');
+            checkSpan.className = 'custom-option-check';
+            checkSpan.textContent = '✓';
+            
+            optBtn.appendChild(textSpan);
+            optBtn.appendChild(checkSpan);
+            
+            optBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (opt.disabled) return;
+                
+                selectCustomOption(select, wrapper, opt.value);
+                closeCustomSelect(wrapper);
+                const trigger = wrapper.querySelector('.custom-select-trigger');
+                if (trigger) trigger.focus();
+            });
+            
+            popoverInner.appendChild(optBtn);
+        });
+
+        // Update trigger label
+        const selData = getSelectedOptionData(select);
+        const valSpan = wrapper.querySelector('.custom-select-value');
+        if (valSpan) {
+            valSpan.textContent = selData.text || 'Выберите...';
+        }
+    }
+
+    function selectCustomOption(select, wrapper, value) {
+        if (select.value !== value) {
+            select.value = value;
+            // Dispatch standard events
+            select.dispatchEvent(new Event('input', { bubbles: true }));
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        syncCustomSelectFromNative(select);
+    }
+
+    function syncCustomSelectFromNative(select) {
+        const wrapper = select.closest('.custom-select-wrapper');
+        if (!wrapper) return;
+        
+        const selData = getSelectedOptionData(select);
+        const valSpan = wrapper.querySelector('.custom-select-value');
+        if (valSpan) {
+            valSpan.textContent = selData.text || 'Выберите...';
+        }
+        
+        const options = wrapper.querySelectorAll('.custom-select-option');
+        options.forEach(optBtn => {
+            const isMatch = optBtn.dataset.value === String(select.value);
+            if (isMatch) {
+                optBtn.classList.add('is-selected');
+                optBtn.setAttribute('aria-selected', 'true');
+            } else {
+                optBtn.classList.remove('is-selected');
+                optBtn.setAttribute('aria-selected', 'false');
+            }
+        });
+    }
+
+    function openCustomSelect(wrapper) {
+        closeAllCustomSelects(wrapper);
+        
+        const popover = wrapper.querySelector('.custom-select-popover');
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        if (!popover || !trigger) return;
+        
+        // Smart flip positioning calculation
+        const rect = wrapper.getBoundingClientRect();
+        const popoverHeight = Math.min(220, popover.scrollHeight || 200);
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        
+        if (spaceBelow < popoverHeight + 10 && spaceAbove > spaceBelow) {
+            popover.classList.add('drop-up');
+        } else {
+            popover.classList.remove('drop-up');
+        }
+        
+        wrapper.classList.add('is-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        
+        // Scroll selected option into view
+        const selectedOpt = popover.querySelector('.custom-select-option.is-selected');
+        if (selectedOpt) {
+            selectedOpt.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function closeCustomSelect(wrapper) {
+        if (!wrapper) return;
+        wrapper.classList.remove('is-open');
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        if (trigger) {
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+        const popover = wrapper.querySelector('.custom-select-popover');
+        if (popover) {
+            popover.classList.remove('drop-up');
+        }
+    }
+
+    function closeAllCustomSelects(exceptWrapper) {
+        document.querySelectorAll('.custom-select-wrapper.is-open').forEach(w => {
+            if (w !== exceptWrapper) {
+                closeCustomSelect(w);
+            }
+        });
+    }
+
+    function initCustomSelect(select) {
+        if (!select || select.tagName !== 'SELECT') return;
+        if (select.dataset && select.dataset.customSelectInitialized === 'true') return;
+        if (select.hasAttribute('data-custom-select-ignore')) return;
+        
+        select.dataset.customSelectInitialized = 'true';
+        select.classList.add('custom-select-native');
+        select.setAttribute('tabindex', '-1');
+        select.setAttribute('aria-hidden', 'true');
+        
+        // Create wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select-wrapper';
+        if (select.id) wrapper.dataset.forSelect = select.id;
+        
+        // Detect compact / inline styling
+        if (select.closest('.size-input-group') || select.classList.contains('compact-select')) {
+            wrapper.classList.add('custom-select-compact');
+        }
+        
+        // Transfer relevant classes or styling
+        if (select.classList.contains('language-select')) {
+            wrapper.classList.add('language-select-wrapper');
+        }
+
+        // Transfer spacing styles if present on native select
+        if (select.style.marginBottom) {
+            wrapper.style.marginBottom = select.style.marginBottom;
+        }
+        if (select.style.marginTop) {
+            wrapper.style.marginTop = select.style.marginTop;
+        }
+        if (select.style.marginRight) {
+            wrapper.style.marginRight = select.style.marginRight;
+        }
+        if (select.style.marginLeft) {
+            wrapper.style.marginLeft = select.style.marginLeft;
+        }
+        
+        // Insert wrapper before select and move select inside wrapper
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(select);
+        
+        // Create trigger button
+        const selData = getSelectedOptionData(select);
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'custom-select-trigger';
+        trigger.setAttribute('role', 'combobox');
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.setAttribute('tabindex', '0');
+        if (select.id) trigger.id = select.id + '_customTrigger';
+        if (select.title) trigger.title = select.title;
+        
+        const valSpan = document.createElement('span');
+        valSpan.className = 'custom-select-value';
+        valSpan.textContent = selData.text || 'Выберите...';
+        
+        const arrowSpan = document.createElement('span');
+        arrowSpan.className = 'custom-select-arrow';
+        arrowSpan.innerHTML = createChevronSvg();
+        
+        trigger.appendChild(valSpan);
+        trigger.appendChild(arrowSpan);
+        wrapper.appendChild(trigger);
+        
+        // Create popover menu
+        const popover = document.createElement('div');
+        popover.className = 'custom-select-popover';
+        popover.setAttribute('role', 'listbox');
+        
+        const popoverInner = document.createElement('div');
+        popoverInner.className = 'custom-select-popover-inner';
+        popover.appendChild(popoverInner);
+        wrapper.appendChild(popover);
+        
+        // Populate options
+        rebuildCustomSelectOptions(select, wrapper);
+        
+        // Trigger click handler
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (select.disabled) return;
+            if (wrapper.classList.contains('is-open')) {
+                closeCustomSelect(wrapper);
+            } else {
+                openCustomSelect(wrapper);
+            }
+        });
+        
+        // Keyboard navigation
+        trigger.addEventListener('keydown', function(e) {
+            if (select.disabled) return;
+            const isOpen = wrapper.classList.contains('is-open');
+            const options = Array.from(wrapper.querySelectorAll('.custom-select-option:not([disabled])'));
+            if (!options.length) return;
+            
+            let currentIndex = options.findIndex(opt => opt.classList.contains('is-selected'));
+            if (currentIndex === -1) currentIndex = 0;
+            
+            if (e.key === 'ArrowDown' || e.key === 'Down') {
+                e.preventDefault();
+                if (!isOpen) {
+                    openCustomSelect(wrapper);
+                } else {
+                    const nextIndex = (currentIndex + 1) % options.length;
+                    selectCustomOption(select, wrapper, options[nextIndex].dataset.value);
+                    options[nextIndex].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp' || e.key === 'Up') {
+                e.preventDefault();
+                if (!isOpen) {
+                    openCustomSelect(wrapper);
+                } else {
+                    const prevIndex = (currentIndex - 1 + options.length) % options.length;
+                    selectCustomOption(select, wrapper, options[prevIndex].dataset.value);
+                    options[prevIndex].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (!isOpen) {
+                    openCustomSelect(wrapper);
+                } else {
+                    closeCustomSelect(wrapper);
+                }
+            } else if (e.key === 'Escape' || e.key === 'Esc') {
+                if (isOpen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeCustomSelect(wrapper);
+                }
+            } else if (e.key === 'Tab') {
+                if (isOpen) {
+                    closeCustomSelect(wrapper);
+                }
+            }
+        });
+        
+        // MutationObserver for select childList & attributes
+        const observer = new MutationObserver(function(mutations) {
+            let optionsChanged = false;
+            let attrsChanged = false;
+            for (const mut of mutations) {
+                if (mut.type === 'childList') {
+                    optionsChanged = true;
+                } else if (mut.type === 'attributes') {
+                    attrsChanged = true;
+                }
+            }
+            if (optionsChanged) {
+                rebuildCustomSelectOptions(select, wrapper);
+            } else if (attrsChanged) {
+                syncCustomSelectFromNative(select);
+            }
+        });
+        observer.observe(select, { childList: true, attributes: true, subtree: true });
+        
+        // Listen to native change event
+        select.addEventListener('change', function() {
+            syncCustomSelectFromNative(select);
+        });
+    }
+
+    function initAllCustomSelects(root) {
+        const scope = root || document;
+        const selects = scope.querySelectorAll('select:not([data-custom-select-initialized="true"]):not([data-custom-select-ignore])');
+        selects.forEach(initCustomSelect);
+    }
+
+    // Global click listener to close open selects
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.custom-select-wrapper')) {
+            closeAllCustomSelects();
+        }
+    });
+
+    // Global escape key listener
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+            closeAllCustomSelects();
+        }
+    });
+
+    // Observe document for dynamically added select elements
+    if (typeof MutationObserver !== 'undefined') {
+        const domObserver = new MutationObserver(function(mutations) {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === 1) {
+                        if (node.tagName === 'SELECT') {
+                            initCustomSelect(node);
+                        } else if (node.querySelectorAll) {
+                            initAllCustomSelects(node);
+                        }
+                    }
+                }
+            }
+        });
+        
+        if (document.body) {
+            domObserver.observe(document.body, { childList: true, subtree: true });
+        } else {
+            document.addEventListener('DOMContentLoaded', function() {
+                domObserver.observe(document.body, { childList: true, subtree: true });
+            });
+        }
+    }
+
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initAllCustomSelects();
+        });
+    } else {
+        initAllCustomSelects();
+    }
+
+    // Expose APIs globally
+    window.initCustomSelect = initCustomSelect;
+    window.initCustomSelects = initAllCustomSelects;
+    window.syncCustomSelect = syncCustomSelectFromNative;
+})();
+

@@ -640,6 +640,164 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                 max-width: calc(100% - 20px);
             }
         }
+
+        /* Custom Select */
+        .custom-select-wrapper {
+            position: relative;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        .custom-select-native {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            margin: -1px !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            border: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        .custom-select-trigger {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 14px;
+            background: var(--bg-color);
+            border: 2px solid var(--text-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            text-align: left;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            user-select: none;
+            outline: none;
+        }
+
+        .custom-select-trigger:hover,
+        .custom-select-wrapper.is-open .custom-select-trigger {
+            border-color: #2196F3;
+        }
+
+        .custom-select-value {
+            flex: 1 1 auto;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .custom-select-arrow {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+            transition: transform 0.2s ease;
+            color: currentColor;
+        }
+
+        .custom-select-arrow svg {
+            display: block;
+            width: 12px;
+            height: 12px;
+        }
+
+        .custom-select-wrapper.is-open .custom-select-arrow {
+            transform: rotate(180deg);
+            opacity: 1;
+            color: #2196F3;
+        }
+
+        .custom-select-popover {
+            display: block;
+            position: absolute;
+            top: calc(100% + 5px);
+            left: 0;
+            right: 0;
+            width: 100%;
+            box-sizing: border-box;
+            z-index: 1000;
+            background: var(--bg-color);
+            border: 2px solid var(--text-color);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            overflow: hidden;
+            padding: 4px;
+        }
+
+        .custom-select-wrapper.is-open .custom-select-popover {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .custom-select-popover-inner {
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .custom-select-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+            padding: 9px 12px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 13.5px;
+            font-weight: 500;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .custom-select-option:hover {
+            background: rgba(33, 150, 243, 0.15);
+        }
+
+        .custom-select-option.is-selected {
+            background: rgba(33, 150, 243, 0.25);
+            font-weight: 600;
+        }
+
+        .custom-select-option .custom-option-check {
+            font-size: 13px;
+            font-weight: bold;
+            opacity: 0;
+        }
+
+        .custom-select-option.is-selected .custom-option-check {
+            opacity: 1;
+            color: #2196F3;
+        }
     </style>
 </head>
 <body>
@@ -674,7 +832,7 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             <?php if (count($availableBlogPaths) > 0): ?>
             <div class="form-group" style="background: rgba(33, 150, 243, 0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(33, 150, 243, 0.2); margin-bottom: 25px;">
                 <label for="blogToUpload">Выберите блог для загрузки</label>
-                <select id="blogToUpload" name="blogToUpload" style="width: 100%; padding: 12px 16px; background-color: var(--bg-color); color: var(--text-color); border: 2px solid var(--text-color); border-radius: 8px; font-size: 14px; cursor: pointer; outline: none;">
+                <select id="blogToUpload" name="blogToUpload">
                     <?php foreach ($availableBlogPaths as $path): ?>
                         <?php $folderName = basename(str_replace('\\', '/', $path)); ?>
                         <option value="<?= htmlspecialchars($path) ?>" <?= $path === $currentActiveBlog ? 'selected' : '' ?>>
@@ -964,6 +1122,93 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                 document.getElementById('uploadBtn').click();
             }
         });
+
+        // Initialize custom selects in ftp.php
+        (function() {
+            function initCustomSelects() {
+                document.querySelectorAll('select:not([data-custom-select-initialized="true"])').forEach(select => {
+                    select.dataset.customSelectInitialized = 'true';
+                    select.classList.add('custom-select-native');
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'custom-select-wrapper';
+                    select.parentNode.insertBefore(wrapper, select);
+                    wrapper.appendChild(select);
+
+                    const trigger = document.createElement('button');
+                    trigger.type = 'button';
+                    trigger.className = 'custom-select-trigger';
+
+                    const valSpan = document.createElement('span');
+                    valSpan.className = 'custom-select-value';
+                    const selectedOption = select.options[select.selectedIndex] || select.options[0];
+                    valSpan.textContent = selectedOption ? selectedOption.textContent : 'Выберите...';
+
+                    const arrowSpan = document.createElement('span');
+                    arrowSpan.className = 'custom-select-arrow';
+                    arrowSpan.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+
+                    trigger.appendChild(valSpan);
+                    trigger.appendChild(arrowSpan);
+                    wrapper.appendChild(trigger);
+
+                    const popover = document.createElement('div');
+                    popover.className = 'custom-select-popover';
+                    const popoverInner = document.createElement('div');
+                    popoverInner.className = 'custom-select-popover-inner';
+                    popover.appendChild(popoverInner);
+                    wrapper.appendChild(popover);
+
+                    Array.from(select.options).forEach(opt => {
+                        const optBtn = document.createElement('button');
+                        optBtn.type = 'button';
+                        optBtn.className = 'custom-select-option' + (opt.value === select.value ? ' is-selected' : '');
+                        optBtn.dataset.value = opt.value;
+
+                        const textSpan = document.createElement('span');
+                        textSpan.textContent = opt.textContent;
+                        const checkSpan = document.createElement('span');
+                        checkSpan.className = 'custom-option-check';
+                        checkSpan.textContent = '✓';
+
+                        optBtn.appendChild(textSpan);
+                        optBtn.appendChild(checkSpan);
+
+                        optBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            select.value = opt.value;
+                            valSpan.textContent = opt.textContent;
+                            wrapper.querySelectorAll('.custom-select-option').forEach(b => b.classList.toggle('is-selected', b === optBtn));
+                            wrapper.classList.remove('is-open');
+                            select.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+
+                        popoverInner.appendChild(optBtn);
+                    });
+
+                    trigger.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const isOpen = wrapper.classList.contains('is-open');
+                        document.querySelectorAll('.custom-select-wrapper.is-open').forEach(w => w.classList.remove('is-open'));
+                        if (!isOpen) wrapper.classList.add('is-open');
+                    });
+                });
+            }
+
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.custom-select-wrapper')) {
+                    document.querySelectorAll('.custom-select-wrapper.is-open').forEach(w => w.classList.remove('is-open'));
+                }
+            });
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initCustomSelects);
+            } else {
+                initCustomSelects();
+            }
+        })();
     </script>
 </body>
 </html>
