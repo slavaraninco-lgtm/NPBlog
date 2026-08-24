@@ -680,17 +680,17 @@ if (file_exists($versionFile)) {
             </div>
 
             <div class="image-size-controls">
-                <label>
-                    Размер:
+                <div>
+                    <label for="imageSize">Размер:</label>
                     <select id="imageSize">
                         <option value="small">Маленький</option>
                         <option value="medium" selected>Средний</option>
                         <option value="large">Большой</option>
                         <option value="custom">Свой размер</option>
                     </select>
-                </label>
-                <label>
-                    Расположение:
+                </div>
+                <div>
+                    <label for="gridLayout">Расположение:</label>
                     <select id="gridLayout">
                         <option value="">Обычное</option>
                         <option value="2x1">2×1</option>
@@ -699,7 +699,7 @@ if (file_exists($versionFile)) {
                         <option value="3x2">3×2</option>
                         <option value="3x3">3×3</option>
                     </select>
-                </label>
+                </div>
                 <div id="customSizeInputs" style="display: none;">
                     <div class="size-input-group">
                         <input type="number" id="customWidth" placeholder="Ширина">

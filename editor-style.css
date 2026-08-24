@@ -842,9 +842,8 @@ textarea {
 }
 
 .image-size-controls label {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: block;
+    margin-bottom: 8px;
     font-size: 13px;
     font-weight: 500;
     color: var(--text-color);
