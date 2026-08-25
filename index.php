@@ -442,34 +442,8 @@ if (file_exists($versionFile)) {
     <!-- Модальное окно вставки таблицы -->
     <?php require_once __DIR__ . '/modals_editor/table_modal.php'; ?>
 
-<div id="cellColorDialog" class="dialog">
-    <div class="dialog-content">
-        <h3 data-i18n="modals.cell_color_title">Перекрасить ячейку</h3>
-        <div class="form-group">
-            <label data-i18n="modals.cell_color_select">Выберите цвет:</label>
-            <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 15px 0;">
-                <button type="button" onclick="setCellColor('#ffffff')" style="width: 40px; height: 40px; background: #ffffff; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Белый"></button>
-                <button type="button" onclick="setCellColor('#f0f0f0')" style="width: 40px; height: 40px; background: #f0f0f0; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Светло-серый"></button>
-                <button type="button" onclick="setCellColor('#ffebee')" style="width: 40px; height: 40px; background: #ffebee; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Светло-красный"></button>
-                <button type="button" onclick="setCellColor('#fff3e0')" style="width: 40px; height: 40px; background: #fff3e0; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Светло-оранжевый"></button>
-                <button type="button" onclick="setCellColor('#fffde7')" style="width: 40px; height: 40px; background: #fffde7; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Светло-желтый"></button>
-                <button type="button" onclick="setCellColor('#e8f5e9')" style="width: 40px; height: 40px; background: #e8f5e9; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Светло-зеленый"></button>
-                <button type="button" onclick="setCellColor('#e3f2fd')" style="width: 40px; height: 40px; background: #e3f2fd; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Светло-синий"></button>
-                <button type="button" onclick="setCellColor('#f3e5f5')" style="width: 40px; height: 40px; background: #f3e5f5; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Светло-фиолетовый"></button>
-                <button type="button" onclick="setCellColor('#ffcdd2')" style="width: 40px; height: 40px; background: #ffcdd2; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Красный"></button>
-                <button type="button" onclick="setCellColor('#ffe0b2')" style="width: 40px; height: 40px; background: #ffe0b2; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Оранжевый"></button>
-                <button type="button" onclick="setCellColor('#fff9c4')" style="width: 40px; height: 40px; background: #fff9c4; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Желтый"></button>
-                <button type="button" onclick="setCellColor('#c8e6c9')" style="width: 40px; height: 40px; background: #c8e6c9; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Зеленый"></button>
-                <button type="button" onclick="setCellColor('#bbdefb')" style="width: 40px; height: 40px; background: #bbdefb; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Синий"></button>
-                <button type="button" onclick="setCellColor('#e1bee7')" style="width: 40px; height: 40px; background: #e1bee7; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Фиолетовый"></button>
-            </div>
-            <button type="button" onclick="setCellColor('')" style="width: 100%; padding: 8px; margin-top: 10px; background: var(--bg-color); color: var(--text-color); border: 2px solid var(--border-color); border-radius: 6px; cursor: pointer;" data-i18n="modals.cell_color_remove">Убрать цвет</button>
-        </div>
-        <div class="dialog-buttons">
-            <button onclick="closeCellColorDialog()" data-i18n="common.close">Закрыть</button>
-        </div>
-    </div>
-</div>
+<!-- Модальное окно перекрашивания ячейки -->
+<?php require_once __DIR__ . '/modals_editor/cell_color_modal.php'; ?>
 
     <!-- Модальное окно вставки ссылки -->
     <?php require_once __DIR__ . '/modals_editor/link_modal.php'; ?>
@@ -483,80 +457,7 @@ if (file_exists($versionFile)) {
 <script src="editor-img.js?v=<?php echo file_exists(__DIR__ . '/editor-img.js') ? filemtime(__DIR__ . '/editor-img.js') : time(); ?>"></script>
 
 <!-- Модальное окно дополнительных настроек -->
-<div id="additionalSettingsModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); border: 1px solid var(--border-color);">
-        <h3 style="margin: 0 0 20px 0; color: var(--text-color); font-size: 20px;" data-i18n="modals.extra_settings_title">Дополнительные настройки</h3>
-        <p id="additionalSettingsPostTitle" style="color: var(--text-color); margin-bottom: 20px; opacity: 0.7;"></p>
-        
-        <!-- Глобальный фон -->
-        <div id="globalBackgroundInfo" style="display: none; margin-bottom: 20px; padding: 15px; border: 2px solid #ffc107; border-radius: 8px; background: rgba(255, 193, 7, 0.05);">
-            <p style="color: var(--text-color); font-weight: 500; margin-bottom: 10px;">🌍 Применен глобальный фон:</p>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <img id="globalBackgroundPreview" src="" alt="Глобальный фон" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color);">
-                <div>
-                    <p id="globalBackgroundName" style="color: var(--text-color); font-size: 14px; word-break: break-all;"></p>
-                    <p id="globalBackgroundModeText" style="color: var(--text-color); font-size: 12px; opacity: 0.7; margin-top: 5px;"></p>
-                    <p style="color: var(--text-color); font-size: 12px; opacity: 0.6; margin-top: 5px; font-style: italic;">Загрузите свой фон ниже, чтобы переопределить глобальный</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Текущий фон статьи -->
-        <div id="currentBackgroundInfo" style="display: none; margin-bottom: 20px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px;">
-            <p style="color: var(--text-color); font-weight: 500; margin-bottom: 10px;">Текущий фон статьи:</p>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <img id="currentBackgroundPreview" src="" alt="Фон" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color);">
-                <div>
-                    <p id="currentBackgroundName" style="color: var(--text-color); font-size: 14px; word-break: break-all;"></p>
-                    <p id="currentBackgroundMode" style="color: var(--text-color); font-size: 12px; opacity: 0.7; margin-top: 5px;"></p>
-                </div>
-            </div>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Фоновое изображение:</label>
-            <input type="file" id="backgroundInput" accept="image/*" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 10px;">
-            
-            <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Режим отображения:</label>
-            <select id="backgroundMode" style="margin-bottom: 15px;">
-                <option value="cover">Растянуть (cover)</option>
-                <option value="contain">По размеру (contain)</option>
-                <option value="repeat">Замостить (repeat)</option>
-            </select>
-            
-            <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Область фона:</label>
-            <select id="backgroundScope" style="margin-bottom: 15px;">
-                <option value="content">Только статья (920px)</option>
-                <option value="fullpage">Вся страница</option>
-            </select>
-            
-            <button type="button" onclick="uploadBackground()" style="padding: 10px 20px; background: var(--text-color); color: var(--bg-color); border: none; border-radius: 8px; cursor: pointer; font-weight: 500; margin-right: 10px;">Загрузить фон</button>
-            <button type="button" onclick="removeBackground()" style="padding: 10px 20px; background: transparent; color: var(--text-color); border: 2px solid var(--text-color); border-radius: 8px; cursor: pointer; font-weight: 500;">Вернуть стандартный фон</button>
-        </div>
-        
-        <!-- Настройки подложки -->
-        <div style="margin-bottom: 20px; padding-top: 20px; border-top: 2px solid var(--border-color);">
-            <label style="display: flex; align-items: center; margin-bottom: 15px; color: var(--text-color); font-weight: 500; cursor: pointer;">
-                <input type="checkbox" id="overlayEnabled" onchange="toggleOverlaySettings()" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                Включить подложку под статью
-            </label>
-            
-            <div id="overlaySettings" style="display: none; padding-left: 30px;">
-                <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Цвет подложки:</label>
-                <input type="color" id="overlayColor" value="#ffffff" style="width: 100%; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; margin-bottom: 15px;">
-                
-                <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Прозрачность: <span id="overlayOpacityValue">90%</span></label>
-                <input type="range" id="overlayOpacity" min="0" max="100" value="90" oninput="updateOpacityValue()" style="width: 100%; margin-bottom: 15px;">
-            </div>
-            
-            <button type="button" class="global-action-btn global-action-btn-primary" onclick="saveOverlaySettings()">Сохранить настройки подложки</button>
-        </div>
-        
-        <div style="text-align: right; margin-top: 20px;">
-            <button type="button" class="global-action-btn" onclick="closeAdditionalSettings()">Закрыть</button>
-        </div>
-    </div>
-</div>
+<?php require_once __DIR__ . '/modals_editor/additional_settings_modal.php'; ?>
 
 <!-- Модальное окно предупреждения о DEV сборке -->
 <?php require_once __DIR__ . '/modals_editor/dev_warning_modal.php'; ?>
@@ -772,25 +673,30 @@ function openAdditionalSettings(postId, postTitle) {
             document.getElementById('overlaySettings').style.display = 'none';
         });
     
-    const modal = document.getElementById('additionalSettingsModal');
-    modal.style.display = 'flex';
-    
-    // Запускаем анимацию после небольшой задержки
-    setTimeout(() => {
-        modal.classList.add('show');
-    }, 10);
+    if (window.Modal) {
+        Modal.open('#additionalSettingsModal');
+    } else {
+        const modal = document.getElementById('additionalSettingsModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+    }
 }
 
 function closeAdditionalSettings() {
-    const modal = document.getElementById('additionalSettingsModal');
-    modal.classList.remove('show');
-    
-    // Скрываем модальное окно после завершения анимации
-    setTimeout(() => {
-        modal.style.display = 'none';
-        document.getElementById('backgroundInput').value = '';
-        currentAdditionalPostId = null;
-    }, 300);
+    if (window.Modal) {
+        Modal.close('#additionalSettingsModal');
+    } else {
+        const modal = document.getElementById('additionalSettingsModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+    }
+    const bgInput = document.getElementById('backgroundInput');
+    if (bgInput) bgInput.value = '';
+    currentAdditionalPostId = null;
 }
 
 function uploadBackground() {

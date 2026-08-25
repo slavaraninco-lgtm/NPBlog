@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NPBlog Modal Framework - Interactive Playground & Demo</title>
-    
+
     <!-- Editor base CSS variables & font -->
     <link rel="stylesheet" href="../editor-style.css">
-    
+
     <!-- Modal Framework CSS -->
     <link rel="stylesheet" href="modal.css">
 
@@ -27,7 +28,7 @@
             text-align: center;
             margin-bottom: 40px;
             padding-bottom: 24px;
-            border-bottom: 1px solid var(--border-color, rgba(128,128,128,0.2));
+            border-bottom: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
         }
 
         .demo-title {
@@ -79,10 +80,10 @@
 
         .demo-card {
             background: var(--bg-color, #ffffff);
-            border: 1px solid var(--border-color, rgba(128,128,128,0.2));
+            border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
             border-radius: 14px;
             padding: 22px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -115,7 +116,7 @@
             font-size: 13px;
             font-weight: 600;
             border-radius: 8px;
-            border: 1px solid var(--border-color, rgba(128,128,128,0.25));
+            border: 1px solid var(--border-color, rgba(128, 128, 128, 0.25));
             background: var(--bg-color, #fff);
             color: var(--text-color, #222);
             cursor: pointer;
@@ -147,7 +148,7 @@
 
         .code-box {
             background: rgba(128, 128, 128, 0.08);
-            border: 1px solid var(--border-color, rgba(128,128,128,0.2));
+            border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
             border-radius: 10px;
             padding: 14px;
             font-family: monospace;
@@ -168,12 +169,14 @@
         }
     </style>
 </head>
+
 <body>
 
     <header class="demo-header">
-        <h1 class="demo-title">✨ NPBlog Modal Framework</h1>
+        <h1 class="demo-title">NPBlog Modal Framework</h1>
         <p class="demo-desc">
-            Единая система модальных окон для блога и редактора. Поддерживает темы (Light, Dark, AMOLED), анимации, адаптивность, стек окон, вкладки, формы и валидацию.
+            Единая система модальных окон для блога и редактора. Поддерживает темы (Light, Dark, AMOLED), анимации,
+            адаптивность, стек окон, вкладки, формы и валидацию.
         </p>
 
         <!-- Theme Switcher -->
@@ -216,7 +219,8 @@
         <div class="demo-card">
             <div>
                 <h3>📑 Вкладки и формы</h3>
-                <p>Полнофункциональное окно с переключением табов, переключателями (iOS Switch), селектами и валидацией.</p>
+                <p>Полнофункциональное окно с переключением табов, переключателями (iOS Switch), селектами и валидацией.
+                </p>
             </div>
             <div class="demo-actions">
                 <button class="demo-btn primary" data-modal-open="#settingsModal">Открыть настройки</button>
@@ -325,7 +329,8 @@
                     <div class="modal-grid-2">
                         <div class="modal-form-group">
                             <label class="modal-label modal-label-required" for="blogTitleInput">Название блога</label>
-                            <input type="text" id="blogTitleInput" name="blogTitle" class="modal-input" value="Мой блог NPBlog">
+                            <input type="text" id="blogTitleInput" name="blogTitle" class="modal-input"
+                                value="Мой блог NPBlog">
                         </div>
                         <div class="modal-form-group">
                             <label class="modal-label" for="langSelect">Язык по умолчанию</label>
@@ -361,12 +366,14 @@
                 <div class="modal-tab-pane" id="tab-seo">
                     <div class="modal-form-group">
                         <label class="modal-label" for="metaDescInput">Meta Description</label>
-                        <textarea id="metaDescInput" name="metaDesc" class="modal-textarea" placeholder="Краткое описание страницы для поисковиков..."></textarea>
+                        <textarea id="metaDescInput" name="metaDesc" class="modal-textarea"
+                            placeholder="Краткое описание страницы для поисковиков..."></textarea>
                         <div class="modal-help-text">Рекомендуемая длина: от 120 до 160 символов.</div>
                     </div>
                     <div class="modal-form-group">
                         <label class="modal-label" for="metaKeywordsInput">Ключевые слова (Keywords)</label>
-                        <input type="text" id="metaKeywordsInput" name="keywords" class="modal-input" placeholder="блог, новости, статьи">
+                        <input type="text" id="metaKeywordsInput" name="keywords" class="modal-input"
+                            placeholder="блог, новости, статьи">
                     </div>
                 </div>
 
@@ -379,7 +386,8 @@
                             Очистка кэша сбросит временные файлы стилей и автосохранений.
                         </div>
                     </div>
-                    <button type="button" class="modal-btn" onclick="Modal.alert('Кэш успешно очищен!')">🧹 Очистить кэш редактора</button>
+                    <button type="button" class="modal-btn" onclick="Modal.alert('Кэш успешно очищен!')">🧹 Очистить кэш
+                        редактора</button>
                 </div>
             </div>
 
@@ -388,7 +396,8 @@
                 <button type="button" class="modal-btn modal-btn-ghost" data-modal-close>Закрыть</button>
                 <div style="display: flex; gap: 8px;">
                     <button type="button" class="modal-btn" data-modal-close>Отмена</button>
-                    <button type="button" class="modal-btn modal-btn-primary" onclick="saveSettings(this)">Сохранить настройки</button>
+                    <button type="button" class="modal-btn modal-btn-primary" onclick="saveSettings(this)">Сохранить
+                        настройки</button>
                 </div>
             </div>
         </div>
@@ -421,12 +430,14 @@
 
                 <div class="modal-form-group">
                     <label class="modal-label" for="imageUrlInput">URL изображения в интернете</label>
-                    <input type="url" id="imageUrlInput" class="modal-input" placeholder="https://example.com/image.jpg">
+                    <input type="url" id="imageUrlInput" class="modal-input"
+                        placeholder="https://example.com/image.jpg">
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="modal-btn" data-modal-close>Отмена</button>
-                <button type="button" class="modal-btn modal-btn-primary" onclick="insertImage()">Вставить в статью</button>
+                <button type="button" class="modal-btn modal-btn-primary" onclick="insertImage()">Вставить в
+                    статью</button>
             </div>
         </div>
     </div>
@@ -581,7 +592,7 @@
         function handleFile(e) {
             const file = e.target.files[0];
             if (file) {
-                Modal.alert({ title: 'Файл выбран', message: `Выбран файл: ${file.name} (${Math.round(file.size/1024)} KB)`, type: 'info' });
+                Modal.alert({ title: 'Файл выбран', message: `Выбран файл: ${file.name} (${Math.round(file.size / 1024)} KB)`, type: 'info' });
             }
         }
 
@@ -606,4 +617,5 @@
         }
     </script>
 </body>
+
 </html>

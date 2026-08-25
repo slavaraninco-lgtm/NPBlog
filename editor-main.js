@@ -1573,11 +1573,21 @@ function showNotification(message, type = 'info', title = '') {
 
     function openCellColorDialog() {
         if (!window.contextMenuTableCell) return;
-        document.getElementById('cellColorDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#cellColorDialog');
+        } else {
+            const dlg = document.getElementById('cellColorDialog');
+            if (dlg) dlg.style.display = 'flex';
+        }
     }
 
     function closeCellColorDialog() {
-        document.getElementById('cellColorDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#cellColorDialog');
+        } else {
+            const dlg = document.getElementById('cellColorDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
     }
 
     function setCellColor(color) {
@@ -1595,8 +1605,12 @@ function showNotification(message, type = 'info', title = '') {
         
         saveToHistory();
         closeCellColorDialog();
-        showNotification('Цвет ячейки изменен', 'success');
+        showNotification(window.t ? window.t('notifications.cell_color_changed', 'Цвет ячейки изменен') : 'Цвет ячейки изменен', 'success');
     }
+
+    window.openCellColorDialog = openCellColorDialog;
+    window.closeCellColorDialog = closeCellColorDialog;
+    window.setCellColor = setCellColor;
 
     function insertTable() {
         const rows = parseInt(document.getElementById('tableRows').value);
