@@ -9597,10 +9597,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (trigger) {
             trigger.setAttribute('aria-expanded', 'false');
         }
-        const popover = wrapper.querySelector('.custom-select-popover');
-        if (popover) {
-            popover.classList.remove('drop-up');
-        }
     }
 
     function closeAllCustomSelects(exceptWrapper) {

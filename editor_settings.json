@@ -1,7 +1,7 @@
 {
     "hideEditorModeButtons": false,
     "enableUndoRedo": false,
-    "autosaveEnabled": false,
+    "autosaveEnabled": true,
     "autosaveInterval": 60,
     "tutorialCompleted": true,
     "amoledTheme": false,
