@@ -20,7 +20,7 @@ if (isset($data['hideEditorModeButtons'])) {
 
 if (isset($data['language'])) {
     $lang = strtolower(trim($data['language']));
-    if (in_array($lang, ['ru', 'en', 'uk'])) {
+    if (in_array($lang, ['ru', 'en', 'uk', 'lv'])) {
         $existingSettings['language'] = $lang;
         $_SESSION['editor_language'] = $lang;
     }

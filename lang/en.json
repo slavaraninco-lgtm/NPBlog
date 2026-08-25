@@ -277,6 +277,9 @@
     "lang_uk_name": "Ukrainian (Українська)",
     "lang_uk_badge": "🇺🇦 Ukrainian",
     "lang_uk_desc": "Full Ukrainian translation of editor",
+    "lang_lv_name": "Latvian (Latviešu)",
+    "lang_lv_badge": "🇱🇻 Latvian",
+    "lang_lv_desc": "Full Latvian translation of editor",
     "lang_apply_btn": "Apply Language",
     "lang_success": "Interface language successfully changed!"
   },

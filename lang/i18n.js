@@ -1,6 +1,6 @@
 /**
  * NPBlog Editor - Internationalization (i18n) Engine
- * Full localization support for Russian (ru), English (en), and Ukrainian (uk).
+ * Full localization support for Russian (ru), English (en), Ukrainian (uk), and Latvian (lv).
  */
 (function(window, document) {
     'use strict';
@@ -15,11 +15,11 @@
          */
         init: function(initialLang) {
             var stored = localStorage.getItem('npblog_language');
-            if (stored && (stored === 'ru' || stored === 'en' || stored === 'uk')) {
+            if (stored && (stored === 'ru' || stored === 'en' || stored === 'uk' || stored === 'lv')) {
                 currentLang = stored;
-            } else if (initialLang && (initialLang === 'ru' || initialLang === 'en' || initialLang === 'uk')) {
+            } else if (initialLang && (initialLang === 'ru' || initialLang === 'en' || initialLang === 'uk' || initialLang === 'lv')) {
                 currentLang = initialLang;
-            } else if (window.NPBLOG_LANG && (window.NPBLOG_LANG === 'ru' || window.NPBLOG_LANG === 'en' || window.NPBLOG_LANG === 'uk')) {
+            } else if (window.NPBLOG_LANG && (window.NPBLOG_LANG === 'ru' || window.NPBLOG_LANG === 'en' || window.NPBLOG_LANG === 'uk' || window.NPBLOG_LANG === 'lv')) {
                 currentLang = window.NPBLOG_LANG;
             }
 
@@ -57,7 +57,7 @@
          * Set and switch active language
          */
         setLanguage: function(langCode, saveToServer, callback) {
-            if (langCode !== 'ru' && langCode !== 'en' && langCode !== 'uk') {
+            if (langCode !== 'ru' && langCode !== 'en' && langCode !== 'uk' && langCode !== 'lv') {
                 langCode = 'ru';
             }
             currentLang = langCode;
@@ -214,6 +214,11 @@
     // Preload Ukrainian dictionary
     fetch('lang/uk.json?v=' + Date.now()).then(function(r) { return r.json(); }).then(function(data) {
         NPBlogI18n.register('uk', data);
+    }).catch(function() {});
+
+    // Preload Latvian dictionary
+    fetch('lang/lv.json?v=' + Date.now()).then(function(r) { return r.json(); }).then(function(data) {
+        NPBlogI18n.register('lv', data);
     }).catch(function() {});
 
     // Expose globally

@@ -277,6 +277,9 @@
     "lang_uk_name": "Українська",
     "lang_uk_badge": "🇺🇦 Українська",
     "lang_uk_desc": "Повний український переклад редактора",
+    "lang_lv_name": "Латиська (Latviešu)",
+    "lang_lv_badge": "🇱🇻 Latviešu",
+    "lang_lv_desc": "Повний латиський переклад редактора",
     "lang_apply_btn": "Застосувати мову",
     "lang_success": "Мову інтерфейсу успішно змінено!"
   },

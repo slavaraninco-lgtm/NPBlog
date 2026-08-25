@@ -5714,7 +5714,7 @@ async function loadDraftsList() {
             } else {
                 const untitledText = window.t ? window.t('more_menu.untitled', 'Без названия') : 'Без названия';
                 const delDraftText = window.t ? window.t('more_menu.delete_draft', 'Удалить черновик') : 'Удалить черновик';
-                const currentLocale = (window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'uk') ? 'uk-UA' : ((window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'en') ? 'en-US' : 'ru-RU');
+                const currentLocale = (window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'lv') ? 'lv-LV' : ((window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'uk') ? 'uk-UA' : ((window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'en') ? 'en-US' : 'ru-RU'));
                 submenu.innerHTML = data.drafts.map(draft => {
                     const displayTitle = draft.title || untitledText;
                     const date = new Date(draft.timestamp * 1000).toLocaleString(currentLocale, {

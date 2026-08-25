@@ -12,11 +12,11 @@ if (file_exists($settingsFile)) {
     if (!empty($settings['activeTheme'])) {
         $activeTheme = $settings['activeTheme'];
     }
-    if (!empty($settings['language']) && in_array($settings['language'], ['ru', 'en', 'uk'])) {
+    if (!empty($settings['language']) && in_array($settings['language'], ['ru', 'en', 'uk', 'lv'])) {
         $currentLanguage = $settings['language'];
     }
 }
-if (!empty($_SESSION['editor_language']) && in_array($_SESSION['editor_language'], ['ru', 'en', 'uk'])) {
+if (!empty($_SESSION['editor_language']) && in_array($_SESSION['editor_language'], ['ru', 'en', 'uk', 'lv'])) {
     $currentLanguage = $_SESSION['editor_language'];
 }
 $customCssExists = file_exists(getDataPath('custom_editor_theme.css'));
@@ -1898,6 +1898,15 @@ if (file_exists($versionFile)) {
                         </div>
                         <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_uk_name">Українська</div>
                     </div>
+
+                    <!-- Карточка Латышского языка -->
+                    <div id="langCard-lv" class="lang-selection-card" onclick="selectLanguageOption('lv', true)" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; background: transparent; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 28px;">🇱🇻</div>
+                            <input type="radio" name="editor_lang_radio" id="langRadio-lv" value="lv" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('lv', true)">
+                        </div>
+                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_lv_name">Latviešu</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2521,16 +2530,19 @@ function selectLanguageOption(lang, autoSave) {
     var cardRu = document.getElementById('langCard-ru');
     var cardEn = document.getElementById('langCard-en');
     var cardUk = document.getElementById('langCard-uk');
+    var cardLv = document.getElementById('langCard-lv');
     var radioRu = document.getElementById('langRadio-ru');
     var radioEn = document.getElementById('langRadio-en');
     var radioUk = document.getElementById('langRadio-uk');
+    var radioLv = document.getElementById('langRadio-lv');
     
     if (radioRu) radioRu.checked = (lang === 'ru');
     if (radioEn) radioEn.checked = (lang === 'en');
     if (radioUk) radioUk.checked = (lang === 'uk');
+    if (radioLv) radioLv.checked = (lang === 'lv');
     
-    var cards = { 'ru': cardRu, 'en': cardEn, 'uk': cardUk };
-    ['ru', 'en', 'uk'].forEach(function(code) {
+    var cards = { 'ru': cardRu, 'en': cardEn, 'uk': cardUk, 'lv': cardLv };
+    ['ru', 'en', 'uk', 'lv'].forEach(function(code) {
         var c = cards[code];
         if (c) {
             if (lang === code) {
@@ -2552,10 +2564,13 @@ function applySelectedLanguage(lang) {
     if (!lang) {
         var radioEn = document.getElementById('langRadio-en');
         var radioUk = document.getElementById('langRadio-uk');
+        var radioLv = document.getElementById('langRadio-lv');
         if (radioEn && radioEn.checked) {
             lang = 'en';
         } else if (radioUk && radioUk.checked) {
             lang = 'uk';
+        } else if (radioLv && radioLv.checked) {
+            lang = 'lv';
         } else {
             lang = 'ru';
         }
@@ -2571,7 +2586,7 @@ function applySelectedLanguage(lang) {
             if (typeof showNotification === 'function') {
                 showNotification(window.NPBlogI18n.t('settings.lang_success', 'Язык интерфейса успешно изменён!'), 'success');
             }
-            var title = (lang === 'en' ? 'Language' : (lang === 'uk' ? 'Мова' : 'Язык'));
+            var title = (lang === 'en' ? 'Language' : (lang === 'uk' ? 'Мова' : (lang === 'lv' ? 'Valoda' : 'Язык')));
             var titleEl = document.getElementById('globalSectionTitle');
             if (titleEl) titleEl.textContent = title;
         });
