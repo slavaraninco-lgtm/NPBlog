@@ -122,15 +122,19 @@
             </div>
 
             <!-- Опции чекбоксов -->
-            <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
                 <label class="modal-checkbox-label" for="noBorderRadius">
                     <input type="checkbox" id="noBorderRadius" class="modal-checkbox">
                     <span data-i18n="modals.image_no_rounded">Убрать закругление по краям</span>
                 </label>
                 
-                <label class="modal-checkbox-label" id="insertGalleryContainer" style="display: none;" for="insertGallery">
+                <label class="modal-checkbox-label" id="insertGalleryContainer" for="insertGallery">
                     <input type="checkbox" id="insertGallery" class="modal-checkbox">
-                    <span data-i18n="modals.image_gallery_scroll">Галерея с пролистыванием</span>
+                    <span style="display: inline-flex; align-items: center; gap: 6px;">
+                        
+                        <span data-i18n="modals.image_gallery_scroll">Вставить как карусель (галерею с пролистыванием)</span>
+                        <span style="font-size: 11px; opacity: 0.65; font-weight: normal;">(для 2+ изображений)</span>
+                    </span>
                 </label>
             </div>
         </div>

@@ -4,5 +4,226 @@
     "blog_paths": [
         "C:\\xampp\\htdocs\\data"
     ],
-    "active_blog_path": "C:\\xampp\\htdocs\\data"
+    "active_blog_path": "C:\\xampp\\htdocs\\data",
+    "headerLayout": [
+        {
+            "id": "logoDivider",
+            "name": "logoDivider",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "headerModeToggle",
+            "name": "Визуально\nКод",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "modeActionsDivider",
+            "name": "modeActionsDivider",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "headerEditorActions",
+            "name": "\n                \n                    \n                        \n                        \n                    \n                \n                \n                    \n                        \n                        \n                    \n                \n            ",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "actionsFormattingDivider",
+            "name": "actionsFormattingDivider",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-bold",
+            "name": "Жирный (Ctrl+B)",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-italic",
+            "name": "Курсив (Ctrl+I)",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-underline",
+            "name": "Подчёркнутый (Ctrl+U)",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-strike",
+            "name": "Зачёркнутый",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-sup",
+            "name": "Верхний индекс",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-sub",
+            "name": "Нижний индекс",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-h2",
+            "name": "Подзаголовок",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-table",
+            "name": "Вставить таблицу",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-spoiler",
+            "name": "Сворачиваемый блок",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-marker",
+            "name": "Маркер",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-anchor",
+            "name": "Добавить якорь",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "divider-align",
+            "name": "divider-align",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-align-left",
+            "name": "По левому краю",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-align-center",
+            "name": "По центру",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-align-right",
+            "name": "По правому краю",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "divider-media",
+            "name": "divider-media",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-link",
+            "name": "Ссылка",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-image",
+            "name": "Добавить изображение",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-media",
+            "name": "Добавить медиа",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "btn-ascii",
+            "name": "ASCII Рисовалка",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "divider-fonts",
+            "name": "divider-fonts",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "fontSizeWrapMain",
+            "name": "14px",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "fontFamilyWrapMain",
+            "name": "Arial",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "colorPickerWrapMain",
+            "name": "colorPickerWrapMain",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "divider-more",
+            "name": "divider-more",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
+            "id": "moreMenuWrap",
+            "name": "⋯",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        }
+    ],
+    "headerHeight": 64,
+    "headerTwoRows": false
 }

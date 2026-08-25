@@ -1965,6 +1965,7 @@ function showNotification(message, type = 'info', title = '') {
                     }
                 });
                 renderImagePreviews();
+                checkInsertGalleryVisibility();
             }
         }, false);
         
@@ -2006,6 +2007,7 @@ function showNotification(message, type = 'info', title = '') {
                 e.stopPropagation();
                 selectedImageFiles.splice(index, 1);
                 renderImagePreviews();
+                checkInsertGalleryVisibility();
             });
             thumbnail.appendChild(deleteBtn);
             previewContainer.appendChild(thumbnail);
@@ -2048,6 +2050,7 @@ function showNotification(message, type = 'info', title = '') {
             if (dlg) dlg.style.display = 'block';
         }
         initImageDragDrop();
+        checkInsertGalleryVisibility();
     }
 
 let gridTileFiles = {};
@@ -2055,7 +2058,27 @@ let gridTileFiles = {};
 document.addEventListener('DOMContentLoaded', function() {
     const gridLayoutSelect = document.getElementById('gridLayout');
     if (gridLayoutSelect) {
-        gridLayoutSelect.addEventListener('change', renderGridPreview);
+        gridLayoutSelect.addEventListener('change', function() {
+            if (this.value) {
+                const insertGalleryChk = document.getElementById('insertGallery');
+                if (insertGalleryChk) insertGalleryChk.checked = false;
+            }
+            checkInsertGalleryVisibility();
+            renderGridPreview();
+        });
+    }
+
+    const insertGalleryChk = document.getElementById('insertGallery');
+    if (insertGalleryChk) {
+        insertGalleryChk.addEventListener('change', function() {
+            if (this.checked) {
+                const gridLayoutSelect = document.getElementById('gridLayout');
+                if (gridLayoutSelect && gridLayoutSelect.value) {
+                    gridLayoutSelect.value = '';
+                    renderGridPreview();
+                }
+            }
+        });
     }
     
     // Remember state of "Remove rounded corners" checkbox
@@ -2343,26 +2366,16 @@ function checkInsertGalleryVisibility() {
     const insertGalleryContainer = document.getElementById('insertGalleryContainer');
     if (!insertGalleryContainer) return;
     
-    const imageSource = document.querySelector('input[name="imageSource"]:checked')?.value;
+    const gridLayout = document.getElementById('gridLayout')?.value;
     
-    if (imageSource === 'file') {
-        // Для файлов проверяем количество выбранных файлов
-        if (selectedImageFiles.length > 1) {
-            insertGalleryContainer.style.display = 'flex';
-        } else {
-            insertGalleryContainer.style.display = 'none';
-        }
-    } else if (imageSource === 'url') {
-        // Для URL проверяем количество введённых адресов
-        const urlInput = document.getElementById('imageUrl').value.trim();
-        const urls = urlInput.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-        if (urls.length > 1) {
-            insertGalleryContainer.style.display = 'flex';
-        } else {
-            insertGalleryContainer.style.display = 'none';
-        }
+    if (gridLayout) {
+        insertGalleryContainer.style.opacity = '0.4';
+        insertGalleryContainer.style.pointerEvents = 'none';
+        const chk = document.getElementById('insertGallery');
+        if (chk) chk.checked = false;
     } else {
-        insertGalleryContainer.style.display = 'none';
+        insertGalleryContainer.style.opacity = '1';
+        insertGalleryContainer.style.pointerEvents = 'auto';
     }
 }
 function processImage() {
@@ -3556,7 +3569,10 @@ function closeImageDialog() {
     const insertGalleryChk = document.getElementById('insertGallery');
     if (insertGalleryChk) insertGalleryChk.checked = false;
     const insertGalleryContainer = document.getElementById('insertGalleryContainer');
-    if (insertGalleryContainer) insertGalleryContainer.style.display = 'none';
+    if (insertGalleryContainer) {
+        insertGalleryContainer.style.opacity = '1';
+        insertGalleryContainer.style.pointerEvents = 'auto';
+    }
     const fileRadio = document.querySelector('input[name="imageSource"][value="file"]');
     if (fileRadio) fileRadio.checked = true;
     document.querySelectorAll('input[name="imageSource"]').forEach(r => {
