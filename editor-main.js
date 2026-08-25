@@ -58,7 +58,13 @@
     let editorMode = 'visual'; // 'visual' | 'code'
     let savedRange = null;
     
+    // Флаги состояния и защита от потери данных
+    let isEditorDirty = false;
+    let localDraftSaveTimeout = null;
+    let isSavingArticle = false;
+    
     // Система истории изменений
+    const MAX_HISTORY_STATES = 50;
     let historyStack = [];
     let historyIndex = -1;
     let isRestoringHistory = false;
@@ -66,6 +72,148 @@
     let lastActionType = null;
     let lastActionTime = 0;
     let cursorMoved = false;
+
+    function getLocalDraftStorageKey() {
+        return currentEditId ? `npblog_draft_post_${currentEditId}` : 'npblog_draft_new_post';
+    }
+
+    function markEditorDirty() {
+        isEditorDirty = true;
+        scheduleLocalDraftSave();
+    }
+
+    function scheduleLocalDraftSave() {
+        clearTimeout(localDraftSaveTimeout);
+        localDraftSaveTimeout = setTimeout(() => {
+            saveLocalDraftNow();
+        }, 1200);
+    }
+
+    function saveLocalDraftNow() {
+        try {
+            const titleInput = document.getElementById('title');
+            const ve = document.getElementById('contentVisual');
+            const ta = document.getElementById('content');
+            if (!titleInput || (!ve && !ta)) return;
+            
+            const title = titleInput.value.trim();
+            const content = editorMode === 'visual' ? (ve ? ve.innerHTML : '') : (ta ? ta.value : '');
+            
+            const hasText = title.length > 0 || (content.length > 0 && content !== '<br>' && content !== '<div><br></div>');
+            if (!hasText) {
+                localStorage.removeItem(getLocalDraftStorageKey());
+                return;
+            }
+            
+            const draft = {
+                title: title,
+                content: content,
+                mode: editorMode,
+                currentEditId: currentEditId,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(getLocalDraftStorageKey(), JSON.stringify(draft));
+        } catch (e) {
+            console.warn('Не удалось сохранить локальный черновик:', e);
+        }
+    }
+
+    function clearLocalDraft() {
+        isEditorDirty = false;
+        try {
+            localStorage.removeItem(getLocalDraftStorageKey());
+            localStorage.removeItem('npblog_draft_new_post');
+        } catch (e) {}
+    }
+
+    function checkLocalDraftOnStartup() {
+        try {
+            if (currentEditId) return;
+            const raw = localStorage.getItem('npblog_draft_new_post');
+            if (!raw) return;
+            const draft = JSON.parse(raw);
+            if (!draft || (!draft.title && !draft.content)) return;
+            
+            const title = document.getElementById('title')?.value?.trim();
+            const ve = document.getElementById('contentVisual');
+            const ta = document.getElementById('content');
+            const currentContent = editorMode === 'visual' ? (ve?.innerHTML?.trim() || '') : (ta?.value?.trim() || '');
+            
+            if (!title && (!currentContent || currentContent === '<br>' || currentContent === '<div><br></div>')) {
+                const dateObj = new Date(draft.timestamp);
+                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = dateObj.toLocaleDateString();
+                showDraftRestoreToast(draft, `${dateStr} ${timeStr}`);
+            }
+        } catch (e) {
+            console.error('Ошибка проверки локального черновика:', e);
+        }
+    }
+
+    function showDraftRestoreToast(draft, timeFormatted) {
+        const container = document.getElementById('notificationContainer');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = 'notification info draft-restore-toast';
+        toast.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-left: 4px solid #2196F3; max-width: 480px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);';
+        
+        const textSpan = document.createElement('span');
+        textSpan.style.flex = '1';
+        const displayTitle = draft.title ? (draft.title.length > 30 ? draft.title.substring(0, 30) + '...' : draft.title) : 'Без названия';
+        textSpan.innerHTML = `📝 Несохранённый черновик (${timeFormatted}): <b>${escapeHtml(displayTitle)}</b>`;
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.style.display = 'flex';
+        actionsDiv.style.gap = '8px';
+        actionsDiv.style.alignItems = 'center';
+        
+        const restoreBtn = document.createElement('button');
+        restoreBtn.type = 'button';
+        restoreBtn.textContent = 'Восстановить';
+        restoreBtn.style.cssText = 'background: #2196F3; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;';
+        restoreBtn.onclick = () => {
+            if (draft.title) document.getElementById('title').value = draft.title;
+            const ve = document.getElementById('contentVisual');
+            const ta = document.getElementById('content');
+            if (draft.mode === 'code') {
+                setMode('code');
+                if (ta) ta.value = draft.content || '';
+            } else {
+                setMode('visual');
+                if (ve) {
+                    ve.innerHTML = draft.content || '';
+                    wrapExistingEditorImages();
+                }
+            }
+            markEditorDirty();
+            showNotification('Локальный черновик успешно восстановлен!', 'success');
+            toast.remove();
+        };
+        
+        const dismissBtn = document.createElement('button');
+        dismissBtn.type = 'button';
+        dismissBtn.textContent = '×';
+        dismissBtn.style.cssText = 'background: transparent; border: none; color: inherit; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px;';
+        dismissBtn.onclick = () => {
+            localStorage.removeItem('npblog_draft_new_post');
+            toast.remove();
+        };
+        
+        actionsDiv.appendChild(restoreBtn);
+        actionsDiv.appendChild(dismissBtn);
+        toast.appendChild(textSpan);
+        toast.appendChild(actionsDiv);
+        container.appendChild(toast);
+    }
+
+    window.addEventListener('beforeunload', function(e) {
+        if (isEditorDirty && typeof hasEditorContent === 'function' && hasEditorContent()) {
+            e.preventDefault();
+            e.returnValue = 'У вас есть несохраненные изменения в статье. Вы уверены, что хотите покинуть страницу?';
+            return e.returnValue;
+        }
+    });
     
     // Загружаем пользовательские шрифты при инициализации редактора
     function loadEditorCustomFonts() {
@@ -980,6 +1128,12 @@
             historyStack = historyStack.slice(0, historyIndex + 1);
             historyStack.push(currentState);
             historyIndex++;
+            
+            while (historyStack.length > MAX_HISTORY_STATES) {
+                historyStack.shift();
+                historyIndex = Math.max(0, historyIndex - 1);
+            }
+            markEditorDirty();
         }
         
         updateUndoRedoButtons();
@@ -1804,10 +1958,17 @@
 
     function handleImageFileSelect(input) {
         if (input.files && input.files.length > 0) {
+            const MAX_IMAGE_SIZE = 25 * 1024 * 1024; // 25 MB
             Array.from(input.files).forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    selectedImageFiles.push(file);
+                if (!file.type.startsWith('image/')) {
+                    showNotification(`Файл "${file.name}" не является изображением`, 'warning');
+                    return;
                 }
+                if (file.size > MAX_IMAGE_SIZE) {
+                    showNotification(`Файл "${file.name}" слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 25 МБ.`, 'error');
+                    return;
+                }
+                selectedImageFiles.push(file);
             });
             renderImagePreviews();
             checkInsertGalleryVisibility();
@@ -1840,16 +2001,93 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Support inserting images from clipboard (Ctrl+V / Paste)
-    const handlePaste = function(e) {
-        const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
-        if (!items) return;
+    function sanitizePastedHtml(html) {
+        if (!html || typeof html !== 'string') return '';
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
         
+        // Удаляем опасные и недопустимые теги
+        const forbidden = temp.querySelectorAll('script, style, link, meta, base, xml, object, embed, applet, iframe, form, input, button, select, textarea, o\\:p');
+        forbidden.forEach(el => el.remove());
+        
+        // Удаляем HTML-комментарии (например от Word <!--[if ...]-->)
+        const removeComments = function(element) {
+            for (let i = element.childNodes.length - 1; i >= 0; i--) {
+                const child = element.childNodes[i];
+                if (child.nodeType === Node.COMMENT_NODE) {
+                    element.removeChild(child);
+                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                    removeComments(child);
+                }
+            }
+        };
+        removeComments(temp);
+        
+        // Очищаем атрибуты и инлайн-стили
+        const allNodes = temp.querySelectorAll('*');
+        allNodes.forEach(node => {
+            // Удаляем обработчики событий и служебные id
+            Array.from(node.attributes).forEach(attr => {
+                const name = attr.name.toLowerCase();
+                if (name.startsWith('on') || name === 'id' || name.startsWith('data-')) {
+                    node.removeAttribute(attr.name);
+                }
+                // Очищаем классы от стилей Word/сторонних библиотек
+                if (name === 'class') {
+                    const safeClasses = Array.from(node.classList).filter(c => c.startsWith('blog-') || c === 'content' || c === 'table-container');
+                    if (safeClasses.length) {
+                        node.className = safeClasses.join(' ');
+                    } else {
+                        node.removeAttribute('class');
+                    }
+                }
+            });
+            
+            // Очищаем деструктивные инлайн-стили
+            if (node.hasAttribute('style')) {
+                const styleStr = node.getAttribute('style') || '';
+                const cleanRules = styleStr.split(';')
+                    .map(r => r.trim())
+                    .filter(r => {
+                        if (!r) return false;
+                        const lower = r.toLowerCase();
+                        if (lower.startsWith('mso-') || lower.startsWith('font-family') || lower.startsWith('line-height') || lower.startsWith('margin-') || lower.startsWith('padding-')) return false;
+                        if (lower.includes('background') && (lower.includes('#fff') || lower.includes('#000') || lower.includes('white') || lower.includes('black') || lower.includes('transparent') || lower.includes('rgb(255') || lower.includes('rgb(0'))) return false;
+                        return true;
+                    });
+                if (cleanRules.length) {
+                    node.setAttribute('style', cleanRules.join('; '));
+                } else {
+                    node.removeAttribute('style');
+                }
+            }
+            
+            // Разворачиваем устаревшие теги <font>
+            if (node.tagName === 'FONT') {
+                const parent = node.parentNode;
+                while (node.firstChild) {
+                    parent.insertBefore(node.firstChild, node);
+                }
+                parent.removeChild(node);
+            }
+        });
+        
+        return temp.innerHTML.trim();
+    }
+
+    // Support inserting images and clean rich text from clipboard (Ctrl+V / Paste)
+    const handlePaste = function(e) {
+        const clipboardData = e.clipboardData || e.originalEvent?.clipboardData;
+        if (!clipboardData) return;
+        
+        const items = clipboardData.items;
         let imageItem = null;
-        for (const item of items) {
-            if (item.type.indexOf('image') !== -1) {
-                imageItem = item;
-                break;
+        if (items) {
+            for (const item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    imageItem = item;
+                    break;
+                }
             }
         }
         
@@ -1876,13 +2114,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     insertImage(data.url, '100', '', '%', '', '', noBorderRadius);
                     showNotification('Изображение успешно вставлено из буфера обмена', 'success');
+                    markEditorDirty();
                 } else {
                     showNotification('Ошибка при загрузке изображения: ' + data.error, 'error');
                 }
             })
-            .catch(err => {
+            .catch(() => {
                 showNotification('Ошибка при загрузке изображения из буфера обмена', 'error');
             });
+            return;
+        }
+
+        // Smart Paste Sanitization for Visual Mode
+        if (editorMode === 'visual') {
+            const html = clipboardData.getData('text/html');
+            if (html && (html.includes('MsoNormal') || html.includes('style=') || html.includes('<!--[if') || html.includes('<font') || html.includes('<span'))) {
+                e.preventDefault();
+                const cleanHtml = sanitizePastedHtml(html);
+                if (cleanHtml) {
+                    document.execCommand('insertHTML', false, cleanHtml);
+                } else {
+                    const text = clipboardData.getData('text/plain');
+                    if (text) document.execCommand('insertText', false, text);
+                }
+                markEditorDirty();
+                saveToHistory();
+            }
         }
     };
 
@@ -3005,10 +3262,16 @@ initImageAlignmentHandlers();
             historyStack = historyStack.slice(0, historyIndex + 1);
             historyStack.push(currentState);
             historyIndex++;
+            
+            while (historyStack.length > MAX_HISTORY_STATES) {
+                historyStack.shift();
+                historyIndex = Math.max(0, historyIndex - 1);
+            }
         } else {
             historyStack[historyIndex] = currentState;
         }
         
+        markEditorDirty();
         updateUndoRedoButtons();
         
         clearTimeout(historySaveTimeout);
@@ -3353,6 +3616,12 @@ function closeImageDialog() {
             return;
         }
         
+        const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+        if (file.size > MAX_VIDEO_SIZE) {
+            showNotification(`Видео файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 100 МБ.`, 'error');
+            return;
+        }
+        
         const filenameEl = document.getElementById('videoFileName');
         if (filenameEl) {
             filenameEl.textContent = `Загрузка: ${file.name}...`;
@@ -3387,6 +3656,12 @@ function closeImageDialog() {
         if (!file) return;
         if (!file.type.startsWith('audio/')) {
             showNotification('Пожалуйста, выберите аудио файл', 'warning');
+            return;
+        }
+        
+        const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50 MB
+        if (file.size > MAX_AUDIO_SIZE) {
+            showNotification(`Аудио файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 50 МБ.`, 'error');
             return;
         }
         
@@ -4439,6 +4714,8 @@ function extractVimeoId(url) {
 
     function handleSubmit(e) {
         if (e) e.preventDefault();
+        if (isSavingArticle) return;
+        
         const titleInput = document.getElementById('title');
         const title = titleInput.value.trim();
         
@@ -4467,6 +4744,19 @@ function extractVimeoId(url) {
             content = ta.value;
         }
         
+        const submitButton = document.getElementById('submitButton');
+        const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+        
+        isSavingArticle = true;
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Сохранение...';
+        }
+        if (floatingSaveBtn) {
+            floatingSaveBtn.disabled = true;
+            floatingSaveBtn.textContent = 'Сохранение...';
+        }
+        
         const endpoint = currentEditId ? 'update_post.php' : 'save_post.php';
         const data = { title: title, content: content };
         if (currentEditId) { data.id = currentEditId; }
@@ -4479,12 +4769,15 @@ function extractVimeoId(url) {
             let payload;
             try { payload = await response.json(); } catch (_) { payload = null; }
             if (!response.ok || (payload && payload.success === false)) {
-                throw new Error((payload && payload.error) || 'Server error');
+                throw new Error((payload && payload.error) || (payload && payload.message) || 'Server error');
             }
             showNotification(
                 currentEditId ? 'Статья успешно обновлена!' : 'Статья успешно добавлена!',
                 'success'
             );
+            
+            // Очищаем локальный черновик и сбрасываем признак несохраненных изменений
+            clearLocalDraft();
             
             // Очищаем форму
             document.getElementById('blogForm').reset();
@@ -4505,10 +4798,10 @@ function extractVimeoId(url) {
             loadPosts();
             
             currentEditId = null;
-            const submitButton = document.getElementById('submitButton');
-            submitButton.textContent = 'Сохранить';
-            submitButton.classList.remove('editing');
-            const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+            if (submitButton) {
+                submitButton.textContent = 'Сохранить';
+                submitButton.classList.remove('editing');
+            }
             if (floatingSaveBtn) {
                 floatingSaveBtn.textContent = 'Сохранить';
                 floatingSaveBtn.classList.remove('editing');
@@ -4517,8 +4810,28 @@ function extractVimeoId(url) {
             // Очищаем историю
             clearHistory();
         })
-        .catch(() => {
-            showNotification('Ошибка при сохранении статьи', 'error');
+        .catch((err) => {
+            const msg = err && err.message ? err.message : 'Ошибка при сохранении статьи';
+            showNotification(msg, 'error');
+        })
+        .finally(() => {
+            isSavingArticle = false;
+            if (submitButton) {
+                submitButton.disabled = false;
+                if (currentEditId) {
+                    submitButton.textContent = 'Сохранить изменения';
+                } else {
+                    submitButton.textContent = 'Сохранить';
+                }
+            }
+            if (floatingSaveBtn) {
+                floatingSaveBtn.disabled = false;
+                if (currentEditId) {
+                    floatingSaveBtn.textContent = 'Сохранить изменения';
+                } else {
+                    floatingSaveBtn.textContent = 'Сохранить';
+                }
+            }
         });
     }
 
@@ -5201,6 +5514,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Проверяем предупреждение о DEV сборке
     checkDevWarning();
+
+    // Проверяем наличие несохраненного локального черновика
+    setTimeout(checkLocalDraftOnStartup, 500);
+
+    // Отслеживаем ввод в поле заголовка для локального сохранения
+    const titleInputEl = document.getElementById('title');
+    if (titleInputEl) {
+        titleInputEl.addEventListener('input', function() {
+            markEditorDirty();
+        });
+    }
 });
 
 // ——— Система includes ———

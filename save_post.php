@@ -62,12 +62,23 @@ if (!is_dir($blogDir)) {
 }
 
 $maxId = 0;
-$files = glob($blogDir . 'post-*.html');
+$files = glob($blogDir . 'post-*.html') ?: [];
 foreach ($files as $file) {
     if (preg_match('/post-(\d+)\.html$/', $file, $match)) {
         $id = intval($match[1]);
         if ($id > $maxId) {
             $maxId = $id;
+        }
+    }
+}
+
+// Также сверяемся с posts-meta.json для гарантии уникальности
+$metaFileCheck = validateSafePath($blogDir, 'posts-meta.json');
+if (file_exists($metaFileCheck)) {
+    $existingMeta = json_decode(file_get_contents($metaFileCheck), true) ?: [];
+    foreach ($existingMeta as $metaItem) {
+        if (isset($metaItem['id']) && intval($metaItem['id']) > $maxId) {
+            $maxId = intval($metaItem['id']);
         }
     }
 }
