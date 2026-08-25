@@ -1372,14 +1372,27 @@ function showNotification(message, type = 'info', title = '') {
     }
 
     function openTableDialog() {
-        document.getElementById('tableDialog').style.display = 'block';
-        document.getElementById('tableRows').focus();
+        if (window.Modal) {
+            Modal.open('#tableDialog');
+        } else {
+            const dlg = document.getElementById('tableDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        const rowsInput = document.getElementById('tableRows');
+        if (rowsInput) rowsInput.focus();
     }
 
     function closeTableDialog() {
-        document.getElementById('tableDialog').style.display = 'none';
-        document.getElementById('tableRows').value = '3';
-        document.getElementById('tableCols').value = '3';
+        if (window.Modal) {
+            Modal.close('#tableDialog');
+        } else {
+            const dlg = document.getElementById('tableDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
+        const rowsInput = document.getElementById('tableRows');
+        if (rowsInput) rowsInput.value = '3';
+        const colsInput = document.getElementById('tableCols');
+        if (colsInput) colsInput.value = '3';
     }
 
     function addTableRow() {
@@ -1837,7 +1850,12 @@ function showNotification(message, type = 'info', title = '') {
         } else {
             textInput.value = document.getSelection().toString().trim();
         }
-        document.getElementById('linkDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#linkDialog');
+        } else {
+            const dlg = document.getElementById('linkDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
         urlInput.focus();
         if (navigator.clipboard && navigator.clipboard.readText) {
             navigator.clipboard.readText().then(function(text) {
@@ -1850,7 +1868,12 @@ function showNotification(message, type = 'info', title = '') {
     }
 
     function closeLinkDialog() {
-        document.getElementById('linkDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#linkDialog');
+        } else {
+            const dlg = document.getElementById('linkDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
         document.getElementById('linkUrl').value = '';
         document.getElementById('linkText').value = '';
     }
@@ -2004,9 +2027,14 @@ function showNotification(message, type = 'info', title = '') {
     window.handleImageFileSelect = handleImageFileSelect;
 
     function showImageUpload() {
-    document.getElementById('imageUploadDialog').style.display = 'block';
-    initImageDragDrop();
-}
+        if (window.Modal) {
+            Modal.open('#imageUploadDialog');
+        } else {
+            const dlg = document.getElementById('imageUploadDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        initImageDragDrop();
+    }
 
 let gridTileFiles = {};
 
@@ -2269,6 +2297,9 @@ window.handleTileFileChange = function(e, index) {
 
 document.querySelectorAll('input[name="imageSource"]').forEach(radio => {
     radio.addEventListener('change', function() {
+        document.querySelectorAll('input[name="imageSource"]').forEach(r => {
+            r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
+        });
         const isFile = this.value === 'file';
         const gridLayout = document.getElementById('gridLayout').value;
         
@@ -2782,14 +2813,14 @@ function updateOverlayPosition() {
     }
 }
 
-function showImageResizeDialog(img) {
+async function showImageResizeDialog(img) {
     var isGallery = img.classList && img.classList.contains('image-gallery');
     var currentWidth = img.offsetWidth || (img.naturalWidth || img.videoWidth || 0);
     var isAudio = img.tagName.toLowerCase() === 'audio';
     var isVideo = img.tagName.toLowerCase() === 'video';
     var label = isGallery ? 'галереи' : (isAudio ? 'плеера аудио' : (isVideo ? 'плеера видео' : 'изображения'));
     
-    var newWidth = prompt('Введите новую ширину ' + label + ' (в пикселях):', currentWidth);
+    var newWidth = await showPrompt('Введите новую ширину ' + label + ' (в пикселях):', currentWidth, 'Размер ' + label);
     if (newWidth && !isNaN(newWidth) && newWidth > 0) {
         newWidth = parseInt(newWidth);
         const maxLimit = window.editorContentWidth || 920;
@@ -3494,7 +3525,12 @@ function insertImage(url, width, height, widthUnit, heightUnit, caption = '', no
 }
 
 function closeImageDialog() {
-    document.getElementById('imageUploadDialog').style.display = 'none';
+    if (window.Modal) {
+        Modal.close('#imageUploadDialog');
+    } else {
+        const dlg = document.getElementById('imageUploadDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
     document.getElementById('imageFile').value = '';
     document.getElementById('imageUrl').value = '';
     document.getElementById('imageCaption').value = '';
@@ -3507,11 +3543,20 @@ function closeImageDialog() {
     if (insertGalleryChk) insertGalleryChk.checked = false;
     const insertGalleryContainer = document.getElementById('insertGalleryContainer');
     if (insertGalleryContainer) insertGalleryContainer.style.display = 'none';
-    document.querySelector('input[name="imageSource"][value="file"]').checked = true;
-    document.getElementById('fileUploadContainer').style.display = 'block';
-    document.getElementById('imageGridPreviewContainer').style.display = 'none';
-    document.getElementById('imageGridPreviewContainer').innerHTML = '';
-    document.getElementById('urlContainer').style.display = 'none';
+    const fileRadio = document.querySelector('input[name="imageSource"][value="file"]');
+    if (fileRadio) fileRadio.checked = true;
+    document.querySelectorAll('input[name="imageSource"]').forEach(r => {
+        r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.value === 'file');
+    });
+    const fileUploadContainer = document.getElementById('fileUploadContainer');
+    if (fileUploadContainer) fileUploadContainer.style.display = 'block';
+    const imageGridPreviewContainer = document.getElementById('imageGridPreviewContainer');
+    if (imageGridPreviewContainer) {
+        imageGridPreviewContainer.style.display = 'none';
+        imageGridPreviewContainer.innerHTML = '';
+    }
+    const urlContainer = document.getElementById('urlContainer');
+    if (urlContainer) urlContainer.style.display = 'none';
     gridTileFiles = {};
     selectedImageFiles = [];
     const previewContainer = document.getElementById('imageFilesPreview');
@@ -3731,12 +3776,20 @@ function closeImageDialog() {
     };
 
     function showMediaDialog() {
-        document.getElementById('mediaDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#mediaDialog');
+        } else {
+            const dlg = document.getElementById('mediaDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
         initMediaDragDrop();
         
         const mediaTypeRadios = document.querySelectorAll('input[name="mediaType"]');
         mediaTypeRadios.forEach(radio => {
             radio.addEventListener('change', function() {
+                document.querySelectorAll('input[name="mediaType"]').forEach(r => {
+                    r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
+                });
                 document.getElementById('videoUrlSection').style.display = 'none';
                 document.getElementById('videoFileSection').style.display = 'none';
                 document.getElementById('audioMediaSection').style.display = 'none';
@@ -3758,13 +3811,22 @@ function closeImageDialog() {
     }
 
     function closeMediaDialog() {
-        document.getElementById('mediaDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#mediaDialog');
+        } else {
+            const dlg = document.getElementById('mediaDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
         document.getElementById('mediaUrl').value = '';
         document.getElementById('videoFile').value = '';
         document.getElementById('audioFile').value = '';
         document.getElementById('audioStreamUrl').value = '';
         // Сбрасываем на видео URL
-        document.querySelector('input[name="mediaType"][value="video-url"]').checked = true;
+        const videoRadio = document.querySelector('input[name="mediaType"][value="video-url"]');
+        if (videoRadio) videoRadio.checked = true;
+        document.querySelectorAll('input[name="mediaType"]').forEach(r => {
+            r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.value === 'video-url');
+        });
         document.getElementById('videoUrlSection').style.display = 'block';
         document.getElementById('videoFileSection').style.display = 'none';
         document.getElementById('audioMediaSection').style.display = 'none';
@@ -4225,13 +4287,26 @@ function extractVimeoId(url) {
             savedSpoilerText = ta.value.substring(start, end);
         }
         
-        document.getElementById('spoilerDialog').style.display = 'block';
-        document.getElementById('spoilerTitle').value = '';
-        document.getElementById('spoilerTitle').focus();
+        if (window.Modal) {
+            Modal.open('#spoilerDialog');
+        } else {
+            const dlg = document.getElementById('spoilerDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        const titleInput = document.getElementById('spoilerTitle');
+        if (titleInput) {
+            titleInput.value = '';
+            titleInput.focus();
+        }
     }
 
     function closeSpoilerDialog() {
-        document.getElementById('spoilerDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#spoilerDialog');
+        } else {
+            const dlg = document.getElementById('spoilerDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
         savedSpoilerText = '';
         savedSpoilerRange = null;
     }
@@ -4293,7 +4368,12 @@ function extractVimeoId(url) {
             return;
         }
         
-        document.getElementById('markerDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#markerDialog');
+        } else {
+            const dlg = document.getElementById('markerDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
         
         // Добавляем обработчики на кнопки стилей
         const styleBtns = document.querySelectorAll('.marker-style-btn');
@@ -4316,7 +4396,12 @@ function extractVimeoId(url) {
     }
 
     function closeMarkerDialog() {
-        document.getElementById('markerDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#markerDialog');
+        } else {
+            const dlg = document.getElementById('markerDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
         savedMarkerText = '';
         savedMarkerRange = null;
     }
@@ -4399,9 +4484,17 @@ function extractVimeoId(url) {
         if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_title', 'Вставить код') : 'Вставить код';
         const submitEl = document.getElementById('codeDialogSubmitBtn');
         if (submitEl) submitEl.textContent = window.t ? window.t('modals.code_insert_btn', 'Вставить') : 'Вставить';
-        document.getElementById('codeLanguage').value = 'javascript';
-        document.getElementById('codeInput').value = '';
-        document.getElementById('codeDialog').style.display = 'block';
+        const langEl = document.getElementById('codeLanguage');
+        if (langEl) langEl.value = 'javascript';
+        const inputEl = document.getElementById('codeInput');
+        if (inputEl) inputEl.value = '';
+        if (window.Modal) {
+            Modal.open('#codeDialog');
+        } else {
+            const dlg = document.getElementById('codeDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        if (inputEl) inputEl.focus();
     }
 
     function openEditCodeBlockDialog(codeBlock) {
@@ -4412,14 +4505,28 @@ function extractVimeoId(url) {
         if (submitEl) submitEl.textContent = window.t ? window.t('common.save', 'Сохранить') : 'Сохранить';
         
         const lang = codeBlock.getAttribute('data-language') || 'javascript';
-        document.getElementById('codeLanguage').value = lang;
-        document.getElementById('codeInput').value = codeBlock.textContent;
-        document.getElementById('codeDialog').style.display = 'block';
+        const langEl = document.getElementById('codeLanguage');
+        if (langEl) langEl.value = lang;
+        const inputEl = document.getElementById('codeInput');
+        if (inputEl) inputEl.value = codeBlock.textContent;
+        if (window.Modal) {
+            Modal.open('#codeDialog');
+        } else {
+            const dlg = document.getElementById('codeDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        if (inputEl) inputEl.focus();
     }
 
     function closeCodeDialog() {
-        document.getElementById('codeDialog').style.display = 'none';
-        document.getElementById('codeInput').value = '';
+        if (window.Modal) {
+            Modal.close('#codeDialog');
+        } else {
+            const dlg = document.getElementById('codeDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
+        const inputEl = document.getElementById('codeInput');
+        if (inputEl) inputEl.value = '';
         editingCodeBlockTarget = null;
     }
 
@@ -4695,13 +4802,21 @@ function extractVimeoId(url) {
 
     function deletePost(postId) {
         deletePostId = postId;
-        const overlay = document.getElementById('deleteConfirmOverlay');
-        overlay.classList.add('show');
+        if (window.Modal) {
+            Modal.open('#deleteConfirmOverlay');
+        } else {
+            const overlay = document.getElementById('deleteConfirmOverlay');
+            if (overlay) overlay.classList.add('show');
+        }
     }
     
     function closeDeleteConfirm() {
-        const overlay = document.getElementById('deleteConfirmOverlay');
-        overlay.classList.remove('show');
+        if (window.Modal) {
+            Modal.close('#deleteConfirmOverlay');
+        } else {
+            const overlay = document.getElementById('deleteConfirmOverlay');
+            if (overlay) overlay.classList.remove('show');
+        }
         deletePostId = null;
     }
     
@@ -5334,11 +5449,18 @@ async function fixIntegrityErrors() {
 
 // ——— Менеджер бэкапов ———
 async function openBackupManager() {
-    const overlay = document.getElementById('backupManagerOverlay');
     const content = document.getElementById('backupManagerContent');
     
-    overlay.classList.add('show');
-    content.innerHTML = '<div class="backup-empty">Загрузка...</div>';
+    if (window.Modal) {
+        Modal.open('#backupManagerOverlay');
+    } else {
+        const overlay = document.getElementById('backupManagerOverlay');
+        if (overlay) overlay.classList.add('show');
+    }
+    
+    if (content) {
+        content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.loading', 'Загрузка...') : 'Загрузка...') + '</div>';
+    }
     
     try {
         const response = await fetch('get_backups.php');
@@ -5346,34 +5468,44 @@ async function openBackupManager() {
         
         if (data.success) {
             if (Object.keys(data.backups).length === 0) {
-                content.innerHTML = '<div class="backup-empty">Нет сохраненных бэкапов</div>';
+                if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_no_backups', 'Нет сохраненных бэкапов') : 'Нет сохраненных бэкапов') + '</div>';
             } else {
                 renderBackups(data.backups);
             }
         } else {
-            content.innerHTML = '<div class="backup-empty">Ошибка загрузки бэкапов</div>';
+            if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_load_error', 'Ошибка загрузки бэкапов') : 'Ошибка загрузки бэкапов') + '</div>';
         }
     } catch (error) {
         console.error('Ошибка загрузки бэкапов:', error);
-        content.innerHTML = '<div class="backup-empty">Ошибка загрузки бэкапов</div>';
+        if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_load_error', 'Ошибка загрузки бэкапов') : 'Ошибка загрузки бэкапов') + '</div>';
     }
 }
 
 function closeBackupManager() {
-    const overlay = document.getElementById('backupManagerOverlay');
-    overlay.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#backupManagerOverlay');
+    } else {
+        const overlay = document.getElementById('backupManagerOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
 }
 
 function renderBackups(backups) {
     const content = document.getElementById('backupManagerContent');
+    if (!content) return;
     let html = '';
+    
+    const viewText = window.t ? window.t('common.view', 'Посмотреть') : 'Посмотреть';
+    const restoreText = window.t ? window.t('common.restore', 'Восстановить') : 'Восстановить';
+    const deleteText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
     
     for (const postId in backups) {
         const post = backups[postId];
         const isDeleted = post.deleted === true;
+        const safeTitle = escapeHtml(post.postTitle);
         const displayTitle = isDeleted 
-            ? `🗑️ ${escapeHtml(post.postTitle)}` 
-            : `Статья #${postId}: ${escapeHtml(post.postTitle)}`;
+            ? `🗑️ ${safeTitle}` 
+            : (window.t ? window.t('modals.backup_article_prefix', `Статья #${postId}: ${safeTitle}`, { id: postId, title: safeTitle }) : `Статья #${postId}: ${safeTitle}`);
         
         html += `
             <div class="backup-post-group ${isDeleted ? 'deleted-post' : ''}" id="backup-group-${postId}">
@@ -5382,20 +5514,27 @@ function renderBackups(backups) {
                     <span class="backup-post-toggle">▼</span>
                 </div>
                 <div class="backup-list">
-                    ${post.backups.map((backup, index) => `
+                    ${post.backups.map((backup, index) => {
+                        const backupNumText = window.t 
+                            ? window.t('modals.backup_item_number', `Бэкап #${backup.backupNumber}`, { number: backup.backupNumber })
+                            : `Бэкап #${backup.backupNumber}`;
+                        const deletedInfo = isDeleted 
+                            ? (window.t ? window.t('modals.backup_post_deleted_at', `Статья удалена: ${escapeHtml(post.deletedAt || '')}`, { date: escapeHtml(post.deletedAt || '') }) : `Статья удалена: ${escapeHtml(post.deletedAt || '')}`)
+                            : '';
+                        return `
                         <div class="backup-item">
                             <div class="backup-info">
-                                <div class="backup-number">Бэкап #${backup.backupNumber}</div>
+                                <div class="backup-number">${backupNumText}</div>
                                 <div class="backup-date">${escapeHtml(backup.date)}</div>
-                                ${isDeleted ? '<div class="backup-date" style="color: #d32f2f; font-weight: 600; margin-top: 4px;">Статья удалена: ' + escapeHtml(post.deletedAt || '') + '</div>' : ''}
+                                ${isDeleted ? '<div class="backup-date" style="color: #d32f2f; font-weight: 600; margin-top: 4px;">' + deletedInfo + '</div>' : ''}
                             </div>
                             <div class="backup-actions">
-                                <button class="backup-btn view" onclick="viewBackup('${postId}', '${backup.filename}')">Посмотреть</button>
-                                ${!isDeleted ? `<button class="backup-btn restore" onclick="restoreBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">Восстановить</button>` : ''}
-                                <button class="backup-btn delete" onclick="deleteBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">Удалить</button>
+                                <button type="button" class="backup-btn view" onclick="viewBackup('${postId}', '${backup.filename}')">${viewText}</button>
+                                ${!isDeleted ? `<button type="button" class="backup-btn restore" onclick="restoreBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">${restoreText}</button>` : ''}
+                                <button type="button" class="backup-btn delete" onclick="deleteBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">${deleteText}</button>
                             </div>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             </div>
         `;
@@ -5556,21 +5695,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ——— Система includes ———
 function openSaveInclude() {
-    const overlay = document.getElementById('saveIncludeOverlay');
     const input = document.getElementById('includeNameInput');
-    input.value = '';
-    overlay.classList.add('show');
+    if (input) input.value = '';
+    
+    if (window.Modal) {
+        Modal.open('#saveIncludeOverlay');
+    } else {
+        const overlay = document.getElementById('saveIncludeOverlay');
+        if (overlay) overlay.classList.add('show');
+    }
     
     // Закрываем меню "Прочее"
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
     
-    setTimeout(() => input.focus(), 100);
+    if (input) setTimeout(() => input.focus(), 100);
 }
 
 function closeSaveInclude() {
-    const overlay = document.getElementById('saveIncludeOverlay');
-    overlay.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#saveIncludeOverlay');
+    } else {
+        const overlay = document.getElementById('saveIncludeOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
 }
 
 async function confirmSaveInclude() {
@@ -6052,11 +6200,15 @@ function insertArticleLink(filename, title) {
 
 // ——— Проверка нумерации статей ———
 async function checkPostNumbering() {
-    const overlay = document.getElementById('numberingCheckOverlay');
     const content = document.getElementById('numberingCheckContent');
     const fixBtn = document.getElementById('fixNumberingBtn');
     
-    overlay.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#numberingCheckOverlay');
+    } else {
+        const overlay = document.getElementById('numberingCheckOverlay');
+        if (overlay) overlay.classList.add('show');
+    }
     content.innerHTML = '<div class="numbering-status">Проверка нумерации...</div>';
     fixBtn.style.display = 'none';
     
@@ -6199,8 +6351,12 @@ async function fixNumbering() {
 }
 
 function closeNumberingCheck() {
-    const overlay = document.getElementById('numberingCheckOverlay');
-    overlay.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#numberingCheckOverlay');
+    } else {
+        const overlay = document.getElementById('numberingCheckOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
 }
 
 // ——— Гайд для первого запуска ———
@@ -6443,7 +6599,12 @@ window.addEventListener('load', function() {
 // ——— Функции для загрузки файлов ———
 
 function openFileUploadDialog() {
-    document.getElementById('fileUploadDialog').style.display = 'block';
+    if (window.Modal) {
+        Modal.open('#fileUploadDialog');
+    } else {
+        const dlg = document.getElementById('fileUploadDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
     
     // Инициализируем Drag & Drop
     initDragDrop();
@@ -6518,7 +6679,12 @@ function handleFileSelect(input) {
 }
 
 function closeFileUploadDialog() {
-    document.getElementById('fileUploadDialog').style.display = 'none';
+    if (window.Modal) {
+        Modal.close('#fileUploadDialog');
+    } else {
+        const dlg = document.getElementById('fileUploadDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
 }
 
 function closeMoreMenu() {
@@ -7061,7 +7227,7 @@ function removeAnchorById(id, event) {
     }
 }
 
-function insertAnchorLink(id) {
+async function insertAnchorLink(id) {
     if (editorMode !== 'visual') {
         showNotification('Ссылки на якоря можно вставлять только в визуальном режиме', 'warning');
         return;
@@ -7087,7 +7253,7 @@ function insertAnchorLink(id) {
             anchorText = "Перейти к разделу";
         }
         
-        text = prompt("Введите текст для ссылки-якоря:", anchorText);
+        text = await showPrompt("Введите текст для ссылки-якоря:", anchorText, "Ссылка-якорь");
         if (text === null) return; // Отмена
         if (!text) text = anchorText;
     }
@@ -7192,7 +7358,7 @@ function floodFill(startX, startY, targetChar, replacementChar) {
     }
 }
 
-function changeAsciiGridSize(sizeStr) {
+async function changeAsciiGridSize(sizeStr) {
     const customContainer = document.getElementById('asciiCustomSizeContainer');
     if (sizeStr === 'custom') {
         if (customContainer) {
@@ -7211,7 +7377,8 @@ function changeAsciiGridSize(sizeStr) {
     const newWidth = parseInt(parts[0]);
     const newHeight = parseInt(parts[1]);
     
-    if (confirm('Смена размера сетки очистит текущий рисунок. Продолжить?')) {
+    const isConfirmed = await showConfirm('Смена размера сетки очистит текущий рисунок. Продолжить?', 'Изменение размера сетки');
+    if (isConfirmed) {
         asciiGridWidth = newWidth;
         asciiGridHeight = newHeight;
         createAsciiGrid();
@@ -7225,7 +7392,7 @@ function changeAsciiGridSize(sizeStr) {
     }
 }
 
-function applyCustomAsciiGridSize() {
+async function applyCustomAsciiGridSize() {
     const widthInput = document.getElementById('asciiCustomWidth');
     const heightInput = document.getElementById('asciiCustomHeight');
     if (!widthInput || !heightInput) return;
@@ -7242,7 +7409,8 @@ function applyCustomAsciiGridSize() {
         return;
     }
     
-    if (confirm('Смена размера сетки очистит текущий рисунок. Продолжить?')) {
+    const isConfirmed = await showConfirm('Смена размера сетки очистит текущий рисунок. Продолжить?', 'Изменение размера сетки');
+    if (isConfirmed) {
         asciiGridWidth = newWidth;
         asciiGridHeight = newHeight;
         createAsciiGrid();
@@ -7562,21 +7730,31 @@ function openAsciiDrawer(targetWrap = null) {
     clearAsciiHistory();
     saveAsciiHistory();
     
-    modal.style.display = 'flex';
-    modal.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#asciiEditorModal');
+    } else {
+        modal.style.display = 'flex';
+        modal.classList.add('show');
+    }
+    setTimeout(fitAsciiGridToContainer, 50);
 }
 
 function closeAsciiEditor() {
-    const modal = document.getElementById('asciiEditorModal');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#asciiEditorModal');
+    } else {
+        const modal = document.getElementById('asciiEditorModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+        }
     }
     asciiTargetWrap = null;
 }
 
-function clearAsciiGrid() {
-    if (confirm('Очистить холст? Это действие удалит весь текущий рисунок.')) {
+async function clearAsciiGrid() {
+    const isConfirmed = await showConfirm('Очистить холст? Это действие удалит весь текущий рисунок.', 'Очистка холста');
+    if (isConfirmed) {
         const cells = document.querySelectorAll('.ascii-cell');
         cells.forEach(cell => {
             cell.textContent = ' ';
@@ -8151,7 +8329,11 @@ window.getCurrentEditId = function() {
                     defaultTemplateName = data.default;
                     postTemplatesMeta = data.post_templates || {};
                     renderTemplatesGrid();
-                    document.getElementById('templateManagerDialog').style.display = 'block';
+                    if (window.Modal) {
+                        Modal.open('#templateManagerDialog');
+                    } else {
+                        document.getElementById('templateManagerDialog').style.display = 'block';
+                    }
                 } else {
                     showNotification('Не удалось загрузить шаблоны: ' + data.error, 'error');
                 }
@@ -8162,7 +8344,11 @@ window.getCurrentEditId = function() {
     }
 
     function closeTemplateManager() {
-        document.getElementById('templateManagerDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#templateManagerDialog');
+        } else {
+            document.getElementById('templateManagerDialog').style.display = 'none';
+        }
     }
 
     function renderTemplatesGrid() {
@@ -8320,7 +8506,11 @@ window.getCurrentEditId = function() {
         }
         
         updateTemplateLivePreview();
-        document.getElementById('templateDetailsDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#templateDetailsDialog');
+        } else {
+            document.getElementById('templateDetailsDialog').style.display = 'block';
+        }
     }
 
     // Live update live preview inside text area
@@ -8336,8 +8526,13 @@ window.getCurrentEditId = function() {
     }
 
     function closeTemplateDetails() {
-        document.getElementById('templateDetailsDialog').style.display = 'none';
-        document.getElementById('saveTemplateDropdownMenu').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#templateDetailsDialog');
+        } else {
+            document.getElementById('templateDetailsDialog').style.display = 'none';
+        }
+        const menu = document.getElementById('saveTemplateDropdownMenu');
+        if (menu) menu.style.display = 'none';
     }
 
     function toggleSaveTemplateDropdown() {
@@ -8422,7 +8617,11 @@ window.getCurrentEditId = function() {
             .then(() => {
                 document.getElementById('templatePostSearchInput').value = '';
                 renderTemplatePostList();
-                document.getElementById('applyToPostModal').style.display = 'block';
+                if (window.Modal) {
+                    Modal.open('#applyToPostModal');
+                } else {
+                    document.getElementById('applyToPostModal').style.display = 'block';
+                }
             })
             .catch(err => {
                 console.error(err);
@@ -8430,7 +8629,11 @@ window.getCurrentEditId = function() {
     }
 
     function closeApplyToPostModal() {
-        document.getElementById('applyToPostModal').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#applyToPostModal');
+        } else {
+            document.getElementById('applyToPostModal').style.display = 'none';
+        }
     }
 
     function renderTemplatePostList() {
@@ -8542,15 +8745,23 @@ window.getCurrentEditId = function() {
             `{{BODY_STYLE}} - стили тела документа\n` +
             `{{CONTENT_WRAPPER_START}} - начало обертки контента\n` +
             `{{CONTENT_WRAPPER_END}} - конец обертки контента`;
-        alert(info);
+        showAlert(info, 'Теги шаблонов');
     }
 
     function showTemplateInstructions() {
-        document.getElementById('templateInstructionsDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#templateInstructionsDialog');
+        } else {
+            document.getElementById('templateInstructionsDialog').style.display = 'block';
+        }
     }
 
     function closeTemplateInstructions() {
-        document.getElementById('templateInstructionsDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#templateInstructionsDialog');
+        } else {
+            document.getElementById('templateInstructionsDialog').style.display = 'none';
+        }
     }
 
     // Export functions to window scope
@@ -8577,13 +8788,23 @@ let smileFilesToUpload = [];
 let smileSetNameTarget = '';
 
 function openSmileSetsDialog() {
-    document.getElementById('smileSetsDialog').style.display = 'block';
+    if (window.Modal) {
+        Modal.open('#smileSetsDialog');
+    } else {
+        const dlg = document.getElementById('smileSetsDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
     loadSmileSetsList();
     resetSmileUploadState();
 }
 
 function closeSmileSetsDialog() {
-    document.getElementById('smileSetsDialog').style.display = 'none';
+    if (window.Modal) {
+        Modal.close('#smileSetsDialog');
+    } else {
+        const dlg = document.getElementById('smileSetsDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
     resetSmileUploadState();
 }
 
@@ -8921,9 +9142,9 @@ let editingCustomBtnTarget = null;
 function openInsertButtonDialog() {
     editingCustomBtnTarget = null;
     const dialogTitle = document.getElementById('customButtonDialogTitle');
-    if (dialogTitle) dialogTitle.innerHTML = '<span>🔗</span> ' + (window.t ? window.t('modals.btn_title', 'Вставить кнопку со ссылкой') : 'Вставить кнопку со ссылкой');
+    if (dialogTitle) dialogTitle.textContent = window.t ? window.t('modals.btn_title', 'Вставить кнопку со ссылкой') : 'Вставить кнопку со ссылкой';
     const submitBtn = document.getElementById('customButtonSubmitBtn');
-    if (submitBtn) submitBtn.innerHTML = window.t ? window.t('modals.btn_submit', '💾 Вставить кнопку') : '💾 Вставить кнопку';
+    if (submitBtn) submitBtn.innerHTML = '<span>💾</span> <span>' + (window.t ? window.t('modals.btn_submit', 'Вставить кнопку') : 'Вставить кнопку') + '</span>';
 
     const textInput = document.getElementById('btnTextInput');
     const urlInput = document.getElementById('btnUrlInput');
@@ -8935,10 +9156,15 @@ function openInsertButtonDialog() {
 
     applyBtnPreset('editor');
 
-    const dialog = document.getElementById('customButtonDialog');
-    if (!dialog) return;
-    dialog.style.display = 'flex';
-    dialog.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#customButtonDialog');
+    } else {
+        const dialog = document.getElementById('customButtonDialog');
+        if (dialog) {
+            dialog.style.display = 'flex';
+            dialog.classList.add('show');
+        }
+    }
     switchBtnTab('gui');
     updateCustomBtnPreview();
 }
@@ -8948,9 +9174,9 @@ function openEditCustomButtonDialog(customBtn) {
     editingCustomBtnTarget = customBtn;
 
     const dialogTitle = document.getElementById('customButtonDialogTitle');
-    if (dialogTitle) dialogTitle.innerHTML = '<span>✏️</span> ' + (window.t ? window.t('modals.btn_edit_title', 'Редактировать кнопку') : 'Редактировать кнопку');
+    if (dialogTitle) dialogTitle.textContent = window.t ? window.t('modals.btn_edit_title', 'Редактировать кнопку') : 'Редактировать кнопку';
     const submitBtn = document.getElementById('customButtonSubmitBtn');
-    if (submitBtn) submitBtn.innerHTML = window.t ? window.t('modals.btn_save_changes', '💾 Сохранить изменения') : '💾 Сохранить изменения';
+    if (submitBtn) submitBtn.innerHTML = '<span>💾</span> <span>' + (window.t ? window.t('modals.btn_save_changes', 'Сохранить изменения') : 'Сохранить изменения') + '</span>';
 
     const text = customBtn.textContent.trim();
     const url = customBtn.getAttribute('href') || '';
@@ -9008,19 +9234,29 @@ function openEditCustomButtonDialog(customBtn) {
         rawCssEl.value = styleStr;
     }
 
-    const dialog = document.getElementById('customButtonDialog');
-    if (!dialog) return;
-    dialog.style.display = 'flex';
-    dialog.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#customButtonDialog');
+    } else {
+        const dialog = document.getElementById('customButtonDialog');
+        if (dialog) {
+            dialog.style.display = 'flex';
+            dialog.classList.add('show');
+        }
+    }
     switchBtnTab('gui');
     updateCustomBtnPreview();
 }
 
 function closeCustomButtonDialog() {
-    const dialog = document.getElementById('customButtonDialog');
-    if (!dialog) return;
-    dialog.style.display = 'none';
-    dialog.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#customButtonDialog');
+    } else {
+        const dialog = document.getElementById('customButtonDialog');
+        if (dialog) {
+            dialog.style.display = 'none';
+            dialog.classList.remove('show');
+        }
+    }
     editingCustomBtnTarget = null;
 }
 
@@ -9297,9 +9533,11 @@ function checkDevWarning() {
     if (window.isDevBuild) {
         const warningAccepted = localStorage.getItem('devWarningAccepted');
         if (!warningAccepted) {
-            const devWarningDialog = document.getElementById('devWarningDialog');
-            if (devWarningDialog) {
-                devWarningDialog.style.display = 'flex';
+            if (window.Modal) {
+                Modal.open('#devWarningDialog');
+            } else {
+                const devWarningDialog = document.getElementById('devWarningDialog');
+                if (devWarningDialog) devWarningDialog.style.display = 'flex';
             }
         }
     }
@@ -9307,9 +9545,11 @@ function checkDevWarning() {
 
 function confirmDevWarning() {
     localStorage.setItem('devWarningAccepted', 'true');
-    const devWarningDialog = document.getElementById('devWarningDialog');
-    if (devWarningDialog) {
-        devWarningDialog.style.display = 'none';
+    if (window.Modal) {
+        Modal.close('#devWarningDialog');
+    } else {
+        const devWarningDialog = document.getElementById('devWarningDialog');
+        if (devWarningDialog) devWarningDialog.style.display = 'none';
     }
 }
 
