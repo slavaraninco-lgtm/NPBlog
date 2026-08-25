@@ -818,12 +818,12 @@ textarea {
     max-width: 95vw;
     max-height: 90vh;
     overflow-y: auto;
-    border: none;
+    border: 1px solid var(--border-color);
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="dark"] .dialog-content {
-    border: none;
+    border: 1px solid var(--border-color);
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
 }
 
@@ -1974,6 +1974,10 @@ button:hover {
 }
 
 .modal-content {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     transform: scale(0.9) translateY(-20px);
     opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
@@ -3021,7 +3025,7 @@ button:hover {
 
 .delete-confirm-dialog {
     background: var(--bg-color);
-    border: 2px solid #ffffff;
+    border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 28px;
     max-width: 450px;
@@ -3321,7 +3325,7 @@ button:hover {
 
 .save-include-dialog {
     background: var(--bg-color);
-    border: 2px solid #ffffff;
+    border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 28px;
     max-width: 450px;

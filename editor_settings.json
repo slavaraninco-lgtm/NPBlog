@@ -263,5 +263,6 @@
     "blog_paths": [
         "C:\\xampp\\htdocs\\data"
     ],
-    "active_blog_path": "C:\\xampp\\htdocs\\data"
+    "active_blog_path": "C:\\xampp\\htdocs\\data",
+    "language": "ru"
 }

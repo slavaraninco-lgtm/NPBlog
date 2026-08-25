@@ -1,24 +1,40 @@
+// ——— Вспомогательные функции экранирования ———
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function escapeHtmlJS(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
 // ——— Система уведомлений ———
-    function showNotification(message, type = 'info', title = '') {
-        const container = document.getElementById('notificationContainer');
-        if (!container) return;
-        
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        
-        const icons = {
-            success: '✓',
-            error: '✕',
-            warning: '⚠',
-            info: 'ℹ'
-        };
-        
-        const titles = {
-            success: title || 'Успешно',
-            error: title || 'Ошибка',
-            warning: title || 'Внимание',
-            info: title || 'Информация'
-        };
+function showNotification(message, type = 'info', title = '') {
+    const container = document.getElementById('notificationContainer');
+    if (!container) return;
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    
+    const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+    
+    const titles = {
+        success: title || (window.t ? window.t('notifications.title_success', 'Успешно') : 'Успешно'),
+        error: title || (window.t ? window.t('notifications.title_error', 'Ошибка') : 'Ошибка'),
+        warning: title || (window.t ? window.t('notifications.title_warning', 'Внимание') : 'Внимание'),
+        info: title || (window.t ? window.t('notifications.title_info', 'Информация') : 'Информация')
+    };
         
         notification.innerHTML = `
             <div class="notification-icon">${icons[type] || icons.info}</div>
@@ -4372,9 +4388,9 @@ function extractVimeoId(url) {
     function insertCode() {
         editingCodeBlockTarget = null;
         const titleEl = document.getElementById('codeDialogTitle');
-        if (titleEl) titleEl.textContent = 'Вставить код';
+        if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_title', 'Вставить код') : 'Вставить код';
         const submitEl = document.getElementById('codeDialogSubmitBtn');
-        if (submitEl) submitEl.textContent = 'Вставить';
+        if (submitEl) submitEl.textContent = window.t ? window.t('modals.code_insert_btn', 'Вставить') : 'Вставить';
         document.getElementById('codeLanguage').value = 'javascript';
         document.getElementById('codeInput').value = '';
         document.getElementById('codeDialog').style.display = 'block';
@@ -4383,9 +4399,9 @@ function extractVimeoId(url) {
     function openEditCodeBlockDialog(codeBlock) {
         editingCodeBlockTarget = codeBlock;
         const titleEl = document.getElementById('codeDialogTitle');
-        if (titleEl) titleEl.textContent = 'Редактировать код';
+        if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_edit_title', 'Редактировать код') : 'Редактировать код';
         const submitEl = document.getElementById('codeDialogSubmitBtn');
-        if (submitEl) submitEl.textContent = 'Сохранить';
+        if (submitEl) submitEl.textContent = window.t ? window.t('common.save', 'Сохранить') : 'Сохранить';
         
         const lang = codeBlock.getAttribute('data-language') || 'javascript';
         document.getElementById('codeLanguage').value = lang;
@@ -4468,7 +4484,7 @@ function extractVimeoId(url) {
             .then(posts => {
                 const postsList = document.getElementById('postsList');
                 if (!posts || posts.length === 0) {
-                    postsList.innerHTML = '<p class="manage-posts-empty">Пока нет статей</p>';
+                    postsList.innerHTML = '<p class="manage-posts-empty">' + (window.t ? window.t('header.manage_posts_empty', 'Пока нет статей') : 'Пока нет статей') + '</p>';
                     return;
                 }
                 const escapeHtml = function(str) {
@@ -4480,6 +4496,9 @@ function extractVimeoId(url) {
                 
                 // Сортируем статьи по ID в обратном порядке (новые первыми)
                 const sortedPosts = [...posts].sort((a, b) => b.id - a.id);
+                const btnEdit = window.t ? window.t('header.manage_posts_edit', 'Изменить') : 'Изменить';
+                const btnExtra = window.t ? window.t('header.manage_posts_extra', 'Дополнительно') : 'Дополнительно';
+                const btnDelete = window.t ? window.t('header.manage_posts_delete', 'Удалить') : 'Удалить';
                 
                 postsList.innerHTML = '<ul class="post-list">' +
                     sortedPosts.map(post => `
@@ -4487,9 +4506,9 @@ function extractVimeoId(url) {
                             <div class="post-item-title">${escapeHtml(post.title)}</div>
                             <span class="post-item-date">${escapeHtml(post.date)}</span>
                             <div class="post-item-actions">
-                                <button type="button" class="edit-btn" onclick="editPost(${post.id})">Изменить</button>
-                                <button type="button" class="additional-btn" onclick="openAdditionalSettings(${post.id}, '${escapeHtml(post.title)}')">Дополнительно</button>
-                                <button type="button" class="delete-btn" onclick="deletePost(${post.id})">Удалить</button>
+                                <button type="button" class="edit-btn" onclick="editPost(${post.id})">${btnEdit}</button>
+                                <button type="button" class="additional-btn" onclick="openAdditionalSettings(${post.id}, '${escapeHtml(post.title)}')">${btnExtra}</button>
+                                <button type="button" class="delete-btn" onclick="deletePost(${post.id})">${btnDelete}</button>
                             </div>
                         </li>
                     `).join('') +
@@ -4498,7 +4517,7 @@ function extractVimeoId(url) {
             .catch(error => {
                 console.error('Ошибка загрузки статей:', error);
                 const postsList = document.getElementById('postsList');
-                postsList.innerHTML = '<p class="manage-posts-empty">Пока нет статей</p>';
+                postsList.innerHTML = '<p class="manage-posts-empty">' + (window.t ? window.t('header.manage_posts_empty', 'Пока нет статей') : 'Пока нет статей') + '</p>';
             });
     }
 
@@ -5691,11 +5710,14 @@ async function loadDraftsList() {
         
         if (data.success) {
             if (data.drafts.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">Нет черновиков</div>';
+                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
             } else {
+                const untitledText = window.t ? window.t('more_menu.untitled', 'Без названия') : 'Без названия';
+                const delDraftText = window.t ? window.t('more_menu.delete_draft', 'Удалить черновик') : 'Удалить черновик';
+                const currentLocale = (window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'uk') ? 'uk-UA' : ((window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'en') ? 'en-US' : 'ru-RU');
                 submenu.innerHTML = data.drafts.map(draft => {
-                    const displayTitle = draft.title || 'Без названия';
-                    const date = new Date(draft.timestamp * 1000).toLocaleString('ru-RU', {
+                    const displayTitle = draft.title || untitledText;
+                    const date = new Date(draft.timestamp * 1000).toLocaleString(currentLocale, {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',
@@ -5703,11 +5725,11 @@ async function loadDraftsList() {
                         minute: '2-digit'
                     });
                     return `<div class="draft-item-wrap">
-                        <button type="button" class="more-submenu-item draft-load-btn" onclick="loadDraft('${draft.filename}')" title="${displayTitle}">
-                            <div class="draft-title">${displayTitle}</div>
+                        <button type="button" class="more-submenu-item draft-load-btn" onclick="loadDraft('${draft.filename}')" title="${escapeHtml(displayTitle)}">
+                            <div class="draft-title">${escapeHtml(displayTitle)}</div>
                             <div class="draft-date">${date}</div>
                         </button>
-                        <button type="button" class="draft-delete-btn" onclick="deleteDraft('${draft.filename}', event)" title="Удалить черновик">×</button>
+                        <button type="button" class="draft-delete-btn" onclick="deleteDraft('${draft.filename}', event)" title="${delDraftText}">×</button>
                     </div>`;
                 }).join('');
             }
@@ -5715,7 +5737,7 @@ async function loadDraftsList() {
         }
     } catch (error) {
         console.error('Ошибка загрузки черновиков:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">Ошибка загрузки</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
     }
 }
 
@@ -5790,23 +5812,23 @@ async function loadDraft(filename) {
                     const moreMenu = document.getElementById('moreMenuWrap');
                     if (moreMenu) moreMenu.classList.remove('is-open');
                 
-                showNotification('Черновик загружен', 'success');
+                showNotification(window.t ? window.t('notifications.draft_loaded', 'Черновик загружен') : 'Черновик загружен', 'success');
             } else {
-                showAlert('Черновик не найден');
+                showAlert(window.t ? window.t('notifications.draft_not_found', 'Черновик не найден') : 'Черновик не найден');
             }
         } else {
-            showAlert('Ошибка загрузки черновика');
+            showAlert(window.t ? window.t('notifications.draft_load_error', 'Ошибка загрузки черновика') : 'Ошибка загрузки черновика');
         }
     } catch (error) {
         console.error('Ошибка загрузки черновика:', error);
-        showAlert('Ошибка при загрузке черновика');
+        showAlert(window.t ? window.t('notifications.draft_load_failed', 'Ошибка при загрузке черновика') : 'Ошибка при загрузке черновика');
     }
 }
 
 async function deleteDraft(filename, event) {
     event.stopPropagation();
     
-    const result = await showConfirm('Удалить этот черновик?');
+    const result = await showConfirm(window.t ? window.t('notifications.draft_delete_confirm', 'Удалить этот черновик?') : 'Удалить этот черновик?');
     if (!result) return;
     
     try {
@@ -5821,15 +5843,15 @@ async function deleteDraft(filename, event) {
         const data = await response.json();
         
         if (data.success) {
-            showNotification('Черновик удален', 'success');
+            showNotification(window.t ? window.t('notifications.draft_deleted', 'Черновик удален') : 'Черновик удален', 'success');
             draftsListLoaded = false;
             loadDraftsList(); // Перезагружаем список
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error);
         }
     } catch (error) {
         console.error('Ошибка удаления черновика:', error);
-        showAlert('Ошибка при удалении черновика');
+        showAlert(window.t ? window.t('notifications.draft_delete_error', 'Ошибка при удалении черновика') : 'Ошибка при удалении черновика');
     }
 }
 
@@ -5865,12 +5887,13 @@ async function loadIncludesList() {
         
         if (data.success) {
             if (data.files.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">Нет сохраненных includes</div>';
+                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
             } else {
+                const delIncText = window.t ? window.t('more_menu.delete_include', 'Удалить include') : 'Удалить include';
                 submenu.innerHTML = data.files.map(file => 
                     `<div class="draft-item-wrap">
-                        <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${file.name}')" title="${file.displayName}">${file.displayName}</button>
-                        <button type="button" class="draft-delete-btn" onclick="deleteInclude('${file.name}', event)" title="Удалить include">×</button>
+                        <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${file.name}')" title="${escapeHtml(file.displayName)}">${escapeHtml(file.displayName)}</button>
+                        <button type="button" class="draft-delete-btn" onclick="deleteInclude('${file.name}', event)" title="${delIncText}">×</button>
                     </div>`
                 ).join('');
             }
@@ -5878,14 +5901,14 @@ async function loadIncludesList() {
         }
     } catch (error) {
         console.error('Ошибка загрузки includes:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">Ошибка загрузки</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
     }
 }
 
 async function deleteInclude(filename, event) {
     if (event) event.stopPropagation();
     
-    const result = await showConfirm('Удалить этот include?');
+    const result = await showConfirm(window.t ? window.t('notifications.include_delete_confirm', 'Удалить этот include?') : 'Удалить этот include?');
     if (!result) return;
     
     try {
@@ -5900,15 +5923,15 @@ async function deleteInclude(filename, event) {
         const data = await response.json();
         
         if (data.success) {
-            showNotification('Include успешно удален', 'success');
+            showNotification(window.t ? window.t('notifications.include_deleted', 'Include успешно удален') : 'Include успешно удален', 'success');
             includesListLoaded = false;
             loadIncludesList();
         } else {
-            showNotification('Ошибка: ' + data.error, 'error');
+            showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Ошибка удаления include:', error);
-        showNotification('Ошибка при удалении include', 'error');
+        showNotification(window.t ? window.t('notifications.include_delete_error', 'Ошибка при удалении include') : 'Ошибка при удалении include', 'error');
     }
 }
 
@@ -5942,13 +5965,13 @@ async function insertInclude(filename) {
             const moreMenu = document.getElementById('moreMenuWrap');
             if (moreMenu) moreMenu.classList.remove('is-open');
             
-            showNotification('Include вставлен', 'success');
+            showNotification(window.t ? window.t('notifications.include_inserted', 'Include вставлен') : 'Include вставлен', 'success');
         } else {
-            showNotification('Ошибка: ' + data.error, 'error');
+            showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Ошибка вставки include:', error);
-        showNotification('Ошибка при вставке include', 'error');
+        showNotification(window.t ? window.t('notifications.include_insert_error', 'Ошибка при вставке include') : 'Ошибка при вставке include', 'error');
     }
 }
 
@@ -5981,8 +6004,8 @@ async function loadArticlesList() {
         const response = await fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now());
         const articles = await response.json();
         
-        if (articles.length === 0) {
-            submenu.innerHTML = '<div class="more-submenu-empty">Нет статей</div>';
+        if (!articles || articles.length === 0) {
+            submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_articles', 'Нет статей') : 'Нет статей') + '</div>';
         } else {
             submenu.innerHTML = articles.map(article => 
                 `<button type="button" class="more-submenu-item" onclick="insertArticleLink('${article.filename}', '${article.title.replace(/'/g, "\\'")}')">
@@ -5992,7 +6015,7 @@ async function loadArticlesList() {
         }
     } catch (error) {
         console.error('Ошибка загрузки статей:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">Ошибка загрузки</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
     }
 }
 
@@ -6016,7 +6039,7 @@ function insertArticleLink(filename, title) {
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
     
-    showNotification('Ссылка на статью вставлена', 'success');
+    showNotification(window.t ? window.t('notifications.post_link_inserted', 'Ссылка на статью вставлена') : 'Ссылка на статью вставлена', 'success');
 }
 
 // ——— Проверка нумерации статей ———
@@ -6595,7 +6618,7 @@ function loadDocumentsList() {
                     const insertBtn = document.createElement('button');
                     insertBtn.type = 'button';
                     insertBtn.className = 'file-upload-item-btn insert';
-                    insertBtn.textContent = 'Вставить';
+                    insertBtn.textContent = window.t ? window.t('common.insert', 'Вставить') : 'Вставить';
                     insertBtn.onclick = (e) => {
                         e.stopPropagation();
                         insertFileButton(file.name, file.url, file.size);
@@ -6604,7 +6627,7 @@ function loadDocumentsList() {
                     const deleteBtn = document.createElement('button');
                     deleteBtn.type = 'button';
                     deleteBtn.className = 'file-upload-item-btn delete';
-                    deleteBtn.textContent = 'Удалить';
+                    deleteBtn.textContent = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
                     deleteBtn.onclick = (e) => {
                         e.stopPropagation();
                         deleteDocument(file.path);
@@ -6618,12 +6641,12 @@ function loadDocumentsList() {
                     listContainer.appendChild(item);
                 });
             } else {
-                listContainer.innerHTML = '<div class="file-upload-empty">Нет загруженных файлов</div>';
+                listContainer.innerHTML = '<div class="file-upload-empty">' + (window.t ? window.t('modals.file_none_uploaded', 'Нет загруженных файлов') : 'Нет загруженных файлов') + '</div>';
             }
         })
         .catch(error => {
             console.error('Ошибка загрузки списка файлов:', error);
-            document.getElementById('fileUploadList').innerHTML = '<div class="file-upload-empty">Ошибка загрузки списка</div>';
+            document.getElementById('fileUploadList').innerHTML = '<div class="file-upload-empty">' + (window.t ? window.t('modals.file_load_error', 'Ошибка загрузки списка') : 'Ошибка загрузки списка') + '</div>';
         });
 }
 
@@ -6632,7 +6655,7 @@ function uploadDocument(fileToUpload = null) {
     const file = fileToUpload || (fileInput ? fileInput.files[0] : null);
     
     if (!file) {
-        showNotification('Выберите файл для загрузки', 'error');
+        showNotification(window.t ? window.t('notifications.file_select_upload', 'Выберите файл для загрузки') : 'Выберите файл для загрузки', 'error');
         return;
     }
     
@@ -6642,7 +6665,8 @@ function uploadDocument(fileToUpload = null) {
     let originalText = '';
     if (dropzoneText) {
         originalText = dropzoneText.textContent;
-        dropzoneText.innerHTML = `<span class="loading-spinner"></span> Загрузка "${file.name}"...`;
+        const uploadingText = window.t ? window.t('notifications.file_uploading_param', `Загрузка "${file.name}"...`, { name: file.name }) : `Загрузка "${file.name}"...`;
+        dropzoneText.innerHTML = `<span class="loading-spinner"></span> ${uploadingText}`;
     }
     
     const formData = new FormData();
@@ -6658,15 +6682,15 @@ function uploadDocument(fileToUpload = null) {
             dropzoneText.textContent = originalText;
         }
         if (data.success) {
-            showNotification('Файл успешно загружен', 'success');
+            showNotification(window.t ? window.t('notifications.file_uploaded', 'Файл успешно загружен') : 'Файл успешно загружен', 'success');
             if (fileInput) fileInput.value = '';
             const fileNameEl = document.getElementById('documentFileName');
             if (fileNameEl) {
-                fileNameEl.textContent = 'Файл не выбран';
+                fileNameEl.textContent = window.t ? window.t('modals.file_none', 'Файл не выбран') : 'Файл не выбран';
             }
             loadDocumentsList();
         } else {
-            showNotification('Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), 'error');
+            showNotification(window.t ? window.t('notifications.file_upload_error_param', 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), 'error');
         }
     })
     .catch(error => {
@@ -6674,12 +6698,12 @@ function uploadDocument(fileToUpload = null) {
             dropzoneText.textContent = originalText;
         }
         console.error('Ошибка:', error);
-        showNotification('Ошибка загрузки файла', 'error');
+        showNotification(window.t ? window.t('notifications.file_upload_network_error', 'Ошибка загрузки файла') : 'Ошибка загрузки файла', 'error');
     });
 }
 
 function deleteDocument(filePath) {
-    showConfirm('Удалить этот файл?', 'Подтверждение удаления').then(result => {
+    showConfirm(window.t ? window.t('notifications.confirm_delete_file', 'Удалить этот файл?') : 'Удалить этот файл?').then(result => {
         if (!result) return;
         
         fetch('delete_document.php', {
@@ -6692,15 +6716,15 @@ function deleteDocument(filePath) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showNotification('Файл удален', 'success');
+                showNotification(window.t ? window.t('notifications.file_deleted', 'Файл удален') : 'Файл удален', 'success');
                 loadDocumentsList();
             } else {
-                showNotification('Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), 'error');
+                showNotification(window.t ? window.t('notifications.file_delete_error_param', 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), 'error');
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showNotification('Ошибка удаления файла', 'error');
+            showNotification(window.t ? window.t('notifications.file_delete_network_error', 'Ошибка удаления файла') : 'Ошибка удаления файла', 'error');
         });
     });
 }
@@ -6961,7 +6985,7 @@ function loadTocList() {
     const anchors = ve.querySelectorAll('[id]');
     
     if (anchors.length === 0) {
-        submenu.innerHTML = '<div class="more-submenu-empty">Нет якорей в статье</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_anchors', 'Нет якорей в статье') : 'Нет якорей в статье') + '</div>';
         return;
     }
     
@@ -6977,7 +7001,7 @@ function loadTocList() {
         }
         
         if (!text) {
-            text = `Якорь: #${id}`;
+            text = `#${id}`;
         } else {
             if (text.length > 25) {
                 text = text.substring(0, 22) + '...';
@@ -6987,8 +7011,8 @@ function loadTocList() {
         
         html += `
         <div class="toc-menu-item-row">
-            <button type="button" class="more-submenu-item" onclick="insertAnchorLink('${id}')" title="Вставить ссылку на #${id}">${text}</button>
-            <button type="button" class="toc-delete-btn" onclick="removeAnchorById('${id}', event)" title="Удалить якорь #${id}">×</button>
+            <button type="button" class="more-submenu-item" onclick="insertAnchorLink('${escapeHtmlJS(id)}')">${escapeHtml(text)}</button>
+            <button type="button" class="toc-delete-btn" onclick="removeAnchorById('${escapeHtmlJS(id)}', event)">×</button>
         </div>`;
     });
     
@@ -8667,7 +8691,7 @@ function processSelectedSmiles(files) {
     if (btnContainer) btnContainer.style.display = 'block';
     
     const dropzoneText = document.getElementById('smileDropzoneText');
-    if (dropzoneText) dropzoneText.textContent = 'Файлы успешно выбраны';
+    if (dropzoneText) dropzoneText.textContent = window.t ? window.t('modals.smiles_files_selected_notice', 'Файлы успешно выбраны') : 'Файлы успешно выбраны';
 }
 
 function resetSmileUploadState() {
@@ -8688,7 +8712,7 @@ function resetSmileUploadState() {
     if (nameField) nameField.style.display = 'none';
     if (infoText) infoText.style.display = 'none';
     if (btnContainer) btnContainer.style.display = 'none';
-    if (dropzoneText) dropzoneText.textContent = 'Перетащите папку со смайлами сюда';
+    if (dropzoneText) dropzoneText.textContent = window.t ? window.t('modals.smiles_drop_text', 'Перетащите ZIP архив со смайлами сюда или кликните для выбора') : 'Перетащите ZIP архив со смайлами сюда или кликните для выбора';
 }
 
 async function loadSmileSetsList() {
@@ -8702,22 +8726,25 @@ async function loadSmileSetsList() {
         if (data.success) {
             const setNames = Object.keys(data.sets);
             if (setNames.length === 0) {
-                listContainer.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">Нет загруженных наборов</div>';
+                listContainer.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">' + (window.t ? window.t('modals.smiles_no_sets', 'Нет загруженных наборов') : 'Нет загруженных наборов') + '</div>';
             } else {
+                const pcsTemplate = window.t ? window.t('modals.smiles_count_pcs', '({count} шт.)') : '({count} шт.)';
+                const delText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
                 listContainer.innerHTML = setNames.map(name => {
                     const count = data.sets[name].length;
+                    const countFormatted = pcsTemplate.replace('{count}', count);
                     return `<div class="smile-set-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-color); transition: background 0.2s;" onmouseover="this.style.background='rgba(128,128,128,0.04)'" onmouseout="this.style.background='transparent'">
-                        <span class="smile-set-name" style="font-weight: 500; font-size: 14px;">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.5; margin-left: 8px;">(${count} шт.)</span></span>
-                        <button type="button" class="smile-set-delete-btn" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(239,68,68,0.4)'" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">Удалить</button>
+                        <span class="smile-set-name" style="font-weight: 500; font-size: 14px;">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.5; margin-left: 8px;">${countFormatted}</span></span>
+                        <button type="button" class="smile-set-delete-btn" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(239,68,68,0.4)'" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">${delText}</button>
                     </div>`;
                 }).join('');
             }
         } else {
-            listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">Ошибка загрузки списка</div>';
+            listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">' + (window.t ? window.t('modals.smiles_load_error', 'Ошибка загрузки списка') : 'Ошибка загрузки списка') + '</div>';
         }
     } catch (error) {
         console.error('Error loading smile sets:', error);
-        listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">Ошибка сети</div>';
+        listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">' + (window.t ? window.t('more_menu.network_error', 'Ошибка сети') : 'Ошибка сети') + '</div>';
     }
 }
 
@@ -8727,11 +8754,11 @@ async function handleSmileSetUpload() {
     let setName = document.getElementById('smileSetNameInput').value.trim();
 
     if (files.length === 0) {
-        showNotification('Выберите файлы или папку для загрузки', 'warning');
+        showNotification(window.t ? window.t('notifications.smiles_select_files_or_folder', 'Выберите файлы или папку для загрузки') : 'Выберите файлы или папку для загрузки', 'warning');
         return;
     }
     if (!setName) {
-        showNotification('Введите название для набора', 'warning');
+        showNotification(window.t ? window.t('notifications.smiles_enter_set_name', 'Введите название для набора') : 'Введите название для набора', 'warning');
         return;
     }
 
@@ -8741,22 +8768,22 @@ async function handleSmileSetUpload() {
     });
 
     try {
-        showNotification('Загрузка смайлов...', 'info');
+        showNotification(window.t ? window.t('notifications.smiles_uploading', 'Загрузка смайлов...') : 'Загрузка смайлов...', 'info');
         const response = await fetch('upload_smiles.php', {
             method: 'POST',
             body: formData
         });
         const data = await response.json();
         if (data.success) {
-            showNotification(`Набор "${setName}" успешно загружен (${data.count} смайлов)`, 'success');
+            showNotification(window.t ? window.t('notifications.smiles_uploaded_param', `Набор "${setName}" успешно загружен (${data.count} смайлов)`, { setName: setName, count: data.count }) : `Набор "${setName}" успешно загружен (${data.count} смайлов)`, 'success');
             loadSmileSetsList();
             resetSmileUploadState();
         } else {
-            showNotification('Ошибка загрузки: ' + data.error, 'error');
+            showNotification(window.t ? window.t('notifications.file_upload_error_param', 'Ошибка загрузки: ' + data.error, { error: data.error }) : 'Ошибка загрузки: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Error uploading smiles:', error);
-        showNotification('Ошибка сети при загрузке набора', 'error');
+        showNotification(window.t ? window.t('notifications.smiles_upload_network_error', 'Ошибка сети при загрузке набора') : 'Ошибка сети при загрузке набора', 'error');
     }
 }
 
@@ -8770,7 +8797,7 @@ window.handleSmileFileSelect = handleSmileFileSelect;
 window.handleSmileSetUpload = handleSmileSetUpload;
 
 async function deleteSmileSet(setName) {
-    showConfirm(`Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`).then(async (result) => {
+    showConfirm(window.t ? window.t('notifications.smiles_delete_confirm_param', `Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`, { setName: setName }) : `Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`).then(async (result) => {
         if (!result) return;
         
         const formData = new FormData();
@@ -8783,14 +8810,14 @@ async function deleteSmileSet(setName) {
             });
             const data = await response.json();
             if (data.success) {
-                showNotification(`Набор "${setName}" успешно удален`, 'success');
+                showNotification(window.t ? window.t('notifications.smiles_deleted_param', `Набор "${setName}" успешно удален`, { setName: setName }) : `Набор "${setName}" успешно удален`, 'success');
                 loadSmileSetsList();
             } else {
-                showNotification('Ошибка удаления: ' + data.error, 'error');
+                showNotification(window.t ? window.t('notifications.file_delete_error_param', 'Ошибка удаления: ' + data.error, { error: data.error }) : 'Ошибка удаления: ' + data.error, 'error');
             }
         } catch (error) {
             console.error('Error deleting smile set:', error);
-            showNotification('Ошибка сети при удалении набора', 'error');
+            showNotification(window.t ? window.t('notifications.smiles_delete_network_error', 'Ошибка сети при удалении набора') : 'Ошибка сети при удалении набора', 'error');
         }
     });
 }
@@ -8828,7 +8855,7 @@ async function loadSmilesSubmenuList() {
             const nonEmptySets = setNames.filter(name => data.sets[name].length > 0);
             
             if (nonEmptySets.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">Нет смайлов. Добавьте их через "Наборы смайлов"</div>';
+                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_smiles_hint', 'Нет смайлов. Добавьте их через "Наборы смайлов"') : 'Нет смайлов. Добавьте их через "Наборы смайлов"') + '</div>';
             } else {
                 let html = '<div class="smiles-submenu-container">';
                 nonEmptySets.forEach(setName => {
@@ -8848,11 +8875,11 @@ async function loadSmilesSubmenuList() {
                 submenu.innerHTML = html;
             }
         } else {
-            submenu.innerHTML = '<div class="more-submenu-empty">Ошибка загрузки смайлов</div>';
+            submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.smiles_load_error', 'Ошибка загрузки смайлов') : 'Ошибка загрузки смайлов') + '</div>';
         }
     } catch (error) {
         console.error('Error loading smiles for submenu:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">Ошибка сети</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.network_error', 'Ошибка сети') : 'Ошибка сети') + '</div>';
     }
 }
 
@@ -8886,14 +8913,15 @@ let editingCustomBtnTarget = null;
 function openInsertButtonDialog() {
     editingCustomBtnTarget = null;
     const dialogTitle = document.getElementById('customButtonDialogTitle');
-    if (dialogTitle) dialogTitle.textContent = 'Вставить кнопку со ссылкой';
+    if (dialogTitle) dialogTitle.innerHTML = '<span>🔗</span> ' + (window.t ? window.t('modals.btn_title', 'Вставить кнопку со ссылкой') : 'Вставить кнопку со ссылкой');
     const submitBtn = document.getElementById('customButtonSubmitBtn');
-    if (submitBtn) submitBtn.textContent = 'Вставить кнопку';
+    if (submitBtn) submitBtn.innerHTML = window.t ? window.t('modals.btn_submit', '💾 Вставить кнопку') : '💾 Вставить кнопку';
 
     const textInput = document.getElementById('btnTextInput');
     const urlInput = document.getElementById('btnUrlInput');
     const targetInput = document.getElementById('btnTargetInput');
-    if (textInput) textInput.value = 'Перейти на сайт';
+    const defaultText = window.t ? window.t('modals.btn_default_text', 'Перейти на сайт') : 'Перейти на сайт';
+    if (textInput) textInput.value = defaultText;
     if (urlInput) urlInput.value = 'https://example.com';
     if (targetInput) targetInput.checked = true;
 
@@ -8912,9 +8940,9 @@ function openEditCustomButtonDialog(customBtn) {
     editingCustomBtnTarget = customBtn;
 
     const dialogTitle = document.getElementById('customButtonDialogTitle');
-    if (dialogTitle) dialogTitle.textContent = 'Редактировать кнопку';
+    if (dialogTitle) dialogTitle.innerHTML = '<span>✏️</span> ' + (window.t ? window.t('modals.btn_edit_title', 'Редактировать кнопку') : 'Редактировать кнопку');
     const submitBtn = document.getElementById('customButtonSubmitBtn');
-    if (submitBtn) submitBtn.textContent = 'Сохранить изменения';
+    if (submitBtn) submitBtn.innerHTML = window.t ? window.t('modals.btn_save_changes', '💾 Сохранить изменения') : '💾 Сохранить изменения';
 
     const text = customBtn.textContent.trim();
     const url = customBtn.getAttribute('href') || '';
@@ -9095,7 +9123,7 @@ function updateCustomBtnPreview() {
 
     if (!textInput || !urlInput) return;
 
-    const text = textInput.value || 'Текст кнопки';
+    const text = textInput.value || (window.t ? window.t('modals.btn_text_fallback', 'Текст кнопки') : 'Текст кнопки');
     const url = urlInput.value || '#';
     const targetBlank = targetInput ? targetInput.checked : true;
     
@@ -9183,7 +9211,7 @@ function insertCustomButtonToEditor() {
 
     if (!btnHtml) {
         if (typeof showNotification === 'function') {
-            showNotification('Пожалуйста, введите текст и ссылку для кнопки', 'warning');
+            showNotification(window.t ? window.t('notifications.custom_btn_enter_text_url', 'Пожалуйста, введите текст и ссылку для кнопки') : 'Пожалуйста, введите текст и ссылку для кнопки', 'warning');
         }
         return;
     }
@@ -9203,7 +9231,7 @@ function insertCustomButtonToEditor() {
             hideGlobalMediaOverlay();
         }
         if (typeof showNotification === 'function') {
-            showNotification('Кнопка со ссылкой успешно обновлена!', 'success');
+            showNotification(window.t ? window.t('notifications.custom_btn_updated', 'Кнопка со ссылкой успешно обновлена!') : 'Кнопка со ссылкой успешно обновлена!', 'success');
         }
     } else {
         // Вставка новой кнопки с оберткой медиа-элементов
@@ -9226,7 +9254,7 @@ function insertCustomButtonToEditor() {
             }
         }
         if (typeof showNotification === 'function') {
-            showNotification('Кнопка со ссылкой успешно вставлена!', 'success');
+            showNotification(window.t ? window.t('notifications.custom_btn_inserted', 'Кнопка со ссылкой успешно вставлена!') : 'Кнопка со ссылкой успешно вставлена!', 'success');
         }
     }
 
@@ -9831,4 +9859,52 @@ document.addEventListener('DOMContentLoaded', function() {
     window.initCustomSelects = initAllCustomSelects;
     window.syncCustomSelect = syncCustomSelectFromNative;
 })();
+
+// Listen for language changes to invalidate caches and re-render dynamic submenus
+window.addEventListener('npblog:langchange', function(e) {
+    if (typeof draftsListLoaded !== 'undefined') draftsListLoaded = false;
+    if (typeof includesListLoaded !== 'undefined') includesListLoaded = false;
+    
+    // If manage posts panel is active, refresh the list
+    const managePanel = document.getElementById('managePosts');
+    if (managePanel && managePanel.classList.contains('active')) {
+        if (typeof loadPosts === 'function') loadPosts();
+    }
+    
+    // If drafts submenu is currently open, refresh it
+    const draftsSubmenu = document.getElementById('draftsSubmenu');
+    const draftsItem = draftsSubmenu ? draftsSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (draftsItem && draftsItem.classList.contains('submenu-open') && typeof loadDraftsList === 'function') {
+        loadDraftsList();
+    }
+    
+    // If includes submenu is currently open, refresh it
+    const includesSubmenu = document.getElementById('includesSubmenu');
+    const includesItem = includesSubmenu ? includesSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (includesItem && includesItem.classList.contains('submenu-open') && typeof loadIncludesList === 'function') {
+        loadIncludesList();
+    }
+    
+    // If articles submenu is currently open, refresh it
+    const articlesSubmenu = document.getElementById('articlesSubmenu');
+    const articlesItem = articlesSubmenu ? articlesSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (articlesItem && articlesItem.classList.contains('submenu-open') && typeof loadArticlesList === 'function') {
+        loadArticlesList();
+    }
+
+    // If TOC submenu is currently open, refresh it
+    const tocSubmenu = document.getElementById('tocSubmenu');
+    const tocItem = tocSubmenu ? tocSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (tocItem && tocItem.classList.contains('submenu-open') && typeof loadTocList === 'function') {
+        loadTocList();
+    }
+
+    // If smiles submenu is currently open, refresh it
+    const smilesSubmenu = document.getElementById('smilesSubmenu');
+    const smilesItem = smilesSubmenu ? smilesSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (smilesItem && smilesItem.classList.contains('submenu-open') && typeof loadSmilesSubmenuList === 'function') {
+        loadSmilesSubmenuList();
+    }
+});
+
 

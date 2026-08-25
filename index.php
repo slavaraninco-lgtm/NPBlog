@@ -3,6 +3,7 @@ require_once __DIR__ . '/security_bootstrap.php';
 $settingsFile = 'editor_settings.json';
 $amoled = false;
 $activeTheme = 'dark';
+$currentLanguage = 'ru';
 if (file_exists($settingsFile)) {
     $settings = json_decode(file_get_contents($settingsFile), true);
     if (!empty($settings['amoledTheme'])) {
@@ -11,6 +12,12 @@ if (file_exists($settingsFile)) {
     if (!empty($settings['activeTheme'])) {
         $activeTheme = $settings['activeTheme'];
     }
+    if (!empty($settings['language']) && in_array($settings['language'], ['ru', 'en', 'uk'])) {
+        $currentLanguage = $settings['language'];
+    }
+}
+if (!empty($_SESSION['editor_language']) && in_array($_SESSION['editor_language'], ['ru', 'en', 'uk'])) {
+    $currentLanguage = $_SESSION['editor_language'];
 }
 $customCssExists = file_exists(getDataPath('custom_editor_theme.css'));
 
@@ -24,12 +31,14 @@ if (file_exists($versionFile)) {
 }
 ?>
 <!DOCTYPE html>
-<html<?php echo $amoled ? ' data-amoled="true"' : ''; ?>>
+<html lang="<?php echo htmlspecialchars($currentLanguage); ?>"<?php echo $amoled ? ' data-amoled="true"' : ''; ?>>
 <head>
     <title>Редактор</title>
     <meta charset="utf-8">
     <meta name="csrf-token" content="<?php echo isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : ''; ?>">
+    <script src="lang/i18n.js?v=<?php echo file_exists(__DIR__ . '/lang/i18n.js') ? filemtime(__DIR__ . '/lang/i18n.js') : time(); ?>"></script>
     <script>
+        window.NPBLOG_LANG = '<?php echo htmlspecialchars($currentLanguage); ?>';
         const savedTheme = localStorage.getItem('theme') || '<?php echo $activeTheme; ?>';
         if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -123,14 +132,14 @@ if (file_exists($versionFile)) {
                         <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                     </svg>
                 </div>
-                <h2 class="delete-confirm-title">Удалить статью?</h2>
+                <h2 class="delete-confirm-title" data-i18n="modals.delete_confirm_title">Удалить статью?</h2>
             </div>
             <div class="delete-confirm-message">
                 Вы уверены, что хотите удалить эту статью? Это действие нельзя отменить.
             </div>
             <div class="delete-confirm-buttons">
-                <button class="delete-confirm-btn cancel" onclick="closeDeleteConfirm()">Отмена</button>
-                <button class="delete-confirm-btn delete" onclick="confirmDelete()">Удалить</button>
+                <button class="delete-confirm-btn cancel" onclick="closeDeleteConfirm()" data-i18n="common.cancel">Отмена</button>
+                <button class="delete-confirm-btn delete" onclick="confirmDelete()" data-i18n="common.delete">Удалить</button>
             </div>
         </div>
     </div>
@@ -138,12 +147,12 @@ if (file_exists($versionFile)) {
     <!-- Диалог сохранения в includes -->
     <div class="save-include-overlay" id="saveIncludeOverlay">
         <div class="save-include-dialog">
-            <h2 class="save-include-title">Сохранить в includes</h2>
-            <label class="save-include-label">Название файла:</label>
-            <input type="text" class="save-include-input" id="includeNameInput" placeholder="Например: контакты">
+            <h2 class="save-include-title" data-i18n="modals.save_include_title">Сохранить в includes</h2>
+            <label class="save-include-label" data-i18n="modals.save_include_name_label">Название файла:</label>
+            <input type="text" class="save-include-input" id="includeNameInput" placeholder="Например: контакты" data-i18n-placeholder="modals.save_include_ph">
             <div class="save-include-buttons">
-                <button class="save-include-btn cancel" onclick="closeSaveInclude()">Отмена</button>
-                <button class="save-include-btn save" onclick="confirmSaveInclude()">Сохранить</button>
+                <button class="save-include-btn cancel" onclick="closeSaveInclude()" data-i18n="common.cancel">Отмена</button>
+                <button class="save-include-btn save" onclick="confirmSaveInclude()" data-i18n="common.save">Сохранить</button>
             </div>
         </div>
     </div>
@@ -153,7 +162,7 @@ if (file_exists($versionFile)) {
     <div class="backup-manager-overlay" id="backupManagerOverlay">
         <div class="backup-manager-dialog">
             <div class="backup-manager-header">
-                <h2 class="backup-manager-title">Менеджер бэкапов</h2>
+                <h2 class="backup-manager-title" data-i18n="modals.backup_manager_title">Менеджер бэкапов</h2>
                 <button class="backup-manager-close" onclick="closeBackupManager()">×</button>
             </div>
             <div class="backup-manager-content" id="backupManagerContent">
@@ -168,14 +177,14 @@ if (file_exists($versionFile)) {
     <div class="numbering-check-overlay" id="numberingCheckOverlay">
         <div class="numbering-check-dialog">
             <div class="numbering-check-header">
-                <h2 class="numbering-check-title">Проверка нумерации статей</h2>
+                <h2 class="numbering-check-title" data-i18n="modals.numbering_check_title">Проверка нумерации статей</h2>
                 <button class="numbering-check-close" onclick="closeNumberingCheck()">×</button>
             </div>
             <div class="numbering-check-content" id="numberingCheckContent">
-                <div class="numbering-status">Проверка...</div>
+                <div class="numbering-status" data-i18n="modals.numbering_checking">Проверка...</div>
             </div>
             <div class="numbering-check-buttons">
-                <button class="numbering-check-btn close" onclick="closeNumberingCheck()">Закрыть</button>
+                <button class="numbering-check-btn close" onclick="closeNumberingCheck()" data-i18n="common.close">Закрыть</button>
                 <button class="numbering-check-btn fix" id="fixNumberingBtn" style="display:none;" onclick="fixNumbering()">Исправить</button>
             </div>
         </div>
@@ -209,20 +218,20 @@ if (file_exists($versionFile)) {
             <span class="toolbar-divider" id="logoDivider"></span>
             
             <div class="mode-toggle" id="headerModeToggle" onmousedown="if(!document.body.classList.contains('header-customizing')) event.preventDefault()">
-                <button type="button" id="modeVisualBtn" class="format-btn" title="Визуальный режим">Визуально</button>
-                <button type="button" id="modeCodeBtn" class="format-btn" title="Режим кода">Код</button>
+                <button type="button" id="modeVisualBtn" class="format-btn" title="Визуальный режим" data-i18n="tabs.visual" data-i18n-title="tabs.visual">Визуально</button>
+                <button type="button" id="modeCodeBtn" class="format-btn" title="Режим кода" data-i18n="tabs.code" data-i18n-title="tabs.code">Код</button>
             </div>
             
             <span class="toolbar-divider" id="modeActionsDivider"></span>
             
             <div class="editor-actions" id="headerEditorActions" onmousedown="if(!document.body.classList.contains('header-customizing')) event.preventDefault()">
-                <button type="button" id="undoBtn" class="format-btn" onclick="undoEdit()" title="Отменить (Ctrl+Z)">
+                <button type="button" id="undoBtn" class="format-btn" onclick="undoEdit()" title="Отменить (Ctrl+Z)" data-i18n-title="toolbar.undo">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
                         <path d="M3 7v6h6" />
                         <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
                     </svg>
                 </button>
-                <button type="button" id="redoBtn" class="format-btn" onclick="redoEdit()" title="Вернуть (Ctrl+Y)">
+                <button type="button" id="redoBtn" class="format-btn" onclick="redoEdit()" title="Вернуть (Ctrl+Y)" data-i18n-title="toolbar.redo">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
                         <path d="M21 7v6h-6" />
                         <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
@@ -232,35 +241,35 @@ if (file_exists($versionFile)) {
             
             <span class="toolbar-divider" id="actionsFormattingDivider"></span>
             
-            <button type="button" id="btn-bold" class="format-btn" onclick="formatText('b')" title="Жирный"><span class="button-icon"><b>B</b></span><span class="button-text">Жирный</span></button>
-            <button type="button" id="btn-italic" class="format-btn" onclick="formatText('i')" title="Курсив"><span class="button-icon"><i>I</i></span><span class="button-text">Курсив</span></button>
-            <button type="button" id="btn-underline" class="format-btn" onclick="formatText('u')" title="Подчеркнутый"><span class="button-icon"><u>U</u></span><span class="button-text">Подчеркнутый</span></button>
-            <button type="button" id="btn-strike" class="format-btn" onclick="formatText('s')" title="Зачеркнутый"><span class="button-icon"><s>S</s></span><span class="button-text">Зачеркнутый</span></button>
-            <button type="button" id="btn-sup" class="format-btn" onclick="formatText('sup')" title="Верхний индекс"><span class="button-icon">X<sup>2</sup></span><span class="button-text">Верхний индекс</span></button>
-            <button type="button" id="btn-sub" class="format-btn" onclick="formatText('sub')" title="Нижний индекс"><span class="button-icon">X<sub>2</sub></span><span class="button-text">Нижний индекс</span></button>
-            <button type="button" id="btn-h2" class="format-btn" onclick="formatText('h2')" title="Подзаголовок"><span class="button-icon"><b>H</b></span><span class="button-text">Подзаголовок</span></button>
-            <button type="button" id="btn-table" class="format-btn" onclick="openTableDialog()" title="Вставить таблицу"><span class="button-icon">⊞</span><span class="button-text">Вставить таблицу</span></button>
-            <button type="button" id="btn-spoiler" class="format-btn" onclick="openSpoilerDialog()" title="Сворачиваемый блок"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display: block;"><path d="M3 7l9 10 9-10H3z" /></svg></span><span class="button-text">Сворачиваемый блок</span></button>
-            <button type="button" id="btn-marker" class="format-btn" onclick="openMarkerDialog()" title="Маркер"><span class="button-icon">🖍</span><span class="button-text">Маркер</span></button>
-            <button type="button" id="btn-anchor" class="format-btn" onclick="addAnchor()" title="Добавить якорь"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="5" r="3" /><line x1="12" y1="8" x2="12" y2="22" /><path d="M5 12H2a10 10 0 0 0 20 0h-3" /></svg></span><span class="button-text">Добавить якорь</span></button>
+            <button type="button" id="btn-bold" class="format-btn" onclick="formatText('b')" title="Жирный" data-i18n-title="toolbar.bold"><span class="button-icon"><b>B</b></span><span class="button-text" data-i18n="toolbar.bold">Жирный</span></button>
+            <button type="button" id="btn-italic" class="format-btn" onclick="formatText('i')" title="Курсив" data-i18n-title="toolbar.italic"><span class="button-icon"><i>I</i></span><span class="button-text" data-i18n="toolbar.italic">Курсив</span></button>
+            <button type="button" id="btn-underline" class="format-btn" onclick="formatText('u')" title="Подчеркнутый" data-i18n-title="toolbar.underline"><span class="button-icon"><u>U</u></span><span class="button-text" data-i18n="toolbar.underline">Подчеркнутый</span></button>
+            <button type="button" id="btn-strike" class="format-btn" onclick="formatText('s')" title="Зачеркнутый" data-i18n-title="toolbar.strikethrough"><span class="button-icon"><s>S</s></span><span class="button-text" data-i18n="toolbar.strikethrough">Зачеркнутый</span></button>
+            <button type="button" id="btn-sup" class="format-btn" onclick="formatText('sup')" title="Верхний индекс" data-i18n-title="toolbar.sup"><span class="button-icon">X<sup>2</sup></span><span class="button-text" data-i18n="toolbar.sup">Верхний индекс</span></button>
+            <button type="button" id="btn-sub" class="format-btn" onclick="formatText('sub')" title="Нижний индекс" data-i18n-title="toolbar.sub"><span class="button-icon">X<sub>2</sub></span><span class="button-text" data-i18n="toolbar.sub">Нижний индекс</span></button>
+            <button type="button" id="btn-h2" class="format-btn" onclick="formatText('h2')" title="Подзаголовок" data-i18n-title="toolbar.heading"><span class="button-icon"><b>H</b></span><span class="button-text" data-i18n="toolbar.heading">Подзаголовок</span></button>
+            <button type="button" id="btn-table" class="format-btn" onclick="openTableDialog()" title="Вставить таблицу" data-i18n-title="toolbar.table"><span class="button-icon">⊞</span><span class="button-text" data-i18n="toolbar.table">Вставить таблицу</span></button>
+            <button type="button" id="btn-spoiler" class="format-btn" onclick="openSpoilerDialog()" title="Сворачиваемый блок" data-i18n-title="toolbar.spoiler"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display: block;"><path d="M3 7l9 10 9-10H3z" /></svg></span><span class="button-text" data-i18n="toolbar.spoiler">Сворачиваемый блок</span></button>
+            <button type="button" id="btn-marker" class="format-btn" onclick="openMarkerDialog()" title="Маркер" data-i18n-title="toolbar.marker"><span class="button-icon">🖍</span><span class="button-text" data-i18n="toolbar.marker">Маркер</span></button>
+            <button type="button" id="btn-anchor" class="format-btn" onclick="addAnchor()" title="Добавить якорь" data-i18n-title="toolbar.anchor"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="5" r="3" /><line x1="12" y1="8" x2="12" y2="22" /><path d="M5 12H2a10 10 0 0 0 20 0h-3" /></svg></span><span class="button-text" data-i18n="toolbar.anchor">Добавить якорь</span></button>
             
             <span class="toolbar-divider" id="divider-align"></span>
             
-            <button type="button" id="btn-align-left" class="format-btn" onclick="alignText('left')" title="По левому краю"><span class="button-icon">◄</span><span class="button-text">Выравнивание по левому краю</span></button>
-            <button type="button" id="btn-align-center" class="format-btn" onclick="alignText('center')" title="По центру"><span class="button-icon">≡</span><span class="button-text">Выравнивание по центру</span></button>
-            <button type="button" id="btn-align-right" class="format-btn" onclick="alignText('right')" title="По правому краю"><span class="button-icon">►</span><span class="button-text">Выравнивание по правому краю</span></button>
+            <button type="button" id="btn-align-left" class="format-btn" onclick="alignText('left')" title="По левому краю" data-i18n-title="toolbar.align_left"><span class="button-icon">◄</span><span class="button-text" data-i18n="toolbar.align_left">Выравнивание по левому краю</span></button>
+            <button type="button" id="btn-align-center" class="format-btn" onclick="alignText('center')" title="По центру" data-i18n-title="toolbar.align_center"><span class="button-icon">≡</span><span class="button-text" data-i18n="toolbar.align_center">Выравнивание по центру</span></button>
+            <button type="button" id="btn-align-right" class="format-btn" onclick="alignText('right')" title="По правому краю" data-i18n-title="toolbar.align_right"><span class="button-icon">►</span><span class="button-text" data-i18n="toolbar.align_right">Выравнивание по правому краю</span></button>
             
             <span class="toolbar-divider" id="divider-media"></span>
             
-            <button type="button" id="btn-link" class="format-btn" onclick="addLink()" title="Ссылка"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg></span><span class="button-text">Ссылка</span></button>
-            <button type="button" id="btn-image" class="format-btn" onclick="showImageUpload()" title="Добавить изображение"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg></span><span class="button-text">Изображение</span></button>
-            <button type="button" id="btn-media" class="format-btn" onclick="showMediaDialog()" title="Добавить медиа"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg></span><span class="button-text">Медиа</span></button>
-            <button type="button" id="btn-ascii" class="format-btn" onclick="openAsciiDrawer()" title="ASCII Рисовалка"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 11.5 21.5 11 21 11H19C17.8954 11 17 10.1046 17 9V7C17 5.89543 16.1046 5 15 5H14C12.8954 5 12 4.10457 12 3V2C12 1.5 11.5 1 11 1C5.47715 1 1 5.47715 1 11C1 17.0751 5.47715 22 12 22Z" /><circle cx="7.5" cy="10.5" r="1.5" fill="currentColor" /><circle cx="11.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="16.5" cy="9.5" r="1.5" fill="currentColor" /></svg></span><span class="button-text">ASCII Рисовалка</span></button>
+            <button type="button" id="btn-link" class="format-btn" onclick="addLink()" title="Ссылка" data-i18n-title="toolbar.link"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg></span><span class="button-text" data-i18n="toolbar.link">Ссылка</span></button>
+            <button type="button" id="btn-image" class="format-btn" onclick="showImageUpload()" title="Добавить изображение" data-i18n-title="toolbar.image"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg></span><span class="button-text" data-i18n="toolbar.image">Изображение</span></button>
+            <button type="button" id="btn-media" class="format-btn" onclick="showMediaDialog()" title="Добавить медиа" data-i18n-title="toolbar.media"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg></span><span class="button-text" data-i18n="toolbar.media">Медиа</span></button>
+            <button type="button" id="btn-ascii" class="format-btn" onclick="openAsciiDrawer()" title="ASCII Рисовалка" data-i18n-title="toolbar.ascii"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 11.5 21.5 11 21 11H19C17.8954 11 17 10.1046 17 9V7C17 5.89543 16.1046 5 15 5H14C12.8954 5 12 4.10457 12 3V2C12 1.5 11.5 1 11 1C5.47715 1 1 5.47715 1 11C1 17.0751 5.47715 22 12 22Z" /><circle cx="7.5" cy="10.5" r="1.5" fill="currentColor" /><circle cx="11.5" cy="7.5" r="1.5" fill="currentColor" /><circle cx="16.5" cy="9.5" r="1.5" fill="currentColor" /></svg></span><span class="button-text" data-i18n="toolbar.ascii">ASCII Рисовалка</span></button>
             
             <span class="toolbar-divider" id="divider-fonts"></span>
             
             <div class="font-size-picker-wrap" id="fontSizeWrapMain">
-                <button type="button" id="fontSizeBtn" class="format-btn font-size-picker-btn" title="Размер шрифта">14px</button>
+                <button type="button" id="fontSizeBtn" class="format-btn font-size-picker-btn" title="Размер шрифта" data-i18n-title="toolbar.font_size">14px</button>
                 <div class="font-size-popover">
                     <div class="font-size-popover-inner">
                         <button type="button" class="font-size-item" data-size="12">12px</button>
@@ -272,16 +281,16 @@ if (file_exists($versionFile)) {
                         <button type="button" class="font-size-item" data-size="28">28px</button>
                         <button type="button" class="font-size-item" data-size="32">32px</button>
                         <div class="font-size-custom">
-                            <label>Свой размер (8–72)</label>
+                            <label data-i18n="toolbar.font_size_custom_label">Свой размер (8–72)</label>
                             <input type="number" id="fontSizeCustomMain" min="8" max="72" placeholder="px">
-                            <button type="button" onclick="applyCustomFontSize('fontSizeWrapMain')">Применить</button>
+                            <button type="button" onclick="applyCustomFontSize('fontSizeWrapMain')" data-i18n="common.apply">Применить</button>
                         </div>
                     </div>
                 </div>
             </div>
             
             <div class="font-family-picker-wrap" id="fontFamilyWrapMain">
-                <button type="button" id="fontFamilyBtn" class="format-btn font-family-picker-btn" title="Шрифт">Arial</button>
+                <button type="button" id="fontFamilyBtn" class="format-btn font-family-picker-btn" title="Шрифт" data-i18n-title="toolbar.font_family">Arial</button>
                 <div class="font-family-popover">
                     <div class="font-family-popover-inner">
                         <button type="button" class="font-family-item" data-font="Arial" style="font-family:Arial">Arial</button>
@@ -293,18 +302,18 @@ if (file_exists($versionFile)) {
                         <button type="button" class="font-family-item" data-font="PT Sans" style="font-family:'PT Sans'">PT Sans</button>
                         <button type="button" class="font-family-item" data-font="Comic Sans MS" style="font-family:'Comic Sans MS'">Comic Sans MS</button>
                         <div class="font-family-custom">
-                            <button type="button" onclick="openCustomFontsModal()">📁 Свой шрифт</button>
+                            <button type="button" onclick="openCustomFontsModal()" data-i18n="toolbar.font_family_custom_btn">📁 Свой шрифт</button>
                         </div>
                     </div>
                 </div>
             </div>
             
             <div class="color-picker-wrap" id="colorPickerWrapMain">
-                <button type="button" class="color-picker-btn" title="Цвет текста" aria-label="Цвет текста"><span class="color-preview" style="background:#333;"></span></button>
+                <button type="button" class="color-picker-btn" title="Цвет текста" aria-label="Цвет текста" data-i18n-title="toolbar.text_color" data-i18n-aria="toolbar.text_color"><span class="color-preview" style="background:#333;"></span></button>
                 <div class="color-palette-popover">
                     <div class="color-palette-grid" id="colorPaletteGridMain"></div>
                     <div class="color-palette-custom">
-                        <label>Свой цвет <input type="color" id="textColorCustomMain" value="#333333"></label>
+                        <label><span data-i18n="toolbar.custom_color">Свой цвет</span> <input type="color" id="textColorCustomMain" value="#333333"></label>
                     </div>
                 </div>
             </div>
@@ -312,42 +321,42 @@ if (file_exists($versionFile)) {
             <span class="toolbar-divider" id="divider-more"></span>
             
             <div class="more-menu-wrap" id="moreMenuWrap">
-                <button type="button" class="format-btn" title="Прочее" onclick="toggleMoreMenu()">⋯</button>
+                <button type="button" class="format-btn" title="Прочее" data-i18n-title="toolbar.more" onclick="toggleMoreMenu()">⋯</button>
                 <div class="more-menu-dropdown" id="moreMenuDropdown">
-                    <button type="button" class="more-menu-item" onclick="saveDraft()">Сохранить в черновик</button>
+                    <button type="button" class="more-menu-item" onclick="saveDraft()" data-i18n="more_menu.save_draft">Сохранить в черновик</button>
                     <button type="button" class="more-menu-item has-submenu" onclick="toggleDraftsSubmenu(event)">
-                        Черновики
+                        <span data-i18n="more_menu.drafts">Черновики</span>
                         <div class="more-submenu" id="draftsSubmenu">
-                            <div class="more-submenu-empty">Загрузка...</div>
+                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
                     </button>
-                    <button type="button" class="more-menu-item" onclick="openSaveInclude()">Сохранить в includes</button>
+                    <button type="button" class="more-menu-item" onclick="openSaveInclude()" data-i18n="more_menu.save_include">Сохранить в includes</button>
                     <button type="button" class="more-menu-item has-submenu" onclick="toggleIncludesSubmenu(event)">
-                        Вставить
+                        <span data-i18n="more_menu.insert_include">Вставить</span>
                         <div class="more-submenu" id="includesSubmenu">
-                            <div class="more-submenu-empty">Загрузка...</div>
+                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
                     </button>
                     <button type="button" class="more-menu-item has-submenu" onclick="toggleArticlesSubmenu(event)">
-                        Вставить ссылку на статью
+                        <span data-i18n="more_menu.insert_article_link">Вставить ссылку на статью</span>
                         <div class="more-submenu" id="articlesSubmenu">
-                            <div class="more-submenu-empty">Загрузка...</div>
+                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
                     </button>
                     <button type="button" class="more-menu-item has-submenu" onclick="toggleTocSubmenu(event)">
-                        Содержание
+                        <span data-i18n="more_menu.toc">Содержание</span>
                         <div class="more-submenu" id="tocSubmenu">
-                            <div class="more-submenu-empty">Нет якорей в статье</div>
+                            <div class="more-submenu-empty" data-i18n="more_menu.no_anchors">Нет якорей в статье</div>
                         </div>
                     </button>
-                    <button type="button" class="more-menu-item" onclick="openFileUploadDialog()">Загрузить файл</button>
-                    <button type="button" class="more-menu-item" onclick="insertCode()">Вставить блок кода</button>
-                    <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()">Вставить кнопку</button>
-                    <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()">Наборы смайлов</button>
+                    <button type="button" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
+                    <button type="button" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
+                    <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
+                    <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
                     <button type="button" class="more-menu-item has-submenu" onclick="toggleSmilesSubmenu(event)">
-                        Смайлы
+                        <span data-i18n="more_menu.smiles">Смайлы</span>
                         <div class="more-submenu" id="smilesSubmenu">
-                            <div class="more-submenu-empty">Загрузка...</div>
+                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
                     </button>
                 </div>
@@ -363,23 +372,23 @@ if (file_exists($versionFile)) {
             </div>
             
             <!-- Кнопка сохранения -->
-            <button type="submit" id="submitButton" form="blogForm">Сохранить</button>
+            <button type="submit" id="submitButton" form="blogForm" data-i18n="header.btn_save">Сохранить</button>
             
             <!-- Главное меню -->
             <div class="editor-menu-wrap" id="editorMenuWrap">
-                <button type="button" class="editor-menu-btn" id="editorMenuBtn" aria-haspopup="true" aria-expanded="false">Меню</button>
+                <button type="button" class="editor-menu-btn" id="editorMenuBtn" aria-haspopup="true" aria-expanded="false" data-i18n="header.menu_btn">Меню</button>
                 <div class="editor-menu-dropdown" role="menu">
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="toggleManagePosts()">Управление статьями</button>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openTemplateManager()">Менеджер шаблонов</button>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openGlobalSettings()">Параметры</button>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openBackupManager()">Менеджер бэкапов</button>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openAutosaveManager()">Менеджер автосохранений</button>
-                    <button type="button" class="editor-menu-item" id="theme-toggle" role="menuitem" onclick="openThemeManager()">Изменить тему</button>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="window.location.href='ftp.php'">Опубликовать по FTP</button>
-                    <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='<?php echo getDataUrl('blog.html'); ?>'">Перейти к Blog.html</button>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openSystemUpdateModal()">Обновить NPBlog</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="toggleManagePosts()" data-i18n="header.menu_manage_posts">Управление статьями</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openTemplateManager()" data-i18n="header.menu_template_manager">Менеджер шаблонов</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openGlobalSettings()" data-i18n="header.menu_settings">Параметры</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openBackupManager()" data-i18n="header.menu_backup_manager">Менеджер бэкапов</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openAutosaveManager()" data-i18n="header.menu_autosave_manager">Менеджер автосохранений</button>
+                    <button type="button" class="editor-menu-item" id="theme-toggle" role="menuitem" onclick="openThemeManager()" data-i18n="header.menu_theme_manager">Изменить тему</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="window.location.href='ftp.php'" data-i18n="header.menu_ftp_publish">Опубликовать по FTP</button>
+                    <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='<?php echo getDataUrl('blog.html'); ?>'" data-i18n="header.menu_go_to_blog">Перейти к Blog.html</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openSystemUpdateModal()" data-i18n="header.menu_update_npblog">Обновить NPBlog</button>
                     <?php if (!empty($passwordHash)): ?>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="lockEditor()" style="color: #ef4444; font-weight: 600; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">Заблокировать</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="lockEditor()" style="color: #ef4444; font-weight: 600; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;" data-i18n="header.menu_lock">Заблокировать</button>
                     <?php endif; ?>
                     <?php
                     $editorVersion = 'unknown';
@@ -400,58 +409,58 @@ if (file_exists($versionFile)) {
     </header>
 <!-- тест2 -->
     <form id="blogForm">
-        <input class="content228 editor-field" type="text" id="title" placeholder="Заголовок статьи" required>
-        <textarea class="content228 editor-field" id="content" placeholder="Содержание статьи" style="display:none;"></textarea>
+        <input class="content228 editor-field" type="text" id="title" placeholder="Заголовок статьи" data-i18n-placeholder="header.placeholder_title" required>
+        <textarea class="content228 editor-field" id="content" placeholder="Содержание статьи" data-i18n-placeholder="header.placeholder_content" style="display:none;"></textarea>
         <div id="contentVisual" class="content228 editor-field" contenteditable="true"></div>
     </form>
 
     <div id="editorContextMenu" class="editor-context-menu" role="menu">
-        <button type="button" class="editor-context-item" data-cmd="paste" role="menuitem">Вставить</button>
-        <button type="button" class="editor-context-item" data-cmd="copy" role="menuitem">Копировать</button>
-        <button type="button" class="editor-context-item" data-cmd="cut" role="menuitem">Вырезать</button>
-        <button type="button" class="editor-context-item" data-cmd="delete" role="menuitem">Удалить</button>
+        <button type="button" class="editor-context-item" data-cmd="paste" role="menuitem" data-i18n="context_menu.paste">Вставить</button>
+        <button type="button" class="editor-context-item" data-cmd="copy" role="menuitem" data-i18n="context_menu.copy">Копировать</button>
+        <button type="button" class="editor-context-item" data-cmd="cut" role="menuitem" data-i18n="context_menu.cut">Вырезать</button>
+        <button type="button" class="editor-context-item" data-cmd="delete" role="menuitem" data-i18n="context_menu.delete">Удалить</button>
         <span class="editor-context-sep"></span>
-        <button type="button" class="editor-context-item" data-cmd="link" role="menuitem">Вставить ссылку</button>
-        <button type="button" class="editor-context-item" data-cmd="image" role="menuitem">Вставить изображение</button>
-        <button type="button" class="editor-context-item" data-cmd="list" role="menuitem">Вставить список</button>
+        <button type="button" class="editor-context-item" data-cmd="link" role="menuitem" data-i18n="context_menu.link">Вставить ссылку</button>
+        <button type="button" class="editor-context-item" data-cmd="image" role="menuitem" data-i18n="context_menu.image">Вставить изображение</button>
+        <button type="button" class="editor-context-item" data-cmd="list" role="menuitem" data-i18n="context_menu.list">Вставить список</button>
         <span class="editor-context-sep table-context-sep" style="display: none;"></span>
-        <button type="button" class="editor-context-item table-context-item" data-cmd="addRow" role="menuitem" style="display: none;">Добавить строку</button>
-        <button type="button" class="editor-context-item table-context-item" data-cmd="deleteRow" role="menuitem" style="display: none;">Удалить строку</button>
-        <button type="button" class="editor-context-item table-context-item" data-cmd="addColumn" role="menuitem" style="display: none;">Добавить столбец</button>
-        <button type="button" class="editor-context-item table-context-item" data-cmd="deleteColumn" role="menuitem" style="display: none;">Удалить столбец</button>
-        <button type="button" class="editor-context-item table-context-item" data-cmd="colorCell" role="menuitem" style="display: none;">Перекрасить ячейку</button>
+        <button type="button" class="editor-context-item table-context-item" data-cmd="addRow" role="menuitem" style="display: none;" data-i18n="context_menu.add_row">Добавить строку</button>
+        <button type="button" class="editor-context-item table-context-item" data-cmd="deleteRow" role="menuitem" style="display: none;" data-i18n="context_menu.delete_row">Удалить строку</button>
+        <button type="button" class="editor-context-item table-context-item" data-cmd="addColumn" role="menuitem" style="display: none;" data-i18n="context_menu.add_column">Добавить столбец</button>
+        <button type="button" class="editor-context-item table-context-item" data-cmd="deleteColumn" role="menuitem" style="display: none;" data-i18n="context_menu.delete_column">Удалить столбец</button>
+        <button type="button" class="editor-context-item table-context-item" data-cmd="colorCell" role="menuitem" style="display: none;" data-i18n="context_menu.color_cell">Перекрасить ячейку</button>
         <span class="editor-context-sep table-context-sep" style="display: none;"></span>
-        <button type="button" class="editor-context-item table-context-item" data-cmd="deleteTable" role="menuitem" style="display: none;">Удалить таблицу</button>
+        <button type="button" class="editor-context-item table-context-item" data-cmd="deleteTable" role="menuitem" style="display: none;" data-i18n="context_menu.delete_table">Удалить таблицу</button>
     </div>
 
     <!-- -->
 
         <div class="manage-posts" id="managePosts">
         <div class="manage-posts-header">
-            <h2>Все статьи</h2>
+            <h2 data-i18n="header.manage_posts_title">Все статьи</h2>
             <button type="button" class="close-manage" onclick="toggleManagePosts()" aria-label="Закрыть">×</button>
         </div>
         <div id="blogSelectorContainer" style="display: none; padding: 12px 16px 0;">
-            <label style="display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; opacity: 0.8; color: var(--text-color);">Блог:</label>
+            <label style="display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; opacity: 0.8; color: var(--text-color);" data-i18n="header.manage_posts_blog_label">Блог:</label>
             <select id="blogSelector" onchange="selectActiveBlog(this.value)">
             </select>
         </div>
         <div style="padding: 16px 16px 0;">
-            <input type="text" id="postsSearchInput" class="posts-search-input" placeholder="🔍 Поиск по статьям..." oninput="filterPosts()">
+            <input type="text" id="postsSearchInput" class="posts-search-input" placeholder="🔍 Поиск по статьям..." data-i18n-placeholder="header.manage_posts_search" oninput="filterPosts()">
         </div>
         <div id="postsList"></div>
     </div>
     
     <!-- Менеджер шаблонов -->
     <div id="templateManagerDialog" class="dialog" style="z-index: 1010;">
-        <div class="dialog-content" style="width: 850px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; padding: 0; border-radius: 12px; overflow: hidden;">
+        <div class="dialog-content" style="width: 850px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
             <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.02);">
-                <h3 style="margin: 0; font-size: 1.3rem; font-weight: 600;">Менеджер шаблонов</h3>
+                <h3 style="margin: 0; font-size: 1.3rem; font-weight: 600;" data-i18n="modals.tpl_title">Менеджер шаблонов</h3>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <button type="button" class="action-btn" onclick="showTemplateInstructions()" style="padding: 6px 12px; background: none; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                    <button type="button" class="action-btn" onclick="showTemplateInstructions()" style="padding: 6px 12px; background: none; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;" data-i18n="modals.tpl_guide_btn">
                         ℹ️ Инструкция
                     </button>
-                    <button type="button" class="action-btn" onclick="triggerTemplateUpload()" style="padding: 6px 12px; background: var(--primary-color, #4CAF50); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                    <button type="button" class="action-btn" onclick="triggerTemplateUpload()" style="padding: 6px 12px; background: var(--primary-color, #4CAF50); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;" data-i18n="modals.tpl_upload_btn">
                         📥 Загрузить шаблон
                     </button>
                     <input type="file" id="templateFileInput" accept=".html,.htm,.zip" multiple style="display: none;" onchange="handleTemplateUpload(this)">
@@ -470,17 +479,17 @@ if (file_exists($versionFile)) {
     <div id="templateInstructionsDialog" class="dialog" style="z-index: 1050;">
         <div class="dialog-content" style="width: 750px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
             <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.02);">
-                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;">Базовые требования к шаблону</h3>
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;" data-i18n="modals.tpl_guide_title">Базовые требования к шаблону</h3>
                 <button type="button" class="close-btn" onclick="closeTemplateInstructions()" style="background: none; border: none; font-size: 24px; cursor: pointer; opacity: 0.6; line-height: 1; padding: 4px;">×</button>
             </div>
             <div class="dialog-body" style="padding: 24px; overflow-y: auto; flex: 1; font-size: 14px; line-height: 1.6; color: var(--text-color);">
-                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 16px; font-weight: 600; color: #4CAF50;">1. Обязательные плейсхолдеры</h4>
-                <p style="margin-bottom: 15px;">Ваш HTML-шаблон должен содержать следующие плейсхолдеры. Если хотя бы одного из них нет, шаблон не загрузится:</p>
+                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 16px; font-weight: 600; color: #4CAF50;" data-i18n="modals.tpl_req_title">1. Обязательные плейсхолдеры</h4>
+                <p style="margin-bottom: 15px;" data-i18n="modals.tpl_req_desc">Ваш HTML-шаблон должен содержать следующие плейсхолдеры. Если хотя бы одного из них нет, шаблон не загрузится:</p>
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
                     <thead>
                         <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                            <th style="padding: 8px;">Плейсхолдер</th>
-                            <th style="padding: 8px;">Описание</th>
+                            <th style="padding: 8px;" data-i18n="modals.tpl_placeholder_col">Плейсхолдер</th>
+                            <th style="padding: 8px;" data-i18n="modals.tpl_desc_col">Описание</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -523,7 +532,7 @@ if (file_exists($versionFile)) {
                     </tbody>
                 </table>
 
-                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 16px; font-weight: 600; color: #4CAF50;">2. CSS-требования (Стилизация элементов)</h4>
+                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 16px; font-weight: 600; color: #4CAF50;" data-i18n="modals.tpl_css_req_title">2. CSS-требования (Стилизация элементов)</h4>
                 <p style="margin-bottom: 10px;">Для корректного отображения всех функций редактора в шаблон рекомендуется подключить стандартный файл стилей:</p>
                 <pre style="background: #272822; color: #f8f8f2; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; margin-bottom: 15px; overflow-x: auto;">&lt;link rel="stylesheet" href="assets/blog-post.css?v=1.0.2"&gt;</pre>
                 <p style="margin-bottom: 10px;">Если вы пишете свои стили с нуля, убедитесь, что реализовали оформление для следующих классов:</p>
@@ -536,7 +545,7 @@ if (file_exists($versionFile)) {
                     <li><strong>Маркеры / Текстовыделитель</strong> (`mark`): стили выделений (`[data-marker-style="rough"]`, wavy, zigzag, straight) и цвета маркера (желтый, зеленый, синий, розовый и др.).</li>
                 </ul>
 
-                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 16px; font-weight: 600; color: #4CAF50;">3. JS-требования (Интерактив)</h4>
+                <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 16px; font-weight: 600; color: #4CAF50;" data-i18n="modals.tpl_js_req_title">3. JS-требования (Интерактив)</h4>
                 <p style="margin-bottom: 10px;">Для работы интерактивных элементов (смена темы оформления, просмотр картинок в полноэкранном модальном окне с зумом) подключите скрипт:</p>
                 <pre style="background: #272822; color: #f8f8f2; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; margin-bottom: 15px; overflow-x: auto;">&lt;script src="assets/blog-post.js" defer&gt;&lt;/script&gt;</pre>
                 <p style="margin-bottom: 10px;">А также скопируйте из стандартного шаблона структуру полноэкранного модального окна для просмотра картинок:</p>
@@ -555,29 +564,29 @@ if (file_exists($versionFile)) {
 &lt;/div&gt;</pre>
             </div>
             <div class="dialog-buttons" style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; background: rgba(0,0,0,0.02); margin:0;">
-                <button type="button" onclick="closeTemplateInstructions()" style="padding: 8px 20px; background: var(--primary-color, #4CAF50); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">Понятно</button>
+                <button type="button" onclick="closeTemplateInstructions()" style="padding: 8px 20px; background: var(--primary-color, #4CAF50); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;" data-i18n="common.got_it">Понятно</button>
             </div>
         </div>
     </div>
 
     <!-- Детали шаблона -->
     <div id="templateDetailsDialog" class="dialog" style="z-index: 1020;">
-        <div class="dialog-content" style="width: 1000px; max-width: 98vw; height: 85vh; max-height: 95vh; display: flex; flex-direction: column; padding: 0; border-radius: 12px; overflow: hidden;">
+        <div class="dialog-content" style="width: 1000px; max-width: 98vw; height: 85vh; max-height: 95vh; display: flex; flex-direction: column; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
             <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.02);">
-                <h3 id="detailsTemplateTitle" style="margin: 0; font-size: 1.2rem; font-weight: 600;">Детали шаблона</h3>
+                <h3 id="detailsTemplateTitle" style="margin: 0; font-size: 1.2rem; font-weight: 600;" data-i18n="modals.tpl_details_title">Детали шаблона</h3>
                 <div style="display: flex; gap: 10px; align-items: center; position: relative;">
-                    <button type="button" class="action-btn cancel" onclick="closeTemplateDetails()" style="padding: 8px 16px; background: none; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-color);">Отмена</button>
-                    <button type="button" id="deleteTemplateBtn" class="action-btn delete" onclick="deleteCurrentTemplate()" style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: none;">Удалить</button>
+                    <button type="button" class="action-btn cancel" onclick="closeTemplateDetails()" style="padding: 8px 16px; background: none; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-color);" data-i18n="common.cancel">Отмена</button>
+                    <button type="button" id="deleteTemplateBtn" class="action-btn delete" onclick="deleteCurrentTemplate()" style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: none;" data-i18n="common.delete">Удалить</button>
                     
                     <div style="position: relative; display: inline-block;">
-                        <button type="button" class="action-btn save" id="saveTemplateDropdownBtn" onclick="toggleSaveTemplateDropdown()" style="padding: 8px 16px; background: var(--primary-color, #4CAF50); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                        <button type="button" class="action-btn save" id="saveTemplateDropdownBtn" onclick="toggleSaveTemplateDropdown()" style="padding: 8px 16px; background: var(--primary-color, #4CAF50); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;" data-i18n="common.save_dropdown">
                             Сохранить ▾
                         </button>
                         <div id="saveTemplateDropdownMenu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--bg-color, #fff); border: 1px solid var(--border-color, #ccc); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 250px; z-index: 1030; flex-direction: column; overflow: hidden;">
-                            <button type="button" class="dropdown-item" onclick="saveAndApplyTemplateToAll()" style="padding: 10px 16px; text-align: left; background: none; border: none; cursor: pointer; font-size: 13px; border-bottom: 1px solid rgba(0,0,0,0.05); width: 100%;">
+                            <button type="button" class="dropdown-item" onclick="saveAndApplyTemplateToAll()" style="padding: 10px 16px; text-align: left; background: none; border: none; cursor: pointer; font-size: 13px; border-bottom: 1px solid rgba(0,0,0,0.05); width: 100%;" data-i18n-html="modals.tpl_apply_all_btn">
                                 Применить ко всем статьям<br><small style="opacity:0.6;">(и сделать шаблоном по умолчанию)</small>
                             </button>
-                            <button type="button" class="dropdown-item" onclick="showApplyToSpecificPostList()" style="padding: 10px 16px; text-align: left; background: none; border: none; cursor: pointer; font-size: 13px; width: 100%;">
+                            <button type="button" class="dropdown-item" onclick="showApplyToSpecificPostList()" style="padding: 10px 16px; text-align: left; background: none; border: none; cursor: pointer; font-size: 13px; width: 100%;" data-i18n="modals.tpl_apply_post_btn">
                                 Применить к определенной статье...
                             </button>
                         </div>
@@ -588,7 +597,7 @@ if (file_exists($versionFile)) {
             <div class="dialog-body" style="flex: 1; display: flex; overflow: hidden; padding: 0;">
                 <!-- Левая колонка: Предпросмотр -->
                 <div style="flex: 1; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; background: #f9f9f9; position: relative;">
-                    <div style="padding: 8px 16px; font-size: 11px; font-weight: bold; opacity: 0.6; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.01); color: #000;">ПРЕДПРОСМОТР ШАБЛОНА</div>
+                    <div style="padding: 8px 16px; font-size: 11px; font-weight: bold; opacity: 0.6; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.01); color: #000;" data-i18n="modals.tpl_preview_label">ПРЕДПРОСМОТР ШАБЛОНА</div>
                     <div style="flex: 1; position: relative; padding: 0;">
                         <iframe id="templatePreviewIframe" style="width: 100%; height: 100%; border: none;"></iframe>
                     </div>
@@ -597,17 +606,17 @@ if (file_exists($versionFile)) {
                 <!-- Правая колонка: Детали, описание, код -->
                 <div style="width: 480px; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; gap: 15px;">
                     <div>
-                        <label style="display: block; font-size: 12px; font-weight: bold; opacity: 0.7; margin-bottom: 4px;">Название шаблона</label>
-                        <input type="text" id="detailsTemplateNameInput" class="editor-field" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--text-color); background: var(--bg-color);" placeholder="Например: Минималистичный">
+                        <label style="display: block; font-size: 12px; font-weight: bold; opacity: 0.7; margin-bottom: 4px;" data-i18n="modals.tpl_name_label">Название шаблона</label>
+                        <input type="text" id="detailsTemplateNameInput" class="editor-field" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--text-color); background: var(--bg-color);" placeholder="Например: Минималистичный" data-i18n-placeholder="modals.tpl_name_ph">
                     </div>
                     <div>
-                        <label style="display: block; font-size: 12px; font-weight: bold; opacity: 0.7; margin-bottom: 4px;">Описание шаблона</label>
-                        <textarea id="detailsTemplateDescriptionInput" class="editor-field" style="width: 100%; height: 70px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); resize: none; color: var(--text-color); background: var(--bg-color);" placeholder="Краткое описание стилей и особенностей шаблона..."></textarea>
+                        <label style="display: block; font-size: 12px; font-weight: bold; opacity: 0.7; margin-bottom: 4px;" data-i18n="modals.tpl_desc_label">Описание шаблона</label>
+                        <textarea id="detailsTemplateDescriptionInput" class="editor-field" style="width: 100%; height: 70px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); resize: none; color: var(--text-color); background: var(--bg-color);" placeholder="Краткое описание стилей и особенностей шаблона..." data-i18n-placeholder="modals.tpl_desc_ph"></textarea>
                     </div>
                     <div style="flex: 1; display: flex; flex-direction: column; min-height: 250px;">
                         <label style="display: block; font-size: 12px; font-weight: bold; opacity: 0.7; margin-bottom: 4px; display: flex; justify-content: space-between;">
-                            <span>HTML-код шаблона</span>
-                            <a href="#" onclick="showTemplatePlaceholdersInfo(event)" style="font-size: 11px; text-decoration: underline;">Доступные плейсхолдеры</a>
+                            <span data-i18n="modals.tpl_code_label">HTML-код шаблона</span>
+                            <a href="#" onclick="showTemplatePlaceholdersInfo(event)" style="font-size: 11px; text-decoration: underline;" data-i18n="modals.tpl_placeholders_link">Доступные плейсхолдеры</a>
                         </label>
                         <textarea id="detailsTemplateCodeInput" class="editor-field" style="flex: 1; width: 100%; font-family: monospace; font-size: 12px; line-height: 1.4; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: #272822; color: #f8f8f2; resize: none; tab-size: 4;" oninput="updateTemplateLivePreview()"></textarea>
                     </div>
@@ -618,13 +627,13 @@ if (file_exists($versionFile)) {
 
     <!-- Выбор статьи для применения шаблона -->
     <div id="applyToPostModal" class="dialog" style="z-index: 1040;">
-        <div class="dialog-content" style="width: 450px; max-width: 95vw; max-height: 70vh; display: flex; flex-direction: column; padding: 0; border-radius: 12px; overflow: hidden;">
+        <div class="dialog-content" style="width: 450px; max-width: 95vw; max-height: 70vh; display: flex; flex-direction: column; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
             <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.02);">
-                <h4 style="margin: 0; font-size: 1.1rem; font-weight: 600;">Применить к статье</h4>
+                <h4 style="margin: 0; font-size: 1.1rem; font-weight: 600;" data-i18n="modals.tpl_apply_title">Применить к статье</h4>
                 <button type="button" class="close-btn" onclick="closeApplyToPostModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; opacity: 0.6; line-height: 1; padding: 4px;">×</button>
             </div>
             <div style="padding: 12px 20px 0;">
-                <input type="text" id="templatePostSearchInput" class="posts-search-input" placeholder="🔍 Поиск статьи..." oninput="filterTemplatePosts()" style="width:100%;">
+                <input type="text" id="templatePostSearchInput" class="posts-search-input" placeholder="🔍 Поиск статьи..." data-i18n-placeholder="modals.tpl_search_posts_ph" oninput="filterTemplatePosts()" style="width:100%;">
             </div>
             <div class="dialog-body" id="templatePostList" style="padding: 12px 20px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px;">
                 <!-- Список статей будет сгенерирован динамически -->
@@ -633,15 +642,15 @@ if (file_exists($versionFile)) {
     </div>
 
     <div id="imageUploadDialog" class="dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0; overflow: hidden;">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.image_title">
                 Добавить изображение
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeImageDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
-                <button type="button" onclick="processImage()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Добавить</button>
+                <button type="button" onclick="closeImageDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.cancel">Отмена</button>
+                <button type="button" onclick="processImage()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;" data-i18n="modals.image_add_btn">Добавить</button>
             </div>
         </div>
         
@@ -649,11 +658,11 @@ if (file_exists($versionFile)) {
             <div class="image-source-toggle">
                 <label>
                     <input type="radio" name="imageSource" value="file" checked>
-                    📁 Загрузить файл
+                    <span data-i18n="modals.image_tab_file">📁 Загрузить файл</span>
                 </label>
                 <label>
                     <input type="radio" name="imageSource" value="url">
-                    🔗 Вставить ссылку
+                    <span data-i18n="modals.image_tab_url">🔗 Вставить ссылку</span>
                 </label>
             </div>
 
@@ -661,9 +670,9 @@ if (file_exists($versionFile)) {
                 <div id="imageDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON' && !event.target.closest('#imageFilesPreview')) document.getElementById('imageFile').click()">
                     <input type="file" id="imageFile" accept="image/*" multiple style="display: none;" onchange="handleImageFileSelect(this)">
                     <div class="dropzone-icon">🖼️</div>
-                    <div class="dropzone-text" id="imageDropzoneText">Выберите изображения или перетащите их сюда</div>
-                    <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются JPG, PNG, GIF, WEBP</div>
-                    <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('imageFile').click()">Обзор...</button>
+                    <div class="dropzone-text" id="imageDropzoneText" data-i18n="modals.image_drop_text">Выберите изображения или перетащите их сюда</div>
+                    <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;" data-i18n="modals.image_drop_subtext">Поддерживаются JPG, PNG, GIF, WEBP</div>
+                    <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('imageFile').click()" data-i18n="modals.image_browse_btn">Обзор...</button>
                     <div id="imageFilesPreview" style="display: none; width: 100%; margin-top: 15px; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; max-height: 150px; overflow-y: auto; padding: 5px;"></div>
                 </div>
             </div>
@@ -671,28 +680,28 @@ if (file_exists($versionFile)) {
             <div id="imageGridPreviewContainer" style="display: none; margin: 15px 0;"></div>
 
             <div id="urlContainer" style="display: none;">
-                <input type="text" id="imageUrl" placeholder="Введите URL изображения (несколько — с новой строки или через запятую)" class="image-url-input">
+                <input type="text" id="imageUrl" placeholder="Введите URL изображения (несколько — с новой строки или через запятую)" data-i18n-placeholder="modals.image_url_ph" class="image-url-input">
             </div>
             
             <div class="form-group">
-                <label for="imageCaption">Подпись к изображению:</label>
-                <input type="text" id="imageCaption" class="form-control" placeholder="Введите подпись (необязательно)">
+                <label for="imageCaption" data-i18n="modals.image_caption_label">Подпись к изображению:</label>
+                <input type="text" id="imageCaption" class="form-control" placeholder="Введите подпись (необязательно)" data-i18n-placeholder="modals.image_caption_ph">
             </div>
 
             <div class="image-size-controls">
                 <div>
-                    <label for="imageSize">Размер:</label>
+                    <label for="imageSize" data-i18n="modals.image_size_label">Размер:</label>
                     <select id="imageSize">
-                        <option value="small">Маленький</option>
-                        <option value="medium" selected>Средний</option>
-                        <option value="large">Большой</option>
-                        <option value="custom">Свой размер</option>
+                        <option value="small" data-i18n="modals.image_size_small">Маленький</option>
+                        <option value="medium" selected data-i18n="modals.image_size_medium">Средний</option>
+                        <option value="large" data-i18n="modals.image_size_large">Большой</option>
+                        <option value="custom" data-i18n="modals.image_size_custom">Свой размер</option>
                     </select>
                 </div>
                 <div>
-                    <label for="gridLayout">Расположение:</label>
+                    <label for="gridLayout" data-i18n="modals.image_layout_label">Расположение:</label>
                     <select id="gridLayout">
-                        <option value="">Обычное</option>
+                        <option value="" data-i18n="modals.image_layout_normal">Обычное</option>
                         <option value="2x1">2×1</option>
                         <option value="2x2">2×2</option>
                         <option value="3x1">3×1</option>
@@ -719,32 +728,32 @@ if (file_exists($versionFile)) {
             </div>
             <div style="margin: 15px 0 0 0; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="noBorderRadius" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                <label for="noBorderRadius" style="margin: 0; cursor: pointer; font-size: 14px; user-select: none;">Убрать закругление по краям</label>
+                <label for="noBorderRadius" style="margin: 0; cursor: pointer; font-size: 14px; user-select: none;" data-i18n="modals.image_no_rounded">Убрать закругление по краям</label>
             </div>
             <div id="insertGalleryContainer" style="margin: 10px 0 0 0; display: none; align-items: center; gap: 8px;">
                 <input type="checkbox" id="insertGallery" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
-                <label for="insertGallery" style="margin: 0; cursor: pointer; font-size: 14px; user-select: none;">Галерея с пролистыванием</label>
+                <label for="insertGallery" style="margin: 0; cursor: pointer; font-size: 14px; user-select: none;" data-i18n="modals.image_gallery_scroll">Галерея с пролистыванием</label>
             </div>
         </div>
     </div>
 </div>
 
     <div id="codeDialog" class="dialog code-dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 id="codeDialogTitle" style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 id="codeDialogTitle" style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.code_title">
                 Вставить код
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeCodeDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
-                <button type="button" id="codeDialogSubmitBtn" onclick="insertCodeBlock()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить</button>
+                <button type="button" onclick="closeCodeDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.cancel">Отмена</button>
+                <button type="button" id="codeDialogSubmitBtn" onclick="insertCodeBlock()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;" data-i18n="modals.code_insert_btn">Вставить</button>
             </div>
         </div>
 
         <div style="padding: 24px 28px 24px;">
             <div class="form-group" style="margin-bottom: 20px;">
-                <label for="codeLanguage" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Язык программирования:</label>
+                <label for="codeLanguage" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);" data-i18n="modals.code_lang_label">Язык программирования:</label>
                 <select id="codeLanguage" class="language-select">
                     <option value="javascript">JavaScript</option>
                     <option value="php">PHP</option>
@@ -756,12 +765,12 @@ if (file_exists($versionFile)) {
                     <option value="cpp">C++</option>
                     <option value="csharp">C#</option>
                     <option value="ruby">Ruby</option>
-                    <option value="plain">Текст</option>
+                    <option value="plain" data-i18n="modals.code_lang_plain">Текст</option>
                 </select>
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="codeInput" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Код:</label>
-                <textarea id="codeInput" class="code-input" placeholder="Вставьте ваш код сюда..." style="height: 180px;"></textarea>
+                <label for="codeInput" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);" data-i18n="modals.code_textarea_label">Код:</label>
+                <textarea id="codeInput" class="code-input" placeholder="Вставьте ваш код сюда..." data-i18n-placeholder="modals.code_ph" style="height: 180px;"></textarea>
             </div>
         </div>
     </div>
@@ -773,16 +782,16 @@ if (file_exists($versionFile)) {
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
             <h3 id="customButtonDialogTitle" style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
-                <span>🔗</span> Вставить кнопку со ссылкой
+                <span>🔗</span> <span data-i18n="modals.btn_title">Вставить кнопку со ссылкой</span>
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="applyBtnPreset('editor')" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; border-radius: 6px; cursor: pointer;" title="Сбросить к стандарту">
-                    <span>🔄</span> Сбросить
+                <button type="button" onclick="applyBtnPreset('editor')" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; border-radius: 6px; cursor: pointer;" title="Сбросить к стандарту" data-i18n-title="modals.btn_reset_title" data-i18n="modals.btn_reset">
+                    🔄 Сбросить
                 </button>
-                <button type="button" id="customButtonSubmitBtn" onclick="insertCustomButtonToEditor()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                    <span>💾</span> Вставить кнопку
+                <button type="button" id="customButtonSubmitBtn" onclick="insertCustomButtonToEditor()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; display: flex; align-items: center; gap: 6px; cursor: pointer;" data-i18n="modals.btn_submit">
+                    💾 Вставить кнопку
                 </button>
-                <button type="button" onclick="closeCustomButtonDialog()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;">×</button>
+                <button type="button" onclick="closeCustomButtonDialog()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;" title="Закрыть" data-i18n-title="common.close">×</button>
             </div>
         </div>
 
@@ -793,50 +802,50 @@ if (file_exists($versionFile)) {
                 
                 <!-- Переключатель вкладок -->
                 <div style="display: flex; gap: 8px; background: rgba(0,0,0,0.06); padding: 4px; border-radius: 10px;">
-                    <button type="button" id="btnTabGui" onclick="switchBtnTab('gui')" class="btn-dialog-tab active" style="flex: 1; text-align: center; justify-content: center;">🎨 Конструктор</button>
-                    <button type="button" id="btnTabCode" onclick="switchBtnTab('code')" class="btn-dialog-tab" style="flex: 1; text-align: center; justify-content: center;">💻 Код</button>
+                    <button type="button" id="btnTabGui" onclick="switchBtnTab('gui')" class="btn-dialog-tab active" style="flex: 1; text-align: center; justify-content: center;" data-i18n="modals.btn_tab_gui">🎨 Конструктор</button>
+                    <button type="button" id="btnTabCode" onclick="switchBtnTab('code')" class="btn-dialog-tab" style="flex: 1; text-align: center; justify-content: center;" data-i18n="modals.btn_tab_code">💻 Код</button>
                 </div>
 
                 <!-- Конструктор -->
                 <div id="btnTabGuiContent" style="display: flex; flex-direction: column; gap: 18px;">
                     <!-- Основные параметры -->
                     <div>
-                        <h4 style="margin: 0 0 10px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">Текст и Ссылка</h4>
+                        <h4 style="margin: 0 0 10px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.btn_text_and_link_heading">Текст и Ссылка</h4>
                         <div style="display: flex; flex-direction: column; gap: 10px;">
                             <div>
-                                <label style="display: block; font-size: 12px; margin-bottom: 4px; font-weight: 500;">Текст кнопки:</label>
-                                <input type="text" id="btnTextInput" value="Перейти на сайт" placeholder="Например: Читать далее" oninput="updateCustomBtnPreview()" style="width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);">
+                                <label style="display: block; font-size: 12px; margin-bottom: 4px; font-weight: 500;" data-i18n="modals.btn_text_label">Текст кнопки:</label>
+                                <input type="text" id="btnTextInput" value="Перейти на сайт" placeholder="Например: Читать далее" data-i18n-placeholder="modals.btn_text_ph" oninput="updateCustomBtnPreview()" style="width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);">
                             </div>
                             <div>
-                                <label style="display: block; font-size: 12px; margin-bottom: 4px; font-weight: 500;">Ссылка (URL):</label>
+                                <label style="display: block; font-size: 12px; margin-bottom: 4px; font-weight: 500;" data-i18n="modals.btn_url_label">Ссылка (URL):</label>
                                 <input type="text" id="btnUrlInput" value="https://example.com" placeholder="https://..." oninput="updateCustomBtnPreview()" style="width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);">
                             </div>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; margin-top: 4px;">
                                 <input type="checkbox" id="btnTargetInput" checked onchange="updateCustomBtnPreview()" style="width: 16px; height: 16px; margin: 0;">
-                                <span style="color: var(--text-color); opacity: 0.9;">В новой вкладке (target="_blank")</span>
+                                <span style="color: var(--text-color); opacity: 0.9;" data-i18n="modals.btn_target_label">В новой вкладке (target="_blank")</span>
                             </label>
                         </div>
                     </div>
 
                     <!-- Готовые стили (Пресеты) -->
                     <div>
-                        <h4 style="margin: 10px 0 10px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">Готовые стили</h4>
+                        <h4 style="margin: 10px 0 10px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.btn_presets_label">Готовые стили</h4>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
-                            <button type="button" class="preset-btn" onclick="applyBtnPreset('editor')">🔳 Стандартная</button>
-                            <button type="button" class="preset-btn" onclick="applyBtnPreset('gradient')">🌈 Градиент</button>
-                            <button type="button" class="preset-btn" onclick="applyBtnPreset('success')">🟢 Зелёная</button>
-                            <button type="button" class="preset-btn" onclick="applyBtnPreset('outline')">⚪ Контур</button>
-                            <button type="button" class="preset-btn" onclick="applyBtnPreset('neon')">🟣 Неон</button>
-                            <button type="button" class="preset-btn" onclick="applyBtnPreset('danger')">🔴 Красная</button>
+                            <button type="button" class="preset-btn" onclick="applyBtnPreset('editor')" data-i18n="modals.btn_preset_standard">🔳 Стандартная</button>
+                            <button type="button" class="preset-btn" onclick="applyBtnPreset('gradient')" data-i18n="modals.btn_preset_gradient">🌈 Градиент</button>
+                            <button type="button" class="preset-btn" onclick="applyBtnPreset('success')" data-i18n="modals.btn_preset_green">🟢 Зелёная</button>
+                            <button type="button" class="preset-btn" onclick="applyBtnPreset('outline')" data-i18n="modals.btn_preset_outline">⚪ Контур</button>
+                            <button type="button" class="preset-btn" onclick="applyBtnPreset('neon')" data-i18n="modals.btn_preset_neon">🟣 Неон</button>
+                            <button type="button" class="preset-btn" onclick="applyBtnPreset('danger')" data-i18n="modals.btn_preset_red">🔴 Красная</button>
                         </div>
                     </div>
 
                     <!-- Тонкая настройка стилей -->
                     <div>
-                        <h4 style="margin: 10px 0 10px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">Цвета и Форматирование</h4>
+                        <h4 style="margin: 10px 0 10px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.btn_styles_label">Цвета и Форматирование</h4>
                         <div style="display: flex; flex-direction: column; gap: 12px;">
                             <div>
-                                <label style="display: block; font-size: 12px; margin-bottom: 4px; opacity: 0.9;">Цвет фона:</label>
+                                <label style="display: block; font-size: 12px; margin-bottom: 4px; opacity: 0.9;" data-i18n="modals.btn_bg_color_label">Цвет фона:</label>
                                 <div style="display: flex; gap: 8px; align-items: center;">
                                     <input type="color" id="btnBgColor" value="#0f1624" style="width: 38px; height: 36px; padding: 2px; cursor: pointer; border-radius: 6px; border: 1px solid var(--border-color); background: transparent;" oninput="document.getElementById('btnBgColorText').value=this.value; updateCustomBtnPreview();">
                                     <input type="text" id="btnBgColorText" value="rgba(15, 22, 36, 0.72)" placeholder="rgba(15, 22, 36, 0.72)" style="flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 12px;" oninput="document.getElementById('btnBgColor').value=this.value; updateCustomBtnPreview();">
@@ -844,7 +853,7 @@ if (file_exists($versionFile)) {
                             </div>
 
                             <div>
-                                <label style="display: block; font-size: 12px; margin-bottom: 4px; opacity: 0.9;">Цвет текста:</label>
+                                <label style="display: block; font-size: 12px; margin-bottom: 4px; opacity: 0.9;" data-i18n="modals.btn_text_color_label">Цвет текста:</label>
                                 <div style="display: flex; gap: 8px; align-items: center;">
                                     <input type="color" id="btnTextColor" value="#f3f4f6" style="width: 38px; height: 36px; padding: 2px; cursor: pointer; border-radius: 6px; border: 1px solid var(--border-color); background: transparent;" oninput="document.getElementById('btnTextColorText').value=this.value; updateCustomBtnPreview();">
                                     <input type="text" id="btnTextColorText" value="#f3f4f6" placeholder="#f3f4f6" style="flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 12px;" oninput="document.getElementById('btnTextColor').value=this.value; updateCustomBtnPreview();">
@@ -853,15 +862,15 @@ if (file_exists($versionFile)) {
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
                                 <div>
-                                    <label style="display: block; font-size: 11px; margin-bottom: 4px; opacity: 0.8;">Скругление:</label>
+                                    <label style="display: block; font-size: 11px; margin-bottom: 4px; opacity: 0.8;" data-i18n="modals.btn_radius_label">Скругление:</label>
                                     <input type="text" id="btnBorderRadius" value="8px" placeholder="8px" oninput="updateCustomBtnPreview()" style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 12px; text-align: center;">
                                 </div>
                                 <div>
-                                    <label style="display: block; font-size: 11px; margin-bottom: 4px; opacity: 0.8;">Отступы:</label>
+                                    <label style="display: block; font-size: 11px; margin-bottom: 4px; opacity: 0.8;" data-i18n="modals.btn_padding_label">Отступы:</label>
                                     <input type="text" id="btnPadding" value="12px 24px" placeholder="12px 24px" oninput="updateCustomBtnPreview()" style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 12px; text-align: center;">
                                 </div>
                                 <div>
-                                    <label style="display: block; font-size: 11px; margin-bottom: 4px; opacity: 0.8;">Шрифт:</label>
+                                    <label style="display: block; font-size: 11px; margin-bottom: 4px; opacity: 0.8;" data-i18n="modals.btn_font_label">Шрифт:</label>
                                     <input type="text" id="btnFontSize" value="15px" placeholder="15px" oninput="updateCustomBtnPreview()" style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); font-size: 12px; text-align: center;">
                                 </div>
                             </div>
@@ -872,17 +881,17 @@ if (file_exists($versionFile)) {
                 <!-- Редактор Кода -->
                 <div id="btnTabCodeContent" style="display: none; flex-direction: column; gap: 14px;">
                     <div>
-                        <label style="display: block; font-size: 12px; margin-bottom: 6px; font-weight: 500;">HTML код кнопки:</label>
+                        <label style="display: block; font-size: 12px; margin-bottom: 6px; font-weight: 500;" data-i18n="modals.btn_code_html_label">HTML код кнопки:</label>
                         <textarea id="btnRawHtml" class="btn-code-editor" oninput="syncFromRawCode()" style="height: 140px;"></textarea>
                     </div>
                     <div>
-                        <label style="display: block; font-size: 12px; margin-bottom: 6px; font-weight: 500;">CSS стили (inline):</label>
+                        <label style="display: block; font-size: 12px; margin-bottom: 6px; font-weight: 500;" data-i18n="modals.btn_code_css_label">CSS стили (inline):</label>
                         <textarea id="btnRawCss" class="btn-code-editor" oninput="syncFromRawCode()" style="height: 140px;"></textarea>
                     </div>
                 </div>
 
                 <div style="margin-top: auto;">
-                    <button type="button" onclick="applyBtnPreset('editor')" class="global-action-btn" style="width: 100%; justify-content: center; background: transparent; border: 1px solid rgba(244, 67, 54, 0.4); color: #f44336; padding: 10px; font-size: 13px; font-weight: 500; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <button type="button" onclick="applyBtnPreset('editor')" class="global-action-btn" style="width: 100%; justify-content: center; background: transparent; border: 1px solid rgba(244, 67, 54, 0.4); color: #f44336; padding: 10px; font-size: 13px; font-weight: 500; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer;" data-i18n="modals.btn_clear_styles">
                         🗑️ Сбросить стили
                     </button>
                 </div>
@@ -890,17 +899,17 @@ if (file_exists($versionFile)) {
 
             <!-- Центральная область предпросмотра (как в ASCII рисовалке) -->
             <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; overflow: auto; position: relative;" id="customBtnCanvasContainer">
-                <div style="margin-bottom: 16px; font-size: 13px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; color: var(--text-color);">Предпросмотр кнопки</div>
+                <div style="margin-bottom: 16px; font-size: 13px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; color: var(--text-color);" data-i18n="modals.btn_preview_header">Предпросмотр кнопки</div>
                 
                 <div id="customBtnPreviewContainer" style="padding: 50px 60px; min-height: 140px; min-width: 320px; display: flex; align-items: center; justify-content: center; border-radius: 16px; border: 1px solid var(--border-color); background: rgba(13, 17, 23, 0.95); box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: all 0.25s ease;">
-                    <a id="customBtnPreview" href="#" target="_blank" class="custom-blog-btn" onclick="event.preventDefault()">Перейти на сайт</a>
+                    <a id="customBtnPreview" href="#" target="_blank" class="custom-blog-btn" onclick="event.preventDefault()" data-i18n="modals.btn_default_text">Перейти на сайт</a>
                 </div>
 
                 <div style="display: flex; gap: 8px; justify-content: center; margin-top: 20px; font-size: 12px; align-items: center; background: var(--bg-color); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--border-color);">
-                    <span style="opacity: 0.7; font-size: 12px; color: var(--text-color);">Фон предпросмотра:</span>
-                    <button type="button" onclick="setBtnBgPreview('dark')" class="global-action-btn" style="padding: 4px 12px; font-size: 11px; margin: 0; background: #0d1117; color: #fff; border: 1px solid rgba(255,255,255,0.2);">Тёмный</button>
-                    <button type="button" onclick="setBtnBgPreview('light')" class="global-action-btn" style="padding: 4px 12px; font-size: 11px; margin: 0; background: #ffffff; color: #000; border: 1px solid #ccc;">Светлый</button>
-                    <button type="button" onclick="setBtnBgPreview('grid')" class="global-action-btn" style="padding: 4px 12px; font-size: 11px; margin: 0; background: repeating-conic-gradient(#222 0% 25%, #333 0% 50%) 50% / 16px 16px; color: #fff; border: 1px solid rgba(255,255,255,0.2);">Сетка</button>
+                    <span style="opacity: 0.7; font-size: 12px; color: var(--text-color);" data-i18n="modals.btn_preview_bg_label">Фон предпросмотра:</span>
+                    <button type="button" onclick="setBtnBgPreview('dark')" class="global-action-btn" style="padding: 4px 12px; font-size: 11px; margin: 0; background: #0d1117; color: #fff; border: 1px solid rgba(255,255,255,0.2);" data-i18n="modals.btn_bg_dark">Тёмный</button>
+                    <button type="button" onclick="setBtnBgPreview('light')" class="global-action-btn" style="padding: 4px 12px; font-size: 11px; margin: 0; background: #ffffff; color: #000; border: 1px solid #ccc;" data-i18n="modals.btn_bg_light">Светлый</button>
+                    <button type="button" onclick="setBtnBgPreview('grid')" class="global-action-btn" style="padding: 4px 12px; font-size: 11px; margin: 0; background: repeating-conic-gradient(#222 0% 25%, #333 0% 50%) 50% / 16px 16px; color: #fff; border: 1px solid rgba(255,255,255,0.2);" data-i18n="modals.btn_bg_grid">Сетка</button>
                 </div>
             </div>
         </div>
@@ -909,14 +918,14 @@ if (file_exists($versionFile)) {
 
 <!-- Диалог загрузки файлов -->
 <div id="fileUploadDialog" class="file-upload-dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.file_title">
                 Загрузить файл
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeFileUploadDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Закрыть</button>
+                <button type="button" onclick="closeFileUploadDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.close">Закрыть</button>
             </div>
         </div>
 
@@ -925,23 +934,23 @@ if (file_exists($versionFile)) {
                 <div id="fileDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('documentFile').click()">
                     <input type="file" id="documentFile" style="display: none;" onchange="handleFileSelect(this)">
                     <div class="dropzone-icon">📤</div>
-                    <div class="dropzone-text">Выберите файл или перетащите его сюда</div>
-                    <div id="documentFileName" class="dropzone-filename">Файл не выбран</div>
-                    <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('documentFile').click()">Обзор...</button>
+                    <div class="dropzone-text" data-i18n="modals.file_drop_text">Выберите файл или перетащите его сюда</div>
+                    <div id="documentFileName" class="dropzone-filename" data-i18n="modals.file_none">Файл не выбран</div>
+                    <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('documentFile').click()" data-i18n="common.browse">Обзор...</button>
                 </div>
             </div>
             
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin: 14px 0;">
                     <input type="checkbox" id="insertAsHyperlink" style="cursor: pointer;">
-                    <span style="font-size: 13px; font-weight: 500; opacity: 0.9; color: var(--text-color);">Вставить как гиперссылку</span>
+                    <span style="font-size: 13px; font-weight: 500; opacity: 0.9; color: var(--text-color);" data-i18n="modals.file_insert_link">Вставить как гиперссылку</span>
                 </label>
             </div>
             
             <div class="form-group">
-                <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; color: var(--text-color);">Загруженные файлы:</label>
+                <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; color: var(--text-color);" data-i18n="modals.file_uploaded_title">Загруженные файлы:</label>
                 <div class="file-upload-list" id="fileUploadList">
-                    <div class="file-upload-empty">Загрузка списка файлов...</div>
+                    <div class="file-upload-empty" data-i18n="common.loading">Загрузка списка файлов...</div>
                 </div>
             </div>
         </div>
@@ -950,102 +959,102 @@ if (file_exists($versionFile)) {
 
 <div id="fontSizeDialog" class="dialog">
     <div class="dialog-content">
-        <h3>Указать размер шрифта</h3>
+        <h3 data-i18n="toolbar.font_size">Указать размер шрифта</h3>
         <input type="number" id="customFontSize" min="8" max="72" placeholder="Размер в px">
         <div class="dialog-buttons">
-            <button onclick="setCustomFontSize()">Применить</button>
-            <button onclick="closeFontSizeDialog()">Отмена</button>
+            <button onclick="setCustomFontSize()" data-i18n="common.apply">Применить</button>
+            <button onclick="closeFontSizeDialog()" data-i18n="common.cancel">Отмена</button>
         </div>
     </div>
 </div>
 
 
 <div id="mediaDialog" class="dialog">
-    <div class="dialog-content" style="width: 550px; max-width: 95vw; padding: 0; overflow: hidden;">
+    <div class="dialog-content" style="width: 550px; max-width: 95vw; padding: 0; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.media_title">
                 Добавить медиа
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeMediaDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
-                <button type="button" onclick="insertMedia()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить</button>
+                <button type="button" onclick="closeMediaDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.cancel">Отмена</button>
+                <button type="button" onclick="insertMedia()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;" data-i18n="modals.media_insert_btn">Вставить</button>
             </div>
         </div>
 
         <div style="padding: 24px 28px 24px;">
             <div class="form-group" style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Тип медиа:</label>
+                <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;" data-i18n="modals.media_type_label">Тип медиа:</label>
                 <div class="media-type-toggle">
                     <label>
                         <input type="radio" name="mediaType" value="video-url" checked>
                         <span style="font-size: 18px; display: block; margin-bottom: 2px;">📺</span>
-                        <span style="font-weight: 600; font-size: 13px;">Видео (URL)</span>
+                        <span style="font-weight: 600; font-size: 13px;" data-i18n="modals.media_video_url">Видео (URL)</span>
                     </label>
                     <label>
                         <input type="radio" name="mediaType" value="video-file">
                         <span style="font-size: 18px; display: block; margin-bottom: 2px;">📁</span>
-                        <span style="font-weight: 600; font-size: 13px;">Видео файл</span>
+                        <span style="font-weight: 600; font-size: 13px;" data-i18n="modals.media_video_file">Видео файл</span>
                     </label>
                     <label>
                         <input type="radio" name="mediaType" value="audio">
                         <span style="font-size: 18px; display: block; margin-bottom: 2px;">🎵</span>
-                        <span style="font-weight: 600; font-size: 13px;">Аудио файл</span>
+                        <span style="font-weight: 600; font-size: 13px;" data-i18n="modals.media_audio_file">Аудио файл</span>
                     </label>
                     <label>
                         <input type="radio" name="mediaType" value="audio-stream">
                         <span style="font-size: 18px; display: block; margin-bottom: 2px;">📻</span>
-                        <span style="font-weight: 600; font-size: 13px;">Аудио поток</span>
+                        <span style="font-weight: 600; font-size: 13px;" data-i18n="modals.media_audio_stream">Аудио поток</span>
                     </label>
                 </div>
             </div>
             
             <div id="videoUrlSection">
-                <input type="text" id="mediaUrl" placeholder="Вставьте ссылку на YouTube или Vimeo" class="media-input">
+                <input type="text" id="mediaUrl" placeholder="Вставьте ссылку на YouTube или Vimeo" data-i18n-placeholder="modals.media_video_url_ph" class="media-input">
             </div>
 
             <div id="audioStreamSection" style="display: none;">
-                <input type="text" id="audioStreamUrl" placeholder="Вставьте ссылку на аудиопоток (например, радио или прямой URL)" class="media-input">
+                <input type="text" id="audioStreamUrl" placeholder="Вставьте ссылку на аудиопоток (например, радио или прямой URL)" data-i18n-placeholder="modals.media_stream_url_ph" class="media-input">
             </div>
             
             <div id="videoFileSection" style="display: none;">
                 <div class="form-group">
-                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загрузить видео файл:</label>
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;" data-i18n="modals.media_video_upload">Загрузить видео файл:</label>
                     <div id="videoDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('videoFile').click()">
                         <input type="file" id="videoFile" accept="video/*" style="display: none;" onchange="handleMediaFileChange(this, 'video')">
                         <div class="dropzone-icon">🎥</div>
-                        <div class="dropzone-text" id="videoDropzoneText">Выберите видео или перетащите его сюда</div>
-                        <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются MP4, WebM, OGG</div>
-                        <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('videoFile').click()">Обзор...</button>
+                        <div class="dropzone-text" id="videoDropzoneText" data-i18n="modals.media_drop_text">Выберите видео или перетащите его сюда</div>
+                        <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;" data-i18n="modals.media_video_subtext">Поддерживаются MP4, WebM, OGG</div>
+                        <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('videoFile').click()" data-i18n="common.browse">Обзор...</button>
                         <div id="videoFileName" class="dropzone-filename" style="display: none;"></div>
                     </div>
                 </div>
                 
                 <div class="form-group" style="margin-top: 20px;">
-                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загруженные видео файлы:</label>
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;" data-i18n="modals.media_uploaded_videos">Загруженные видео файлы:</label>
                     <div id="videoFilesList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px;">
-                        <div style="color: var(--text-color); opacity: 0.6;">Загрузка списка...</div>
+                        <div style="color: var(--text-color); opacity: 0.6;" data-i18n="common.loading">Загрузка списка...</div>
                     </div>
                 </div>
             </div>
             
             <div id="audioMediaSection" style="display: none;">
                 <div class="form-group">
-                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загрузить аудио файл:</label>
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;" data-i18n="modals.media_audio_upload">Загрузить аудио файл:</label>
                     <div id="audioDropzone" class="file-dropzone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('audioFile').click()">
                         <input type="file" id="audioFile" accept="audio/*" style="display: none;" onchange="handleMediaFileChange(this, 'audio')">
                         <div class="dropzone-icon">🎵</div>
-                        <div class="dropzone-text" id="audioDropzoneText">Выберите аудио или перетащите его сюда</div>
-                        <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;">Поддерживаются MP3, WAV, OGG</div>
-                        <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('audioFile').click()">Обзор...</button>
+                        <div class="dropzone-text" id="audioDropzoneText" data-i18n="modals.media_drop_text">Выберите аудио или перетащите его сюда</div>
+                        <div class="dropzone-subtext" style="font-size: 12px; opacity: 0.6; margin-top: 2px;" data-i18n="modals.media_audio_subtext">Поддерживаются MP3, WAV, OGG</div>
+                        <button type="button" class="dropzone-browse-btn" onclick="event.stopPropagation(); document.getElementById('audioFile').click()" data-i18n="common.browse">Обзор...</button>
                         <div id="audioFileName" class="dropzone-filename" style="display: none;"></div>
                     </div>
                 </div>
                 
                 <div class="form-group" style="margin-top: 20px;">
-                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Загруженные аудио файлы:</label>
+                    <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;" data-i18n="modals.media_uploaded_audios">Загруженные аудио файлы:</label>
                     <div id="audioFilesList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px;">
-                        <div style="color: var(--text-color); opacity: 0.6;">Загрузка списка...</div>
+                        <div style="color: var(--text-color); opacity: 0.6;" data-i18n="common.loading">Загрузка списка...</div>
                     </div>
                 </div>
             </div>
@@ -1055,30 +1064,30 @@ if (file_exists($versionFile)) {
 
 <div id="spoilerDialog" class="dialog">
     <div class="dialog-content">
-        <h3>Сворачиваемый блок</h3>
-        <label for="spoilerTitle">Заголовок блока:</label>
-        <input type="text" id="spoilerTitle" placeholder="Например: Подробности" class="form-control">
+        <h3 data-i18n="modals.spoiler_title">Сворачиваемый блок</h3>
+        <label for="spoilerTitle" style="display: block; margin-bottom: 8px;" data-i18n="modals.spoiler_block_title">Заголовок блока:</label>
+        <input type="text" id="spoilerTitle" placeholder="Например: Подробности" data-i18n-placeholder="modals.spoiler_ph" class="form-control">
         <div class="dialog-buttons">
-            <button onclick="insertSpoiler()">Вставить</button>
-            <button onclick="closeSpoilerDialog()">Отмена</button>
+            <button onclick="insertSpoiler()" data-i18n="common.insert">Вставить</button>
+            <button onclick="closeSpoilerDialog()" data-i18n="common.cancel">Отмена</button>
         </div>
     </div>
 </div>
 
 <div id="markerDialog" class="dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.marker_title">
                 Выделить маркером
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeMarkerDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
+                <button type="button" onclick="closeMarkerDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.cancel">Отмена</button>
             </div>
         </div>
 
         <div style="padding: 24px 28px 24px;">
-            <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Выберите стиль:</label>
+            <label style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);" data-i18n="modals.marker_style_label">Выберите стиль:</label>
             <div class="marker-styles">
                 <button class="marker-style-btn active" data-style="straight" title="Ровное">
                     <span class="marker-style-preview marker-preview-straight">Текст</span>
@@ -1093,7 +1102,7 @@ if (file_exists($versionFile)) {
                     <span class="marker-style-preview marker-preview-wavy">Текст</span>
                 </button>
             </div>
-            <label style="display: block; margin-top: 16px; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Выберите цвет:</label>
+            <label style="display: block; margin-top: 16px; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);" data-i18n="modals.marker_color_label">Выберите цвет:</label>
             <div class="marker-colors">
                 <button class="marker-color-btn" data-color="#ffeb3b" style="background: #ffeb3b;" title="Желтый"></button>
                 <button class="marker-color-btn" data-color="#4caf50" style="background: #4caf50;" title="Зеленый"></button>
@@ -1107,26 +1116,26 @@ if (file_exists($versionFile)) {
 </div>
 
 <div id="tableDialog" class="dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.table_title">
                 Вставить таблицу
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeTableDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
-                <button type="button" onclick="insertTable()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить</button>
+                <button type="button" onclick="closeTableDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.cancel">Отмена</button>
+                <button type="button" onclick="insertTable()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;" data-i18n="common.insert">Вставить</button>
             </div>
         </div>
 
         <div style="padding: 24px 28px 24px;">
             <div class="form-group" style="margin-bottom: 20px;">
-                <label for="tableRows" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Количество строк:</label>
-                <input type="number" id="tableRows" class="form-control" min="1" max="20" value="3" placeholder="Введите количество строк">
+                <label for="tableRows" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);" data-i18n="modals.table_rows">Количество строк:</label>
+                <input type="number" id="tableRows" class="form-control" min="1" max="20" value="3" placeholder="Введите количество строк" data-i18n-placeholder="modals.table_rows_ph">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="tableCols" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);">Количество столбцов:</label>
-                <input type="number" id="tableCols" class="form-control" min="1" max="7" value="3" placeholder="Введите количество столбцов">
+                <label for="tableCols" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85; color: var(--text-color);" data-i18n="modals.table_cols">Количество столбцов:</label>
+                <input type="number" id="tableCols" class="form-control" min="1" max="7" value="3" placeholder="Введите количество столбцов" data-i18n-placeholder="modals.table_cols_ph">
             </div>
         </div>
     </div>
@@ -1134,9 +1143,9 @@ if (file_exists($versionFile)) {
 
 <div id="cellColorDialog" class="dialog">
     <div class="dialog-content">
-        <h3>Перекрасить ячейку</h3>
+        <h3 data-i18n="modals.cell_color_title">Перекрасить ячейку</h3>
         <div class="form-group">
-            <label>Выберите цвет:</label>
+            <label data-i18n="modals.cell_color_select">Выберите цвет:</label>
             <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 15px 0;">
                 <button type="button" onclick="setCellColor('#ffffff')" style="width: 40px; height: 40px; background: #ffffff; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Белый"></button>
                 <button type="button" onclick="setCellColor('#f0f0f0')" style="width: 40px; height: 40px; background: #f0f0f0; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Светло-серый"></button>
@@ -1153,35 +1162,35 @@ if (file_exists($versionFile)) {
                 <button type="button" onclick="setCellColor('#bbdefb')" style="width: 40px; height: 40px; background: #bbdefb; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Синий"></button>
                 <button type="button" onclick="setCellColor('#e1bee7')" style="width: 40px; height: 40px; background: #e1bee7; border: 2px solid #ccc; border-radius: 6px; cursor: pointer;" title="Фиолетовый"></button>
             </div>
-            <button type="button" onclick="setCellColor('')" style="width: 100%; padding: 8px; margin-top: 10px; background: var(--bg-color); color: var(--text-color); border: 2px solid var(--border-color); border-radius: 6px; cursor: pointer;">Убрать цвет</button>
+            <button type="button" onclick="setCellColor('')" style="width: 100%; padding: 8px; margin-top: 10px; background: var(--bg-color); color: var(--text-color); border: 2px solid var(--border-color); border-radius: 6px; cursor: pointer;" data-i18n="modals.cell_color_remove">Убрать цвет</button>
         </div>
         <div class="dialog-buttons">
-            <button onclick="closeCellColorDialog()">Закрыть</button>
+            <button onclick="closeCellColorDialog()" data-i18n="common.close">Закрыть</button>
         </div>
     </div>
 </div>
 
 <div id="linkDialog" class="dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.link_title">
                 Вставить ссылку
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeLinkDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Отмена</button>
-                <button type="button" onclick="insertLinkFromDialog()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Вставить</button>
+                <button type="button" onclick="closeLinkDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.cancel">Отмена</button>
+                <button type="button" onclick="insertLinkFromDialog()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;" data-i18n="common.insert">Вставить</button>
             </div>
         </div>
 
         <div style="padding: 24px 28px 24px;">
             <div class="form-group" style="margin-bottom: 20px;">
-                <label for="linkUrl" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">URL</label>
+                <label for="linkUrl" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;" data-i18n="modals.link_url_label">URL</label>
                 <input type="text" id="linkUrl" class="form-control" placeholder="https://">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="linkText" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;">Текст ссылки (необязательно)</label>
-                <input type="text" id="linkText" class="form-control" placeholder="Оставьте пустым — будет использован выделенный текст">
+                <label for="linkText" style="display: block; margin-bottom: 10px; font-weight: 500; font-size: 13px; opacity: 0.85;" data-i18n="modals.link_text_label">Текст ссылки (необязательно)</label>
+                <input type="text" id="linkText" class="form-control" placeholder="Оставьте пустым — будет использован выделенный текст" data-i18n-placeholder="modals.link_text_ph">
             </div>
         </div>
     </div>
@@ -1189,14 +1198,14 @@ if (file_exists($versionFile)) {
 
 <!-- Модальное окно управления наборами смайлов -->
 <div id="smileSetsDialog" class="dialog">
-    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden;">
+    <div class="dialog-content" style="width: 500px; max-width: 95vw; padding: 0 !important; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.smiles_title">
                 Управление наборами смайлов
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeSmileSetsDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Закрыть</button>
+                <button type="button" onclick="closeSmileSetsDialog()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.close">Закрыть</button>
             </div>
         </div>
 
@@ -1206,31 +1215,31 @@ if (file_exists($versionFile)) {
                 <input type="file" id="smileFolderInput" webkitdirectory directory multiple style="display: none;" onchange="handleSmileFileSelect(event)">
                 <input type="file" id="smileFilesInput" accept="image/gif" multiple style="display: none;" onchange="handleSmileFileSelect(event)">
                 <div style="font-size: 40px; margin-bottom: 12px;">📁</div>
-                <div style="font-size: 14px; font-weight: 600; color: var(--text-color); margin-bottom: 6px;" id="smileDropzoneText">Перетащите папку со смайлами сюда</div>
-                <div style="font-size: 12px; opacity: 0.6; color: var(--text-color); margin-bottom: 14px;">Или выберите файлы / папку на диске</div>
+                <div style="font-size: 14px; font-weight: 600; color: var(--text-color); margin-bottom: 6px;" id="smileDropzoneText" data-i18n="modals.smiles_drop_text">Перетащите папку со смайлами сюда</div>
+                <div style="font-size: 12px; opacity: 0.6; color: var(--text-color); margin-bottom: 14px;" data-i18n="modals.smiles_drop_subtext">Или выберите файлы / папку на диске</div>
                 <div style="display: flex; gap: 8px; justify-content: center;">
-                    <button type="button" class="global-action-btn" onclick="document.getElementById('smileFolderInput').click()" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;">Выбрать папку</button>
-                    <button type="button" class="global-action-btn" onclick="document.getElementById('smileFilesInput').click()" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;">Выбрать GIF-файлы</button>
+                    <button type="button" class="global-action-btn" onclick="document.getElementById('smileFolderInput').click()" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;" data-i18n="modals.smiles_select_folder_btn">Выбрать папку</button>
+                    <button type="button" class="global-action-btn" onclick="document.getElementById('smileFilesInput').click()" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;" data-i18n="modals.smiles_select_gif_btn">Выбрать GIF-файлы</button>
                 </div>
                 
                 <!-- Поле ввода имени для набора -->
                 <div id="smileSetNameField" style="display: none; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                    <label for="smileSetNameInput" style="display: block; font-size: 13px; font-weight: 500; text-align: left; margin-bottom: 8px; color: var(--text-color);">Название для нового набора смайлов:</label>
-                    <input type="text" id="smileSetNameInput" placeholder="Например: Аниме" style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
+                    <label for="smileSetNameInput" style="display: block; font-size: 13px; font-weight: 500; text-align: left; margin-bottom: 8px; color: var(--text-color);" data-i18n="modals.smiles_set_name_label">Название для нового набора смайлов:</label>
+                    <input type="text" id="smileSetNameInput" placeholder="Например: Аниме" data-i18n-placeholder="modals.smiles_set_name_ph" style="width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
                 </div>
 
                 <div id="smileSelectedFilesInfo" style="display: none; margin-top: 12px; font-size: 13px; font-weight: 500; color: #4CAF50;">
-                    Выбрано файлов: <span id="smileSelectedCount">0</span>
+                    <span data-i18n="modals.smiles_files_selected_prefix">Выбрано файлов:</span> <span id="smileSelectedCount">0</span>
                 </div>
 
                 <div style="margin-top: 16px; display: none;" id="smileUploadBtnContainer">
-                    <button type="button" onclick="handleSmileSetUpload()" class="global-action-btn global-action-btn-primary" style="padding: 8px 20px; font-size: 13px; background: var(--accent-color, #4CAF50); border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">Загрузить набор</button>
+                    <button type="button" onclick="handleSmileSetUpload()" class="global-action-btn global-action-btn-primary" style="padding: 8px 20px; font-size: 13px; background: var(--accent-color, #4CAF50); border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;" data-i18n="modals.smiles_upload_set_btn">Загрузить набор</button>
                 </div>
             </div>
             
-            <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-color);">Доступные наборы:</div>
+            <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-color);" data-i18n="modals.smiles_available_sets">Доступные наборы:</div>
             <div id="smileSetsList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: var(--bg-color);">
-                <div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">Загрузка наборов...</div>
+                <div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);" data-i18n="modals.smiles_loading">Загрузка наборов...</div>
             </div>
         </div>
     </div>
@@ -1242,8 +1251,8 @@ if (file_exists($versionFile)) {
 
 <!-- Модальное окно дополнительных настроек -->
 <div id="additionalSettingsModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <h3 style="margin: 0 0 20px 0; color: var(--text-color); font-size: 20px;">Дополнительные настройки</h3>
+    <div class="modal-content" style="background: var(--bg-color); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); border: 1px solid var(--border-color);">
+        <h3 style="margin: 0 0 20px 0; color: var(--text-color); font-size: 20px;" data-i18n="modals.extra_settings_title">Дополнительные настройки</h3>
         <p id="additionalSettingsPostTitle" style="color: var(--text-color); margin-bottom: 20px; opacity: 0.7;"></p>
         
         <!-- Глобальный фон -->
@@ -1321,7 +1330,7 @@ if (file_exists($versionFile)) {
     <div class="dialog-content" style="width: 480px; max-width: 95vw; padding: 0 !important; overflow: hidden; border: 1.5px solid #ff9800; box-shadow: 0 10px 30px rgba(255, 152, 0, 0.2);">
         <!-- Заголовок -->
         <div style="padding: 18px 25px; border-bottom: 2.5px solid #ff9800; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 152, 0, 0.1);">
-            <h3 style="margin: 0; color: #ff9800; font-size: 20px; display: flex; align-items: center; gap: 10px; font-weight: 700;">
+            <h3 style="margin: 0; color: #ff9800; font-size: 20px; display: flex; align-items: center; gap: 10px; font-weight: 700;" data-i18n="modals.dev_warning_title">
                 ⚠️ DEV-версия системы
             </h3>
         </div>
@@ -1334,7 +1343,7 @@ if (file_exists($versionFile)) {
                 Эта версия может быть **нестабильной**, содержать недоработки и незавершенные функции. Настоятельно рекомендуется периодически делать бэкапы ваших статей и файлов.
             </p>
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" onclick="confirmDevWarning()" class="global-action-btn global-action-btn-primary" style="padding: 10px 24px; font-size: 14px; background: #ff9800; color: #fff; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f57c00'" onmouseout="this.style.background='#ff9800'">Я понимаю риски</button>
+                <button type="button" onclick="confirmDevWarning()" class="global-action-btn global-action-btn-primary" style="padding: 10px 24px; font-size: 14px; background: #ff9800; color: #fff; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f57c00'" onmouseout="this.style.background='#ff9800'" data-i18n="modals.dev_warning_understand_btn">Я понимаю риски</button>
             </div>
         </div>
     </div>
@@ -1345,7 +1354,7 @@ if (file_exists($versionFile)) {
     <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 900px; width: 90%; height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="settings.title">
                 Параметры
             </h3>
             <button type="button" onclick="closeGlobalSettings()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;">×</button>
@@ -1354,36 +1363,39 @@ if (file_exists($versionFile)) {
         <div style="flex: 1; display: flex; overflow: hidden;">
             <!-- Навигация слева -->
             <div style="width: 200px; background: rgba(0,0,0,0.05); border-right: 2px solid var(--border-color); padding: 20px; overflow-y: auto;">
-                <h3 style="margin: 0 0 20px 0; color: var(--text-color); font-size: 18px;">Навигация</h3>
-                <button type="button" id="nav-btn-backgrounds" onclick="showGlobalSection('backgrounds')" class="global-nav-btn active" data-section="backgrounds" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <h3 style="margin: 0 0 20px 0; color: var(--text-color); font-size: 18px;" data-i18n="settings.nav_title">Навигация</h3>
+                <button type="button" id="nav-btn-backgrounds" onclick="showGlobalSection('backgrounds')" class="global-nav-btn active" data-section="backgrounds" data-i18n="settings.nav_backgrounds" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     Фон статей
                 </button>
-                <button type="button" id="nav-btn-blogview" onclick="showGlobalSection('blogview')" class="global-nav-btn" data-section="blogview" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" id="nav-btn-blogview" onclick="showGlobalSection('blogview')" class="global-nav-btn" data-section="blogview" data-i18n="settings.nav_blogview" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     Вид blog.html
                 </button>
-                <button type="button" onclick="showGlobalSection('autosave')" class="global-nav-btn" data-section="autosave" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" onclick="showGlobalSection('autosave')" class="global-nav-btn" data-section="autosave" data-i18n="settings.nav_autosave" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     Автосохранение
                 </button>
-                <button type="button" onclick="showGlobalSection('appearance')" class="global-nav-btn" data-section="appearance" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" onclick="showGlobalSection('appearance')" class="global-nav-btn" data-section="appearance" data-i18n="settings.nav_appearance" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     Внешний вид
                 </button>
-                <button type="button" onclick="showGlobalSection('experimental')" class="global-nav-btn" data-section="experimental" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" onclick="showGlobalSection('experimental')" class="global-nav-btn" data-section="experimental" data-i18n="settings.nav_experimental" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     Экспериментальные
                 </button>
-                <button type="button" onclick="showGlobalSection('rss')" class="global-nav-btn" data-section="rss" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" onclick="showGlobalSection('rss')" class="global-nav-btn" data-section="rss" data-i18n="settings.nav_rss" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     RSS Виджет
                 </button>
-                <button type="button" id="nav-btn-rss_feed" onclick="showGlobalSection('rss_feed')" class="global-nav-btn" data-section="rss_feed" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" id="nav-btn-rss_feed" onclick="showGlobalSection('rss_feed')" class="global-nav-btn" data-section="rss_feed" data-i18n="settings.nav_rss_feed" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     RSS Лента
                 </button>
-                <button type="button" id="nav-btn-paths" onclick="showGlobalSection('paths')" class="global-nav-btn" data-section="paths" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" id="nav-btn-paths" onclick="showGlobalSection('paths')" class="global-nav-btn" data-section="paths" data-i18n="settings.nav_paths" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     Пути
                 </button>
-                <button type="button" id="nav-btn-security" onclick="showGlobalSection('security')" class="global-nav-btn" data-section="security" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" id="nav-btn-security" onclick="showGlobalSection('security')" class="global-nav-btn" data-section="security" data-i18n="settings.nav_security" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     Безопасность
                 </button>
-                <button type="button" onclick="showGlobalSection('seo')" class="global-nav-btn" data-section="seo" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                <button type="button" onclick="showGlobalSection('seo')" class="global-nav-btn" data-section="seo" data-i18n="settings.nav_seo" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
                     SEO и соцсети
+                </button>
+                <button type="button" id="nav-btn-language" onclick="showGlobalSection('language')" class="global-nav-btn" data-section="language" data-i18n="settings.nav_language" style="display: block; width: 100%; padding: 10px; margin-bottom: 5px; background: transparent; color: var(--text-color); border: none; border-radius: 6px; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s;">
+                    Язык
                 </button>
                 <!-- Здесь можно добавить другие пункты навигации -->
             </div>
@@ -1391,53 +1403,53 @@ if (file_exists($versionFile)) {
             <!-- Контент справа -->
             <div style="flex: 1; padding: 30px; overflow-y: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; color: var(--text-color); font-size: 20px;" id="globalSectionTitle">Фон статей</h3>
+                    <h3 style="margin: 0; color: var(--text-color); font-size: 20px;" id="globalSectionTitle" data-i18n="settings.bg_section_title">Фон статей</h3>
                 </div>
             
             <!-- Секция: Фон статей -->
             <div id="globalSection-backgrounds" class="global-section">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Загрузите фоновое изображение, которое будет применяться ко всем статьям по умолчанию.</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.bg_desc">Загрузите фоновое изображение, которое будет применяться ко всем статьям по умолчанию.</p>
                 
                 <!-- Текущий глобальный фон -->
                 <div id="currentGlobalBackgroundInfo" style="display: none; margin-bottom: 20px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px;">
-                    <p style="color: var(--text-color); margin-bottom: 10px; font-weight: 500;">Текущий глобальный фон:</p>
+                    <p style="color: var(--text-color); margin-bottom: 10px; font-weight: 500;" data-i18n="settings.bg_current_title">Текущий глобальный фон:</p>
                     <img id="currentGlobalBackgroundPreview" src="" style="max-width: 200px; max-height: 150px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px;">
                     <p style="color: var(--text-color); font-size: 14px; margin-bottom: 5px;" id="currentGlobalBackgroundName"></p>
                     <p style="color: var(--text-color); font-size: 14px;" id="currentGlobalBackgroundMode"></p>
                 </div>
                 
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Фоновое изображение:</label>
+                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;" data-i18n="settings.bg_image_label">Фоновое изображение:</label>
                     <input type="file" id="globalBackgroundInput" accept="image/*" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 10px;">
                     
-                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Режим отображения:</label>
+                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;" data-i18n="settings.bg_mode_label">Режим отображения:</label>
                     <select id="globalBackgroundMode" style="margin-bottom: 15px;">
-                        <option value="cover">Растянуть (cover)</option>
-                        <option value="contain">По размеру (contain)</option>
-                        <option value="repeat">Замостить (repeat)</option>
+                        <option value="cover" data-i18n="settings.bg_mode_cover">Растянуть (cover)</option>
+                        <option value="contain" data-i18n="settings.bg_mode_contain">По размеру (contain)</option>
+                        <option value="repeat" data-i18n="settings.bg_mode_repeat">Замостить (repeat)</option>
                     </select>
                     
-                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Область фона:</label>
+                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;" data-i18n="settings.bg_scope_label">Область фона:</label>
                     <select id="globalBackgroundScope" style="margin-bottom: 20px;">
-                        <option value="content">Только статья (920px)</option>
-                        <option value="fullpage">Вся страница</option>
+                        <option value="content" data-i18n="settings.bg_scope_content">Только статья (920px)</option>
+                        <option value="fullpage" data-i18n="settings.bg_scope_fullpage">Вся страница</option>
                     </select>
                     
                     <div style="display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
-                        <button type="button" onclick="uploadGlobalBackground()" class="global-action-btn global-action-btn-primary">Загрузить фон</button>
-                        <button type="button" onclick="removeGlobalBackground()" class="global-action-btn global-action-btn-secondary">Удалить фон</button>
+                        <button type="button" onclick="uploadGlobalBackground()" class="global-action-btn global-action-btn-primary" data-i18n="settings.bg_upload_btn">Загрузить фон</button>
+                        <button type="button" onclick="removeGlobalBackground()" class="global-action-btn global-action-btn-secondary" data-i18n="settings.bg_remove_btn">Удалить фон</button>
                     </div>
                 </div>
                 
                 <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); margin-bottom: 20px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
                         <input type="checkbox" id="hidePoweredByCheckbox" onchange="savePoweredBySetting(this.checked)" style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 14px;">Скрыть надпись "Powered by NPBlog" в статьях</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.bg_hide_powered_by">Скрыть надпись "Powered by NPBlog" в статьях</span>
                     </label>
                 </div>
                 
                 <div style="padding: 15px; background: rgba(255, 193, 7, 0.1); border: 2px solid rgba(255, 193, 7, 0.5); border-radius: 8px; margin-top: 20px;">
-                    <p style="color: var(--text-color); font-size: 14px; margin: 0;">
+                    <p style="color: var(--text-color); font-size: 14px; margin: 0;" data-i18n="settings.bg_warning">
                         ⚠️ Глобальный фон применяется ко всем существующим статьям и будет автоматически применяться к новым статьям. Индивидуальные настройки фона статьи имеют приоритет над глобальным фоном.
                     </p>
                 </div>
@@ -1445,64 +1457,64 @@ if (file_exists($versionFile)) {
             
             <!-- Секция: Вид blog.html -->
             <div id="globalSection-blogview" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Настройте внешний вид страницы со списком статей (blog.html).</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.blogview_desc">Настройте внешний вид страницы со списком статей (blog.html).</p>
                 
                 <div style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border-color);">
-                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Заголовок страницы:</label>
+                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;" data-i18n="settings.blogview_page_title_label">Заголовок страницы:</label>
                     <input type="text" id="blogPageTitle" placeholder="Блог" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 20px; font-size: 14px;">
                     
-                    <button type="button" onclick="saveBlogViewSettings()" class="global-action-btn global-action-btn-primary">Сохранить настройки</button>
+                    <button type="button" onclick="saveBlogViewSettings()" class="global-action-btn global-action-btn-primary" data-i18n="settings.blogview_save_btn">Сохранить настройки</button>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 15px 0; color: var(--text-color); font-size: 16px;">Фон страницы списка статей (blog.html)</h4>
+                    <h4 style="margin: 0 0 15px 0; color: var(--text-color); font-size: 16px;" data-i18n="settings.blogview_bg_title">Фон страницы списка статей (blog.html)</h4>
                     
                     <!-- Текущий фон blog.html -->
                     <div id="currentBlogBackgroundInfo" style="display: none; margin-bottom: 20px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px;">
-                        <p style="color: var(--text-color); margin-bottom: 10px; font-weight: 500;">Текущий фон списка статей:</p>
+                        <p style="color: var(--text-color); margin-bottom: 10px; font-weight: 500;" data-i18n="settings.blogview_current_bg">Текущий фон списка статей:</p>
                         <img id="currentBlogBackgroundPreview" src="" style="max-width: 200px; max-height: 150px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px;">
                         <p style="color: var(--text-color); font-size: 14px; margin-bottom: 5px;" id="currentBlogBackgroundName"></p>
                         <p style="color: var(--text-color); font-size: 14px;" id="currentBlogBackgroundMode"></p>
                     </div>
 
-                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Фоновое изображение:</label>
+                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;" data-i18n="settings.bg_image_label">Фоновое изображение:</label>
                     <input type="file" id="blogBackgroundInput" accept="image/*" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 10px;">
                     
-                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Режим отображения:</label>
+                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;" data-i18n="settings.bg_mode_label">Режим отображения:</label>
                     <select id="blogBackgroundMode" style="margin-bottom: 20px;">
-                        <option value="cover">Растянуть (cover)</option>
-                        <option value="contain">По размеру (contain)</option>
-                        <option value="repeat">Замостить (repeat)</option>
+                        <option value="cover" data-i18n="settings.bg_mode_cover">Растянуть (cover)</option>
+                        <option value="contain" data-i18n="settings.bg_mode_contain">По размеру (contain)</option>
+                        <option value="repeat" data-i18n="settings.bg_mode_repeat">Замостить (repeat)</option>
                     </select>
 
                     <div style="display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
-                        <button type="button" onclick="uploadBlogBackground()" class="global-action-btn global-action-btn-primary">Загрузить фон</button>
-                        <button type="button" onclick="removeBlogBackground()" class="global-action-btn global-action-btn-secondary">Удалить фон</button>
+                        <button type="button" onclick="uploadBlogBackground()" class="global-action-btn global-action-btn-primary" data-i18n="settings.bg_upload_btn">Загрузить фон</button>
+                        <button type="button" onclick="removeBlogBackground()" class="global-action-btn global-action-btn-secondary" data-i18n="settings.bg_remove_btn">Удалить фон</button>
                     </div>
                 </div>
 
                 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-                    <h4 style="margin: 0 0 15px 0; color: var(--text-color); font-size: 16px;">Навигация между блогами</h4>
+                    <h4 style="margin: 0 0 15px 0; color: var(--text-color); font-size: 16px;" data-i18n="settings.blogview_crossblog_title">Навигация между блогами</h4>
                     
-                    <div id="crossBlogNavStatus" style="display: none; padding: 10px; background: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; margin-bottom: 15px; color: var(--text-color);">
+                    <div id="crossBlogNavStatus" style="display: none; padding: 10px; background: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; margin-bottom: 15px; color: var(--text-color);" data-i18n="settings.blogview_crossblog_not_supported">
                         В этом блоге используется нестандартный шаблон. Вставка кнопок не поддерживается.
                     </div>
 
                     <div id="crossBlogNavEditor" style="display: none;">
                         <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
                             <input type="checkbox" id="enableCrossBlogNav" onchange="toggleCrossBlogNavUI()" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                            <span style="color: var(--text-color); font-weight: 500;">Кнопки к разным блогам</span>
+                            <span style="color: var(--text-color); font-weight: 500;" data-i18n="settings.blogview_crossblog_enable">Кнопки к разным блогам</span>
                         </label>
                         
                         <div id="crossBlogNavList" style="display: none; margin-bottom: 15px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(0,0,0,0.02);">
-                            <p style="margin-bottom: 10px; opacity: 0.7; font-size: 14px;">Добавьте кнопки, которые будут отображаться в шапке blog.html для быстрого перехода к другим вашим блогам.</p>
+                            <p style="margin-bottom: 10px; opacity: 0.7; font-size: 14px;" data-i18n="settings.blogview_crossblog_hint">Добавьте кнопки, которые будут отображаться в шапке blog.html для быстрого перехода к другим вашим блогам.</p>
                             <div id="crossBlogNavItems" style="margin-bottom: 15px;"></div>
-                            <button type="button" onclick="addCrossBlogNavItem()" class="global-action-btn global-action-btn-secondary" style="font-size: 12px; padding: 6px 12px;">+ Добавить кнопку</button>
+                            <button type="button" onclick="addCrossBlogNavItem()" class="global-action-btn global-action-btn-secondary" style="font-size: 12px; padding: 6px 12px;" data-i18n="settings.blogview_add_btn">+ Добавить кнопку</button>
                         </div>
 
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button type="button" onclick="saveCrossBlogNav('save')" class="global-action-btn global-action-btn-primary">Сохранить для текущего блога</button>
-                            <button type="button" onclick="saveCrossBlogNav('apply_all')" class="global-action-btn global-action-btn-secondary">Применить во всех блогах</button>
+                            <button type="button" onclick="saveCrossBlogNav('save')" class="global-action-btn global-action-btn-primary" data-i18n="settings.blogview_save_current">Сохранить для текущего блога</button>
+                            <button type="button" onclick="saveCrossBlogNav('apply_all')" class="global-action-btn global-action-btn-secondary" data-i18n="settings.blogview_apply_all">Применить во всех блогах</button>
                         </div>
                     </div>
                 </div>
@@ -1510,26 +1522,26 @@ if (file_exists($versionFile)) {
             
             <!-- Секция: Автосохранение -->
             <div id="globalSection-autosave" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Настройте автоматическое сохранение статей во время редактирования.</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.autosave_desc">Настройте автоматическое сохранение статей во время редактирования.</p>
                 
                 <div style="margin-bottom: 20px;">
                     <label style="display: flex; align-items: center; margin-bottom: 20px; cursor: pointer;">
                         <input type="checkbox" id="autosaveEnabled" onchange="toggleAutosavePreview()" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Включить автосохранение</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.autosave_enable">Включить автосохранение</span>
                     </label>
                     
-                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;">Интервал автосохранения (секунды):</label>
+                    <label style="display: block; margin-bottom: 10px; color: var(--text-color); font-weight: 500;" data-i18n="settings.autosave_interval_label">Интервал автосохранения (секунды):</label>
                     <input type="number" id="autosaveInterval" min="10" max="600" value="60" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); margin-bottom: 20px; font-size: 14px;">
                     
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button type="button" onclick="saveAutosaveSettings()" class="global-action-btn global-action-btn-primary">Сохранить настройки</button>
-                        <button type="button" onclick="openAutosaveManager()" class="global-action-btn global-action-btn-accent">Менеджер автосохранений</button>
+                        <button type="button" onclick="saveAutosaveSettings()" class="global-action-btn global-action-btn-primary" data-i18n="settings.autosave_save_btn">Сохранить настройки</button>
+                        <button type="button" onclick="openAutosaveManager()" class="global-action-btn global-action-btn-accent" data-i18n="settings.autosave_manager_btn">Менеджер автосохранений</button>
                     </div>
                 </div>
                 
 
                 <div style="padding: 15px; background: rgba(33, 150, 243, 0.1); border: 2px solid rgba(33, 150, 243, 0.3); border-radius: 8px; margin-top: 20px;">
-                    <p style="color: var(--text-color); font-size: 14px; margin: 0;">
+                    <p style="color: var(--text-color); font-size: 14px; margin: 0;" data-i18n="settings.autosave_hint">
                         💡 Автосохранение создает резервную копию вашей работы через заданный интервал времени. Все автосохранения доступны в менеджере.
                     </p>
                 </div>
@@ -1537,37 +1549,35 @@ if (file_exists($versionFile)) {
             
             <!-- Секция: Внешний вид -->
             <div id="globalSection-appearance" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Настройте внешний вид редактора статей.</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.appearance_desc">Настройте внешний вид редактора статей.</p>
                 
                 <div style="margin-bottom: 20px;">
-
-                    
                     <label style="display: flex; align-items: center; margin-bottom: 20px; cursor: pointer;">
                         <input type="checkbox" id="amoledTheme" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Включить абсолютно черный фон (для AMOLED дисплеев)</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.app_amoled">Включить абсолютно черный фон (для AMOLED дисплеев)</span>
                     </label>
                     
                     <label style="display: flex; align-items: center; margin-bottom: 20px; cursor: pointer;">
                         <input type="checkbox" id="smoothTyping" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Включить плавную печать текста (мягкий курсор)</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.app_smooth_typing">Включить плавную печать текста (мягкий курсор)</span>
                     </label>
                     
                     <label style="display: flex; align-items: center; margin-bottom: 20px; cursor: pointer;">
                         <input type="checkbox" id="headerBottomPosition" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Переместить панель управления в низ экрана</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.app_header_bottom">Переместить панель управления в низ экрана</span>
                     </label>
 
                     <div style="margin-bottom: 20px; text-align: left;">
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500; font-size: 16px;">Ширина поля контента (в пикселях):</label>
+                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.app_content_width">Ширина поля контента (в пикселях):</label>
                         <input type="number" id="settingsContentWidth" min="400" max="2500" placeholder="920" style="box-sizing: border-box; display: block; width: 100%; max-width: 300px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
                     </div>
                     
-                    <button type="button" onclick="saveAppearanceSettings()" class="global-action-btn global-action-btn-primary">Сохранить настройки</button>
-                    <button type="button" onclick="startHeaderCustomization()" class="global-action-btn global-action-btn-accent" style="margin-left: 8px;">Кастомизация верхней панели</button>
+                    <button type="button" onclick="saveAppearanceSettings()" class="global-action-btn global-action-btn-primary" data-i18n="settings.app_save_btn">Сохранить настройки</button>
+                    <button type="button" onclick="startHeaderCustomization()" class="global-action-btn global-action-btn-accent" style="margin-left: 8px;" data-i18n="settings.app_customize_header_btn">Кастомизация верхней панели</button>
                 </div>
                 
                 <div style="padding: 15px; background: rgba(33, 150, 243, 0.1); border: 2px solid rgba(33, 150, 243, 0.3); border-radius: 8px; margin-top: 20px;">
-                    <p style="color: var(--text-color); font-size: 14px; margin: 0;">
+                    <p style="color: var(--text-color); font-size: 14px; margin: 0;" data-i18n="settings.app_hint">
                         💡 При скрытии кнопок переключения режимов редактор будет работать только в визуальном режиме.
                     </p>
                 </div>
@@ -1575,34 +1585,34 @@ if (file_exists($versionFile)) {
             
             <!-- Секция: Экспериментальные функции -->
             <div id="globalSection-experimental" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Включите или отключите экспериментальные функции редактора.</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.exp_desc">Включите или отключите экспериментальные функции редактора.</p>
                 
                 <div style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border-color);">
                     <label style="display: flex; align-items: center; margin-bottom: 20px; cursor: pointer;">
                         <input type="checkbox" id="enableUndoRedo" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Включить Undo/Redo (отмена/возврат изменений)</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.exp_undo_redo">Включить Undo/Redo (отмена/возврат изменений)</span>
                     </label>
                     
                     <label style="display: flex; align-items: center; margin-bottom: 20px; cursor: pointer;">
                         <input type="checkbox" id="enableMarkdown" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Использовать Markdown</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.exp_markdown">Использовать Markdown</span>
                     </label>
                     
-                    <button type="button" onclick="saveExperimentalSettings()" class="global-action-btn global-action-btn-primary">Сохранить настройки</button>
+                    <button type="button" onclick="saveExperimentalSettings()" class="global-action-btn global-action-btn-primary" data-i18n="settings.exp_save_btn">Сохранить настройки</button>
                 </div>
 
                 <div style="margin-bottom: 24px;">
-                    <h4 style="margin: 0 0 15px 0; color: var(--text-color); font-size: 16px; font-weight: 600;">Обслуживание и обучение</h4>
-                    <p style="color: var(--text-color); margin-bottom: 15px; opacity: 0.8; font-size: 14px;">Запустите проверку целостности или сбросьте интерактивное руководство.</p>
+                    <h4 style="margin: 0 0 15px 0; color: var(--text-color); font-size: 16px; font-weight: 600;" data-i18n="settings.exp_maint_title">Обслуживание и обучение</h4>
+                    <p style="color: var(--text-color); margin-bottom: 15px; opacity: 0.8; font-size: 14px;" data-i18n="settings.exp_maint_desc">Запустите проверку целостности или сбросьте интерактивное руководство.</p>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button type="button" onclick="checkPostNumbering()" class="global-action-btn global-action-btn-primary">Проверка нумерации</button>
-                        <button type="button" onclick="resetTutorial()" class="global-action-btn global-action-btn-secondary">Сбросить обучение</button>
-                        <button type="button" onclick="deleteAllCustomTemplates()" class="global-action-btn" style="background-color: #ef4444; color: #fff; border-color: #ef4444;">Удалить кастомные шаблоны</button>
+                        <button type="button" onclick="checkPostNumbering()" class="global-action-btn global-action-btn-primary" data-i18n="settings.exp_check_num_btn">Проверка нумерации</button>
+                        <button type="button" onclick="resetTutorial()" class="global-action-btn global-action-btn-secondary" data-i18n="settings.exp_reset_guide_btn">Сбросить обучение</button>
+                        <button type="button" onclick="deleteAllCustomTemplates()" class="global-action-btn" style="background-color: #ef4444; color: #fff; border-color: #ef4444;" data-i18n="settings.exp_delete_templates_btn">Удалить кастомные шаблоны</button>
                     </div>
                 </div>
                 
                 <div style="padding: 15px; background: rgba(255, 152, 0, 0.1); border: 2px solid rgba(255, 152, 0, 0.3); border-radius: 8px; margin-top: 20px;">
-                    <p style="color: var(--text-color); font-size: 14px; margin: 0;">
+                    <p style="color: var(--text-color); font-size: 14px; margin: 0;" data-i18n="settings.exp_warning">
                         ⚠️ Экспериментальные функции могут работать нестабильно. Используйте на свой риск.
                     </p>
                 </div>
@@ -1610,15 +1620,15 @@ if (file_exists($versionFile)) {
             
             <!-- Секция: Интеграция RSS (Виджет) -->
             <div id="globalSection-rss" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.rss_desc">
                     Получите готовый код интерактивного виджета RSS ленты для вставки на главную страницу вашего сайта
                 </p>
                 
                 <!-- Интерактивное превью виджета -->
                 <div style="margin-bottom: 24px; padding: 20px; background: rgba(0,0,0,0.02); border: 2px dashed var(--border-color); border-radius: 12px;">
-                    <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-color); opacity: 0.5; margin-bottom: 12px;">Вид виджета</span>
+                    <span style="display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-color); opacity: 0.5; margin-bottom: 12px;" data-i18n="settings.rss_preview_title">Вид виджета</span>
                     <div id="rssLivePreviewContainer" style="min-height: 44px; display: flex; align-items: center;">
-                        <div style="font-size: 14px; color: var(--text-color); opacity: 0.6; font-style: italic;">Загрузка превью виджета...</div>
+                        <div style="font-size: 14px; color: var(--text-color); opacity: 0.6; font-style: italic;" data-i18n="settings.rss_preview_loading">Загрузка превью виджета...</div>
                     </div>
                 </div>
 
@@ -1627,8 +1637,8 @@ if (file_exists($versionFile)) {
                     <!-- Шаг 1: HTML код -->
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="color: var(--text-color); font-weight: 600; font-size: 14px;">Шаг 1: Вставьте этот HTML-код в место вывода виджета</label>
-                            <button type="button" onclick="copyToClipboard('rssHtmlCode', this)" style="padding: 6px 12px; font-size: 12px; background: var(--primary-color, #4CAF50); color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-weight: 500;">Копировать HTML</button>
+                            <label style="color: var(--text-color); font-weight: 600; font-size: 14px;" data-i18n="settings.rss_step1_label">Шаг 1: Вставьте этот HTML-код в место вывода виджета</label>
+                            <button type="button" onclick="copyToClipboard('rssHtmlCode', this)" style="padding: 6px 12px; font-size: 12px; background: var(--primary-color, #4CAF50); color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-weight: 500;" data-i18n="settings.rss_copy_html_btn">Копировать HTML</button>
                         </div>
                         <textarea id="rssHtmlCode" readonly style="width: 100%; height: 60px; font-family: monospace; font-size: 13px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); resize: none; box-sizing: border-box;"></textarea>
                     </div>
@@ -1636,15 +1646,15 @@ if (file_exists($versionFile)) {
                     <!-- Шаг 2: JS код -->
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="color: var(--text-color); font-weight: 600; font-size: 14px;">Шаг 2: Вставьте этот JS-код в конец страницы (перед &lt;/body&gt;)</label>
-                            <button type="button" onclick="copyToClipboard('rssJsCode', this)" style="padding: 6px 12px; font-size: 12px; background: var(--primary-color, #4CAF50); color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-weight: 500;">Копировать JS</button>
+                            <label style="color: var(--text-color); font-weight: 600; font-size: 14px;" data-i18n="settings.rss_step2_label">Шаг 2: Вставьте этот JS-код в конец страницы (перед &lt;/body&gt;)</label>
+                            <button type="button" onclick="copyToClipboard('rssJsCode', this)" style="padding: 6px 12px; font-size: 12px; background: var(--primary-color, #4CAF50); color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-weight: 500;" data-i18n="settings.rss_copy_js_btn">Копировать JS</button>
                         </div>
                         <textarea id="rssJsCode" readonly style="width: 100%; height: 320px; font-family: monospace; font-size: 12px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); resize: none; box-sizing: border-box; line-height: 1.5;"></textarea>
                     </div>
                 </div>
 
                 <div style="padding: 15px; background: rgba(33, 150, 243, 0.1); border: 2px solid rgba(33, 150, 243, 0.3); border-radius: 8px; margin-top: 20px;">
-                    <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;">
+                    <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;" data-i18n-html="settings.rss_styling_tip">
                         💡 <strong>Совет по стилизации:</strong> Вы можете полностью изменить внешний вид ссылки виджета на вашем сайте с помощью CSS стилей для класса <code>.npblog-rss-link</code>, прописав его в файле стилей вашего сайта.
                     </p>
                 </div>
@@ -1652,51 +1662,51 @@ if (file_exists($versionFile)) {
             
             <!-- Секция: RSS Лента -->
             <div id="globalSection-rss_feed" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Настройте автоматическую генерацию RSS ленты (XML-файла) для вашего блога.</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.rss_feed_desc">Настройте автоматическую генерацию RSS ленты (XML-файла) для вашего блога.</p>
                 
                 <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
                     <label style="display: flex; align-items: center; cursor: pointer;">
                         <input type="checkbox" id="rssFeedEnabled" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Включить автоматическую генерацию RSS</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.rss_feed_enable">Включить автоматическую генерацию RSS</span>
                     </label>
-                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 8px; opacity: 0.8;" data-i18n-html="settings.rss_feed_enable_hint">
                         Если включено, файл <code>feed.xml</code> будет создаваться и обновляться автоматически в корне папки <code>data</code> при сохранении/редактировании/удалении статей.
                     </p>
                 </div>
                 
                 <div id="rssFeedSettingsDetails" style="display: none;">
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;">Базовый URL сайта (Base URL):</label>
+                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;" data-i18n="settings.rss_feed_base_url_label">Базовый URL сайта (Base URL):</label>
                         <input type="text" id="rssFeedBaseUrl" placeholder="https://myblog.ru" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px; box-sizing: border-box;">
-                        <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8;">
+                        <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8;" data-i18n-html="settings.rss_feed_base_url_hint">
                             Необходим для формирования абсолютных URL-ссылок на ваши статьи в RSS-ленте (например, <code>https://myblog.ru</code>).
                         </p>
                     </div>
 
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;">Название RSS-канала (Title):</label>
+                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;" data-i18n="settings.rss_feed_title_label">Название RSS-канала (Title):</label>
                         <input type="text" id="rssFeedTitle" placeholder="NPBlog Feed" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px; box-sizing: border-box;">
                     </div>
 
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;">Описание RSS-канала (Description):</label>
+                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;" data-i18n="settings.rss_feed_desc_label">Описание RSS-канала (Description):</label>
                         <input type="text" id="rssFeedDescription" placeholder="NPBlog RSS Feed" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px; box-sizing: border-box;">
                     </div>
                     
                     <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
                         <label style="display: flex; align-items: center; cursor: pointer;">
                             <input type="checkbox" id="rssFeedUseFirstLine" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                            <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Брать только первую строку статьи в описание</span>
+                            <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.rss_feed_first_line">Брать только первую строку статьи в описание</span>
                         </label>
-                        <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                        <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 8px; opacity: 0.8;" data-i18n="settings.rss_feed_first_line_hint">
                             Если включено, в содержание поста для RSS будет попадать только первая текстовая строка. Если выключено — будет передаваться весь HTML-код содержимого статьи.
                         </p>
                     </div>
 
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;">Шаблон содержания элемента фида:</label>
+                        <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;" data-i18n="settings.rss_feed_template_label">Шаблон содержания элемента фида:</label>
                         <textarea id="rssFeedContentTemplate" style="display: block; width: 100%; height: 120px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-family: monospace; font-size: 13px; box-sizing: border-box; resize: vertical;"></textarea>
-                        <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8; line-height: 1.4;">
+                        <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8; line-height: 1.4;" data-i18n-html="settings.rss_feed_template_hint">
                             Используйте плейсхолдеры для подстановки данных:<br>
                             <code>*content*</code> — Текст/HTML статьи (вся статья или только первая строка в зависимости от настройки выше).<br>
                             <code>*url*</code> — Полная ссылка на статью в блоге.
@@ -1705,13 +1715,13 @@ if (file_exists($versionFile)) {
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <button type="button" onclick="saveRssFeedSettings()" class="global-action-btn global-action-btn-primary">Сохранить настройки RSS</button>
+                    <button type="button" onclick="saveRssFeedSettings()" class="global-action-btn global-action-btn-primary" data-i18n="settings.rss_feed_save_btn">Сохранить настройки RSS</button>
                 </div>
             </div>
 
             <!-- Секция: Пути к блогам -->
             <div id="globalSection-paths" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Настройте пути к директориям блогов на сервере.</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.paths_desc">Настройте пути к директориям блогов на сервере.</p>
                 
                 <div id="blogPathsListContainer" style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
                     <!-- Динамически заполняется через JS -->
@@ -1719,15 +1729,15 @@ if (file_exists($versionFile)) {
                 
                 <div style="display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
                     <button type="button" onclick="addBlogPathRow()" class="global-action-btn global-action-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
-                        <span>➕</span> Добавить путь
+                        <span>➕</span> <span data-i18n="settings.paths_add_btn">Добавить путь</span>
                     </button>
-                    <button type="button" onclick="savePathsSettings()" class="global-action-btn global-action-btn-primary">
+                    <button type="button" onclick="savePathsSettings()" class="global-action-btn global-action-btn-primary" data-i18n="settings.paths_save_btn">
                         Сохранить настройки путей
                     </button>
                 </div>
                 
                 <div style="padding: 15px; background: rgba(33, 150, 243, 0.1); border: 2px solid rgba(33, 150, 243, 0.3); border-radius: 8px;">
-                    <p style="color: var(--text-color); font-size: 14px; margin: 0;">
+                    <p style="color: var(--text-color); font-size: 14px; margin: 0;" data-i18n-html="settings.paths_hint">
                         💡 Укажите абсолютные пути к папкам данных блогов (например: <code>/var/www/html/data</code>). При добавлении нескольких путей переключение между блогами доступно в боковой панели «Управление статьями».
                     </p>
                 </div>
@@ -1735,23 +1745,23 @@ if (file_exists($versionFile)) {
 
             <!-- Секция: Безопасность и доступ -->
             <div id="globalSection-security" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Настройте параметры безопасности и доступа редактора.</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.sec_desc">Настройте параметры безопасности и доступа редактора.</p>
                 
                 <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
                     <!-- Вариант 1: Пароль не установлен -->
                     <div id="securityPasswordNotSet" style="display: block;">
                         <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
                             <input type="checkbox" id="settingsPasswordEnabled" onchange="togglePasswordFieldsVisibility()" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                            <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Включить защиту паролем</span>
+                            <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.sec_pwd_enable">Включить защиту паролем</span>
                         </label>
                         
                         <div id="securityPasswordFields" style="display: none; margin-bottom: 20px; padding: 20px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; box-sizing: border-box;">
                             <div style="margin-bottom: 15px;">
-                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;">Новый пароль:</label>
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;" data-i18n="settings.sec_pwd_new">Новый пароль:</label>
                                 <input type="password" id="settingsNewPassword" placeholder="Введите новый пароль" style="box-sizing: border-box; display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
                             </div>
                             <div>
-                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;">Подтверждение пароля:</label>
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;" data-i18n="settings.sec_pwd_confirm">Подтверждение пароля:</label>
                                 <input type="password" id="settingsConfirmPassword" placeholder="Повторите новый пароль" style="box-sizing: border-box; display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
                             </div>
                         </div>
@@ -1761,26 +1771,26 @@ if (file_exists($versionFile)) {
                     <div id="securityPasswordSet" style="display: none;">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                             <span style="color: var(--text-color); font-weight: 500; font-size: 16px; display: flex; align-items: center; gap: 6px;">
-                                <span>🔒</span> Пароль установлен
+                                <span>🔒</span> <span data-i18n="settings.sec_pwd_set_label">Пароль установлен</span>
                             </span>
                             <div style="display: flex; gap: 10px;">
-                                <button type="button" onclick="showChangePasswordForm()" class="global-action-btn" style="padding: 6px 12px; font-size: 13px; cursor: pointer; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px;">Изменить пароль</button>
-                                <button type="button" onclick="showDisablePasswordForm()" class="global-action-btn" style="padding: 6px 12px; font-size: 13px; cursor: pointer; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; opacity: 0.8;">Отключить защиту</button>
+                                <button type="button" onclick="showChangePasswordForm()" class="global-action-btn" style="padding: 6px 12px; font-size: 13px; cursor: pointer; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px;" data-i18n="settings.sec_change_pwd_btn">Изменить пароль</button>
+                                <button type="button" onclick="showDisablePasswordForm()" class="global-action-btn" style="padding: 6px 12px; font-size: 13px; cursor: pointer; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; opacity: 0.8;" data-i18n="settings.sec_disable_pwd_btn">Отключить защиту</button>
                             </div>
                         </div>
 
                         <!-- Форма изменения пароля -->
                         <div id="changePasswordFormContainer" style="display: none; margin-bottom: 20px; padding: 20px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; box-sizing: border-box;">
                             <div style="margin-bottom: 15px;">
-                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;">Старый пароль:</label>
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;" data-i18n="settings.sec_pwd_old">Старый пароль:</label>
                                 <input type="password" id="changeSettingsOldPassword" placeholder="Введите старый пароль" style="box-sizing: border-box; display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
                             </div>
                             <div style="margin-bottom: 15px;">
-                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;">Новый пароль:</label>
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;" data-i18n="settings.sec_pwd_new">Новый пароль:</label>
                                 <input type="password" id="changeSettingsNewPassword" placeholder="Введите новый пароль" style="box-sizing: border-box; display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
                             </div>
                             <div>
-                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;">Подтверждение нового пароля:</label>
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;" data-i18n="settings.sec_pwd_confirm">Подтверждение нового пароля:</label>
                                 <input type="password" id="changeSettingsConfirmPassword" placeholder="Повторите новый пароль" style="box-sizing: border-box; display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
                             </div>
                         </div>
@@ -1788,7 +1798,7 @@ if (file_exists($versionFile)) {
                         <!-- Форма отключения пароля -->
                         <div id="disablePasswordFormContainer" style="display: none; margin-bottom: 20px; padding: 20px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; box-sizing: border-box;">
                             <div>
-                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;">Введите текущий пароль для отключения защиты:</label>
+                                <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-size: 14px;" data-i18n="settings.sec_pwd_current_to_disable">Введите текущий пароль для отключения защиты:</label>
                                 <input type="password" id="disableSettingsPassword" placeholder="Введите ваш текущий пароль" style="box-sizing: border-box; display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px;">
                             </div>
                         </div>
@@ -1798,81 +1808,106 @@ if (file_exists($versionFile)) {
                 <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
                     <label style="display: flex; align-items: center; cursor: pointer;">
                         <input type="checkbox" id="settingsIpWhitelistEnabled" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
-                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;">Ограничить доступ по списку IP (allowed_ips.txt)</span>
+                        <span style="color: var(--text-color); font-weight: 500; font-size: 16px;" data-i18n="settings.sec_ip_enable">Ограничить доступ по списку IP (allowed_ips.txt)</span>
                     </label>
-                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 8px; opacity: 0.8;" data-i18n-html="settings.sec_ip_hint">
                         Если включено, доступ к редактору и всем его функциям будет разрешен только с IP-адресов, перечисленных в файле <code>allowed_ips.txt</code> в корне проекта. При включении ваш текущий IP-адрес будет автоматически добавлен в список, чтобы вы не потеряли доступ.
                     </p>
                 </div>
                 
                 <div style="margin-bottom: 20px;">
-                    <button type="button" onclick="saveSecuritySettings()" class="global-action-btn global-action-btn-primary">Сохранить настройки безопасности</button>
+                    <button type="button" onclick="saveSecuritySettings()" class="global-action-btn global-action-btn-primary" data-i18n="settings.sec_save_btn">Сохранить настройки безопасности</button>
                 </div>
                 
                 <div style="padding: 15px; background: rgba(239, 68, 68, 0.1); border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 8px; margin-top: 20px;">
-                    <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;">
+                    <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;" data-i18n-html="settings.sec_notice">
                         ⚠️ <strong>Рекомендация по безопасности:</strong><br>
-                        Для предотвращения прямого скачивания конфигурации из браузера, заблокируйте доступ к JSON-файлам в настройках вашего веб-сервера:
-                        <br><br>
-                        <strong>Nginx:</strong>
-                        <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; overflow-x: auto; margin: 5px 0;">location ~* (editor_settings\.json|ftp\.json|posts-meta\.json)$ {
-    deny all;
-}</pre>
-                        <strong>Apache (.htaccess):</strong>
-                        <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; overflow-x: auto; margin: 5px 0;">&lt;FilesMatch "\.(json)$"&gt;
-    Require all denied
-&lt;/FilesMatch&gt;</pre>
+                        Для предотвращения прямого скачивания конфигурации из браузера, заблокируйте доступ к JSON-файлам в настройках вашего веб-сервера.
                     </p>
                 </div>
             </div>
 
             <!-- Секция: SEO и соцсети -->
             <div id="globalSection-seo" class="global-section" style="display: none;">
-                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;">Настройте метатеги (Open Graph / Twitter Cards) для корректного отображения превью статей в Telegram, Discord и соцсетях.</p>
+                <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8;" data-i18n="settings.seo_desc">Настройте метатеги (Open Graph / Twitter Cards) для корректного отображения превью статей в Telegram, Discord и соцсетях.</p>
                 
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;">Базовый URL сайта (Base URL):</label>
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;" data-i18n="settings.seo_base_url_label">Базовый URL сайта (Base URL):</label>
                     <input type="text" id="seoBaseUrl" placeholder="https://myblog.ru" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px; box-sizing: border-box;">
-                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8;">
+                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8;" data-i18n-html="settings.seo_base_url_hint">
                         Необходим для генерации абсолютных URL-адресов статей и картинок (например: <code>https://myblog.ru</code>). Без этого соцсети не смогут корректно загрузить картинки.
                     </p>
                 </div>
                 
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;">Изображение по умолчанию (URL или путь):</label>
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;" data-i18n="settings.seo_default_img_label">Изображение по умолчанию (URL или путь):</label>
                     <input type="text" id="seoDefaultImage" placeholder="https://myblog.ru/data/default-preview.png" style="display: block; width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px; box-sizing: border-box;">
-                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8;">
+                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8;" data-i18n-html="settings.seo_default_img_hint">
                         Ссылка на изображение, которое будет использоваться для превью, если в статье нет картинок. Может быть абсолютной ссылкой или относительным путем (например: <code>data/default-preview.png</code>).
                     </p>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;">Описание по умолчанию (Default Description):</label>
+                    <label style="display: block; margin-bottom: 8px; color: var(--text-color); font-weight: 500;" data-i18n="settings.seo_default_desc_label">Описание по умолчанию (Default Description):</label>
                     <textarea id="seoDefaultDescription" placeholder="Интересные статьи о программировании и технологиях." style="display: block; width: 100%; height: 80px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px; box-sizing: border-box; resize: vertical;"></textarea>
-                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8;">
+                    <p style="color: var(--text-muted, #a1a1aa); font-size: 12px; margin-top: 5px; opacity: 0.8;" data-i18n-html="settings.seo_default_desc_hint">
                         Описание, которое будет использоваться, если статья слишком короткая или не содержит текста.
                     </p>
                 </div>
                 
                 <div style="margin-bottom: 20px; padding: 12px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px;">
-                    <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;">
+                    <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;" data-i18n-html="settings.seo_notice">
                         💡 <strong>Обратите внимание:</strong> При сохранении или обновлении статьи метатеги генерируются автоматически на основе её содержимого. Вы также можете перегенерировать метатеги для всех статей с помощью кнопки ниже.
                     </p>
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <button type="button" onclick="saveSeoSettings()" class="global-action-btn global-action-btn-primary">Сохранить настройки SEO</button>
-                    <button type="button" onclick="regenerateAllPostsMeta(this)" class="global-action-btn global-action-btn-secondary">Перегенерировать метатеги статей</button>
+                    <button type="button" onclick="saveSeoSettings()" class="global-action-btn global-action-btn-primary" data-i18n="settings.seo_save_btn">Сохранить настройки SEO</button>
+                    <button type="button" onclick="regenerateAllPostsMeta(this)" class="global-action-btn global-action-btn-secondary" data-i18n="settings.seo_regen_btn">Перегенерировать метатеги статей</button>
+                </div>
+            </div>
+
+            <!-- Секция: Язык -->
+            <div id="globalSection-language" class="global-section" style="display: none;">
+                <p style="color: var(--text-color); margin-bottom: 24px; opacity: 0.8;" data-i18n="settings.lang_desc">Выберите язык интерфейса редактора NPBlog.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <!-- Карточка Русского языка -->
+                    <div id="langCard-ru" class="lang-selection-card" onclick="selectLanguageOption('ru', true)" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; background: transparent; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 28px;">🇷🇺</div>
+                            <input type="radio" name="editor_lang_radio" id="langRadio-ru" value="ru" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('ru', true)">
+                        </div>
+                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_ru_name">Русский</div>
+                    </div>
+
+                    <!-- Карточка Английского языка -->
+                    <div id="langCard-en" class="lang-selection-card" onclick="selectLanguageOption('en', true)" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; background: transparent; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 28px;">🇬🇧</div>
+                            <input type="radio" name="editor_lang_radio" id="langRadio-en" value="en" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('en', true)">
+                        </div>
+                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_en_name">English</div>
+                    </div>
+
+                    <!-- Карточка Украинского языка -->
+                    <div id="langCard-uk" class="lang-selection-card" onclick="selectLanguageOption('uk', true)" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; background: transparent; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 28px;">🇺🇦</div>
+                            <input type="radio" name="editor_lang_radio" id="langRadio-uk" value="uk" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('uk', true)">
+                        </div>
+                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_uk_name">Українська</div>
+                    </div>
                 </div>
             </div>
         </div>
-        </div>
     </div>
+</div>
 </div>
 
 <!-- Модальное окно уведомлений -->
 <div id="notificationModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden;">
+    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 450px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; border: 1px solid var(--border-color);">
         <div style="padding: 24px;">
             <h3 id="notificationTitle" style="margin: 0 0 15px 0; color: var(--text-color); font-size: 18px; font-weight: 600;"></h3>
             <p id="notificationMessage" style="color: var(--text-color); margin: 0 0 20px 0; line-height: 1.6; opacity: 0.9;"></p>
@@ -1886,25 +1921,25 @@ if (file_exists($versionFile)) {
 
 <!-- Модальное окно пользовательских шрифтов -->
 <div id="customFontsModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 600px; width: 90%; max-height: 70vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column;">
+    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 600px; width: 90%; max-height: 70vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-color);">
         <div style="padding: 20px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: flex-start; flex-direction: column; gap: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <h3 style="margin: 0; color: var(--text-color); font-size: 20px;">Пользовательские шрифты</h3>
+                <h3 style="margin: 0; color: var(--text-color); font-size: 20px;" data-i18n="modals.fonts_title">Пользовательские шрифты</h3>
                 <button type="button" onclick="closeCustomFontsModal()" style="background: transparent; border: none; font-size: 28px; color: var(--text-color); cursor: pointer; line-height: 1;">×</button>
             </div>
-            <p style="color: var(--text-color); margin: 0; opacity: 0.7; font-size: 13px;">
+            <p style="color: var(--text-color); margin: 0; opacity: 0.7; font-size: 13px;" data-i18n="modals.fonts_subtitle">
                 Загрузите файлы шрифтов (.ttf, .otf, .woff, .woff2)
             </p>
             <input type="file" id="fontUploadInput" accept=".ttf,.otf,.woff,.woff2" style="display: none;" onchange="uploadFontFile()">
-            <button type="button" onclick="document.getElementById('fontUploadInput').click()" class="global-action-btn global-action-btn-primary" style="margin-top: 10px;">Загрузить шрифт с устройства</button>
+            <button type="button" onclick="document.getElementById('fontUploadInput').click()" class="global-action-btn global-action-btn-primary" style="margin-top: 10px;" data-i18n="modals.fonts_upload_btn">Загрузить шрифт с устройства</button>
         </div>
         <div style="padding: 20px; overflow-y: auto; flex: 1;">
             <div id="customFontsList" style="display: grid; gap: 12px;">
                 <!-- Список шрифтов будет загружен динамически -->
             </div>
             <div id="customFontsEmpty" style="display: none; text-align: center; padding: 40px; color: var(--text-color); opacity: 0.5;">
-                <p>Нет загруженных шрифтов</p>
-                <p style="font-size: 14px; margin-top: 10px;">Добавьте файлы шрифтов в папку data/fonts/</p>
+                <p data-i18n="modals.fonts_empty_title">Нет загруженных шрифтов</p>
+                <p style="font-size: 14px; margin-top: 10px;" data-i18n="modals.fonts_empty_hint">Добавьте файлы шрифтов в папку data/fonts/</p>
             </div>
         </div>
     </div>
@@ -1912,9 +1947,9 @@ if (file_exists($versionFile)) {
 
 <!-- Модальное окно менеджера автосохранений -->
 <div id="autosaveManagerModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 800px; width: 90%; max-height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column;">
+    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 800px; width: 90%; max-height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-color);">
         <div style="padding: 20px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px;">Менеджер автосохранений</h3>
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px;" data-i18n="modals.as_title">Менеджер автосохранений</h3>
             <button type="button" onclick="closeAutosaveManager()" style="background: transparent; border: none; font-size: 28px; color: var(--text-color); cursor: pointer; line-height: 1;">×</button>
         </div>
         <div style="padding: 20px; overflow-y: auto; flex: 1;">
@@ -1922,8 +1957,8 @@ if (file_exists($versionFile)) {
                 <!-- Список автосохранений будет загружен динамически -->
             </div>
             <div id="autosavesEmpty" style="display: none; text-align: center; padding: 40px; color: var(--text-color); opacity: 0.5;">
-                <p>Нет автосохранений</p>
-                <p style="font-size: 14px; margin-top: 10px;">Автосохранения появятся здесь после включения функции автосохранения</p>
+                <p data-i18n="modals.as_empty_title">Нет автосохранений</p>
+                <p style="font-size: 14px; margin-top: 10px;" data-i18n="modals.as_empty_hint">Автосохранения появятся здесь после включения функции автосохранения</p>
             </div>
         </div>
     </div>
@@ -1931,28 +1966,28 @@ if (file_exists($versionFile)) {
 
 <!-- Модальное окно обновления системы -->
 <div id="systemUpdateModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column;">
+    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-color);">
         <div style="padding: 20px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px;">Обновление NPBlog</h3>
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px;" data-i18n="modals.sys_title">Обновление NPBlog</h3>
             <button type="button" onclick="closeSystemUpdateModal()" style="background: transparent; border: none; font-size: 28px; color: var(--text-color); cursor: pointer; line-height: 1;">×</button>
         </div>
         <div style="padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 15px;">
             <div id="systemVersionsInfo" style="background: rgba(0,0,0,0.05); padding: 15px; border-radius: 8px; font-size: 14px; color: var(--text-color); display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    Текущая версия: <strong id="currentSysVersion">Загрузка...</strong>
+                    <span data-i18n="modals.sys_ver_current">Текущая версия:</span> <strong id="currentSysVersion" data-i18n="common.loading">Загрузка...</strong>
                 </div>
-                <button type="button" onclick="openRestoreModal()" style="background: transparent; border: 1px solid var(--border-color); padding: 5px 10px; border-radius: 5px; cursor: pointer; color: var(--text-color);">Откат (Rollback)</button>
+                <button type="button" onclick="openRestoreModal()" style="background: transparent; border: 1px solid var(--border-color); padding: 5px 10px; border-radius: 5px; cursor: pointer; color: var(--text-color);" data-i18n="modals.sys_rollback_btn">Откат (Rollback)</button>
             </div>
             
-            <p style="color: var(--text-color);">Выберите архив .zip с новой версией NPBlog.</p>
+            <p style="color: var(--text-color);" data-i18n="modals.sys_choose_archive">Выберите архив .zip с новой версией NPBlog.</p>
             <input type="file" id="systemUpdateInput" accept=".zip" style="display: none;" onchange="handleSystemUpdatePreview()">
-            <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="global-action-btn global-action-btn-primary">Выбрать архив</button>
+            <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="global-action-btn global-action-btn-primary" data-i18n="modals.sys_select_btn">Выбрать архив</button>
             <div id="updatePreviewContainer" style="display: none; flex-direction: column; gap: 10px;">
-                <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; color: #1565c0; font-size: 14px;">Версия в архиве: <strong id="newSysVersion">Неизвестно</strong></div>
-                <h4 style="color: var(--text-color); margin: 0;">Будут заменены следующие файлы:</h4>
+                <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; color: #1565c0; font-size: 14px;"><span data-i18n="modals.sys_arch_ver">Версия в архиве:</span> <strong id="newSysVersion" data-i18n="common.unknown">Неизвестно</strong></div>
+                <h4 style="color: var(--text-color); margin: 0;" data-i18n="modals.sys_will_replace">Будут заменены следующие файлы:</h4>
                 <div id="updateFileList" style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px; font-size: 13px; color: var(--text-color);"></div>
-                <p style="color: var(--text-color); font-size: 12px; opacity: 0.8;">Ваши статьи, медиафайлы и настройки останутся нетронутыми. Перед обновлением будет создан бекап всего проекта.</p>
-                <button type="button" id="startUpdateProcessBtn" onclick="startSystemUpdateProcess()" class="global-action-btn global-action-btn-primary" style="background-color: #d32f2f;">Начать обновление</button>
+                <p style="color: var(--text-color); font-size: 12px; opacity: 0.8;" data-i18n="modals.sys_safe_note">Ваши статьи, медиафайлы и настройки останутся нетронутыми. Перед обновлением будет создан бекап всего проекта.</p>
+                <button type="button" id="startUpdateProcessBtn" onclick="startSystemUpdateProcess()" class="global-action-btn global-action-btn-primary" style="background-color: #d32f2f;" data-i18n="modals.sys_start_btn">Начать обновление</button>
             </div>
             <div id="updateProgressContainer" style="display: none; flex-direction: column; gap: 10px;">
                 <p id="updateStatusText" style="color: var(--text-color); margin: 0; font-weight: bold;">Подготовка...</p>
@@ -1961,15 +1996,15 @@ if (file_exists($versionFile)) {
                 </div>
             </div>
             <div id="updateSuccessContainer" style="display: none; flex-direction: column; gap: 10px; align-items: center; padding-top: 10px;">
-                <p style="color: #4CAF50; font-weight: bold; font-size: 18px; margin: 0;">Обновление успешно завершено!</p>
-                <button type="button" onclick="window.location.reload()" class="global-action-btn global-action-btn-primary">Обновить страницу</button>
+                <p style="color: #4CAF50; font-weight: bold; font-size: 18px; margin: 0;" data-i18n="modals.sys_success">Обновление успешно завершено!</p>
+                <button type="button" onclick="window.location.reload()" class="global-action-btn global-action-btn-primary" data-i18n="modals.sys_reload_page">Обновить страницу</button>
             </div>
         </div>
     </div>
 </div>
 
 <div id="restoreSystemModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10001; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column;">
+    <div class="modal-content" style="background: var(--bg-color); border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; box-shadow: 0 4px 20px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-color);">
         <div style="padding: 20px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
             <h3 style="margin: 0; color: var(--text-color); font-size: 20px;">Откат системы (Rollback)</h3>
             <button type="button" onclick="closeRestoreModal()" style="background: transparent; border: none; font-size: 28px; color: var(--text-color); cursor: pointer; line-height: 1;">×</button>
@@ -2204,7 +2239,7 @@ function uploadBackground() {
     const scope = document.getElementById('backgroundScope').value;
     
     if (!file) {
-        showAlert('Выберите файл');
+        showAlert(window.t ? window.t('notifications.select_file_alert', 'Выберите файл') : 'Выберите файл');
         return;
     }
     
@@ -2221,7 +2256,7 @@ function uploadBackground() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Фон успешно загружен');
+            showAlert(window.t ? window.t('notifications.bg_uploaded_alert', 'Фон успешно загружен') : 'Фон успешно загружен');
             fileInput.value = '';
             
             // Обновляем отображение текущего фона
@@ -2246,17 +2281,17 @@ function uploadBackground() {
             
             currentBgInfo.style.display = 'block';
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка загрузки фона');
+        showAlert(window.t ? window.t('notifications.bg_upload_error_alert', 'Ошибка загрузки фона') : 'Ошибка загрузки фона');
     });
 }
 
 function removeBackground() {
-    showConfirm('Вернуть стандартный фон?').then(result => {
+    showConfirm(window.t ? window.t('notifications.bg_restore_default_confirm', 'Вернуть стандартный фон?') : 'Вернуть стандартный фон?').then(result => {
         if (!result) return;
         
         fetch('remove_background.php', {
@@ -2270,9 +2305,9 @@ function removeBackground() {
     .then(data => {
         if (data.success) {
             if (data.globalApplied) {
-                showAlert('Индивидуальный фон удален. Применен глобальный фон.');
+                showAlert(window.t ? window.t('notifications.bg_individual_removed_alert', 'Индивидуальный фон удален. Применен глобальный фон.') : 'Индивидуальный фон удален. Применен глобальный фон.');
             } else {
-                showAlert('Фон удален');
+                showAlert(window.t ? window.t('notifications.bg_removed_alert', 'Фон удален') : 'Фон удален');
             }
             
             // Перезагружаем настройки чтобы показать глобальный фон если он есть
@@ -2290,12 +2325,12 @@ function removeBackground() {
                     });
             }, 100);
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка удаления фона');
+        showAlert(window.t ? window.t('notifications.bg_remove_error_alert', 'Ошибка удаления фона') : 'Ошибка удаления фона');
     });
     });
 }
@@ -2333,14 +2368,14 @@ function saveOverlaySettings() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Настройки подложки сохранены');
+            showAlert(window.t ? window.t('notifications.overlay_settings_saved', 'Настройки подложки сохранены') : 'Настройки подложки сохранены');
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка сохранения настроек');
+        showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
     });
 }
 
@@ -2438,16 +2473,17 @@ function showGlobalSection(sectionName) {
     
     // Обновляем заголовок
     const titles = {
-        'backgrounds': 'Фон статей',
-        'blogview': 'Вид blog.html',
-        'autosave': 'Автосохранение',
-        'appearance': 'Внешний вид',
-        'experimental': 'Экспериментальные функции',
-        'rss': 'Интеграция RSS (Виджет)',
-        'rss_feed': 'RSS Лента (XML)',
-        'paths': 'Пути к блoгам',
-        'security': 'Безопасность и доступ',
-        'seo': 'SEO и соцсети'
+        'backgrounds': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_backgrounds', 'Фон статей') : 'Фон статей'),
+        'blogview': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_blogview', 'Вид blog.html') : 'Вид blog.html'),
+        'autosave': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_autosave', 'Автосохранение') : 'Автосохранение'),
+        'appearance': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_appearance', 'Внешний вид') : 'Внешний вид'),
+        'experimental': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_experimental', 'Экспериментальные функции') : 'Экспериментальные функции'),
+        'rss': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_rss', 'Интеграция RSS (Виджет)') : 'Интеграция RSS (Виджет)'),
+        'rss_feed': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_rss_feed', 'RSS Лента (XML)') : 'RSS Лента (XML)'),
+        'paths': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_paths', 'Пути к блoгам') : 'Пути к блoгам'),
+        'security': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_security', 'Безопасность и доступ') : 'Безопасность и доступ'),
+        'seo': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_seo', 'SEO и соцсети') : 'SEO и соцсети'),
+        'language': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_language', 'Язык') : 'Язык')
     };
     document.getElementById('globalSectionTitle').textContent = titles[sectionName] || '';
     
@@ -2471,6 +2507,74 @@ function showGlobalSection(sectionName) {
         loadSecuritySettings();
     } else if (sectionName === 'seo') {
         loadSeoSettings();
+    } else if (sectionName === 'language') {
+        loadLanguageSettings();
+    }
+}
+
+function loadLanguageSettings() {
+    var lang = (window.NPBlogI18n ? window.NPBlogI18n.getLanguage() : (localStorage.getItem('npblog_language') || 'ru'));
+    selectLanguageOption(lang, false);
+}
+
+function selectLanguageOption(lang, autoSave) {
+    var cardRu = document.getElementById('langCard-ru');
+    var cardEn = document.getElementById('langCard-en');
+    var cardUk = document.getElementById('langCard-uk');
+    var radioRu = document.getElementById('langRadio-ru');
+    var radioEn = document.getElementById('langRadio-en');
+    var radioUk = document.getElementById('langRadio-uk');
+    
+    if (radioRu) radioRu.checked = (lang === 'ru');
+    if (radioEn) radioEn.checked = (lang === 'en');
+    if (radioUk) radioUk.checked = (lang === 'uk');
+    
+    var cards = { 'ru': cardRu, 'en': cardEn, 'uk': cardUk };
+    ['ru', 'en', 'uk'].forEach(function(code) {
+        var c = cards[code];
+        if (c) {
+            if (lang === code) {
+                c.style.borderColor = 'var(--primary-color, #4CAF50)';
+                c.style.background = 'rgba(76, 175, 80, 0.08)';
+            } else {
+                c.style.borderColor = 'var(--border-color)';
+                c.style.background = 'transparent';
+            }
+        }
+    });
+
+    if (autoSave && window.NPBlogI18n) {
+        applySelectedLanguage(lang);
+    }
+}
+
+function applySelectedLanguage(lang) {
+    if (!lang) {
+        var radioEn = document.getElementById('langRadio-en');
+        var radioUk = document.getElementById('langRadio-uk');
+        if (radioEn && radioEn.checked) {
+            lang = 'en';
+        } else if (radioUk && radioUk.checked) {
+            lang = 'uk';
+        } else {
+            lang = 'ru';
+        }
+    }
+    
+    if (window.NPBlogI18n) {
+        window.NPBlogI18n.setLanguage(lang, true, function(res) {
+            var ind = document.getElementById('langSavedIndicator');
+            if (ind) {
+                ind.style.display = 'inline';
+                setTimeout(function() { ind.style.display = 'none'; }, 3000);
+            }
+            if (typeof showNotification === 'function') {
+                showNotification(window.NPBlogI18n.t('settings.lang_success', 'Язык интерфейса успешно изменён!'), 'success');
+            }
+            var title = (lang === 'en' ? 'Language' : (lang === 'uk' ? 'Мова' : 'Язык'));
+            var titleEl = document.getElementById('globalSectionTitle');
+            if (titleEl) titleEl.textContent = title;
+        });
     }
 }
 
@@ -2647,7 +2751,7 @@ function uploadGlobalBackground() {
     const scope = document.getElementById('globalBackgroundScope').value;
     
     if (!file) {
-        showAlert('Выберите файл');
+        showAlert(window.t ? window.t('notifications.select_file_alert', 'Выберите файл') : 'Выберите файл');
         return;
     }
     
@@ -2663,21 +2767,21 @@ function uploadGlobalBackground() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Глобальный фон успешно загружен и применен ко всем статьям');
+            showAlert(window.t ? window.t('notifications.global_bg_applied_all', 'Глобальный фон успешно загружен и применен ко всем статьям') : 'Глобальный фон успешно загружен и применен ко всем статьям');
             fileInput.value = '';
             loadGlobalBackground();
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка загрузки фона');
+        showAlert(window.t ? window.t('notifications.bg_upload_error_alert', 'Ошибка загрузки фона') : 'Ошибка загрузки фона');
     });
 }
 
 function removeGlobalBackground() {
-    showConfirm('Удалить глобальный фон из всех статей?').then(result => {
+    showConfirm(window.t ? window.t('notifications.global_bg_delete_confirm', 'Удалить глобальный фон из всех статей?') : 'Удалить глобальный фон из всех статей?').then(result => {
         if (!result) return;
         
         fetch('remove_global_background.php', {
@@ -2686,15 +2790,15 @@ function removeGlobalBackground() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Глобальный фон удален');
+            showAlert(window.t ? window.t('notifications.global_bg_deleted', 'Глобальный фон удален') : 'Глобальный фон удален');
             loadGlobalBackground();
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка удаления фона');
+        showAlert(window.t ? window.t('notifications.bg_remove_error_alert', 'Ошибка удаления фона') : 'Ошибка удаления фона');
     });
     });
 }
@@ -2710,14 +2814,14 @@ function savePoweredBySetting(checked) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Настройка сохранена');
+            showAlert(window.t ? window.t('notifications.setting_saved', 'Настройка сохранена') : 'Настройка сохранена');
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка сохранения настройки');
+        showAlert(window.t ? window.t('notifications.setting_save_error', 'Ошибка сохранения настройки') : 'Ошибка сохранения настройки');
     });
 }
 
@@ -2760,19 +2864,19 @@ function saveSeoSettings() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Настройки SEO успешно сохранены');
+            showAlert(window.t ? window.t('notifications.seo_settings_saved', 'Настройки SEO успешно сохранены') : 'Настройки SEO успешно сохранены');
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка сохранения настроек SEO');
+        showAlert(window.t ? window.t('notifications.seo_settings_save_error', 'Ошибка сохранения настроек SEO') : 'Ошибка сохранения настроек SEO');
     });
 }
 
 function regenerateAllPostsMeta(btn) {
-    showConfirm('Перегенерировать метатеги во всех опубликованных статьях? Это обновит Open Graph и Twitter Cards превью на основе текущих глобальных настроек SEO.').then(result => {
+    showConfirm(window.t ? window.t('notifications.seo_regenerate_confirm', 'Перегенерировать метатеги во всех опубликованных статьях? Это обновит Open Graph и Twitter Cards превью на основе текущих глобальных настроек SEO.') : 'Перегенерировать метатеги во всех опубликованных статьях? Это обновит Open Graph и Twitter Cards превью на основе текущих глобальных настроек SEO.').then(result => {
         if (!result) return;
         
         const originalText = btn ? btn.textContent : '';
@@ -2787,14 +2891,14 @@ function regenerateAllPostsMeta(btn) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showAlert('Метатеги успешно обновлены! Обработано статей: ' + data.processed + ', обновлено: ' + data.updated);
+                showAlert(window.t ? window.t('notifications.seo_regenerated_param', 'Метатеги успешно обновлены! Обработано статей: ' + data.processed + ', обновлено: ' + data.updated, { processed: data.processed, updated: data.updated }) : 'Метатеги успешно обновлены! Обработано статей: ' + data.processed + ', обновлено: ' + data.updated);
             } else {
-                showAlert('Ошибка: ' + data.error);
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showAlert('Произошла ошибка при обновлении метатегов');
+            showAlert(window.t ? window.t('notifications.seo_regenerate_error', 'Произошла ошибка при обновлении метатегов') : 'Произошла ошибка при обновлении метатегов');
         })
         .finally(() => {
             if (btn) {
@@ -2806,7 +2910,7 @@ function regenerateAllPostsMeta(btn) {
 }
 
 function updateBackgroundStyles() {
-    showConfirm('Обновить стили фона во всех статьях? Это применит новые отступы padding к существующим статьям.').then(result => {
+    showConfirm(window.t ? window.t('notifications.bg_update_styles_confirm', 'Обновить стили фона во всех статьях? Это применит новые отступы padding к существующим статьям.') : 'Обновить стили фона во всех статьях? Это применит новые отступы padding к существующим статьям.').then(result => {
         if (!result) return;
         
         fetch('update_background_styles.php', {
@@ -2815,14 +2919,14 @@ function updateBackgroundStyles() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Стили обновлены в ' + data.updated + ' статьях');
+            showAlert(window.t ? window.t('notifications.bg_styles_updated_param', 'Стили обновлены в ' + data.updated + ' статьях', { updated: data.updated }) : 'Стили обновлены в ' + data.updated + ' статьях');
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка обновления стилей');
+        showAlert(window.t ? window.t('notifications.bg_styles_update_error', 'Ошибка обновления стилей') : 'Ошибка обновления стилей');
     });
     });
 }
@@ -2830,7 +2934,7 @@ function updateBackgroundStyles() {
 // Функции для модальных уведомлений
 let notificationCallback = null;
 
-function showAlert(message, title = 'Уведомление') {
+function showAlert(message, title = null) {
     return new Promise((resolve) => {
         const modal = document.getElementById('notificationModal');
         const titleEl = document.getElementById('notificationTitle');
@@ -2838,10 +2942,11 @@ function showAlert(message, title = 'Уведомление') {
         const cancelBtn = document.getElementById('notificationCancelBtn');
         const okBtn = document.getElementById('notificationOkBtn');
         
-        titleEl.textContent = title;
+        const defaultTitle = window.t ? window.t('common.info', 'Уведомление') : 'Уведомление';
+        titleEl.textContent = title || defaultTitle;
         messageEl.textContent = message;
         cancelBtn.style.display = 'none';
-        okBtn.textContent = 'OK';
+        okBtn.textContent = window.t ? window.t('common.ok', 'OK') : 'OK';
         
         notificationCallback = resolve;
         modal.style.display = 'flex';
@@ -2852,7 +2957,7 @@ function showAlert(message, title = 'Уведомление') {
     });
 }
 
-function showConfirm(message, title = 'Подтверждение') {
+function showConfirm(message, title = null) {
     return new Promise((resolve) => {
         const modal = document.getElementById('notificationModal');
         const titleEl = document.getElementById('notificationTitle');
@@ -2860,10 +2965,12 @@ function showConfirm(message, title = 'Подтверждение') {
         const cancelBtn = document.getElementById('notificationCancelBtn');
         const okBtn = document.getElementById('notificationOkBtn');
         
-        titleEl.textContent = title;
+        const defaultTitle = window.t ? window.t('common.confirm', 'Подтверждение') : 'Подтверждение';
+        titleEl.textContent = title || defaultTitle;
         messageEl.textContent = message;
         cancelBtn.style.display = 'inline-block';
-        okBtn.textContent = 'Подтвердить';
+        cancelBtn.textContent = window.t ? window.t('common.cancel', 'Отмена') : 'Отмена';
+        okBtn.textContent = window.t ? window.t('common.confirm', 'Подтвердить') : 'Подтвердить';
         
         notificationCallback = resolve;
         modal.style.display = 'flex';
@@ -2929,7 +3036,7 @@ function uploadBlogBackground() {
     const mode = document.getElementById('blogBackgroundMode').value;
     
     if (!file) {
-        showAlert('Выберите файл');
+        showAlert(window.t ? window.t('notifications.select_file_alert', 'Выберите файл') : 'Выберите файл');
         return;
     }
     
@@ -2944,21 +3051,21 @@ function uploadBlogBackground() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Фон для blog.html успешно загружен и применен');
+            showAlert(window.t ? window.t('notifications.blog_bg_uploaded', 'Фон для blog.html успешно загружен и применен') : 'Фон для blog.html успешно загружен и применен');
             fileInput.value = '';
             loadBlogViewSettings();
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка загрузки фона');
+        showAlert(window.t ? window.t('notifications.bg_upload_error_alert', 'Ошибка загрузки фона') : 'Ошибка загрузки фона');
     });
 }
 
 function removeBlogBackground() {
-    showConfirm('Удалить фон со страницы blog.html?').then(result => {
+    showConfirm(window.t ? window.t('notifications.blog_bg_delete_confirm', 'Удалить фон со страницы blog.html?') : 'Удалить фон со страницы blog.html?').then(result => {
         if (!result) return;
         
         fetch('remove_blog_background.php', {
@@ -2967,15 +3074,15 @@ function removeBlogBackground() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showAlert('Фон удален со страницы blog.html');
+                showAlert(window.t ? window.t('notifications.blog_bg_deleted', 'Фон удален со страницы blog.html') : 'Фон удален со страницы blog.html');
                 loadBlogViewSettings();
             } else {
-                showAlert('Ошибка: ' + data.error);
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showAlert('Ошибка удаления фона');
+            showAlert(window.t ? window.t('notifications.bg_remove_error_alert', 'Ошибка удаления фона') : 'Ошибка удаления фона');
         });
     });
 }
@@ -2996,7 +3103,7 @@ function saveAutosaveSettings() {
     const interval = parseInt(document.getElementById('autosaveInterval').value);
     
     if (interval < 10 || interval > 600) {
-        showAlert('Интервал должен быть от 10 до 600 секунд');
+        showAlert(window.t ? window.t('notifications.autosave_interval_range', 'Интервал должен быть от 10 до 600 секунд') : 'Интервал должен быть от 10 до 600 секунд');
         return;
     }
     
@@ -3011,14 +3118,14 @@ function saveAutosaveSettings() {
     .then(data => {
         if (data.success) {
             loadAndApplyAllSettings();
-            showAlert('Настройки автосохранения сохранены');
+            showAlert(window.t ? window.t('notifications.autosave_settings_saved', 'Настройки автосохранения сохранены') : 'Настройки автосохранения сохранены');
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка сохранения настроек');
+        showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
     });
 }
 
@@ -3079,9 +3186,9 @@ function updateAutosaveBadge() {
     const badge = document.getElementById('autosaveBadgeText');
     if (badge) {
         if (hasEditorContent()) {
-            badge.textContent = `Автосохранение через ${autosaveCountdown}с`;
+            badge.textContent = window.t ? window.t('header.autosave_badge_timer', `Автосохранение через ${autosaveCountdown}с`, { sec: autosaveCountdown }) : `Автосохранение через ${autosaveCountdown}с`;
         } else {
-            badge.textContent = 'Ожидание контента...';
+            badge.textContent = window.t ? window.t('header.autosave_badge_waiting', 'Ожидание контента...') : 'Ожидание контента...';
         }
     }
 }
@@ -3127,7 +3234,7 @@ function performAutosave() {
         if (data.success) {
             console.log('Автосохранение выполнено');
             // Можно показать небольшое уведомление
-            showNotification('Автосохранение выполнено', 'success');
+            showNotification(window.t ? window.t('notifications.autosave_completed', 'Автосохранение выполнено') : 'Автосохранение выполнено', 'success');
         }
     })
     .catch(error => {
@@ -3312,21 +3419,21 @@ function loadAutosaveById(id) {
                 }
             }
             
-            showNotification('Автосохранение загружено', 'success');
+            showNotification(window.t ? window.t('notifications.autosave_loaded', 'Автосохранение загружено') : 'Автосохранение загружено', 'success');
             closeAutosaveManager();
             closeGlobalSettings();
         } else {
-            showAlert('Ошибка загрузки автосохранения');
+            showAlert(window.t ? window.t('notifications.autosave_load_error', 'Ошибка загрузки автосохранения') : 'Ошибка загрузки автосохранения');
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка при загрузке автосохранения');
+        showAlert(window.t ? window.t('notifications.autosave_load_failed', 'Ошибка при загрузке автосохранения') : 'Ошибка при загрузке автосохранения');
     });
 }
 
 function deleteAutosaveById(id) {
-    showConfirm('Удалить это автосохранение?').then(result => {
+    showConfirm(window.t ? window.t('notifications.autosave_delete_confirm', 'Удалить это автосохранение?') : 'Удалить это автосохранение?').then(result => {
         if (!result) return;
         
         fetch('delete_autosave.php', {
@@ -3339,16 +3446,16 @@ function deleteAutosaveById(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showNotification('Автосохранение удалено', 'success');
+                showNotification(window.t ? window.t('notifications.autosave_deleted', 'Автосохранение удалено') : 'Автосохранение удалено', 'success');
                 loadAutosavesList();
                 checkAutosaveExists();
             } else {
-                showAlert('Ошибка: ' + data.error);
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showAlert('Ошибка при удалении автосохранения');
+            showAlert(window.t ? window.t('notifications.autosave_delete_error', 'Ошибка при удалении автосохранения') : 'Ошибка при удалении автосохранения');
         });
     });
 }
@@ -3366,14 +3473,14 @@ function saveBlogViewSettings() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
+            showAlert(window.t ? window.t('notifications.blogview_saved_notice', 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.') : 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка сохранения настроек');
+        showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
     });
 }
 
@@ -3453,17 +3560,17 @@ function saveCrossBlogNav(action) {
     .then(data => {
         if (data.success) {
             if (action === 'apply_all') {
-                showAlert('Кнопки успешно применены к ' + data.updated_count + ' блогам со стандартными шаблонами!');
+                showAlert(window.t ? window.t('notifications.crossblog_applied_param', 'Кнопки успешно применены к ' + data.updated_count + ' блогам со стандартными шаблонами!', { count: data.updated_count }) : 'Кнопки успешно применены к ' + data.updated_count + ' блогам со стандартными шаблонами!');
             } else {
-                showAlert('Кнопки навигации успешно сохранены!');
+                showAlert(window.t ? window.t('notifications.crossblog_saved', 'Кнопки навигации успешно сохранены!') : 'Кнопки навигации успешно сохранены!');
             }
             checkCrossBlogNavStatus();
         } else {
-            showAlert('Ошибка: ' + (data.message || 'Неизвестная ошибка'));
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + (data.message || (window.t ? window.t('notifications.unknown_error', 'Неизвестная ошибка') : 'Неизвестная ошибка')), { error: data.message || (window.t ? window.t('notifications.unknown_error', 'Неизвестная ошибка') : 'Неизвестная ошибка') }) : 'Ошибка: ' + (data.message || 'Неизвестная ошибка'));
         }
     })
     .catch(err => {
-        showAlert('Произошла ошибка при сохранении кнопок.');
+        showAlert(window.t ? window.t('notifications.crossblog_save_error', 'Произошла ошибка при сохранении кнопок.') : 'Произошла ошибка при сохранении кнопок.');
         console.error(err);
     });
 }
@@ -3490,9 +3597,14 @@ function loadAndApplyAllSettings() {
                 } else {
                     stopAutosave();
                 }
-                checkAutosaveExists();
+                // 2. Язык интерфейса
+                if (settings.language && window.NPBlogI18n) {
+                    if (window.NPBlogI18n.getLanguage() !== settings.language) {
+                        window.NPBlogI18n.setLanguage(settings.language, false);
+                    }
+                }
                 
-                // 2. Внешний вид и экспериментальные функции
+                // 3. Внешний вид и экспериментальные функции
                 const hideModeButtons = settings.hideEditorModeButtons || false;
                 const amoledTheme = settings.amoledTheme || false;
                 const enableUndoRedo = settings.enableUndoRedo || false;
@@ -3724,14 +3836,14 @@ function saveAppearanceSettings() {
     .then(data => {
         if (data.success) {
             loadAndApplyAllSettings();
-            showAlert('Настройки внешнего вида сохранены!');
+            showAlert(window.t ? window.t('notifications.appearance_settings_saved', 'Настройки внешнего вида сохранены!') : 'Настройки внешнего вида сохранены!');
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка сохранения настроек');
+        showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
     });
 }
 
@@ -3762,22 +3874,22 @@ function saveExperimentalSettings() {
     .then(data => {
         if (data.success) {
             loadAndApplyAllSettings();
-            showAlert('Экспериментальные настройки сохранены!');
+            showAlert(window.t ? window.t('notifications.experimental_settings_saved', 'Экспериментальные настройки сохранены!') : 'Экспериментальные настройки сохранены!');
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка сохранения настроек');
+        showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
     });
 }
 
 function deleteAllCustomTemplates() {
-    showConfirm('Вы действительно хотите безвозвратно удалить ВСЕ кастомные шаблоны? Стандартный шаблон NPBlog будет сохранен.').then(confirmed => {
+    showConfirm(window.t ? window.t('notifications.custom_templates_delete_all_confirm', 'Вы действительно хотите безвозвратно удалить ВСЕ кастомные шаблоны? Стандартный шаблон NPBlog будет сохранен.') : 'Вы действительно хотите безвозвратно удалить ВСЕ кастомные шаблоны? Стандартный шаблон NPBlog будет сохранен.').then(confirmed => {
         if (!confirmed) return;
         
-        showNotification('Удаление кастомных шаблонов...', 'info');
+        showNotification(window.t ? window.t('notifications.custom_templates_deleting', 'Удаление кастомных шаблонов...') : 'Удаление кастомных шаблонов...', 'info');
         
         fetch('delete_custom_templates.php', {
             method: 'POST'
@@ -3785,19 +3897,19 @@ function deleteAllCustomTemplates() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showNotification('Все кастомные шаблоны успешно удалены', 'success');
+                showNotification(window.t ? window.t('notifications.custom_templates_deleted_all', 'Все кастомные шаблоны успешно удалены') : 'Все кастомные шаблоны успешно удалены', 'success');
                 // Обновляем список шаблонов в менеджере, если он открыт
                 const templateDialog = document.getElementById('templateManagerDialog');
                 if (typeof openTemplateManager === 'function' && templateDialog && templateDialog.style.display === 'block') {
                     openTemplateManager();
                 }
             } else {
-                showAlert('Ошибка удаления: ' + data.error);
+                showAlert(window.t ? window.t('notifications.custom_templates_delete_error_param', 'Ошибка удаления: ' + data.error, { error: data.error }) : 'Ошибка удаления: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showAlert('Ошибка сети при удалении шаблонов');
+            showAlert(window.t ? window.t('notifications.custom_templates_network_error', 'Ошибка сети при удалении шаблонов') : 'Ошибка сети при удалении шаблонов');
         });
     });
 }
@@ -3861,11 +3973,11 @@ function saveSecuritySettings() {
             const confirmPassword = document.getElementById('settingsConfirmPassword').value;
             
             if (!newPassword) {
-                showAlert('Введите новый пароль!');
+                showAlert(window.t ? window.t('notifications.sec_enter_new_pwd', 'Введите новый пароль!') : 'Введите новый пароль!');
                 return;
             }
             if (newPassword !== confirmPassword) {
-                showAlert('Пароли не совпадают!');
+                showAlert(window.t ? window.t('notifications.sec_pwd_mismatch', 'Пароли не совпадают!') : 'Пароли не совпадают!');
                 return;
             }
             payload.new_password = newPassword;
@@ -3880,15 +3992,15 @@ function saveSecuritySettings() {
             const confirmPassword = document.getElementById('changeSettingsConfirmPassword').value;
             
             if (!oldPassword) {
-                showAlert('Введите старый пароль!');
+                showAlert(window.t ? window.t('notifications.sec_enter_old_pwd', 'Введите старый пароль!') : 'Введите старый пароль!');
                 return;
             }
             if (!newPassword) {
-                showAlert('Введите новый пароль!');
+                showAlert(window.t ? window.t('notifications.sec_enter_new_pwd', 'Введите новый пароль!') : 'Введите новый пароль!');
                 return;
             }
             if (newPassword !== confirmPassword) {
-                showAlert('Новые пароли не совпадают!');
+                showAlert(window.t ? window.t('notifications.sec_new_pwd_mismatch', 'Новые пароли не совпадают!') : 'Новые пароли не совпадают!');
                 return;
             }
             
@@ -3898,7 +4010,7 @@ function saveSecuritySettings() {
         } else if (disableFormVisible) {
             const oldPassword = document.getElementById('disableSettingsPassword').value;
             if (!oldPassword) {
-                showAlert('Введите текущий пароль для подтверждения отключения!');
+                showAlert(window.t ? window.t('notifications.sec_enter_current_to_disable', 'Введите текущий пароль для подтверждения отключения!') : 'Введите текущий пароль для подтверждения отключения!');
                 return;
             }
             
@@ -3930,17 +4042,17 @@ function saveSecuritySettings() {
             });
             
             loadAndApplyAllSettings();
-            showAlert('Настройки безопасности успешно сохранены!');
+            showAlert(window.t ? window.t('notifications.sec_settings_saved', 'Настройки безопасности успешно сохранены!') : 'Настройки безопасности успешно сохранены!');
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка сохранения настроек безопасности');
+        showAlert(window.t ? window.t('notifications.sec_save_error', 'Ошибка сохранения настроек безопасности') : 'Ошибка сохранения настроек безопасности');
     });
 }
 
@@ -4016,7 +4128,7 @@ function savePathsSettings() {
     });
     
     if (paths.length === 0) {
-        showAlert('Укажите хотя бы один путь к папке блога!');
+        showAlert(window.t ? window.t('notifications.paths_at_least_one', 'Укажите хотя бы один путь к папке блога!') : 'Укажите хотя бы один путь к папке блога!');
         return;
     }
     
@@ -4029,14 +4141,14 @@ function savePathsSettings() {
     .then(data => {
         if (data.success) {
             loadAndApplyAllSettings();
-            showAlert('Настройки путей сохранены!');
+            showAlert(window.t ? window.t('notifications.paths_saved', 'Настройки путей сохранены!') : 'Настройки путей сохранены!');
         } else {
-            showAlert('Ошибка сохранения путей: ' + data.error);
+            showAlert(window.t ? window.t('notifications.paths_save_error_param', 'Ошибка сохранения путей: ' + data.error, { error: data.error }) : 'Ошибка сохранения путей: ' + data.error);
         }
     })
     .catch(err => {
         console.error('Ошибка сохранения путей:', err);
-        showAlert('Ошибка при сохранении путей');
+        showAlert(window.t ? window.t('notifications.paths_save_failed', 'Ошибка при сохранении путей') : 'Ошибка при сохранении путей');
     });
 }
 
@@ -4095,7 +4207,7 @@ function selectActiveBlog(selectedPath) {
             window.currentActiveBlogPath = selectedPath;
             const folderName = getBlogFolderName(selectedPath, window.allBlogPaths);
             if (typeof showNotification === 'function') {
-                showNotification('Выбран блог: ' + folderName, 'info');
+                showNotification(window.t ? window.t('notifications.blog_selected_param', 'Выбран блог: ' + folderName, { name: folderName }) : 'Выбран блог: ' + folderName, 'info');
             }
             if (typeof loadPosts === 'function') {
                 loadPosts();
@@ -4107,7 +4219,7 @@ function selectActiveBlog(selectedPath) {
                 }
             }
         } else {
-            showAlert('Ошибка при выборе блога: ' + data.error);
+            showAlert(window.t ? window.t('notifications.blog_select_error_param', 'Ошибка при выборе блога: ' + data.error, { error: data.error }) : 'Ошибка при выборе блога: ' + data.error);
         }
     })
     .catch(err => {
@@ -4153,15 +4265,15 @@ function saveRssFeedSettings() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Настройки RSS ленты успешно сохранены!');
+            showAlert(window.t ? window.t('notifications.rss_feed_saved', 'Настройки RSS ленты успешно сохранены!') : 'Настройки RSS ленты успешно сохранены!');
             loadAndApplyAllSettings();
         } else {
-            showAlert('Ошибка при сохранении настроек: ' + data.error);
+            showAlert(window.t ? window.t('notifications.rss_feed_save_error_param', 'Ошибка при сохранении настроек: ' + data.error, { error: data.error }) : 'Ошибка при сохранении настроек: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Ошибка:', error);
-        showAlert('Ошибка при сохранении настроек RSS ленты');
+        showAlert(window.t ? window.t('notifications.rss_feed_save_failed', 'Ошибка при сохранении настроек RSS ленты') : 'Ошибка при сохранении настроек RSS ленты');
     });
 }
 
@@ -4225,7 +4337,7 @@ function submitSessionReauth() {
                 }, 150);
             }
             
-            showNotification('Сессия успешно восстановлена! Теперь вы можете сохранить вашу работу.', 'success');
+            showNotification(window.t ? window.t('notifications.session_restored', 'Сессия успешно восстановлена! Теперь вы можете сохранить вашу работу.') : 'Сессия успешно восстановлена! Теперь вы можете сохранить вашу работу.', 'success');
         } else {
             errDiv.textContent = data.message || 'Неверный пароль';
             errDiv.style.display = 'block';
@@ -4304,15 +4416,15 @@ function saveSelectedTheme() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showNotification('Тема успешно применена и сохранена!', 'success');
+            showNotification(window.t ? window.t('notifications.theme_saved', 'Тема успешно применена и сохранена!') : 'Тема успешно применена и сохранена!', 'success');
             closeThemeManager();
         } else {
-            showAlert('Ошибка сохранения настройки темы');
+            showAlert(window.t ? window.t('notifications.theme_save_error', 'Ошибка сохранения настройки темы') : 'Ошибка сохранения настройки темы');
         }
     })
     .catch(err => {
         console.error(err);
-        showNotification('Тема применена локально', 'info');
+        showNotification(window.t ? window.t('notifications.theme_applied_local', 'Тема применена локально') : 'Тема применена локально', 'info');
         closeThemeManager();
     });
 }
@@ -4345,7 +4457,7 @@ function handleCustomThemeFileUpload(event) {
     if (!file) return;
     
     if (!file.name.toLowerCase().endsWith('.css')) {
-        showAlert('Пожалуйста, выберите файл с расширением .css');
+        showAlert(window.t ? window.t('notifications.theme_select_css_file', 'Пожалуйста, выберите файл с расширением .css') : 'Пожалуйста, выберите файл с расширением .css');
         return;
     }
     
@@ -4359,7 +4471,7 @@ function handleCustomThemeFileUpload(event) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showNotification(data.message || 'Кастомная тема загружена!', 'success');
+            showNotification(data.message || (window.t ? window.t('notifications.theme_custom_loaded', 'Кастомная тема загружена!') : 'Кастомная тема загружена!'), 'success');
             
             const textarea = document.getElementById('customCssEditor');
             if (textarea && data.cssContent) {
@@ -4379,12 +4491,12 @@ function handleCustomThemeFileUpload(event) {
             selectThemeOption('custom');
             applyTheme('custom');
         } else {
-            showAlert('Ошибка загрузки темы: ' + (data.error || 'Неизвестная ошибка'));
+            showAlert(window.t ? window.t('notifications.theme_load_error_param', 'Ошибка загрузки темы: ' + (data.error || (window.t ? window.t('notifications.unknown_error', 'Неизвестная ошибка') : 'Неизвестная ошибка')), { error: data.error || (window.t ? window.t('notifications.unknown_error', 'Неизвестная ошибка') : 'Неизвестная ошибка') }) : 'Ошибка загрузки темы: ' + (data.error || 'Неизвестная ошибка'));
         }
     })
     .catch(err => {
         console.error('Ошибка при загрузке темы:', err);
-        showAlert('Сетевая ошибка при загрузке темы');
+        showAlert(window.t ? window.t('notifications.theme_network_error', 'Сетевая ошибка при загрузке темы') : 'Сетевая ошибка при загрузке темы');
     });
 }
 
@@ -4417,14 +4529,14 @@ function saveCustomCssCode() {
             
             selectThemeOption('custom');
             applyTheme('custom');
-            showNotification('Кастомный CSS код применен и сохранен!', 'success');
+            showNotification(window.t ? window.t('notifications.theme_custom_css_saved', 'Кастомный CSS код применен и сохранен!') : 'Кастомный CSS код применен и сохранен!', 'success');
         } else {
-            showAlert('Ошибка при сохранении CSS кода');
+            showAlert(window.t ? window.t('notifications.theme_css_save_error', 'Ошибка при сохранении CSS кода') : 'Ошибка при сохранении CSS кода');
         }
     })
     .catch(err => {
         console.error(err);
-        showAlert('Ошибка сети при сохранении CSS кода');
+        showAlert(window.t ? window.t('notifications.theme_css_network_error', 'Ошибка сети при сохранении CSS кода') : 'Ошибка сети при сохранении CSS кода');
     });
 }
 
@@ -4435,7 +4547,7 @@ function lockEditor() {
         if (data.success) {
             window.location.reload();
         } else {
-            showAlert('Не удалось заблокировать редактор');
+            showAlert(window.t ? window.t('notifications.lock_editor_failed', 'Не удалось заблокировать редактор') : 'Не удалось заблокировать редактор');
         }
     })
     .catch(error => {
@@ -4480,7 +4592,7 @@ function uploadFontFile() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification('Шрифт успешно загружен', 'success');
+            showNotification(window.t ? window.t('notifications.font_uploaded', 'Шрифт успешно загружен') : 'Шрифт успешно загружен', 'success');
             loadCustomFonts(); // Refresh list
             
             // Reload custom fonts globally
@@ -4493,13 +4605,13 @@ function uploadFontFile() {
                     });
             }
         } else {
-            showNotification('Ошибка: ' + data.error, 'error');
+            showNotification(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error, 'error');
         }
         input.value = ''; // Reset file input
     })
     .catch(error => {
         console.error('Ошибка загрузки шрифта:', error);
-        showNotification('Ошибка при загрузке шрифта', 'error');
+        showNotification(window.t ? window.t('notifications.font_upload_error', 'Ошибка при загрузке шрифта') : 'Ошибка при загрузке шрифта', 'error');
         input.value = '';
     });
 }
@@ -4691,14 +4803,14 @@ function handleSystemUpdatePreview() {
             
             document.getElementById('updatePreviewContainer').style.display = 'flex';
         } else {
-            showNotification('Ошибка: ' + data.error, 'error');
+            showNotification(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error, 'error');
             document.getElementById('systemUpdateBtn').style.display = 'block';
             input.value = '';
         }
     })
     .catch(error => {
         console.error('Update preview error:', error);
-        showNotification('Ошибка при анализе архива', 'error');
+        showNotification(window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива', 'error');
         document.getElementById('updateProgressContainer').style.display = 'none';
         document.getElementById('systemUpdateBtn').style.display = 'block';
         input.value = '';
@@ -4727,14 +4839,14 @@ function startSystemUpdateProcess() {
         } else {
             document.getElementById('updateProgressContainer').style.display = 'none';
             document.getElementById('systemUpdateBtn').style.display = 'block';
-            showNotification('Ошибка обновления: ' + data.error, 'error');
+            showNotification(window.t ? window.t('notifications.update_error_param', 'Ошибка обновления: ' + data.error, { error: data.error }) : 'Ошибка обновления: ' + data.error, 'error');
         }
     })
     .catch(error => {
         console.error('Update process error:', error);
         document.getElementById('updateProgressContainer').style.display = 'none';
         document.getElementById('systemUpdateBtn').style.display = 'block';
-        showNotification('Критическая ошибка при обновлении', 'error');
+        showNotification(window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении', 'error');
     });
 }
 </script>
@@ -4769,29 +4881,29 @@ function startSystemUpdateProcess() {
                 
                 <!-- Инструменты -->
                 <div>
-                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">Инструменты</h4>
+                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_tools">Инструменты</h4>
                     <div style="display: flex; flex-direction: column; gap: 8px;" id="imgEditorToolsContainer">
                         <button type="button" class="img-editor-tool-btn active" data-tool="pencil" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">✏️</span> Карандаш
+                            <span style="font-size: 16px;">✏️</span> <span data-i18n="modals.img_editor_tool_pencil">Карандаш</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="line" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">📏</span> Прямая линия
+                            <span style="font-size: 16px;">📏</span> <span data-i18n="modals.img_editor_tool_line">Прямая линия</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="arrow" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">↗️</span> Стрелка
+                            <span style="font-size: 16px;">↗️</span> <span data-i18n="modals.img_editor_tool_arrow">Стрелка</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="pixelate" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">⬛</span> Пикселизация
+                            <span style="font-size: 16px;">⬛</span> <span data-i18n="modals.img_editor_tool_pixelate">Пикселизация</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="text" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">🔤</span> Текст
+                            <span style="font-size: 16px;">🔤</span> <span data-i18n="modals.img_editor_tool_text">Текст</span>
                         </button>
                     </div>
                 </div>
                 
                 <!-- Цвет -->
                 <div id="imgEditorColorSection">
-                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">Цвет</h4>
+                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_color">Цвет</h4>
                     <div style="display: flex; flex-direction: column; gap: 10px;">
                         <input type="color" id="imgEditorColorPicker" value="#ff0000" style="width: 100%; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; padding: 2px; cursor: pointer; background: transparent;">
                         <!-- Пресеты -->
@@ -5256,21 +5368,21 @@ function saveImgEditorChanges() {
             const separator = data.url.includes('?') ? '&' : '?';
             imgEditorTargetImg.src = data.url + separator + 't=' + Date.now();
             
-            showNotification('Изображение успешно сохранено!', 'success');
+            showNotification(window.t ? window.t('notifications.image_saved', 'Изображение успешно сохранено!') : 'Изображение успешно сохранено!', 'success');
             closeImgEditorModal();
             
             if (typeof triggerAutosave === 'function') {
                 triggerAutosave();
             }
         } else {
-            showNotification('Ошибка сохранения: ' + data.error, 'error');
+            showNotification(window.t ? window.t('notifications.image_save_error_param', 'Ошибка сохранения: ' + data.error, { error: data.error }) : 'Ошибка сохранения: ' + data.error, 'error');
         }
     })
     .catch(error => {
         saveBtn.disabled = false;
         saveBtn.innerHTML = oldText;
         console.error('Save edited image error:', error);
-        showNotification('Критическая ошибка сохранения изображения', 'error');
+        showNotification(window.t ? window.t('notifications.image_save_critical_error', 'Критическая ошибка сохранения изображения') : 'Критическая ошибка сохранения изображения', 'error');
     });
 }
 
@@ -5666,14 +5778,14 @@ document.addEventListener('DOMContentLoaded', function() {
         visibilityBtn.onclick = function() {
             if (target.id.startsWith('divider-custom-')) {
                 target.remove();
-                showNotification('Разделитель удален', 'info');
+                showNotification(window.t ? window.t('notifications.tb_divider_removed', 'Разделитель удален') : 'Разделитель удален', 'info');
             } else {
                 if (target.classList.contains('customizer-hidden')) {
                     target.classList.remove('customizer-hidden');
-                    showNotification('Элемент включен', 'success');
+                    showNotification(window.t ? window.t('notifications.tb_item_enabled', 'Элемент включен') : 'Элемент включен', 'success');
                 } else {
                     target.classList.add('customizer-hidden');
-                    showNotification('Элемент скрыт', 'info');
+                    showNotification(window.t ? window.t('notifications.tb_item_hidden', 'Элемент скрыт') : 'Элемент скрыт', 'info');
                 }
             }
             menu.style.display = 'none';
@@ -5692,12 +5804,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         row1.appendChild(target);
                     }
                 }
-                showNotification('Элемент возвращен на панель', 'success');
+                showNotification(window.t ? window.t('notifications.tb_item_restored', 'Элемент возвращен на панель') : 'Элемент возвращен на панель', 'success');
             } else {
                 // Переносим в выпадающее меню
                 if (dropdown) {
                     dropdown.appendChild(target);
-                    showNotification('Элемент перенесен в меню "Прочее"', 'info');
+                    showNotification(window.t ? window.t('notifications.tb_item_moved_more', 'Элемент перенесен в меню "Прочее"') : 'Элемент перенесен в меню "Прочее"', 'info');
                 }
             }
             menu.style.display = 'none';
@@ -5785,7 +5897,7 @@ document.addEventListener('DOMContentLoaded', function() {
         adjustHeaderPadding();
         
         const label = type === 'spacer' ? 'Пустой разделитель' : 'Разделитель';
-        showNotification(label + ' добавлен. Перетащите его в нужное место.', 'success');
+        showNotification(window.t ? window.t('notifications.tb_item_added_param', label + ' добавлен. Перетащите его в нужное место.', { label: label }) : label + ' добавлен. Перетащите его в нужное место.', 'success');
         
         const dividerMenu = document.getElementById('dividerDropdownMenu');
         if (dividerMenu) dividerMenu.style.display = 'none';
@@ -5922,18 +6034,18 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                showNotification('Раскладка панели успешно сохранена', 'success');
+                showNotification(window.t ? window.t('notifications.tb_layout_saved', 'Раскладка панели успешно сохранена') : 'Раскладка панели успешно сохранена', 'success');
                 exitHeaderCustomizationMode();
                 if (typeof updateHeaderHeightState === 'function') {
                     updateHeaderHeightState();
                 }
             } else {
-                showAlert('Ошибка сохранения: ' + data.error);
+                showAlert(window.t ? window.t('notifications.image_save_error_param', 'Ошибка сохранения: ' + data.error, { error: data.error }) : 'Ошибка сохранения: ' + data.error);
             }
         })
         .catch(err => {
             console.error('Ошибка сохранения:', err);
-            showAlert('Ошибка сети при сохранении раскладки');
+            showAlert(window.t ? window.t('notifications.tb_save_network_error', 'Ошибка сети при сохранении раскладки') : 'Ошибка сети при сохранении раскладки');
         });
     }
 
@@ -6040,15 +6152,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Модальное окно: Менеджер тем -->
 <div class="dialog" id="themeManagerModal" style="display: none;">
-    <div class="dialog-content" style="max-width: 580px; width: 95%; padding: 0 !important; overflow: hidden;">
+    <div class="dialog-content" style="max-width: 580px; width: 95%; padding: 0 !important; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="modals.theme_title">
                 Темы оформления
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="closeThemeManager()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;">Закрыть</button>
-                <button type="button" onclick="saveSelectedTheme()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;">Применить тему</button>
+                <button type="button" onclick="closeThemeManager()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; border-radius: 6px; cursor: pointer;" data-i18n="common.close">Закрыть</button>
+                <button type="button" onclick="saveSelectedTheme()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color, #4CAF50); color: #fff; border: none; font-weight: bold; border-radius: 6px; cursor: pointer;" data-i18n="modals.theme_apply_btn">Применить тему</button>
             </div>
         </div>
 

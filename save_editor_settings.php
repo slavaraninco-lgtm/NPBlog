@@ -18,6 +18,14 @@ if (isset($data['hideEditorModeButtons'])) {
     $existingSettings['hideEditorModeButtons'] = (bool)$data['hideEditorModeButtons'];
 }
 
+if (isset($data['language'])) {
+    $lang = strtolower(trim($data['language']));
+    if (in_array($lang, ['ru', 'en', 'uk'])) {
+        $existingSettings['language'] = $lang;
+        $_SESSION['editor_language'] = $lang;
+    }
+}
+
 if (isset($data['amoledTheme'])) {
     $existingSettings['amoledTheme'] = (bool)$data['amoledTheme'];
 }
