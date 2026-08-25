@@ -4252,9 +4252,10 @@ function openThemeManager() {
     currentSelectedTheme = localStorage.getItem('theme') || 'dark';
     updateThemeSelectionUI(currentSelectedTheme);
     
-    fetch('editor_settings.json?v=' + Date.now())
+    fetch('get_editor_settings.php?t=' + Date.now())
         .then(res => res.json())
-        .then(settings => {
+        .then(data => {
+            const settings = data.settings || {};
             if (settings.customThemeCss) {
                 const textarea = document.getElementById('customCssEditor');
                 if (textarea) textarea.value = settings.customThemeCss;
@@ -4605,14 +4606,14 @@ function openSystemUpdateModal() {
     document.getElementById('systemUpdateBtn').style.display = 'block';
     document.getElementById('systemUpdateInput').value = '';
     
-    // Fetch current version if version.json exists
-    fetch('version.json?t=' + Date.now())
+    // Fetch current version via PHP endpoint
+    fetch('update_system.php?action=get_version&t=' + Date.now())
         .then(response => {
-            if (!response.ok) throw new Error('version.json not found');
+            if (!response.ok) throw new Error('version not found');
             return response.json();
         })
         .then(data => {
-            if (data) {
+            if (data && data.success) {
                 if (data.dev === true || data.dev === 'true') {
                     document.getElementById('currentSysVersion').textContent = 'dev';
                 } else if (data.version) {

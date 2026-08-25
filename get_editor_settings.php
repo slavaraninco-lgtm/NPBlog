@@ -22,7 +22,9 @@ $defaults = [
     'rss_title' => 'NPBlog Feed',
     'rss_description' => 'NPBlog RSS Feed',
     'rss_use_first_line' => true,
-    'rss_content_template' => "*content*\n\n<p><a href=\"*url*\">Читать в блоге</a></p>"
+    'rss_content_template' => "*content*\n\n<p><a href=\"*url*\">Читать в блоге</a></p>",
+    'activeTheme' => 'dark',
+    'customThemeCss' => ''
 ];
 
 if (file_exists($settingsFile)) {
