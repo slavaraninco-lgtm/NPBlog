@@ -1,9 +1,14 @@
 <?php
 require_once __DIR__ . '/security_bootstrap.php';
+require_once __DIR__ . '/lang_helper.php';
+
+$availableLanguages = getAvailableLanguages();
+$availableCodes = getAvailableLanguageCodes();
+$defaultLang = !empty($availableCodes) ? $availableCodes[0] : 'ru';
 $settingsFile = 'editor_settings.json';
 $amoled = false;
 $activeTheme = 'dark';
-$currentLanguage = 'ru';
+$currentLanguage = $defaultLang;
 if (file_exists($settingsFile)) {
     $settings = json_decode(file_get_contents($settingsFile), true);
     if (!empty($settings['amoledTheme'])) {
@@ -12,11 +17,11 @@ if (file_exists($settingsFile)) {
     if (!empty($settings['activeTheme'])) {
         $activeTheme = $settings['activeTheme'];
     }
-    if (!empty($settings['language']) && in_array($settings['language'], ['ru', 'en', 'uk', 'lv'])) {
+    if (!empty($settings['language']) && isValidLanguageCode($settings['language'])) {
         $currentLanguage = $settings['language'];
     }
 }
-if (!empty($_SESSION['editor_language']) && in_array($_SESSION['editor_language'], ['ru', 'en', 'uk', 'lv'])) {
+if (!empty($_SESSION['editor_language']) && isValidLanguageCode($_SESSION['editor_language'])) {
     $currentLanguage = $_SESSION['editor_language'];
 }
 $customCssExists = file_exists(getDataPath('custom_editor_theme.css'));
@@ -38,6 +43,7 @@ if (file_exists($versionFile)) {
     <meta name="csrf-token" content="<?php echo isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : ''; ?>">
     <script src="lang/i18n.js?v=<?php echo file_exists(__DIR__ . '/lang/i18n.js') ? filemtime(__DIR__ . '/lang/i18n.js') : time(); ?>"></script>
     <script>
+        window.NPBLOG_AVAILABLE_LANGUAGES = <?php echo json_encode($availableLanguages, JSON_UNESCAPED_UNICODE); ?>;
         window.NPBLOG_LANG = '<?php echo htmlspecialchars($currentLanguage); ?>';
         const savedTheme = localStorage.getItem('theme') || '<?php echo $activeTheme; ?>';
         if (savedTheme === 'dark') {
@@ -1871,42 +1877,20 @@ if (file_exists($versionFile)) {
             <div id="globalSection-language" class="global-section" style="display: none;">
                 <p style="color: var(--text-color); margin-bottom: 24px; opacity: 0.8;" data-i18n="settings.lang_desc">Выберите язык интерфейса редактора NPBlog.</p>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                    <!-- Карточка Русского языка -->
-                    <div id="langCard-ru" class="lang-selection-card" onclick="selectLanguageOption('ru', true)" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; background: transparent; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
+                <div id="languageCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <?php foreach ($availableLanguages as $l): 
+                        $isSel = ($l['code'] === $currentLanguage);
+                        $borderStyle = $isSel ? 'var(--primary-color, #4CAF50)' : 'var(--border-color)';
+                        $bgStyle = $isSel ? 'rgba(76, 175, 80, 0.08)' : 'transparent';
+                    ?>
+                    <div id="langCard-<?php echo htmlspecialchars($l['code']); ?>" data-lang-code="<?php echo htmlspecialchars($l['code']); ?>" class="lang-selection-card" onclick="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" style="border: 2px solid <?php echo $borderStyle; ?>; border-radius: 12px; padding: 20px; cursor: pointer; background: <?php echo $bgStyle; ?>; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="font-size: 28px;">🇷🇺</div>
-                            <input type="radio" name="editor_lang_radio" id="langRadio-ru" value="ru" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('ru', true)">
+                            <div style="font-size: 28px;"><?php echo htmlspecialchars($l['smile']); ?></div>
+                            <input type="radio" name="editor_lang_radio" id="langRadio-<?php echo htmlspecialchars($l['code']); ?>" value="<?php echo htmlspecialchars($l['code']); ?>" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" <?php echo $isSel ? 'checked' : ''; ?>>
                         </div>
-                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_ru_name">Русский</div>
+                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;"><?php echo htmlspecialchars($l['name']); ?></div>
                     </div>
-
-                    <!-- Карточка Английского языка -->
-                    <div id="langCard-en" class="lang-selection-card" onclick="selectLanguageOption('en', true)" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; background: transparent; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="font-size: 28px;">🇬🇧</div>
-                            <input type="radio" name="editor_lang_radio" id="langRadio-en" value="en" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('en', true)">
-                        </div>
-                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_en_name">English</div>
-                    </div>
-
-                    <!-- Карточка Украинского языка -->
-                    <div id="langCard-uk" class="lang-selection-card" onclick="selectLanguageOption('uk', true)" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; background: transparent; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="font-size: 28px;">🇺🇦</div>
-                            <input type="radio" name="editor_lang_radio" id="langRadio-uk" value="uk" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('uk', true)">
-                        </div>
-                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_uk_name">Українська</div>
-                    </div>
-
-                    <!-- Карточка Латышского языка -->
-                    <div id="langCard-lv" class="lang-selection-card" onclick="selectLanguageOption('lv', true)" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; cursor: pointer; background: transparent; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="font-size: 28px;">🇱🇻</div>
-                            <input type="radio" name="editor_lang_radio" id="langRadio-lv" value="lv" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('lv', true)">
-                        </div>
-                        <div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;" data-i18n="settings.lang_lv_name">Latviešu</div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
@@ -2523,35 +2507,29 @@ function showGlobalSection(sectionName) {
 
 function loadLanguageSettings() {
     var lang = (window.NPBlogI18n ? window.NPBlogI18n.getLanguage() : (localStorage.getItem('npblog_language') || 'ru'));
+    var container = document.getElementById('languageCardsContainer');
+    if (container && window.NPBlogI18n && typeof window.NPBlogI18n.renderLanguageCards === 'function') {
+        window.NPBlogI18n.renderLanguageCards(container, lang);
+    }
     selectLanguageOption(lang, false);
 }
 
 function selectLanguageOption(lang, autoSave) {
-    var cardRu = document.getElementById('langCard-ru');
-    var cardEn = document.getElementById('langCard-en');
-    var cardUk = document.getElementById('langCard-uk');
-    var cardLv = document.getElementById('langCard-lv');
-    var radioRu = document.getElementById('langRadio-ru');
-    var radioEn = document.getElementById('langRadio-en');
-    var radioUk = document.getElementById('langRadio-uk');
-    var radioLv = document.getElementById('langRadio-lv');
+    if (!lang) return;
+    lang = String(lang).toLowerCase().trim();
     
-    if (radioRu) radioRu.checked = (lang === 'ru');
-    if (radioEn) radioEn.checked = (lang === 'en');
-    if (radioUk) radioUk.checked = (lang === 'uk');
-    if (radioLv) radioLv.checked = (lang === 'lv');
-    
-    var cards = { 'ru': cardRu, 'en': cardEn, 'uk': cardUk, 'lv': cardLv };
-    ['ru', 'en', 'uk', 'lv'].forEach(function(code) {
-        var c = cards[code];
-        if (c) {
-            if (lang === code) {
-                c.style.borderColor = 'var(--primary-color, #4CAF50)';
-                c.style.background = 'rgba(76, 175, 80, 0.08)';
-            } else {
-                c.style.borderColor = 'var(--border-color)';
-                c.style.background = 'transparent';
-            }
+    var cards = document.querySelectorAll('.lang-selection-card');
+    cards.forEach(function(c) {
+        var cLang = c.getAttribute('data-lang-code');
+        var radio = document.getElementById('langRadio-' + cLang);
+        if (cLang === lang) {
+            c.style.borderColor = 'var(--primary-color, #4CAF50)';
+            c.style.background = 'rgba(76, 175, 80, 0.08)';
+            if (radio) radio.checked = true;
+        } else {
+            c.style.borderColor = 'var(--border-color)';
+            c.style.background = 'transparent';
+            if (radio) radio.checked = false;
         }
     });
 
@@ -2562,15 +2540,9 @@ function selectLanguageOption(lang, autoSave) {
 
 function applySelectedLanguage(lang) {
     if (!lang) {
-        var radioEn = document.getElementById('langRadio-en');
-        var radioUk = document.getElementById('langRadio-uk');
-        var radioLv = document.getElementById('langRadio-lv');
-        if (radioEn && radioEn.checked) {
-            lang = 'en';
-        } else if (radioUk && radioUk.checked) {
-            lang = 'uk';
-        } else if (radioLv && radioLv.checked) {
-            lang = 'lv';
+        var checkedRadio = document.querySelector('input[name="editor_lang_radio"]:checked');
+        if (checkedRadio) {
+            lang = checkedRadio.value;
         } else {
             lang = 'ru';
         }
@@ -2586,7 +2558,7 @@ function applySelectedLanguage(lang) {
             if (typeof showNotification === 'function') {
                 showNotification(window.NPBlogI18n.t('settings.lang_success', 'Язык интерфейса успешно изменён!'), 'success');
             }
-            var title = (lang === 'en' ? 'Language' : (lang === 'uk' ? 'Мова' : (lang === 'lv' ? 'Valoda' : 'Язык')));
+            var title = window.NPBlogI18n.t('settings.nav_language', 'Язык');
             var titleEl = document.getElementById('globalSectionTitle');
             if (titleEl) titleEl.textContent = title;
         });
@@ -2957,6 +2929,11 @@ function showAlert(message, title = null) {
         const cancelBtn = document.getElementById('notificationCancelBtn');
         const okBtn = document.getElementById('notificationOkBtn');
         
+        if (window.NPBlogI18n && typeof window.NPBlogI18n.translateMessage === 'function') {
+            message = window.NPBlogI18n.translateMessage(message);
+            if (title) title = window.NPBlogI18n.translateMessage(title);
+        }
+        
         const defaultTitle = window.t ? window.t('common.info', 'Уведомление') : 'Уведомление';
         titleEl.textContent = title || defaultTitle;
         messageEl.textContent = message;
@@ -2979,6 +2956,11 @@ function showConfirm(message, title = null) {
         const messageEl = document.getElementById('notificationMessage');
         const cancelBtn = document.getElementById('notificationCancelBtn');
         const okBtn = document.getElementById('notificationOkBtn');
+        
+        if (window.NPBlogI18n && typeof window.NPBlogI18n.translateMessage === 'function') {
+            message = window.NPBlogI18n.translateMessage(message);
+            if (title) title = window.NPBlogI18n.translateMessage(title);
+        }
         
         const defaultTitle = window.t ? window.t('common.confirm', 'Подтверждение') : 'Подтверждение';
         titleEl.textContent = title || defaultTitle;

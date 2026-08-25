@@ -1,8 +1,12 @@
 <?php
 require_once __DIR__ . '/security_bootstrap.php';
+require_once __DIR__ . '/lang_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $settingsFile = 'editor_settings.json';
+
+$availableCodes = getAvailableLanguageCodes();
+$defaultLang = !empty($availableCodes) ? $availableCodes[0] : 'ru';
 
 $defaults = [
     'hideEditorModeButtons' => false,
@@ -25,7 +29,7 @@ $defaults = [
     'rss_content_template' => "*content*\n\n<p><a href=\"*url*\">Читать в блоге</a></p>",
     'activeTheme' => 'dark',
     'customThemeCss' => '',
-    'language' => 'ru'
+    'language' => $defaultLang
 ];
 
 if (file_exists($settingsFile)) {

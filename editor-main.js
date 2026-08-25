@@ -19,6 +19,14 @@ function showNotification(message, type = 'info', title = '') {
     const container = document.getElementById('notificationContainer');
     if (!container) return;
     
+    // Auto-translate message and title through i18n engine
+    if (window.NPBlogI18n && typeof window.NPBlogI18n.translateMessage === 'function') {
+        message = window.NPBlogI18n.translateMessage(message);
+        if (title) {
+            title = window.NPBlogI18n.translateMessage(title);
+        }
+    }
+    
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     
@@ -30,10 +38,10 @@ function showNotification(message, type = 'info', title = '') {
     };
     
     const titles = {
-        success: title || (window.t ? window.t('notifications.title_success', 'Успешно') : 'Успешно'),
-        error: title || (window.t ? window.t('notifications.title_error', 'Ошибка') : 'Ошибка'),
-        warning: title || (window.t ? window.t('notifications.title_warning', 'Внимание') : 'Внимание'),
-        info: title || (window.t ? window.t('notifications.title_info', 'Информация') : 'Информация')
+        success: title || (window.t ? window.t('common.success', 'Успешно') : 'Успешно'),
+        error: title || (window.t ? window.t('common.error', 'Ошибка') : 'Ошибка'),
+        warning: title || (window.t ? window.t('common.warning', 'Внимание') : 'Внимание'),
+        info: title || (window.t ? window.t('common.info', 'Информация') : 'Информация')
     };
         
         notification.innerHTML = `
@@ -5714,7 +5722,7 @@ async function loadDraftsList() {
             } else {
                 const untitledText = window.t ? window.t('more_menu.untitled', 'Без названия') : 'Без названия';
                 const delDraftText = window.t ? window.t('more_menu.delete_draft', 'Удалить черновик') : 'Удалить черновик';
-                const currentLocale = (window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'lv') ? 'lv-LV' : ((window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'uk') ? 'uk-UA' : ((window.NPBlogI18n && window.NPBlogI18n.getLanguage() === 'en') ? 'en-US' : 'ru-RU'));
+                const currentLocale = (window.NPBlogI18n && typeof window.NPBlogI18n.getLocale === 'function') ? window.NPBlogI18n.getLocale() : 'ru-RU';
                 submenu.innerHTML = data.drafts.map(draft => {
                     const displayTitle = draft.title || untitledText;
                     const date = new Date(draft.timestamp * 1000).toLocaleString(currentLocale, {

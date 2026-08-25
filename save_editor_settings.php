@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/security_bootstrap.php';
+require_once __DIR__ . '/lang_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $data = json_decode(file_get_contents('php://input'), true);
@@ -20,7 +21,7 @@ if (isset($data['hideEditorModeButtons'])) {
 
 if (isset($data['language'])) {
     $lang = strtolower(trim($data['language']));
-    if (in_array($lang, ['ru', 'en', 'uk', 'lv'])) {
+    if (isValidLanguageCode($lang)) {
         $existingSettings['language'] = $lang;
         $_SESSION['editor_language'] = $lang;
     }
