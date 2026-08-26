@@ -477,48 +477,88 @@ body.modal-is-dragging * {
     overflow-x: auto;
     scrollbar-width: none;
     flex-shrink: 0;
+    position: relative;
 }
 .modal-tabs::-webkit-scrollbar {
     display: none;
 }
 
 .modal-tab-btn {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 12px 14px;
     font-size: 0.88rem;
-    font-weight: 500;
-    color: var(--modal-text-muted);
+    font-weight: 600;
+    color: var(--modal-text);
     background: transparent;
     border: none;
-    border-bottom: 2px solid transparent;
+    border-radius: 6px 6px 0 0;
     cursor: pointer;
     white-space: nowrap;
-    transition: all 0.2s ease;
-    margin-bottom: -1px;
+    user-select: none;
+    text-decoration: none;
+    opacity: 0.65;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 0;
 }
 
 .modal-tab-btn:hover {
-    color: var(--modal-text);
-    background: rgba(128, 128, 128, 0.06);
-    border-radius: 6px 6px 0 0;
+    opacity: 0.9;
+    background: rgba(128, 128, 128, 0.07);
 }
 
 .modal-tab-btn.is-active,
+.modal-tab-btn.active,
 .modal-tab-btn[aria-selected="true"] {
-    color: var(--modal-text);
-    font-weight: 600;
-    border-bottom-color: var(--modal-color-primary);
+    opacity: 1;
+    background: transparent;
+}
+
+/* Плавный индикатор активной вкладки снизу (без дергания и сдвига текста) */
+.modal-tab-btn::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--modal-color-primary, currentColor);
+    border-radius: 2px 2px 0 0;
+    transform: scaleX(0);
+    opacity: 0;
+    transform-origin: center bottom;
+    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.modal-tab-btn.is-active::after,
+.modal-tab-btn.active::after,
+.modal-tab-btn[aria-selected="true"]::after {
+    transform: scaleX(1);
+    opacity: 1;
 }
 
 .modal-tab-pane {
     display: none;
-    animation: modalBackdropFadeIn 0.2s ease;
 }
 
-.modal-tab-pane.is-active {
+.modal-tab-pane.is-active,
+.modal-tab-pane.active {
     display: block;
+    animation: modalTabFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalTabFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(3px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ==============================================================================
