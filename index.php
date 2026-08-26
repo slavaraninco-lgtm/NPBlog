@@ -1,6 +1,46 @@
 <?php
+// Перехват фатальных ошибок PHP и аварийный переход в Safe Mode
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
+        if (!headers_sent()) {
+            http_response_code(200);
+        }
+        $errObj = [
+            'message' => 'Критическая ошибка PHP: ' . $error['message'],
+            'filename' => $error['file'],
+            'lineno' => $error['line'],
+            'stack' => 'PHP Fatal Error in ' . $error['file'] . ':' . $error['line']
+        ];
+        echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>NPBlog - Safe Mode</title><style>body{margin:0;background:#18191e;color:#f3f4f6;font-family:sans-serif;}</style></head><body>';
+        if (file_exists(__DIR__ . '/modals_editor/safe_mode_modal.php')) {
+            include __DIR__ . '/modals_editor/safe_mode_modal.php';
+            echo '<script>
+                if (typeof enterSafeMode === "function") {
+                    enterSafeMode(' . json_encode($errObj, JSON_UNESCAPED_UNICODE) . ');
+                }
+            </script>';
+        } else {
+            echo '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;box-sizing:border-box;"><div style="background:#23242a;border:2px solid #ef4444;border-radius:12px;padding:24px;max-width:700px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.8);"><h2 style="color:#ef4444;margin-top:0;">🛡️ Safe Mode — Критическая ошибка PHP</h2><p style="color:#e5e7eb;">Обнаружена неисправимая ошибка на сервере:</p><pre style="background:#000;color:#fca5a5;padding:12px;border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap;">' . htmlspecialchars($error['message']) . ' в ' . htmlspecialchars($error['file']) . ':' . $error['line'] . '</pre><p style="color:#9ca3af;font-size:13px;">Для восстановления системы замените поврежденные файлы или восстановите их из резервной копии.</p></div></div>';
+        }
+        echo '</body></html>';
+    }
+});
+
 require_once __DIR__ . '/security_bootstrap.php';
 require_once __DIR__ . '/lang_helper.php';
+
+// Функция безопасного подключения модальных окон без падения PHP
+if (!function_exists('safe_include_editor_modal')) {
+    function safe_include_editor_modal($filename) {
+        $path = __DIR__ . '/modals_editor/' . $filename;
+        if (file_exists($path)) {
+            include_once $path;
+        } else {
+            echo "\n<script>if(typeof window.recordMissingComponent === 'function') window.recordMissingComponent(" . json_encode('modals_editor/' . $filename) . ");</script>\n";
+        }
+    }
+}
 
 $availableLanguages = getAvailableLanguages();
 $availableCodes = getAvailableLanguageCodes();
@@ -57,40 +97,79 @@ if (file_exists($versionFile)) {
         const DATA_URL_PREFIX = '<?php echo getDataUrl(); ?>';
         window.isDevBuild = <?php echo $isDevBuild ? 'true' : 'false'; ?>;
 
+        // Отслеживание отсутствующих компонентов
+        window._missingComponentsList = [];
+        window.recordMissingComponent = function(name) {
+            if (!window._missingComponentsList.includes(name)) {
+                window._missingComponentsList.push(name);
+            }
+            if (typeof window.enterSafeMode === 'function') {
+                window.enterSafeMode({
+                    message: 'Отсутствуют необходимые компоненты редактора: ' + window._missingComponentsList.join(', '),
+                    filename: name,
+                    stack: 'Missing component recorded: ' + name
+                });
+            }
+        };
+
         // Ранний перехватчик ошибок для перехода в Safe Mode
-        window._pendingSafeModeError = null;
-        window.addEventListener('error', function(e) {
-            const msg = e.message || 'Ошибка выполнения скрипта';
-            const src = e.filename || '';
-            const errorObj = {
-                message: msg,
-                filename: src,
-                lineno: e.lineno,
-                colno: e.colno,
-                stack: e.error ? e.error.stack : ''
-            };
+        window._safeModeErrors = [];
+        window.triggerSafeModeEarly = function(errorObj) {
+            window._safeModeErrors.push(errorObj);
             if (typeof window.enterSafeMode === 'function') {
                 window.enterSafeMode(errorObj);
-            } else {
-                window._pendingSafeModeError = errorObj;
             }
-        });
+        };
 
+        // 1. Перехват ошибок ресурсов (<script src="...">, <link href="..."> 404/network error) и JS ошибок в фазе захвата (true)
+        window.addEventListener('error', function(e) {
+            // 1. Ошибки загрузки DOM-элементов
+            if (e.target && e.target !== window && e.target.tagName) {
+                const tag = e.target.tagName.toLowerCase();
+                // Критичными для редактора являются только теги скриптов и стилей
+                if (tag === 'script' || tag === 'link') {
+                    const src = e.target.src || e.target.href || '';
+                    const errorObj = {
+                        message: `Не удалось загрузить ресурс <${tag}> (HTTP 404 / Ошибка сети): ${src}`,
+                        filename: src,
+                        lineno: 0,
+                        colno: 0,
+                        stack: `Resource load failure on <${tag}> with URL: ${src}`
+                    };
+                    window.triggerSafeModeEarly(errorObj);
+                }
+                // Ошибки img, video, audio и т.д. не являются критическими сбоями ядра редактора
+                return;
+            }
+            
+            // 2. Реальные ошибки выполнения JavaScript
+            if (e.error || e.message) {
+                const msg = e.message || (e.error && e.error.message) || 'Ошибка выполнения JavaScript';
+                const src = e.filename || (e.error && e.error.fileName) || '';
+                const errorObj = {
+                    message: msg,
+                    filename: src,
+                    lineno: e.lineno,
+                    colno: e.colno,
+                    stack: e.error ? (e.error.stack || e.error.toString()) : (e.message || '')
+                };
+                window.triggerSafeModeEarly(errorObj);
+            }
+        }, true);
+
+        // 2. Необработанные Promise Rejection
         window.addEventListener('unhandledrejection', function(e) {
             const reason = e.reason || {};
             const msg = reason.message || (typeof reason === 'string' ? reason : 'Необработанная ошибка Promise');
             const errorObj = {
                 message: msg,
-                stack: reason.stack || ''
+                filename: reason.fileName || '',
+                lineno: reason.lineNumber || 0,
+                stack: reason.stack || JSON.stringify(reason)
             };
-            if (typeof window.enterSafeMode === 'function') {
-                window.enterSafeMode(errorObj);
-            } else {
-                window._pendingSafeModeError = errorObj;
-            }
+            window.triggerSafeModeEarly(errorObj);
         });
         
-        // Global Fetch Interceptor to automatically append CSRF Token headers
         // Global Fetch Interceptor to automatically append CSRF Token headers and handle session expiration
         (function() {
             const originalFetch = window.fetch;
@@ -162,18 +241,21 @@ if (file_exists($versionFile)) {
     
     <!-- Контейнер для уведомлений -->
     <div class="notification-container" id="notificationContainer"></div>
+
+    <!-- Модальное окно Safe Mode (Аварийное восстановление) - подключается первым в body -->
+    <?php safe_include_editor_modal('safe_mode_modal.php'); ?>
     
     <!-- Диалог подтверждения удаления -->
-    <?php require_once __DIR__ . '/modals_editor/delete_confirm_modal.php'; ?>
+    <?php safe_include_editor_modal('delete_confirm_modal.php'); ?>
 
     <!-- Диалог сохранения в includes -->
-    <?php require_once __DIR__ . '/modals_editor/save_include_modal.php'; ?>
+    <?php safe_include_editor_modal('save_include_modal.php'); ?>
 
     <!-- Менеджер бэкапов -->
-    <?php require_once __DIR__ . '/modals_editor/backup_manager_modal.php'; ?>
+    <?php safe_include_editor_modal('backup_manager_modal.php'); ?>
 
     <!-- Диалог проверки нумерации -->
-    <?php require_once __DIR__ . '/modals_editor/numbering_check_modal.php'; ?>
+    <?php safe_include_editor_modal('numbering_check_modal.php'); ?>
 
     <!-- Гайд для первого запуска -->
     <div class="tutorial-overlay" id="tutorialOverlay">
@@ -437,19 +519,19 @@ if (file_exists($versionFile)) {
     </div>
     
     <!-- Менеджер шаблонов -->
-    <?php require_once __DIR__ . '/modals_editor/template_manager_modal.php'; ?>
+    <?php safe_include_editor_modal('template_manager_modal.php'); ?>
 
     <!-- Модальное окно добавления изображения -->
-    <?php require_once __DIR__ . '/modals_editor/image_upload_modal.php'; ?>
+    <?php safe_include_editor_modal('image_upload_modal.php'); ?>
 
     <!-- Модальное окно вставки кода -->
-    <?php require_once __DIR__ . '/modals_editor/code_modal.php'; ?>
+    <?php safe_include_editor_modal('code_modal.php'); ?>
 
 <!-- Модальное окно Вставки кнопки со ссылкой -->
-<?php require_once __DIR__ . '/modals_editor/custom_button_modal.php'; ?>
+<?php safe_include_editor_modal('custom_button_modal.php'); ?>
 
 <!-- Диалог загрузки файлов -->
-<?php require_once __DIR__ . '/modals_editor/file_upload_modal.php'; ?>
+<?php safe_include_editor_modal('file_upload_modal.php'); ?>
 
 <div id="fontSizeDialog" class="dialog">
     <div class="dialog-content">
@@ -464,25 +546,25 @@ if (file_exists($versionFile)) {
 
 
     <!-- Модальное окно добавления медиа -->
-    <?php require_once __DIR__ . '/modals_editor/media_modal.php'; ?>
+    <?php safe_include_editor_modal('media_modal.php'); ?>
 
     <!-- Модальное окно сворачиваемого блока -->
-    <?php require_once __DIR__ . '/modals_editor/spoiler_modal.php'; ?>
+    <?php safe_include_editor_modal('spoiler_modal.php'); ?>
 
     <!-- Модальное окно выделения маркером -->
-    <?php require_once __DIR__ . '/modals_editor/marker_modal.php'; ?>
+    <?php safe_include_editor_modal('marker_modal.php'); ?>
 
     <!-- Модальное окно вставки таблицы -->
-    <?php require_once __DIR__ . '/modals_editor/table_modal.php'; ?>
+    <?php safe_include_editor_modal('table_modal.php'); ?>
 
 <!-- Модальное окно перекрашивания ячейки -->
-<?php require_once __DIR__ . '/modals_editor/cell_color_modal.php'; ?>
+<?php safe_include_editor_modal('cell_color_modal.php'); ?>
 
     <!-- Модальное окно вставки ссылки -->
-    <?php require_once __DIR__ . '/modals_editor/link_modal.php'; ?>
+    <?php safe_include_editor_modal('link_modal.php'); ?>
 
 <!-- Модальное окно управления наборами смайлов -->
-<?php require_once __DIR__ . '/modals_editor/smile_sets_modal.php'; ?>
+<?php safe_include_editor_modal('smile_sets_modal.php'); ?>
 
 <script src="modals/modal.js?v=<?php echo file_exists(__DIR__ . '/modals/modal.js') ? filemtime(__DIR__ . '/modals/modal.js') : time(); ?>"></script>
 <script src="editor-main.js?v=<?php echo file_exists(__DIR__ . '/editor-main.js') ? filemtime(__DIR__ . '/editor-main.js') : time(); ?>"></script>
@@ -490,31 +572,28 @@ if (file_exists($versionFile)) {
 <script src="editor-img.js?v=<?php echo file_exists(__DIR__ . '/editor-img.js') ? filemtime(__DIR__ . '/editor-img.js') : time(); ?>"></script>
 
 <!-- Модальное окно дополнительных настроек -->
-<?php require_once __DIR__ . '/modals_editor/additional_settings_modal.php'; ?>
+<?php safe_include_editor_modal('additional_settings_modal.php'); ?>
 
 <!-- Модальное окно предупреждения о DEV сборке -->
-<?php require_once __DIR__ . '/modals_editor/dev_warning_modal.php'; ?>
+<?php safe_include_editor_modal('dev_warning_modal.php'); ?>
 
 <!-- Модальное окно глобальных параметров -->
-<?php require_once __DIR__ . '/modals_editor/global_settings_modal.php'; ?>
+<?php safe_include_editor_modal('global_settings_modal.php'); ?>
 
 <!-- Модальное окно пользовательских шрифтов -->
-<?php require_once __DIR__ . '/modals_editor/custom_fonts_modal.php'; ?>
+<?php safe_include_editor_modal('custom_fonts_modal.php'); ?>
 
 <!-- Модальное окно менеджера автосохранений -->
-<?php require_once __DIR__ . '/modals_editor/autosave_manager_modal.php'; ?>
+<?php safe_include_editor_modal('autosave_manager_modal.php'); ?>
 
 <!-- Модальные окна обновления и отката системы -->
-<?php require_once __DIR__ . '/modals_editor/system_update_modal.php'; ?>
+<?php safe_include_editor_modal('system_update_modal.php'); ?>
 
 <!-- Модальное окно публикации и загрузки по FTP -->
-<?php require_once __DIR__ . '/modals_editor/ftp_upload_modal.php'; ?>
+<?php safe_include_editor_modal('ftp_upload_modal.php'); ?>
 
 <!-- Модальное окно первоначальной настройки -->
-<?php require_once __DIR__ . '/modals_editor/initial_setup_modal.php'; ?>
-
-<!-- Модальное окно Safe Mode (Аварийное восстановление) -->
-<?php require_once __DIR__ . '/modals_editor/safe_mode_modal.php'; ?>
+<?php safe_include_editor_modal('initial_setup_modal.php'); ?>
 
 <script>
 function openRestoreModal() {
@@ -2346,6 +2425,13 @@ function loadAndApplyAllSettings() {
         })
         .catch(error => {
             console.error('Ошибка загрузки настроек редактора:', error);
+            if (typeof enterSafeMode === 'function') {
+                enterSafeMode({
+                    message: 'Ошибка загрузки/применения настроек редактора: ' + (error.message || error),
+                    filename: 'index.php',
+                    stack: error.stack || ''
+                });
+            }
         });
 }
 
@@ -4624,10 +4710,10 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- Диалог восстановления сессии -->
-<?php require_once __DIR__ . '/modals_editor/session_expired_modal.php'; ?>
+<?php safe_include_editor_modal('session_expired_modal.php'); ?>
 
 <!-- Модальное окно: Менеджер тем -->
-<?php require_once __DIR__ . '/modals_editor/theme_manager_modal.php'; ?>
+<?php safe_include_editor_modal('theme_manager_modal.php'); ?>
 
 </body>
 </html>

@@ -3,39 +3,156 @@
  * ==============================================================================
  * NPBlog Editor - Модальное окно Safe Mode (Аварийное восстановление)
  * ==============================================================================
- * Построено на едином фреймворке модальных окон (modals/modal.css, modals/modal.js).
- * Активируется автоматически при критических ошибках JS или отсутствии компонентов.
- * Отображает серое окружение и форму восстановления системы из ZIP-архива.
+ * Полностью автономный модуль Safe Mode с нулевой зависимостью от внешних скриптов/стилей.
+ * Активируется автоматически при любых ошибках JS, 404 на скриптах/стилях,
+ * фатальных ошибках PHP или отсутствии ключевых компонентов редактора.
  * ==============================================================================
  */
 ?>
-<div id="safeModeOverlay" class="safe-mode-backdrop" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999999; background: #1e1e24; color: #f3f4f6; overflow-y: auto; padding: 24px 16px; box-sizing: border-box; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<style id="safe-mode-core-styles">
+.safe-mode-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 99999999 !important;
+    background: #18191e !important;
+    color: #f3f4f6 !important;
+    overflow-y: auto !important;
+    padding: 24px 16px !important;
+    box-sizing: border-box !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+body.safe-mode-active {
+    overflow: hidden !important;
+}
+.safe-mode-card {
+    width: 100%;
+    max-width: 780px;
+    background: #23242a;
+    border: 2px solid #3c3e48;
+    border-radius: 14px;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.85);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+.safe-mode-header {
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid #3c3e48;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.safe-mode-badge {
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+    display: inline-block;
+}
+.safe-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+    text-decoration: none;
+    font-family: inherit;
+    line-height: 1.3;
+}
+.safe-mode-btn-primary {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #3b82f6;
+}
+.safe-mode-btn-primary:hover {
+    background: #1d4ed8;
+}
+.safe-mode-btn-secondary {
+    background: #374151;
+    color: #f3f4f6;
+    border-color: #4b5563;
+}
+.safe-mode-btn-secondary:hover {
+    background: #4b5563;
+}
+.safe-mode-btn-ghost {
+    background: transparent;
+    color: #9ca3af;
+    border-color: #4b5563;
+}
+.safe-mode-btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f3f4f6;
+}
+.safe-mode-btn-success {
+    background: #059669;
+    color: #ffffff;
+    border-color: #10b981;
+}
+.safe-mode-btn-success:hover {
+    background: #047857;
+}
+.safe-mode-dropzone {
+    border: 2px dashed #4b5563;
+    border-radius: 10px;
+    padding: 26px 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.02);
+}
+.safe-mode-dropzone:hover {
+    border-color: #60a5fa;
+    background: rgba(59, 130, 246, 0.05);
+}
+</style>
+
+<div id="safeModeOverlay" class="safe-mode-backdrop">
     
-    <div id="safeModeDialog" class="modal-dialog modal-lg" style="width: 100%; max-width: 780px; background: #25262c; border: 2px solid #3e404b; border-radius: 14px; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85); overflow: hidden; display: flex; flex-direction: column; animation: modalZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+    <div id="safeModeDialog" class="safe-mode-card">
         
         <!-- Шапка Safe Mode -->
-        <div class="modal-header" style="background: rgba(0, 0, 0, 0.25); border-bottom: 1px solid #3e404b; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between;">
-            <div class="modal-header-start" style="display: flex; align-items: center; gap: 14px;">
-                <span class="modal-icon icon-danger" style="font-size: 26px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 12px; color: #ef4444;">🛡️</span>
-                <div class="modal-titles">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 3px;">
-                        <h3 class="modal-title" style="margin: 0; font-size: 19px; font-weight: 700; color: #f9fafb; letter-spacing: -0.01em;" data-i18n="safemode.title">Safe Mode — Режим восстановления</h3>
-                        <span class="modal-badge" style="background: #ef4444; color: #ffffff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.05em;" data-i18n="safemode.badge">SAFE MODE</span>
+        <div class="safe-mode-header">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 3px; flex-wrap: wrap;">
+                        <h3 style="margin: 0; font-size: 19px; font-weight: 700; color: #f9fafb; letter-spacing: -0.01em;" data-i18n="safemode.title">Safe Mode — Режим восстановления</h3>
+
                     </div>
-                    <p class="modal-subtitle" style="margin: 0; font-size: 13px; color: #9ca3af;" data-i18n="safemode.subtitle">Редактор переведён в безопасный режим из-за обнаруженной ошибки или отсутствия компонентов</p>
+                    <p style="margin: 0; font-size: 13px; color: #9ca3af;" data-i18n="safemode.subtitle">Редактор переведён в безопасный режим из-за обнаруженной ошибки или отсутствия компонентов</p>
                 </div>
             </div>
         </div>
 
         <!-- Тело Safe Mode -->
-        <div class="modal-body" style="padding: 24px; overflow-y: auto; max-height: 70vh; color: #e5e7eb; font-size: 13.5px; line-height: 1.6;">
+        <div style="padding: 24px; overflow-y: auto; max-height: 70vh; color: #e5e7eb; font-size: 13.5px; line-height: 1.6;">
             
             <!-- Блок обнаруженной ошибки -->
-            <div class="modal-alert modal-alert-danger" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start;">
-                <span style="font-size: 20px; line-height: 1;">⚠️</span>
+            <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start;">
+                <span style="font-size: 20px; line-height: 1; flex-shrink: 0;">⚠️</span>
                 <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 700; font-size: 14px; color: #f87171; margin-bottom: 4px;" data-i18n="safemode.error_detected_title">Обнаружена ошибка:</div>
-                    <div id="safeModeErrorSummary" style="color: #fca5a5; font-family: monospace; font-size: 12.5px; word-break: break-word;">Неизвестная ошибка выполнения</div>
+                    <div style="font-weight: 700; font-size: 14px; color: #f87171; margin-bottom: 4px;" data-i18n="safemode.error_detected_title">Обнаружена ошибка / отсутствуют файлы:</div>
+                    <div id="safeModeErrorSummary" style="color: #fca5a5; font-family: monospace; font-size: 12.5px; word-break: break-word; white-space: pre-wrap;">Неизвестная ошибка выполнения</div>
                     
                     <details id="safeModeErrorDetailsWrap" style="margin-top: 10px; border-top: 1px dashed rgba(239, 68, 68, 0.3); padding-top: 8px;">
                         <summary style="cursor: pointer; font-size: 12px; color: #9ca3af; user-select: none;" data-i18n="safemode.error_details_toggle">Технические подробности (стек ошибки)</summary>
@@ -45,22 +162,21 @@
             </div>
 
             <!-- Блок восстановления через архив (ZIP) -->
-            <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid #374151; border-radius: 10px; padding: 18px; margin-bottom: 20px;">
+            <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid #374151; border-radius: 10px; padding: 18px; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                     <span style="font-size: 18px;">📦</span>
                     <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #f3f4f6;" data-i18n="safemode.recovery_title">Восстановление и обновление системы</h4>
                 </div>
                 <p style="margin: 0 0 16px 0; font-size: 12.5px; color: #9ca3af; line-height: 1.5;" data-i18n="safemode.recovery_desc">
-                    Загрузите официальный ZIP-архив с обновлением NPBlog, чтобы перезаписать поврежденные файлы ядра и восстановить работоспособность редактора. Ваши статьи и личные файлы не пострадают.
+                    Загрузите официальный ZIP-архив с обновлением NPBlog, чтобы восстановить отсутствующие или поврежденные файлы ядра редактора. Ваши статьи и личные файлы не пострадают.
                 </p>
 
                 <!-- Шаг 1: Выбор / Drag & Drop архива -->
                 <div id="safeModeUploadStep">
                     <input type="file" id="safeModeZipInput" accept=".zip" style="display: none;" onchange="handleSafeModeFileSelect(event)">
                     
-                    <div id="safeModeDropzone" onclick="document.getElementById('safeModeZipInput').click()" 
-                         ondragover="handleSafeModeDragOver(event)" ondragleave="handleSafeModeDragLeave(event)" ondrop="handleSafeModeDrop(event)"
-                         style="border: 2px dashed #4b5563; border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(255, 255, 255, 0.02);">
+                    <div id="safeModeDropzone" class="safe-mode-dropzone" onclick="document.getElementById('safeModeZipInput').click()" 
+                         ondragover="handleSafeModeDragOver(event)" ondragleave="handleSafeModeDragLeave(event)" ondrop="handleSafeModeDrop(event)">
                         <div style="font-size: 32px; margin-bottom: 8px;">📥</div>
                         <div style="font-size: 14px; font-weight: 600; color: #e5e7eb; margin-bottom: 4px;" data-i18n="safemode.drop_archive_text">Перетащите ZIP-архив сюда или нажмите для выбора</div>
                         <div style="font-size: 11.5px; color: #9ca3af;" data-i18n="safemode.drop_archive_hint">Поддерживаются официальные архивы обновлений NPBlog (.zip)</div>
@@ -86,8 +202,8 @@
                     </div>
 
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                        <button type="button" onclick="resetSafeModeUploadState()" class="modal-btn modal-btn-ghost" style="color: #9ca3af; border: 1px solid #4b5563; padding: 8px 16px; font-size: 13px;">Отмена</button>
-                        <button type="button" id="safeModeStartRestoreBtn" onclick="startSafeModeRestoreProcess()" class="modal-btn modal-btn-primary" style="background: #2563eb; color: #ffffff; padding: 8px 20px; font-weight: 600; font-size: 13px;" data-i18n="safemode.start_restore_btn">
+                        <button type="button" onclick="resetSafeModeUploadState()" class="safe-mode-btn safe-mode-btn-ghost">Отмена</button>
+                        <button type="button" id="safeModeStartRestoreBtn" onclick="startSafeModeRestoreProcess()" class="safe-mode-btn safe-mode-btn-primary" data-i18n="safemode.start_restore_btn">
                             🚀 Начать восстановление системы
                         </button>
                     </div>
@@ -106,7 +222,7 @@
                     <div style="font-size: 38px; margin-bottom: 8px;">🎉</div>
                     <div style="font-size: 16px; font-weight: 700; color: #10b981; margin-bottom: 4px;" data-i18n="safemode.restore_success_title">Система успешно восстановлена!</div>
                     <p style="font-size: 12.5px; color: #9ca3af; margin: 0 0 16px 0;" data-i18n="safemode.restore_success_desc">Все файлы ядра обновлены. Нажмите кнопку ниже для перезагрузки редактора.</p>
-                    <button type="button" onclick="window.location.reload(true)" class="modal-btn modal-btn-primary" style="background: #059669; color: #ffffff; padding: 10px 24px; font-weight: 600; font-size: 14px;" data-i18n="safemode.reload_btn">
+                    <button type="button" onclick="window.location.reload(true)" class="safe-mode-btn safe-mode-btn-success" data-i18n="safemode.reload_btn">
                         🔄 Перезагрузить страницу
                     </button>
                 </div>
@@ -116,18 +232,18 @@
         </div>
 
         <!-- Подвал Safe Mode -->
-        <div class="modal-footer" style="background: rgba(0, 0, 0, 0.25); border-top: 1px solid #3e404b; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="background: rgba(0, 0, 0, 0.25); border-top: 1px solid #3c3e48; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" onclick="window.location.reload(true)" class="modal-btn" style="background: #374151; color: #f3f4f6; border: 1px solid #4b5563; padding: 8px 16px; font-size: 13px;" data-i18n="safemode.reload_btn">
+                <button type="button" onclick="window.location.reload(true)" class="safe-mode-btn safe-mode-btn-secondary" data-i18n="safemode.reload_btn">
                     🔄 Перезагрузить
                 </button>
-                <button type="button" onclick="safeModeClearCacheAndReload()" class="modal-btn" style="background: #374151; color: #f3f4f6; border: 1px solid #4b5563; padding: 8px 16px; font-size: 13px;" data-i18n="safemode.clear_cache_reload_btn">
+                <button type="button" onclick="safeModeClearCacheAndReload()" class="safe-mode-btn safe-mode-btn-secondary" data-i18n="safemode.clear_cache_reload_btn">
                     🧹 Сбросить кэш и перезагрузить
                 </button>
             </div>
             
             <div>
-                <button type="button" onclick="exitSafeMode()" class="modal-btn" style="background: transparent; color: #9ca3af; border: 1px dashed #4b5563; padding: 8px 14px; font-size: 12px;" data-i18n="safemode.ignore_continue_btn">
+                <button type="button" onclick="exitSafeMode()" class="safe-mode-btn safe-mode-btn-ghost" style="font-size: 12px;" data-i18n="safemode.ignore_continue_btn">
                     ⚠️ Попробовать продолжить
                 </button>
             </div>
@@ -138,14 +254,17 @@
 
 <script>
 /**
- * Safe Mode Controller
+ * Safe Mode Standalone Controller
  */
 window.isSafeModeActive = false;
 window.safeModePendingUpdateToken = null;
 window.safeModePendingRootFolder = '';
 
+function getSafeModeCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 function enterSafeMode(errorData) {
-    if (window.isSafeModeActive) return;
     window.isSafeModeActive = true;
     
     console.error('NPBlog Safe Mode triggered:', errorData);
@@ -162,6 +281,12 @@ function enterSafeMode(errorData) {
     
     let summaryText = 'Неизвестная ошибка приложения';
     let stackText = '';
+
+    // Сбор отсутствующих компонентов
+    let missingInfo = '';
+    if (window._missingComponentsList && window._missingComponentsList.length > 0) {
+        missingInfo = 'Отсутствуют следующие файлы/компоненты:\n • ' + window._missingComponentsList.join('\n • ') + '\n\n';
+    }
 
     if (typeof errorData === 'string') {
         summaryText = errorData;
@@ -184,12 +309,14 @@ function enterSafeMode(errorData) {
         }
     }
 
-    if (summaryEl) summaryEl.textContent = summaryText;
-    if (stackEl) stackEl.textContent = stackText || 'Стек вызовов недоступен';
+    if (summaryEl) summaryEl.textContent = (missingInfo ? missingInfo + 'Ошибка: ' : '') + summaryText;
+    if (stackEl) stackEl.textContent = stackText || (missingInfo ? missingInfo : 'Стек вызовов недоступен');
 
     // Применяем переводы если i18n доступен
-    if (window.NPBlogI18n && typeof window.NPBlogI18n.applyTranslations === 'function') {
-        window.NPBlogI18n.applyTranslations(overlay);
+    if (window.NPBlogI18n && typeof window.NPBlogI18n.applyTranslations === 'function' && overlay) {
+        try {
+            window.NPBlogI18n.applyTranslations(overlay);
+        } catch(e) {}
     }
 }
 
@@ -263,8 +390,13 @@ async function processSafeModeZipFile(file) {
     formData.append('updateFile', file);
 
     try {
+        const csrf = getSafeModeCsrfToken();
+        const headers = {};
+        if (csrf) headers['X-CSRF-Token'] = csrf;
+
         const response = await fetch('update_system.php?action=preview', {
             method: 'POST',
+            headers: headers,
             body: formData
         });
 
@@ -337,9 +469,13 @@ async function startSafeModeRestoreProcess() {
     if (progressBar) progressBar.style.width = '60%';
 
     try {
+        const csrf = getSafeModeCsrfToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrf) headers['X-CSRF-Token'] = csrf;
+
         const response = await fetch('update_system.php?action=update', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({
                 token: window.safeModePendingUpdateToken,
                 rootFolder: window.safeModePendingRootFolder
@@ -370,10 +506,21 @@ function escapeHtmlSafeMode(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Проверка целостности ключевых компонентов интерфейса
+// Проверка целостности ключевых компонентов интерфейса и скриптов
 function checkEditorComponentsHealth() {
     if (window.isSafeModeActive) return true;
 
+    // 1. Проверка отсутствующих компонентов
+    if (window._missingComponentsList && window._missingComponentsList.length > 0) {
+        enterSafeMode({
+            message: 'Отсутствуют необходимые компоненты редактора: ' + window._missingComponentsList.join(', '),
+            filename: window._missingComponentsList[0],
+            stack: 'Missing components list:\n' + window._missingComponentsList.join('\n')
+        });
+        return false;
+    }
+
+    // 2. Проверка DOM-элементов
     const criticalElements = [
         { id: 'contentVisual', name: 'Область редактора (#contentVisual)' },
         { id: 'blogForm', name: 'Форма статьи (#blogForm)' },
@@ -383,19 +530,29 @@ function checkEditorComponentsHealth() {
     for (let i = 0; i < criticalElements.length; i++) {
         const item = criticalElements[i];
         if (!document.getElementById(item.id)) {
-            const missingMsg = (window.t ? window.t('safemode.missing_component_msg', `Отсутствует или не загрузился критический компонент: ${item.name}`, { component: item.name }) : `Отсутствует или не загрузился критический компонент: ${item.name}`);
             enterSafeMode({
-                message: missingMsg,
+                message: `Отсутствует критический DOM-компонент: ${item.name}`,
                 filename: 'index.php',
-                stack: `Health check error: Critical DOM element #${item.id} not found in document.`
+                stack: `Health check error: Critical DOM element #${item.id} not found.`
             });
             return false;
         }
     }
 
+    // 3. Проверка загрузки основного функционала редактора
+    if (typeof setMode !== 'function' || typeof showNotification !== 'function') {
+        enterSafeMode({
+            message: 'Не загружен или поврежден основной скрипт редактора (editor-main.js)',
+            filename: 'editor-main.js',
+            stack: 'Health check error: Core editor functions (setMode, showNotification) are undefined.'
+        });
+        return false;
+    }
+
+    // 4. Проверка модуля локализации
     if (!window.NPBlogI18n) {
         enterSafeMode({
-            message: 'Отсутствует или повреждён модуль локализации (window.NPBlogI18n)',
+            message: 'Отсутствует модуль локализации (lang/i18n.js)',
             filename: 'lang/i18n.js',
             stack: 'Health check error: window.NPBlogI18n is undefined.'
         });
@@ -405,15 +562,20 @@ function checkEditorComponentsHealth() {
     return true;
 }
 
-// Проверяем, произошла ли ошибка до загрузки разметки Safe Mode
-if (window._pendingSafeModeError) {
-    setTimeout(() => {
-        enterSafeMode(window._pendingSafeModeError);
-    }, 50);
+// Если ошибки были пойманы до загрузки разметки Safe Mode
+if (window._safeModeErrors && window._safeModeErrors.length > 0) {
+    enterSafeMode(window._safeModeErrors[0]);
 }
 
-// Запускаем проверку компонентов после завершения загрузки страницы
+// Запуск проверки компонентов при загрузке документа
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(checkEditorComponentsHealth, 300);
+    });
+} else {
+    setTimeout(checkEditorComponentsHealth, 300);
+}
 window.addEventListener('load', function() {
-    setTimeout(checkEditorComponentsHealth, 400);
+    setTimeout(checkEditorComponentsHealth, 500);
 });
 </script>

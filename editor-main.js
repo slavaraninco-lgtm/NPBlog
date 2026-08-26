@@ -18,7 +18,7 @@ function escapeHtmlJS(str) {
 function showNotification(message, type = 'info', title = '') {
     const container = document.getElementById('notificationContainer');
     if (!container) return;
-    
+
     // Auto-translate message and title through i18n engine
     if (window.NPBlogI18n && typeof window.NPBlogI18n.translateMessage === 'function') {
         message = window.NPBlogI18n.translateMessage(message);
@@ -26,25 +26,25 @@ function showNotification(message, type = 'info', title = '') {
             title = window.NPBlogI18n.translateMessage(title);
         }
     }
-    
+
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
-    
+
     const icons = {
         success: '✓',
         error: '✕',
         warning: '⚠',
         info: 'ℹ'
     };
-    
+
     const titles = {
         success: title || (window.t ? window.t('common.success', 'Успешно') : 'Успешно'),
         error: title || (window.t ? window.t('common.error', 'Ошибка') : 'Ошибка'),
         warning: title || (window.t ? window.t('common.warning', 'Внимание') : 'Внимание'),
         info: title || (window.t ? window.t('common.info', 'Информация') : 'Информация')
     };
-        
-        notification.innerHTML = `
+
+    notification.innerHTML = `
             <div class="notification-icon">${icons[type] || icons.info}</div>
             <div class="notification-content">
                 <div class="notification-title">${titles[type]}</div>
@@ -52,537 +52,539 @@ function showNotification(message, type = 'info', title = '') {
             </div>
             <button class="notification-close" onclick="closeNotification(this)">×</button>
         `;
-        
-        container.appendChild(notification);
-        
-        // Анимация появления
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
-        
-        // Автоматическое скрытие через 5 секунд
-        setTimeout(() => {
-            closeNotification(notification.querySelector('.notification-close'));
-        }, 5000);
-    }
-    
-    function closeNotification(btn) {
-        const notification = btn.closest('.notification');
-        if (!notification) return;
-        
-        notification.classList.remove('show');
-        notification.classList.add('hide');
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 400);
-    }
 
-    let currentEditId = null;
-    let editorMode = 'visual'; // 'visual' | 'code'
-    let savedRange = null;
-    
-    // Флаги состояния и защита от потери данных
-    let isEditorDirty = false;
-    let localDraftSaveTimeout = null;
-    let isSavingArticle = false;
-    
-    // Система истории изменений
-    const MAX_HISTORY_STATES = 50;
-    let historyStack = [];
-    let historyIndex = -1;
-    let isRestoringHistory = false;
-    let historySaveTimeout = null;
-    let lastActionType = null;
-    let lastActionTime = 0;
-    let cursorMoved = false;
+    container.appendChild(notification);
 
-    function getLocalDraftStorageKey() {
-        return currentEditId ? `npblog_draft_post_${currentEditId}` : 'npblog_draft_new_post';
-    }
+    // Анимация появления
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
 
-    function markEditorDirty() {
-        isEditorDirty = true;
-        scheduleLocalDraftSave();
-    }
+    // Автоматическое скрытие через 5 секунд
+    setTimeout(() => {
+        closeNotification(notification.querySelector('.notification-close'));
+    }, 5000);
+}
 
-    function scheduleLocalDraftSave() {
-        clearTimeout(localDraftSaveTimeout);
-        localDraftSaveTimeout = setTimeout(() => {
-            saveLocalDraftNow();
-        }, 1200);
-    }
+function closeNotification(btn) {
+    const notification = btn.closest('.notification');
+    if (!notification) return;
 
-    function saveLocalDraftNow() {
-        try {
-            const titleInput = document.getElementById('title');
-            const ve = document.getElementById('contentVisual');
-            const ta = document.getElementById('content');
-            if (!titleInput || (!ve && !ta)) return;
-            
-            const title = titleInput.value.trim();
-            const content = editorMode === 'visual' ? (ve ? ve.innerHTML : '') : (ta ? ta.value : '');
-            
-            const hasText = title.length > 0 || (content.length > 0 && content !== '<br>' && content !== '<div><br></div>');
-            if (!hasText) {
-                localStorage.removeItem(getLocalDraftStorageKey());
-                return;
-            }
-            
-            const draft = {
-                title: title,
-                content: content,
-                mode: editorMode,
-                currentEditId: currentEditId,
-                timestamp: Date.now()
-            };
-            localStorage.setItem(getLocalDraftStorageKey(), JSON.stringify(draft));
-        } catch (e) {
-            console.warn('Не удалось сохранить локальный черновик:', e);
-        }
-    }
+    notification.classList.remove('show');
+    notification.classList.add('hide');
 
-    function clearLocalDraft() {
-        isEditorDirty = false;
-        try {
+    setTimeout(() => {
+        notification.remove();
+    }, 400);
+}
+
+let currentEditId = null;
+let editorMode = 'visual'; // 'visual' | 'code'
+let savedRange = null;
+
+// Флаги состояния и защита от потери данных
+let isEditorDirty = false;
+let localDraftSaveTimeout = null;
+let isSavingArticle = false;
+
+// Система истории изменений
+const MAX_HISTORY_STATES = 50;
+let historyStack = [];
+let historyIndex = -1;
+let isRestoringHistory = false;
+let historySaveTimeout = null;
+let lastActionType = null;
+let lastActionTime = 0;
+let cursorMoved = false;
+
+function getLocalDraftStorageKey() {
+    return currentEditId ? `npblog_draft_post_${currentEditId}` : 'npblog_draft_new_post';
+}
+
+function markEditorDirty() {
+    isEditorDirty = true;
+    scheduleLocalDraftSave();
+}
+
+function scheduleLocalDraftSave() {
+    clearTimeout(localDraftSaveTimeout);
+    localDraftSaveTimeout = setTimeout(() => {
+        saveLocalDraftNow();
+    }, 1200);
+}
+
+function saveLocalDraftNow() {
+    try {
+        const titleInput = document.getElementById('title');
+        const ve = document.getElementById('contentVisual');
+        const ta = document.getElementById('content');
+        if (!titleInput || (!ve && !ta)) return;
+
+        const title = titleInput.value.trim();
+        const content = editorMode === 'visual' ? (ve ? ve.innerHTML : '') : (ta ? ta.value : '');
+
+        const hasText = title.length > 0 || (content.length > 0 && content !== '<br>' && content !== '<div><br></div>');
+        if (!hasText) {
             localStorage.removeItem(getLocalDraftStorageKey());
-            localStorage.removeItem('npblog_draft_new_post');
-        } catch (e) {}
-    }
-
-    function checkLocalDraftOnStartup() {
-        try {
-            if (currentEditId) return;
-            const raw = localStorage.getItem('npblog_draft_new_post');
-            if (!raw) return;
-            const draft = JSON.parse(raw);
-            if (!draft || (!draft.title && !draft.content)) return;
-            
-            const title = document.getElementById('title')?.value?.trim();
-            const ve = document.getElementById('contentVisual');
-            const ta = document.getElementById('content');
-            const currentContent = editorMode === 'visual' ? (ve?.innerHTML?.trim() || '') : (ta?.value?.trim() || '');
-            
-            if (!title && (!currentContent || currentContent === '<br>' || currentContent === '<div><br></div>')) {
-                const dateObj = new Date(draft.timestamp);
-                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const dateStr = dateObj.toLocaleDateString();
-                showDraftRestoreToast(draft, `${dateStr} ${timeStr}`);
-            }
-        } catch (e) {
-            console.error('Ошибка проверки локального черновика:', e);
+            return;
         }
-    }
 
-    function showDraftRestoreToast(draft, timeFormatted) {
-        const container = document.getElementById('notificationContainer');
-        if (!container) return;
-        
-        const toast = document.createElement('div');
-        toast.className = 'notification info draft-restore-toast';
-        toast.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-left: 4px solid #2196F3; max-width: 480px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);';
-        
-        const textSpan = document.createElement('span');
-        textSpan.style.flex = '1';
-        const displayTitle = draft.title ? (draft.title.length > 30 ? draft.title.substring(0, 30) + '...' : draft.title) : 'Без названия';
-        textSpan.innerHTML = `📝 Несохранённый черновик (${timeFormatted}): <b>${escapeHtml(displayTitle)}</b>`;
-        
-        const actionsDiv = document.createElement('div');
-        actionsDiv.style.display = 'flex';
-        actionsDiv.style.gap = '8px';
-        actionsDiv.style.alignItems = 'center';
-        
-        const restoreBtn = document.createElement('button');
-        restoreBtn.type = 'button';
-        restoreBtn.textContent = 'Восстановить';
-        restoreBtn.style.cssText = 'background: #2196F3; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;';
-        restoreBtn.onclick = () => {
-            if (draft.title) document.getElementById('title').value = draft.title;
-            const ve = document.getElementById('contentVisual');
-            const ta = document.getElementById('content');
-            if (draft.mode === 'code') {
-                setMode('code');
-                if (ta) ta.value = draft.content || '';
-            } else {
-                setMode('visual');
-                if (ve) {
-                    ve.innerHTML = draft.content || '';
-                    wrapExistingEditorImages();
+        const draft = {
+            title: title,
+            content: content,
+            mode: editorMode,
+            currentEditId: currentEditId,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(getLocalDraftStorageKey(), JSON.stringify(draft));
+    } catch (e) {
+        console.warn('Не удалось сохранить локальный черновик:', e);
+    }
+}
+
+function clearLocalDraft() {
+    isEditorDirty = false;
+    try {
+        localStorage.removeItem(getLocalDraftStorageKey());
+        localStorage.removeItem('npblog_draft_new_post');
+    } catch (e) { }
+}
+
+function checkLocalDraftOnStartup() {
+    try {
+        if (currentEditId) return;
+        const raw = localStorage.getItem('npblog_draft_new_post');
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (!draft || (!draft.title && !draft.content)) return;
+
+        const title = document.getElementById('title')?.value?.trim();
+        const ve = document.getElementById('contentVisual');
+        const ta = document.getElementById('content');
+        const currentContent = editorMode === 'visual' ? (ve?.innerHTML?.trim() || '') : (ta?.value?.trim() || '');
+
+        if (!title && (!currentContent || currentContent === '<br>' || currentContent === '<div><br></div>')) {
+            const dateObj = new Date(draft.timestamp);
+            const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateStr = dateObj.toLocaleDateString();
+            showDraftRestoreToast(draft, `${dateStr} ${timeStr}`);
+        }
+    } catch (e) {
+        console.error('Ошибка проверки локального черновика:', e);
+    }
+}
+
+function showDraftRestoreToast(draft, timeFormatted) {
+    const container = document.getElementById('notificationContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'notification info draft-restore-toast';
+    toast.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-left: 4px solid #2196F3; max-width: 480px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);';
+
+    const textSpan = document.createElement('span');
+    textSpan.style.flex = '1';
+    const displayTitle = draft.title ? (draft.title.length > 30 ? draft.title.substring(0, 30) + '...' : draft.title) : 'Без названия';
+    textSpan.innerHTML = `📝 Несохранённый черновик (${timeFormatted}): <b>${escapeHtml(displayTitle)}</b>`;
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.style.display = 'flex';
+    actionsDiv.style.gap = '8px';
+    actionsDiv.style.alignItems = 'center';
+
+    const restoreBtn = document.createElement('button');
+    restoreBtn.type = 'button';
+    restoreBtn.textContent = 'Восстановить';
+    restoreBtn.style.cssText = 'background: #2196F3; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;';
+    restoreBtn.onclick = () => {
+        if (draft.title) document.getElementById('title').value = draft.title;
+        const ve = document.getElementById('contentVisual');
+        const ta = document.getElementById('content');
+        if (draft.mode === 'code') {
+            setMode('code');
+            if (ta) ta.value = draft.content || '';
+        } else {
+            setMode('visual');
+            if (ve) {
+                ve.innerHTML = draft.content || '';
+                wrapExistingEditorImages();
+            }
+        }
+        markEditorDirty();
+        showNotification('Локальный черновик успешно восстановлен!', 'success');
+        toast.remove();
+    };
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.type = 'button';
+    dismissBtn.textContent = '×';
+    dismissBtn.style.cssText = 'background: transparent; border: none; color: inherit; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px;';
+    dismissBtn.onclick = () => {
+        localStorage.removeItem('npblog_draft_new_post');
+        toast.remove();
+    };
+
+    actionsDiv.appendChild(restoreBtn);
+    actionsDiv.appendChild(dismissBtn);
+    toast.appendChild(textSpan);
+    toast.appendChild(actionsDiv);
+    container.appendChild(toast);
+}
+
+window.addEventListener('beforeunload', function (e) {
+    if (isEditorDirty && typeof hasEditorContent === 'function' && hasEditorContent()) {
+        e.preventDefault();
+        e.returnValue = 'У вас есть несохраненные изменения в статье. Вы уверены, что хотите покинуть страницу?';
+        return e.returnValue;
+    }
+});
+
+// Загружаем пользовательские шрифты при инициализации редактора
+function loadEditorCustomFonts() {
+    fetch('get_custom_fonts.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.fonts.length > 0) {
+                let styleTag = document.getElementById('editorCustomFontsStyles');
+                if (!styleTag) {
+                    styleTag = document.createElement('style');
+                    styleTag.id = 'editorCustomFontsStyles';
+                    document.head.appendChild(styleTag);
                 }
-            }
-            markEditorDirty();
-            showNotification('Локальный черновик успешно восстановлен!', 'success');
-            toast.remove();
-        };
-        
-        const dismissBtn = document.createElement('button');
-        dismissBtn.type = 'button';
-        dismissBtn.textContent = '×';
-        dismissBtn.style.cssText = 'background: transparent; border: none; color: inherit; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px;';
-        dismissBtn.onclick = () => {
-            localStorage.removeItem('npblog_draft_new_post');
-            toast.remove();
-        };
-        
-        actionsDiv.appendChild(restoreBtn);
-        actionsDiv.appendChild(dismissBtn);
-        toast.appendChild(textSpan);
-        toast.appendChild(actionsDiv);
-        container.appendChild(toast);
-    }
 
-    window.addEventListener('beforeunload', function(e) {
-        if (isEditorDirty && typeof hasEditorContent === 'function' && hasEditorContent()) {
-            e.preventDefault();
-            e.returnValue = 'У вас есть несохраненные изменения в статье. Вы уверены, что хотите покинуть страницу?';
-            return e.returnValue;
-        }
-    });
-    
-    // Загружаем пользовательские шрифты при инициализации редактора
-    function loadEditorCustomFonts() {
-        fetch('get_custom_fonts.php')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.fonts.length > 0) {
-                    let styleTag = document.getElementById('editorCustomFontsStyles');
-                    if (!styleTag) {
-                        styleTag = document.createElement('style');
-                        styleTag.id = 'editorCustomFontsStyles';
-                        document.head.appendChild(styleTag);
-                    }
-                    
-                    let fontFaceRules = '';
-                    
-                    data.fonts.forEach(font => {
-                        let format = 'truetype';
-                        if (font.format === 'woff') format = 'woff';
-                        else if (font.format === 'woff2') format = 'woff2';
-                        else if (font.format === 'otf') format = 'opentype';
-                        
-                        fontFaceRules += `
+                let fontFaceRules = '';
+
+                data.fonts.forEach(font => {
+                    let format = 'truetype';
+                    if (font.format === 'woff') format = 'woff';
+                    else if (font.format === 'woff2') format = 'woff2';
+                    else if (font.format === 'otf') format = 'opentype';
+
+                    fontFaceRules += `
                             @font-face {
                                 font-family: '${font.name}';
                                 src: url('${font.path}') format('${format}');
                             }
                         `;
-                    });
-                    
-                    styleTag.textContent = fontFaceRules;
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка загрузки шрифтов:', error);
-            });
-    }
-    
-    // Загружаем шрифты при загрузке страницы
-    loadEditorCustomFonts();
-    
-    // Очищаем историю при загрузке страницы
-    clearHistory();
-    
-    // Инициализируем историю с пустым состоянием
-    setTimeout(() => {
-        saveToHistory();
-        updateUndoRedoButtons();
-    }, 100);
-    
-    let linkInsertStart = 0;
-    let linkInsertEnd = 0;
-    let colorInsertStart = 0;
-    let colorInsertEnd = 0;
+                });
 
-    function saveSelection() {
-        const ve = document.getElementById('contentVisual');
-        if (!ve || (document.activeElement !== ve && !ve.contains(document.activeElement))) return;
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return;
-        const range = sel.getRangeAt(0);
-        if (ve.contains(range.commonAncestorContainer)) {
-            savedRange = range.cloneRange();
-        }
-    }
-
-    // Стабильная логика тулбара: не даём кнопкам забирать фокус у редактора.
-    // Это сохраняет каретку/выделение и делает execCommand предсказуемым.
-    (function initToolbarFocusGuard() {
-        var bar = document.getElementById('formatBarRow');
-        if (!bar) return;
-        bar.addEventListener('mousedown', function(e) {
-            var btn = e.target.closest('button');
-            if (!btn) return;
-            // Не ломаем клики внутри поповеров/диалогов
-            if (e.target.closest('.font-size-popover, .font-family-popover, .color-palette-popover')) return;
-            e.preventDefault();
-            if (editorMode === 'visual') {
-                var ve = document.getElementById('contentVisual');
-                if (ve) ve.focus();
-            } else {
-                var ta = document.getElementById('content');
-                if (ta) ta.focus();
+                styleTag.textContent = fontFaceRules;
             }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки шрифтов:', error);
+        });
+}
+
+// Загружаем шрифты при загрузке страницы
+loadEditorCustomFonts();
+
+// Очищаем историю при загрузке страницы
+clearHistory();
+
+// Инициализируем историю с пустым состоянием
+setTimeout(() => {
+    saveToHistory();
+    updateUndoRedoButtons();
+}, 100);
+
+let linkInsertStart = 0;
+let linkInsertEnd = 0;
+let colorInsertStart = 0;
+let colorInsertEnd = 0;
+
+function saveSelection() {
+    const ve = document.getElementById('contentVisual');
+    if (!ve || (document.activeElement !== ve && !ve.contains(document.activeElement))) return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (ve.contains(range.commonAncestorContainer)) {
+        savedRange = range.cloneRange();
+    }
+}
+
+// Стабильная логика тулбара: не даём кнопкам забирать фокус у редактора.
+// Это сохраняет каретку/выделение и делает execCommand предсказуемым.
+(function initToolbarFocusGuard() {
+    var bar = document.getElementById('formatBarRow');
+    if (!bar) return;
+    bar.addEventListener('mousedown', function (e) {
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        // Не ломаем клики внутри поповеров/диалогов
+        if (e.target.closest('.font-size-popover, .font-family-popover, .color-palette-popover')) return;
+        e.preventDefault();
+        if (editorMode === 'visual') {
+            var ve = document.getElementById('contentVisual');
+            if (ve) ve.focus();
+        } else {
+            var ta = document.getElementById('content');
+            if (ta) ta.focus();
+        }
+    }, true);
+})();
+
+// Надёжно обновляем savedRange при наборе/кликах внутри редактора (пробел/Enter/мышь и т.п.)
+(function initVisualSelectionTracking() {
+    var ve = document.getElementById('contentVisual');
+    if (!ve) return;
+    ['mouseup', 'keyup', 'input', 'click', 'touchend', 'compositionend'].forEach(function (evt) {
+        ve.addEventListener(evt, function () {
+            if (editorMode === 'visual') saveSelection();
         }, true);
-    })();
+    });
+})();
 
-    // Надёжно обновляем savedRange при наборе/кликах внутри редактора (пробел/Enter/мышь и т.п.)
-    (function initVisualSelectionTracking() {
-        var ve = document.getElementById('contentVisual');
-        if (!ve) return;
-        ['mouseup','keyup','input','click','touchend','compositionend'].forEach(function(evt) {
-            ve.addEventListener(evt, function() {
-                if (editorMode === 'visual') saveSelection();
-            }, true);
-        });
-    })();
+function insertHtmlAtCursor(html) {
+    var ve = document.getElementById('contentVisual');
+    if (ve) ve.focus();
 
-    function insertHtmlAtCursor(html) {
-        var ve = document.getElementById('contentVisual');
-        if (ve) ve.focus();
-        
-        // Restore selection if we have one
-        if (savedRange) {
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(savedRange);
-        }
-        
-        let sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-            let range = sel.getRangeAt(0);
-            range.deleteContents();
-            
-            let el = document.createElement("div");
-            el.innerHTML = html;
-            let frag = document.createDocumentFragment(), node, lastNode;
-            while ( (node = el.firstChild) ) {
-                lastNode = frag.appendChild(node);
-            }
-            range.insertNode(frag);
-            
-            if (lastNode) {
-                range = range.cloneRange();
-                range.setStartAfter(lastNode);
-                range.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(range);
-                saveSelection();
-            }
-            saveToHistory();
-        }
+    // Restore selection if we have one
+    if (savedRange) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
     }
 
-    function formatHTML(html) {
-        if (!html) return '';
-        
-        // 1. Выделяем блоки <pre>, чтобы сохранить их внутреннее форматирование/пробелы
-        let preBlocks = [];
-        let formatted = html.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, function(match) {
-            preBlocks.push(match);
-            return '___PRE_PLACEHOLDER_' + (preBlocks.length - 1) + '___';
-        });
-        
-        const blockTags = [
-            'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
-            'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 
-            'blockquote', 'section', 'article', 'header', 'footer', 'hr'
-        ];
-        
-        // Очищаем от старых переносов строк
-        formatted = formatted.replace(/\r/g, '');
-        
-        // Удаляем лишние пробелы вокруг блочных тегов, чтобы сбросить структуру
-        blockTags.forEach(tag => {
-            const closeRegex = new RegExp('\\s*</' + tag + '>\\s*', 'gi');
-            formatted = formatted.replace(closeRegex, '</' + tag + '>');
-            
-            const openRegex = new RegExp('\\s*<(' + tag + ')((\\s+[^>]*?>)|>)\\s*', 'gi');
-            formatted = formatted.replace(openRegex, '<$1$2');
-        });
-        
-        // Вставляем переносы строк перед и после блочных тегов
-        blockTags.forEach(tag => {
-            const openRegex = new RegExp('<(' + tag + ')((\\s+[^>]*?>)|>)', 'gi');
-            formatted = formatted.replace(openRegex, '\n<$1$2');
-            
-            const closeRegex = new RegExp('</(' + tag + ')>', 'gi');
-            formatted = formatted.replace(closeRegex, '</$1>\n');
-        });
-        
-        // Форматируем одиночные теги (hr, br)
-        formatted = formatted.replace(/<hr(\s+[^>]*?>| >|>)/gi, '\n<hr$1\n');
-        formatted = formatted.replace(/<br(\s*\/)?>/gi, '<br$1>\n');
-        
-        // Разбиваем на строки и вычисляем вложенность
-        let lines = formatted.split('\n');
-        let pad = 0;
-        let result = [];
-        
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i].trim();
-            if (!line) continue;
-            
-            let startsWithClosing = false;
+    let sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+        let range = sel.getRangeAt(0);
+        range.deleteContents();
+
+        let el = document.createElement("div");
+        el.innerHTML = html;
+        let frag = document.createDocumentFragment(), node, lastNode;
+        while ((node = el.firstChild)) {
+            lastNode = frag.appendChild(node);
+        }
+        range.insertNode(frag);
+
+        if (lastNode) {
+            range = range.cloneRange();
+            range.setStartAfter(lastNode);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            saveSelection();
+        }
+        saveToHistory();
+    }
+}
+
+function formatHTML(html) {
+    if (!html) return '';
+
+    // 1. Выделяем блоки <pre>, чтобы сохранить их внутреннее форматирование/пробелы
+    let preBlocks = [];
+    let formatted = html.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, function (match) {
+        preBlocks.push(match);
+        return '___PRE_PLACEHOLDER_' + (preBlocks.length - 1) + '___';
+    });
+
+    const blockTags = [
+        'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
+        'blockquote', 'section', 'article', 'header', 'footer', 'hr'
+    ];
+
+    // Очищаем от старых переносов строк
+    formatted = formatted.replace(/\r/g, '');
+
+    // Удаляем лишние пробелы вокруг блочных тегов, чтобы сбросить структуру
+    blockTags.forEach(tag => {
+        const closeRegex = new RegExp('\\s*</' + tag + '>\\s*', 'gi');
+        formatted = formatted.replace(closeRegex, '</' + tag + '>');
+
+        const openRegex = new RegExp('\\s*<(' + tag + ')((\\s+[^>]*?>)|>)\\s*', 'gi');
+        formatted = formatted.replace(openRegex, '<$1$2');
+    });
+
+    // Вставляем переносы строк перед и после блочных тегов
+    blockTags.forEach(tag => {
+        const openRegex = new RegExp('<(' + tag + ')((\\s+[^>]*?>)|>)', 'gi');
+        formatted = formatted.replace(openRegex, '\n<$1$2');
+
+        const closeRegex = new RegExp('</(' + tag + ')>', 'gi');
+        formatted = formatted.replace(closeRegex, '</$1>\n');
+    });
+
+    // Форматируем одиночные теги (hr, br)
+    formatted = formatted.replace(/<hr(\s+[^>]*?>| >|>)/gi, '\n<hr$1\n');
+    formatted = formatted.replace(/<br(\s*\/)?>/gi, '<br$1>\n');
+
+    // Разбиваем на строки и вычисляем вложенность
+    let lines = formatted.split('\n');
+    let pad = 0;
+    let result = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) continue;
+
+        let startsWithClosing = false;
+        for (let j = 0; j < blockTags.length; j++) {
+            if (line.toLowerCase().startsWith('</' + blockTags[j])) {
+                startsWithClosing = true;
+                break;
+            }
+        }
+
+        let startsWithOpening = false;
+        if (!startsWithClosing) {
             for (let j = 0; j < blockTags.length; j++) {
-                if (line.toLowerCase().startsWith('</' + blockTags[j])) {
-                    startsWithClosing = true;
+                let tag = blockTags[j];
+                let reg = new RegExp('^<' + tag + '(\\s+|>)', 'i');
+                if (reg.test(line)) {
+                    let hasClose = new RegExp('</' + tag + '>$', 'i').test(line);
+                    if (!hasClose && tag !== 'hr') {
+                        startsWithOpening = true;
+                    }
                     break;
                 }
             }
-            
-            let startsWithOpening = false;
-            if (!startsWithClosing) {
-                for (let j = 0; j < blockTags.length; j++) {
-                    let tag = blockTags[j];
-                    let reg = new RegExp('^<' + tag + '(\\s+|>)', 'i');
-                    if (reg.test(line)) {
-                        let hasClose = new RegExp('</' + tag + '>$', 'i').test(line);
-                        if (!hasClose && tag !== 'hr') {
-                            startsWithOpening = true;
-                        }
-                        break;
-                    }
-                }
-            }
-            
-            if (startsWithClosing) {
-                pad = Math.max(0, pad - 1);
-            }
-            
-            result.push('    '.repeat(pad) + line);
-            
-            if (startsWithOpening) {
-                pad++;
-            }
         }
-        
-        let finalHtml = result.join('\n');
-        
-        // Восстанавливаем сохраненные блоки <pre>
-        for (let i = 0; i < preBlocks.length; i++) {
-            finalHtml = finalHtml.replace('___PRE_PLACEHOLDER_' + i + '___', preBlocks[i]);
+
+        if (startsWithClosing) {
+            pad = Math.max(0, pad - 1);
         }
-        
-        return finalHtml.trim();
+
+        result.push('    '.repeat(pad) + line);
+
+        if (startsWithOpening) {
+            pad++;
+        }
     }
 
-    function cleanContentForSave(html) {
-        // Создаем временный контейнер для очистки HTML
-        var temp = document.createElement('div');
-        temp.innerHTML = html;
-        
-        // Удаляем все элементы интерфейса редактора
-        var elementsToRemove = temp.querySelectorAll(
-            '.image-toolbar, ' +
-            '.image-align-dropdown, ' +
-            '.image-size-indicator, ' +
-            '.image-resize-handle, ' +
-            '.blog-image-overlay, ' +
-            '.column-resizer'
-        );
-        elementsToRemove.forEach(function(el) {
-            el.parentNode.removeChild(el);
-        });
-        
-        // Удаляем атрибуты data-image-id, data-media-id, data-media-type
-        var wraps = temp.querySelectorAll('[data-image-id], [data-media-id], [data-media-type]');
-        wraps.forEach(function(el) {
-            el.removeAttribute('data-image-id');
-            el.removeAttribute('data-media-id');
-            el.removeAttribute('data-media-type');
-        });
-        
-        // Очистка таблиц: удаляем атрибуты редактирования и состояния ресайзера
-        var tables = temp.querySelectorAll('table[data-resizers-added]');
-        tables.forEach(function(table) {
-            table.removeAttribute('data-resizers-added');
-        });
-        
-        var editableCells = temp.querySelectorAll('[contenteditable]');
-        editableCells.forEach(function(el) {
-            el.removeAttribute('contenteditable');
-        });
-        
-        // Удаляем классы selected
-        var selected = temp.querySelectorAll('.selected');
-        selected.forEach(function(el) {
-            el.classList.remove('selected');
-        });
-        
-        // Убираем служебные ZWS (\u200B) и форматируем HTML
-        let cleanedHtml = temp.innerHTML.replace(/\u200B/g, '');
-        cleanedHtml = cleanedHtml.replace(/(?:[?&]|&amp;)t=\d+/g, '');
-        return formatHTML(cleanedHtml);
+    let finalHtml = result.join('\n');
+
+    // Восстанавливаем сохраненные блоки <pre>
+    for (let i = 0; i < preBlocks.length; i++) {
+        finalHtml = finalHtml.replace('___PRE_PLACEHOLDER_' + i + '___', preBlocks[i]);
     }
 
-    function setMode(mode) {
-        editorMode = mode;
-        const ta = document.getElementById('content');
-        const ve = document.getElementById('contentVisual');
-        const visualBtn = document.getElementById('modeVisualBtn');
-        const codeBtn = document.getElementById('modeCodeBtn');
-        
-        if (mode === 'visual') {
-            ve.contentEditable = 'true';
-            if (window.enableMarkdown) {
-                ve.innerHTML = parseMarkdownToHtml(ta.value);
-            } else {
-                // sync from code -> visual
-                if (ta.style.display !== 'none') {
-                    ve.innerHTML = ta.value;
-                    wrapExistingEditorImages();
-                    addColumnResizers(); // Добавляем ручки изменения размера столбцов
-                }
-            }
-            ve.style.display = '';
-            ta.style.display = 'none';
-            visualBtn.classList.add('active');
-            codeBtn.classList.remove('active');
+    return finalHtml.trim();
+}
+
+function cleanContentForSave(html) {
+    // Создаем временный контейнер для очистки HTML
+    var temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    // Удаляем все элементы интерфейса редактора
+    var elementsToRemove = temp.querySelectorAll(
+        '.image-toolbar, ' +
+        '.image-align-dropdown, ' +
+        '.image-size-indicator, ' +
+        '.image-resize-handle, ' +
+        '.blog-image-overlay, ' +
+        '.column-resizer'
+    );
+    elementsToRemove.forEach(function (el) {
+        el.parentNode.removeChild(el);
+    });
+
+    // Удаляем атрибуты data-image-id, data-media-id, data-media-type
+    var wraps = temp.querySelectorAll('[data-image-id], [data-media-id], [data-media-type]');
+    wraps.forEach(function (el) {
+        el.removeAttribute('data-image-id');
+        el.removeAttribute('data-media-id');
+        el.removeAttribute('data-media-type');
+    });
+
+    // Очистка таблиц: удаляем атрибуты редактирования и состояния ресайзера
+    var tables = temp.querySelectorAll('table[data-resizers-added]');
+    tables.forEach(function (table) {
+        table.removeAttribute('data-resizers-added');
+    });
+
+    var editableCells = temp.querySelectorAll('[contenteditable]');
+    editableCells.forEach(function (el) {
+        el.removeAttribute('contenteditable');
+    });
+
+    // Удаляем классы selected
+    var selected = temp.querySelectorAll('.selected');
+    selected.forEach(function (el) {
+        el.classList.remove('selected');
+    });
+
+    // Убираем служебные ZWS (\u200B) и форматируем HTML
+    let cleanedHtml = temp.innerHTML.replace(/\u200B/g, '');
+    cleanedHtml = cleanedHtml.replace(/(?:[?&]|&amp;)t=\d+/g, '');
+    return formatHTML(cleanedHtml);
+}
+
+function setMode(mode) {
+    editorMode = mode;
+    const ta = document.getElementById('content');
+    const ve = document.getElementById('contentVisual');
+    const visualBtn = document.getElementById('modeVisualBtn');
+    const codeBtn = document.getElementById('modeCodeBtn');
+
+    if (mode === 'visual') {
+        ve.contentEditable = 'true';
+        if (window.enableMarkdown) {
+            ve.innerHTML = parseMarkdownToHtml(ta.value);
         } else {
-            hideGlobalMediaOverlay();
-            ve.contentEditable = 'true';
-            if (window.enableMarkdown) {
-                if (ve.style.display !== 'none') {
-                    ta.value = convertHtmlToMarkdown(ve.innerHTML);
-                }
-            } else {
-                // sync from visual -> code - очищаем от элементов интерфейса
-                if (ve.style.display !== 'none') {
-                    ta.value = cleanContentForSave(ve.innerHTML);
-                }
+            // sync from code -> visual
+            if (ta.style.display !== 'none') {
+                ve.innerHTML = ta.value;
+                wrapExistingEditorImages();
+                addColumnResizers(); // Добавляем ручки изменения размера столбцов
             }
-            ta.style.display = '';
-            ve.style.display = 'none';
-            codeBtn.classList.add('active');
-            visualBtn.classList.remove('active');
         }
-    }
-
-    const toggleState = { b: false, i: false, u: false, s: false };
-
-    function setBtnActive(id, active) {
-        const btn = document.getElementById(id);
-        if (!btn) return;
-        if (active) btn.classList.add('active'); else btn.classList.remove('active');
-    }
-
-    function updateActiveButtons() {
-        if (editorMode !== 'visual') return;
-        const ve = document.getElementById('contentVisual');
-        const sel = window.getSelection();
-        // Не подсвечиваем кнопки, если выделение/каретка не в поле статьи
-        if (!ve || !sel || sel.rangeCount === 0) {
-            ['btn-bold','btn-italic','btn-underline','btn-strike','btn-sup','btn-sub','btn-h2'].forEach(function(id){ setBtnActive(id, false); });
-            return;
+        ve.style.display = '';
+        ta.style.display = 'none';
+        visualBtn.classList.add('active');
+        codeBtn.classList.remove('active');
+    } else {
+        hideGlobalMediaOverlay();
+        ve.contentEditable = 'true';
+        if (window.enableMarkdown) {
+            if (ve.style.display !== 'none') {
+                ta.value = convertHtmlToMarkdown(ve.innerHTML);
+            }
+        } else {
+            // sync from visual -> code - очищаем от элементов интерфейса
+            if (ve.style.display !== 'none') {
+                ta.value = cleanContentForSave(ve.innerHTML);
+            }
         }
+        ta.style.display = '';
+        ve.style.display = 'none';
+        codeBtn.classList.add('active');
+        visualBtn.classList.remove('active');
+    }
+}
+
+const toggleState = { b: false, i: false, u: false, s: false };
+
+function setBtnActive(id, active) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (active) btn.classList.add('active'); else btn.classList.remove('active');
+}
+
+function updateActiveButtons() {
+    if (typeof editorMode !== 'undefined' && editorMode !== 'visual') return;
+    const ve = document.getElementById('contentVisual');
+    const sel = window.getSelection();
+    // Не подсвечиваем кнопки, если выделение/каретка не в поле статьи
+    if (!ve || !sel || sel.rangeCount === 0) {
+        ['btn-bold', 'btn-italic', 'btn-underline', 'btn-strike', 'btn-sup', 'btn-sub', 'btn-h2'].forEach(function (id) { setBtnActive(id, false); });
+        return;
+    }
+    try {
         const r = sel.getRangeAt(0);
-        if (!ve.contains(r.commonAncestorContainer)) {
-            ['btn-bold','btn-italic','btn-underline','btn-strike','btn-sup','btn-sub','btn-h2'].forEach(function(id){ setBtnActive(id, false); });
+        if (!r || !r.commonAncestorContainer || !(r.commonAncestorContainer instanceof Node) || !ve.contains(r.commonAncestorContainer)) {
+            ['btn-bold', 'btn-italic', 'btn-underline', 'btn-strike', 'btn-sup', 'btn-sub', 'btn-h2'].forEach(function (id) { setBtnActive(id, false); });
             return;
         }
-        
+
         const node = r.startContainer;
-        
+        if (!node || !(node instanceof Node)) return;
+
         const isBold = !!isFormatApplied(node, 'B') || !!isFormatApplied(node, 'STRONG');
         const isItalic = !!isFormatApplied(node, 'I') || !!isFormatApplied(node, 'EM');
         const isUnderline = !!isFormatApplied(node, 'U');
@@ -603,156 +605,305 @@ function showNotification(message, type = 'info', title = '') {
         // Находим текущий примененный шрифт и размер
         let fontName = '';
         let fontSize = '';
-        
+
         let checkNode = node;
         while (checkNode && checkNode !== ve) {
             if (checkNode.nodeType === Node.ELEMENT_NODE) {
                 if (!fontName && checkNode.style.fontFamily) {
-                    fontName = checkNode.style.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
-                }
-                if (!fontSize && checkNode.style.fontSize) {
-                    fontSize = checkNode.style.fontSize;
-                }
+                fontName = checkNode.style.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
             }
-            checkNode = checkNode.parentNode;
+            if (!fontSize && checkNode.style.fontSize) {
+                fontSize = checkNode.style.fontSize;
+            }
         }
-        
-        if (!fontName) fontName = 'Arial';
-        if (!fontSize) fontSize = '14px';
-        
-        const fontBtn = document.getElementById('fontFamilyBtn');
-        if (fontBtn) {
-            fontBtn.textContent = fontName;
-            fontBtn.style.fontFamily = fontName;
-        }
-        
-        const sizeBtn = document.getElementById('fontSizeBtn');
-        if (sizeBtn) {
-            sizeBtn.textContent = fontSize;
-        }
+        checkNode = checkNode.parentNode;
     }
 
-    // Теги форматирования, которые нужно «покидать» при выключении режима
-    var FORMAT_TAGS = {
-        bold: ['B','STRONG'],
-        italic: ['I','EM'],
-        underline: ['U'],
-        strikeThrough: ['S','STRIKE','DEL'],
-        superscript: ['SUP'],
-        subscript: ['SUB']
-    };
+    if (!fontName) fontName = 'Arial';
+    if (!fontSize) fontSize = '14px';
 
-    /**
-     * При выключении inline-формата на collapsed каретке:
-     *  - Если форматирующий тег пуст / содержит только <br> (новая строка после Enter)
-     *    → полностью убираем обёртку (unwrap), каретка остаётся на той же строке.
-     *  - Иначе (текст + пробел) → вставляем ZWS после тега и ставим туда каретку.
-     */
-    function escapeFormatNode(cmd, ve) {
-        var tags = FORMAT_TAGS[cmd];
-        if (!tags) return;
-        var sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return;
-        var range = sel.getRangeAt(0);
-        if (!range.collapsed) return;
+    const fontBtn = document.getElementById('fontFamilyBtn');
+    if (fontBtn) {
+        fontBtn.textContent = fontName;
+        fontBtn.style.fontFamily = fontName;
+    }
 
-        // Ищем ближайший форматирующий предок
-        var node = range.startContainer;
-        if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-        var formatEl = null;
-        while (node && node !== ve) {
-            if (node.nodeType === Node.ELEMENT_NODE && tags.indexOf(node.tagName) !== -1) {
-                formatEl = node;
-                break;
-            }
-            node = node.parentNode;
+    const sizeBtn = document.getElementById('fontSizeBtn');
+    if (sizeBtn) {
+        sizeBtn.textContent = fontSize;
+    }
+    } catch (e) {
+        // Безопасный перехват при отсоединенном или невалидном диапазоне выделения
+    }
+}
+
+// Теги форматирования, которые нужно «покидать» при выключении режима
+var FORMAT_TAGS = {
+    bold: ['B', 'STRONG'],
+    italic: ['I', 'EM'],
+    underline: ['U'],
+    strikeThrough: ['S', 'STRIKE', 'DEL'],
+    superscript: ['SUP'],
+    subscript: ['SUB']
+};
+
+/**
+ * При выключении inline-формата на collapsed каретке:
+ *  - Если форматирующий тег пуст / содержит только <br> (новая строка после Enter)
+ *    → полностью убираем обёртку (unwrap), каретка остаётся на той же строке.
+ *  - Иначе (текст + пробел) → вставляем ZWS после тега и ставим туда каретку.
+ */
+function escapeFormatNode(cmd, ve) {
+    var tags = FORMAT_TAGS[cmd];
+    if (!tags) return;
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    var range = sel.getRangeAt(0);
+    if (!range.collapsed) return;
+
+    // Ищем ближайший форматирующий предок
+    var node = range.startContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    var formatEl = null;
+    while (node && node !== ve) {
+        if (node.nodeType === Node.ELEMENT_NODE && tags.indexOf(node.tagName) !== -1) {
+            formatEl = node;
+            break;
         }
-        if (!formatEl) return;
+        node = node.parentNode;
+    }
+    if (!formatEl) return;
 
-        // Проверяем, пустой ли тег (только пробелы/ZWS и/или <br>)
-        var text = formatEl.textContent.replace(/[\u200B\s]/g, '');
-        var isEmpty = text.length === 0;
+    // Проверяем, пустой ли тег (только пробелы/ZWS и/или <br>)
+    var text = formatEl.textContent.replace(/[\u200B\s]/g, '');
+    var isEmpty = text.length === 0;
 
-        if (isEmpty) {
-            // Unwrap: заменяем <b><br></b> на просто <br>
-            var parent = formatEl.parentNode;
-            var br = formatEl.querySelector('br');
-            if (!br) br = document.createElement('br');
-            parent.insertBefore(br, formatEl);
-            parent.removeChild(formatEl);
-            // Ставим каретку перед <br> (на эту строку)
-            var newRange = document.createRange();
-            newRange.setStartBefore(br);
-            newRange.collapse(true);
+    if (isEmpty) {
+        // Unwrap: заменяем <b><br></b> на просто <br>
+        var parent = formatEl.parentNode;
+        var br = formatEl.querySelector('br');
+        if (!br) br = document.createElement('br');
+        parent.insertBefore(br, formatEl);
+        parent.removeChild(formatEl);
+        // Ставим каретку перед <br> (на эту строку)
+        var newRange = document.createRange();
+        newRange.setStartBefore(br);
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+    } else {
+        // Вставляем ZWS после тега и ставим туда каретку
+        var zws = document.createTextNode('\u200B');
+        formatEl.parentNode.insertBefore(zws, formatEl.nextSibling);
+        var newRange = document.createRange();
+        newRange.setStart(zws, 1);
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+    }
+}
+
+function isFormatApplied(node, tag) {
+    const tagName = tag.toUpperCase();
+    let current = node;
+    while (current && current.id !== 'contentVisual') {
+        if (current.nodeType === Node.ELEMENT_NODE && current.tagName.toUpperCase() === tagName) {
+            return current;
+        }
+        current = current.parentNode;
+    }
+    return null;
+}
+
+function toggleInlineFormat(tag) {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    let range = sel.getRangeAt(0);
+    const existingNode = isFormatApplied(range.commonAncestorContainer, tag);
+
+    if (existingNode) {
+        const parent = existingNode.parentNode;
+        while (existingNode.firstChild) {
+            parent.insertBefore(existingNode.firstChild, existingNode);
+        }
+        parent.removeChild(existingNode);
+    } else {
+        const el = document.createElement(tag);
+        if (range.collapsed) {
+            el.innerHTML = '\u200B';
+            range.insertNode(el);
+            range.selectNodeContents(el);
+            range.collapse(false);
             sel.removeAllRanges();
-            sel.addRange(newRange);
+            sel.addRange(range);
         } else {
-            // Вставляем ZWS после тега и ставим туда каретку
-            var zws = document.createTextNode('\u200B');
-            formatEl.parentNode.insertBefore(zws, formatEl.nextSibling);
-            var newRange = document.createRange();
-            newRange.setStart(zws, 1);
-            newRange.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(newRange);
-        }
-    }
-
-    function isFormatApplied(node, tag) {
-        const tagName = tag.toUpperCase();
-        let current = node;
-        while (current && current.id !== 'contentVisual') {
-            if (current.nodeType === Node.ELEMENT_NODE && current.tagName.toUpperCase() === tagName) {
-                return current;
-            }
-            current = current.parentNode;
-        }
-        return null;
-    }
-
-    function toggleInlineFormat(tag) {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return;
-        
-        let range = sel.getRangeAt(0);
-        const existingNode = isFormatApplied(range.commonAncestorContainer, tag);
-        
-        if (existingNode) {
-            const parent = existingNode.parentNode;
-            while (existingNode.firstChild) {
-                parent.insertBefore(existingNode.firstChild, existingNode);
-            }
-            parent.removeChild(existingNode);
-        } else {
-            const el = document.createElement(tag);
-            if (range.collapsed) {
-                el.innerHTML = '\u200B';
+            try {
+                const contents = range.extractContents();
+                el.appendChild(contents);
                 range.insertNode(el);
-                range.selectNodeContents(el);
-                range.collapse(false);
                 sel.removeAllRanges();
-                sel.addRange(range);
-            } else {
-                try {
-                    const contents = range.extractContents();
-                    el.appendChild(contents);
-                    range.insertNode(el);
-                    sel.removeAllRanges();
-                    const newRange = document.createRange();
-                    newRange.selectNodeContents(el);
-                    sel.addRange(newRange);
-                } catch(e) {
-                    console.error("Selection crosses block boundaries", e);
-                }
+                const newRange = document.createRange();
+                newRange.selectNodeContents(el);
+                sel.addRange(newRange);
+            } catch (e) {
+                console.error("Selection crosses block boundaries", e);
             }
         }
     }
+}
 
-    function toggleBlockFormat(tag) {
+function toggleBlockFormat(tag) {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+
+    let node = range.startContainer;
+    let blockNode = null;
+    const blockTags = ['P', 'H1', 'H2', 'H3', 'DIV'];
+    while (node && node.id !== 'contentVisual') {
+        if (node.nodeType === 1 && blockTags.includes(node.tagName.toUpperCase())) {
+            blockNode = node;
+            break;
+        }
+        node = node.parentNode;
+    }
+
+    if (blockNode) {
+        const targetTag = tag.toUpperCase();
+        if (blockNode.tagName.toUpperCase() === targetTag) {
+            const p = document.createElement('p');
+            p.innerHTML = blockNode.innerHTML;
+            blockNode.parentNode.replaceChild(p, blockNode);
+
+            // Перемещаем каретку внутрь нового абзаца
+            const newRange = document.createRange();
+            newRange.selectNodeContents(p);
+            newRange.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        } else {
+            const h = document.createElement(tag);
+            h.innerHTML = blockNode.innerHTML;
+            blockNode.parentNode.replaceChild(h, blockNode);
+
+            // Перемещаем каретку внутрь нового заголовка
+            const newRange = document.createRange();
+            newRange.selectNodeContents(h);
+            newRange.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        }
+    } else {
+        const block = document.createElement(tag);
+        if (!range.collapsed) {
+            try {
+                const contents = range.extractContents();
+                block.appendChild(contents);
+                range.insertNode(block);
+
+                // Выделяем содержимое нового блока
+                const newRange = document.createRange();
+                newRange.selectNodeContents(block);
+                sel.removeAllRanges();
+                sel.addRange(newRange);
+            } catch (e) {
+                console.error("Extract contents failed", e);
+            }
+        } else {
+            block.innerHTML = '<br>';
+            range.insertNode(block);
+
+            // Ставим каретку внутрь созданного блока перед <br>
+            const newRange = document.createRange();
+            newRange.setStart(block, 0);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        }
+    }
+}
+
+function formatText(tag) {
+    const ta = document.getElementById('content');
+    const ve = document.getElementById('contentVisual');
+
+    if (window.enableMarkdown && editorMode === 'code') {
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const selectedText = ta.value.substring(start, end);
+        const beforeText = ta.value.substring(0, start);
+        const afterText = ta.value.substring(end);
+
+        let formattedText = selectedText;
+        let newCursorStart = start;
+        let newCursorEnd = end;
+
+        if (tag === 'b') {
+            formattedText = `**${selectedText}**`;
+            newCursorStart += 2;
+            newCursorEnd += 2;
+        } else if (tag === 'i') {
+            formattedText = `*${selectedText}*`;
+            newCursorStart += 1;
+            newCursorEnd += 1;
+        } else if (tag === 's') {
+            formattedText = `~~${selectedText}~~`;
+            newCursorStart += 2;
+            newCursorEnd += 2;
+        } else if (tag === 'h2') {
+            formattedText = `\n## ${selectedText}\n`;
+            newCursorStart += 4;
+            newCursorEnd += 4;
+        }
+
+        ta.value = beforeText + formattedText + afterText;
+        ta.setSelectionRange(newCursorStart, newCursorEnd);
+        saveToHistory();
+        return;
+    }
+
+    if (editorMode === 'code') {
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const selectedText = ta.value.substring(start, end);
+        const beforeText = ta.value.substring(0, start);
+        const afterText = ta.value.substring(end);
+        const formattedText = tag === 'h2' ? `<${tag}>${selectedText}</${tag}>\n` : `<${tag}>${selectedText}</${tag}>`;
+        ta.value = beforeText + formattedText + afterText;
+        ta.setSelectionRange(start + tag.length + 2, start + tag.length + 2 + selectedText.length);
+        saveToHistory();
+    } else {
+        if (ve) ve.focus();
+        if (tag === 'h2') {
+            toggleBlockFormat('h2');
+        } else {
+            toggleInlineFormat(tag);
+        }
+        saveSelection();
+        updateActiveButtons();
+        saveToHistory();
+    }
+}
+
+function alignText(side) {
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const selectedText = ta.value.substring(start, end);
+        const before = ta.value.substring(0, start);
+        const after = ta.value.substring(end);
+        const html = `<div style="text-align: ${side};">${selectedText || '&nbsp;'}</div>`;
+        ta.value = before + html + after;
+    } else {
+        const ve = document.getElementById('contentVisual');
+        if (ve) ve.focus();
+
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0) return;
         const range = sel.getRangeAt(0);
-        
+
         let node = range.startContainer;
         let blockNode = null;
         const blockTags = ['P', 'H1', 'H2', 'H3', 'DIV'];
@@ -763,590 +914,820 @@ function showNotification(message, type = 'info', title = '') {
             }
             node = node.parentNode;
         }
-        
+
         if (blockNode) {
-            const targetTag = tag.toUpperCase();
-            if (blockNode.tagName.toUpperCase() === targetTag) {
-                const p = document.createElement('p');
-                p.innerHTML = blockNode.innerHTML;
-                blockNode.parentNode.replaceChild(p, blockNode);
-                
-                // Перемещаем каретку внутрь нового абзаца
-                const newRange = document.createRange();
-                newRange.selectNodeContents(p);
-                newRange.collapse(false);
-                sel.removeAllRanges();
-                sel.addRange(newRange);
-            } else {
-                const h = document.createElement(tag);
-                h.innerHTML = blockNode.innerHTML;
-                blockNode.parentNode.replaceChild(h, blockNode);
-                
-                // Перемещаем каретку внутрь нового заголовка
-                const newRange = document.createRange();
-                newRange.selectNodeContents(h);
-                newRange.collapse(false);
-                sel.removeAllRanges();
-                sel.addRange(newRange);
-            }
+            blockNode.style.textAlign = side;
         } else {
-            const block = document.createElement(tag);
+            const div = document.createElement('div');
+            div.style.textAlign = side;
             if (!range.collapsed) {
                 try {
                     const contents = range.extractContents();
-                    block.appendChild(contents);
-                    range.insertNode(block);
-                    
-                    // Выделяем содержимое нового блока
-                    const newRange = document.createRange();
-                    newRange.selectNodeContents(block);
-                    sel.removeAllRanges();
-                    sel.addRange(newRange);
-                } catch(e) {
-                    console.error("Extract contents failed", e);
-                }
-            } else {
-                block.innerHTML = '<br>';
-                range.insertNode(block);
-                
-                // Ставим каретку внутрь созданного блока перед <br>
-                const newRange = document.createRange();
-                newRange.setStart(block, 0);
-                newRange.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(newRange);
-            }
-        }
-    }
-
-    function formatText(tag) {
-        const ta = document.getElementById('content');
-        const ve = document.getElementById('contentVisual');
-        
-        if (window.enableMarkdown && editorMode === 'code') {
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            const selectedText = ta.value.substring(start, end);
-            const beforeText = ta.value.substring(0, start);
-            const afterText = ta.value.substring(end);
-            
-            let formattedText = selectedText;
-            let newCursorStart = start;
-            let newCursorEnd = end;
-            
-            if (tag === 'b') {
-                formattedText = `**${selectedText}**`;
-                newCursorStart += 2;
-                newCursorEnd += 2;
-            } else if (tag === 'i') {
-                formattedText = `*${selectedText}*`;
-                newCursorStart += 1;
-                newCursorEnd += 1;
-            } else if (tag === 's') {
-                formattedText = `~~${selectedText}~~`;
-                newCursorStart += 2;
-                newCursorEnd += 2;
-            } else if (tag === 'h2') {
-                formattedText = `\n## ${selectedText}\n`;
-                newCursorStart += 4;
-                newCursorEnd += 4;
-            }
-            
-            ta.value = beforeText + formattedText + afterText;
-            ta.setSelectionRange(newCursorStart, newCursorEnd);
-            saveToHistory();
-            return;
-        }
-        
-        if (editorMode === 'code') {
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            const selectedText = ta.value.substring(start, end);
-            const beforeText = ta.value.substring(0, start);
-            const afterText = ta.value.substring(end);
-            const formattedText = tag === 'h2' ? `<${tag}>${selectedText}</${tag}>\n` : `<${tag}>${selectedText}</${tag}>`;
-            ta.value = beforeText + formattedText + afterText;
-            ta.setSelectionRange(start + tag.length + 2, start + tag.length + 2 + selectedText.length);
-            saveToHistory();
-        } else {
-            if (ve) ve.focus();
-            if (tag === 'h2') {
-                toggleBlockFormat('h2');
-            } else {
-                toggleInlineFormat(tag);
-            }
-            saveSelection();
-            updateActiveButtons();
-            saveToHistory();
-        }
-    }
-
-    function alignText(side) {
-        if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            const selectedText = ta.value.substring(start, end);
-            const before = ta.value.substring(0, start);
-            const after = ta.value.substring(end);
-            const html = `<div style="text-align: ${side};">${selectedText || '&nbsp;'}</div>`;
-            ta.value = before + html + after;
-        } else {
-            const ve = document.getElementById('contentVisual');
-            if (ve) ve.focus();
-            
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-            const range = sel.getRangeAt(0);
-            
-            let node = range.startContainer;
-            let blockNode = null;
-            const blockTags = ['P', 'H1', 'H2', 'H3', 'DIV'];
-            while (node && node.id !== 'contentVisual') {
-                if (node.nodeType === 1 && blockTags.includes(node.tagName.toUpperCase())) {
-                    blockNode = node;
-                    break;
-                }
-                node = node.parentNode;
-            }
-            
-            if (blockNode) {
-                blockNode.style.textAlign = side;
-            } else {
-                const div = document.createElement('div');
-                div.style.textAlign = side;
-                if (!range.collapsed) {
-                    try {
-                        const contents = range.extractContents();
-                        div.appendChild(contents);
-                        range.insertNode(div);
-                    } catch(e) {
-                        console.error("Extract failed", e);
-                    }
-                } else {
-                    div.innerHTML = '<br>';
+                    div.appendChild(contents);
                     range.insertNode(div);
+                } catch (e) {
+                    console.error("Extract failed", e);
                 }
+            } else {
+                div.innerHTML = '<br>';
+                range.insertNode(div);
             }
-            
-            saveSelection();
-            saveToHistory();
         }
+
+        saveSelection();
+        saveToHistory();
     }
+}
 
-    // Кастомный обработчик Enter для стабильной структуры абзацев (разделение на блоки <p>)
-    document.getElementById('contentVisual').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey && !e.defaultPrevented) {
-            const sel = window.getSelection();
-            if (!sel || !sel.rangeCount) return;
-            const node = sel.anchorNode;
-            
-            // Если мы внутри списка или преформатированного текста, пусть браузер обрабатывает сам
-            let inListOrPre = false;
-            let curr = node;
-            while(curr && curr.id !== 'contentVisual') {
-                if(curr.tagName === 'LI' || curr.tagName === 'PRE') { 
-                    inListOrPre = true; 
-                    break; 
-                }
-                curr = curr.parentNode;
+// Кастомный обработчик Enter для стабильной структуры абзацев (разделение на блоки <p>)
+document.getElementById('contentVisual').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.defaultPrevented) {
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+        const node = sel.anchorNode;
+
+        // Если мы внутри списка или преформатированного текста, пусть браузер обрабатывает сам
+        let inListOrPre = false;
+        let curr = node;
+        while (curr && curr.id !== 'contentVisual') {
+            if (curr.tagName === 'LI' || curr.tagName === 'PRE') {
+                inListOrPre = true;
+                break;
             }
-            if (inListOrPre) return; 
+            curr = curr.parentNode;
+        }
+        if (inListOrPre) return;
 
-            e.preventDefault();
-            
-            const range = sel.getRangeAt(0);
-            
-            // Находим ближайший блочный элемент (P, H1-H6, DIV, etc.)
-            let blockNode = range.startContainer;
-            const blockTags = ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'DIV', 'BLOCKQUOTE'];
+        e.preventDefault();
+
+        const range = sel.getRangeAt(0);
+
+        // Находим ближайший блочный элемент (P, H1-H6, DIV, etc.)
+        let blockNode = range.startContainer;
+        const blockTags = ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'DIV', 'BLOCKQUOTE'];
+        while (blockNode && blockNode.id !== 'contentVisual') {
+            if (blockNode.nodeType === 1 && blockTags.includes(blockNode.tagName.toUpperCase())) {
+                break;
+            }
+            blockNode = blockNode.parentNode;
+        }
+
+        // Если мы не нашли блочный элемент, обернем текущее содержимое в <p>
+        if (!blockNode || blockNode.id === 'contentVisual') {
+            document.execCommand('formatBlock', false, 'p');
+
+            // Переполучим blockNode
+            blockNode = sel.anchorNode;
             while (blockNode && blockNode.id !== 'contentVisual') {
                 if (blockNode.nodeType === 1 && blockTags.includes(blockNode.tagName.toUpperCase())) {
                     break;
                 }
                 blockNode = blockNode.parentNode;
             }
-            
-            // Если мы не нашли блочный элемент, обернем текущее содержимое в <p>
-            if (!blockNode || blockNode.id === 'contentVisual') {
-                document.execCommand('formatBlock', false, 'p');
-                
-                // Переполучим blockNode
-                blockNode = sel.anchorNode;
-                while (blockNode && blockNode.id !== 'contentVisual') {
-                    if (blockNode.nodeType === 1 && blockTags.includes(blockNode.tagName.toUpperCase())) {
-                        break;
-                    }
-                    blockNode = blockNode.parentNode;
-                }
+        }
+
+        if (blockNode && blockNode.id !== 'contentVisual') {
+            range.deleteContents();
+
+            // Разделяем блок
+            const afterRange = document.createRange();
+            afterRange.setStart(range.endContainer, range.endOffset);
+            afterRange.setEndAfter(blockNode.lastChild || blockNode);
+
+            let afterFragment;
+            try {
+                afterFragment = afterRange.extractContents();
+            } catch (err) {
+                afterFragment = document.createDocumentFragment();
             }
-            
-            if (blockNode && blockNode.id !== 'contentVisual') {
-                range.deleteContents();
-                
-                // Разделяем блок
-                const afterRange = document.createRange();
-                afterRange.setStart(range.endContainer, range.endOffset);
-                afterRange.setEndAfter(blockNode.lastChild || blockNode);
-                
-                let afterFragment;
-                try {
-                    afterFragment = afterRange.extractContents();
-                } catch(err) {
-                    afterFragment = document.createDocumentFragment();
-                }
-                
-                // Создаем новый абзац <p>
-                const newP = document.createElement('p');
-                
-                // Наполняем его
-                if (afterFragment.childNodes.length === 0 || (afterFragment.childNodes.length === 1 && afterFragment.textContent === '')) {
-                    newP.innerHTML = '<br>';
-                } else {
-                    newP.appendChild(afterFragment);
-                }
-                
-                // Вставляем новый абзац после текущего блока
-                blockNode.parentNode.insertBefore(newP, blockNode.nextSibling);
-                
-                // Ставим каретку в начало нового абзаца
-                const newRange = document.createRange();
-                newRange.setStart(newP, 0);
-                newRange.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(newRange);
-                
-                // Очищаем старый блок, если он пуст
-                if (blockNode.textContent.trim() === '' && !blockNode.querySelector('img, video, audio, iframe')) {
-                    blockNode.innerHTML = '<br>';
-                }
-            } else {
-                // В крайнем случае вставляем <p><br></p> в позицию каретки
-                const newP = document.createElement('p');
+
+            // Создаем новый абзац <p>
+            const newP = document.createElement('p');
+
+            // Наполняем его
+            if (afterFragment.childNodes.length === 0 || (afterFragment.childNodes.length === 1 && afterFragment.textContent === '')) {
                 newP.innerHTML = '<br>';
-                range.insertNode(newP);
-                const newRange = document.createRange();
-                newRange.setStart(newP, 0);
-                newRange.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(newRange);
+            } else {
+                newP.appendChild(afterFragment);
             }
-            
-            saveSelection();
-            saveToHistory();
-        }
-    });
 
-    // Получить текущие начальное и конечное смещения выделения в виде символьных индексов относительно container
-    function getSelectionOffsets(container) {
-        if (!container) return { start: 0, end: 0 };
-        const sel = window.getSelection();
-        if (!sel || !sel.rangeCount) return { start: 0, end: 0 };
-        const range = sel.getRangeAt(0);
-        
-        if (!container.contains(range.commonAncestorContainer)) {
-            return { start: 0, end: 0 };
-        }
-        
-        let start = 0;
-        let end = 0;
-        
-        const preNavigator = document.createNodeIterator(container, NodeFilter.SHOW_TEXT);
-        let currentNode;
-        while ((currentNode = preNavigator.nextNode())) {
-            if (currentNode === range.startContainer) {
-                start += range.startOffset;
-            } else if (range.startContainer !== currentNode) {
-                if (currentNode.compareDocumentPosition(range.startContainer) & Node.DOCUMENT_POSITION_PRECEDING) {
-                    // startContainer is after currentNode
-                } else {
-                    start += currentNode.length;
-                }
-            }
-            
-            if (currentNode === range.endContainer) {
-                end += range.endOffset;
-            } else if (range.endContainer !== currentNode) {
-                if (currentNode.compareDocumentPosition(range.endContainer) & Node.DOCUMENT_POSITION_PRECEDING) {
-                    // endContainer is after currentNode
-                } else {
-                    end += currentNode.length;
-                }
-            }
-        }
-        
-        return { start, end };
-    }
+            // Вставляем новый абзац после текущего блока
+            blockNode.parentNode.insertBefore(newP, blockNode.nextSibling);
 
-    // Восстановить выделение по символьным смещениям относительно container
-    function setSelectionOffsets(container, start, end) {
-        if (!container) return;
-        const sel = window.getSelection();
-        if (!sel) return;
-        sel.removeAllRanges();
-        
-        const range = document.createRange();
-        let charIndex = 0;
-        let startNode = null;
-        let startOffset = 0;
-        let endNode = null;
-        let endOffset = 0;
-        
-        const preNavigator = document.createNodeIterator(container, NodeFilter.SHOW_TEXT);
-        let currentNode;
-        
-        while ((currentNode = preNavigator.nextNode())) {
-            const nodeLength = currentNode.length;
-            
-            if (!startNode && charIndex + nodeLength >= start) {
-                startNode = currentNode;
-                startOffset = start - charIndex;
-            }
-            
-            if (!endNode && charIndex + nodeLength >= end) {
-                endNode = currentNode;
-                endOffset = end - charIndex;
-            }
-            
-            charIndex += nodeLength;
-        }
-        
-        if (!startNode) {
-            startNode = container;
-            startOffset = 0;
-        }
-        if (!endNode) {
-            endNode = container;
-            endOffset = 0;
-        }
-        
-        try {
-            range.setStart(startNode, startOffset);
-            range.setEnd(endNode, endOffset);
-            sel.addRange(range);
-        } catch (e) {
-            console.error('Error restoring selection offsets:', e);
-        }
-    }
+            // Ставим каретку в начало нового абзаца
+            const newRange = document.createRange();
+            newRange.setStart(newP, 0);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
 
-    // Функции для работы с историей изменений
-    function saveToHistory(force = true) {
-        if (isRestoringHistory) return;
-        
-        const ve = document.getElementById('contentVisual');
-        const ta = document.getElementById('content');
-        if (!ve || !ta) return;
-        
-        const currentState = {
-            visual: ve.innerHTML,
-            code: ta.value,
-            mode: editorMode,
-            visualSelection: getSelectionOffsets(ve),
-            codeSelection: { start: ta.selectionStart, end: ta.selectionEnd }
-        };
-        
-        if (force) {
-            lastActionType = 'formatting';
-            cursorMoved = false;
-            // Удаляем все состояния после текущего индекса
-            historyStack = historyStack.slice(0, historyIndex + 1);
-            historyStack.push(currentState);
-            historyIndex++;
-            
-            while (historyStack.length > MAX_HISTORY_STATES) {
-                historyStack.shift();
-                historyIndex = Math.max(0, historyIndex - 1);
-            }
-            markEditorDirty();
-        }
-        
-        updateUndoRedoButtons();
-        
-        // Сохраняем в файл с задержкой
-        clearTimeout(historySaveTimeout);
-        historySaveTimeout = setTimeout(() => {
-            saveHistoryToFile();
-        }, 1000);
-    }
-
-    function saveHistoryToFile() {
-        fetch('save_history.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                history: historyStack,
-                index: historyIndex
-            })
-        }).catch(error => {
-            console.error('Ошибка сохранения истории:', error);
-        });
-    }
-
-    function loadHistoryFromFile() {
-        fetch('get_history.php?t=' + Date.now())
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    historyStack = data.history || [];
-                    historyIndex = data.index ?? -1;
-                    updateUndoRedoButtons();
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка загрузки истории:', error);
-            });
-    }
-
-    function undoEdit() {
-        if (historyIndex <= 0) return;
-        
-        historyIndex--;
-        restoreHistoryState(historyStack[historyIndex]);
-        updateUndoRedoButtons();
-        saveHistoryToFile();
-    }
-
-    function redoEdit() {
-        if (historyIndex >= historyStack.length - 1) return;
-        
-        historyIndex++;
-        restoreHistoryState(historyStack[historyIndex]);
-        updateUndoRedoButtons();
-        saveHistoryToFile();
-    }
-
-    function restoreHistoryState(state) {
-        isRestoringHistory = true;
-        
-        const ve = document.getElementById('contentVisual');
-        const ta = document.getElementById('content');
-        
-        ve.innerHTML = state.visual;
-        ta.value = state.code;
-        
-        // Восстанавливаем обработчики для изображений и других элементов
-        addColumnResizers();
-        
-        // Восстанавливаем выделение
-        if (state.mode === 'visual') {
-            ve.focus();
-            if (state.visualSelection) {
-                setSelectionOffsets(ve, state.visualSelection.start, state.visualSelection.end);
+            // Очищаем старый блок, если он пуст
+            if (blockNode.textContent.trim() === '' && !blockNode.querySelector('img, video, audio, iframe')) {
+                blockNode.innerHTML = '<br>';
             }
         } else {
-            ta.focus();
-            if (state.codeSelection) {
-                ta.setSelectionRange(state.codeSelection.start, state.codeSelection.end);
+            // В крайнем случае вставляем <p><br></p> в позицию каретки
+            const newP = document.createElement('p');
+            newP.innerHTML = '<br>';
+            range.insertNode(newP);
+            const newRange = document.createRange();
+            newRange.setStart(newP, 0);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        }
+
+        saveSelection();
+        saveToHistory();
+    }
+});
+
+// Получить текущие начальное и конечное смещения выделения в виде символьных индексов относительно container
+function getSelectionOffsets(container) {
+    if (!container) return { start: 0, end: 0 };
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return { start: 0, end: 0 };
+    const range = sel.getRangeAt(0);
+
+    if (!container.contains(range.commonAncestorContainer)) {
+        return { start: 0, end: 0 };
+    }
+
+    let start = 0;
+    let end = 0;
+
+    const preNavigator = document.createNodeIterator(container, NodeFilter.SHOW_TEXT);
+    let currentNode;
+    while ((currentNode = preNavigator.nextNode())) {
+        if (currentNode === range.startContainer) {
+            start += range.startOffset;
+        } else if (range.startContainer !== currentNode) {
+            if (currentNode.compareDocumentPosition(range.startContainer) & Node.DOCUMENT_POSITION_PRECEDING) {
+                // startContainer is after currentNode
+            } else {
+                start += currentNode.length;
             }
         }
-        
-        isRestoringHistory = false;
-    }
 
-    function updateUndoRedoButtons() {
-        const undoBtn = document.getElementById('undoBtn');
-        const redoBtn = document.getElementById('redoBtn');
-        
-        if (undoBtn) {
-            undoBtn.disabled = historyIndex <= 0;
-            undoBtn.style.opacity = historyIndex <= 0 ? '0.4' : '1';
-            undoBtn.style.cursor = historyIndex <= 0 ? 'not-allowed' : 'pointer';
-        }
-        
-        if (redoBtn) {
-            redoBtn.disabled = historyIndex >= historyStack.length - 1;
-            redoBtn.style.opacity = historyIndex >= historyStack.length - 1 ? '0.4' : '1';
-            redoBtn.style.cursor = historyIndex >= historyStack.length - 1 ? 'not-allowed' : 'pointer';
+        if (currentNode === range.endContainer) {
+            end += range.endOffset;
+        } else if (range.endContainer !== currentNode) {
+            if (currentNode.compareDocumentPosition(range.endContainer) & Node.DOCUMENT_POSITION_PRECEDING) {
+                // endContainer is after currentNode
+            } else {
+                end += currentNode.length;
+            }
         }
     }
 
-    function clearHistory() {
-        historyStack = [];
-        historyIndex = -1;
-        updateUndoRedoButtons();
-        
-        // Очищаем файл истории
-        fetch('clear_history.php', {
-            method: 'POST'
-        }).catch(error => {
-            console.error('Ошибка очистки истории:', error);
+    return { start, end };
+}
+
+// Восстановить выделение по символьным смещениям относительно container
+function setSelectionOffsets(container, start, end) {
+    if (!container) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+    sel.removeAllRanges();
+
+    const range = document.createRange();
+    let charIndex = 0;
+    let startNode = null;
+    let startOffset = 0;
+    let endNode = null;
+    let endOffset = 0;
+
+    const preNavigator = document.createNodeIterator(container, NodeFilter.SHOW_TEXT);
+    let currentNode;
+
+    while ((currentNode = preNavigator.nextNode())) {
+        const nodeLength = currentNode.length;
+
+        if (!startNode && charIndex + nodeLength >= start) {
+            startNode = currentNode;
+            startOffset = start - charIndex;
+        }
+
+        if (!endNode && charIndex + nodeLength >= end) {
+            endNode = currentNode;
+            endOffset = end - charIndex;
+        }
+
+        charIndex += nodeLength;
+    }
+
+    if (!startNode) {
+        startNode = container;
+        startOffset = 0;
+    }
+    if (!endNode) {
+        endNode = container;
+        endOffset = 0;
+    }
+
+    try {
+        range.setStart(startNode, startOffset);
+        range.setEnd(endNode, endOffset);
+        sel.addRange(range);
+    } catch (e) {
+        console.error('Error restoring selection offsets:', e);
+    }
+}
+
+// Функции для работы с историей изменений
+function saveToHistory(force = true) {
+    if (isRestoringHistory) return;
+
+    const ve = document.getElementById('contentVisual');
+    const ta = document.getElementById('content');
+    if (!ve || !ta) return;
+
+    const currentState = {
+        visual: ve.innerHTML,
+        code: ta.value,
+        mode: editorMode,
+        visualSelection: getSelectionOffsets(ve),
+        codeSelection: { start: ta.selectionStart, end: ta.selectionEnd }
+    };
+
+    if (force) {
+        lastActionType = 'formatting';
+        cursorMoved = false;
+        // Удаляем все состояния после текущего индекса
+        historyStack = historyStack.slice(0, historyIndex + 1);
+        historyStack.push(currentState);
+        historyIndex++;
+
+        while (historyStack.length > MAX_HISTORY_STATES) {
+            historyStack.shift();
+            historyIndex = Math.max(0, historyIndex - 1);
+        }
+        markEditorDirty();
+    }
+
+    updateUndoRedoButtons();
+
+    // Сохраняем в файл с задержкой
+    clearTimeout(historySaveTimeout);
+    historySaveTimeout = setTimeout(() => {
+        saveHistoryToFile();
+    }, 1000);
+}
+
+function saveHistoryToFile() {
+    fetch('save_history.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            history: historyStack,
+            index: historyIndex
+        })
+    }).catch(error => {
+        console.error('Ошибка сохранения истории:', error);
+    });
+}
+
+function loadHistoryFromFile() {
+    fetch('get_history.php?t=' + Date.now())
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                historyStack = data.history || [];
+                historyIndex = data.index ?? -1;
+                updateUndoRedoButtons();
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки истории:', error);
+        });
+}
+
+function undoEdit() {
+    if (historyIndex <= 0) return;
+
+    historyIndex--;
+    restoreHistoryState(historyStack[historyIndex]);
+    updateUndoRedoButtons();
+    saveHistoryToFile();
+}
+
+function redoEdit() {
+    if (historyIndex >= historyStack.length - 1) return;
+
+    historyIndex++;
+    restoreHistoryState(historyStack[historyIndex]);
+    updateUndoRedoButtons();
+    saveHistoryToFile();
+}
+
+function restoreHistoryState(state) {
+    isRestoringHistory = true;
+
+    const ve = document.getElementById('contentVisual');
+    const ta = document.getElementById('content');
+
+    ve.innerHTML = state.visual;
+    ta.value = state.code;
+
+    // Восстанавливаем обработчики для изображений и других элементов
+    addColumnResizers();
+
+    // Восстанавливаем выделение
+    if (state.mode === 'visual') {
+        ve.focus();
+        if (state.visualSelection) {
+            setSelectionOffsets(ve, state.visualSelection.start, state.visualSelection.end);
+        }
+    } else {
+        ta.focus();
+        if (state.codeSelection) {
+            ta.setSelectionRange(state.codeSelection.start, state.codeSelection.end);
+        }
+    }
+
+    isRestoringHistory = false;
+}
+
+function updateUndoRedoButtons() {
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+
+    if (undoBtn) {
+        undoBtn.disabled = historyIndex <= 0;
+        undoBtn.style.opacity = historyIndex <= 0 ? '0.4' : '1';
+        undoBtn.style.cursor = historyIndex <= 0 ? 'not-allowed' : 'pointer';
+    }
+
+    if (redoBtn) {
+        redoBtn.disabled = historyIndex >= historyStack.length - 1;
+        redoBtn.style.opacity = historyIndex >= historyStack.length - 1 ? '0.4' : '1';
+        redoBtn.style.cursor = historyIndex >= historyStack.length - 1 ? 'not-allowed' : 'pointer';
+    }
+}
+
+function clearHistory() {
+    historyStack = [];
+    historyIndex = -1;
+    updateUndoRedoButtons();
+
+    // Очищаем файл истории
+    fetch('clear_history.php', {
+        method: 'POST'
+    }).catch(error => {
+        console.error('Ошибка очистки истории:', error);
+    });
+}
+
+function insertHtmlAtCaret(html) {
+    const ve = document.getElementById('contentVisual');
+    ve.focus();
+    const sel = window.getSelection();
+    let range = null;
+    if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+        range = savedRange;
+    } else if (sel && sel.rangeCount > 0) {
+        range = sel.getRangeAt(0);
+    }
+    if (!range) {
+        ve.insertAdjacentHTML('beforeend', html);
+        return;
+    }
+    range.deleteContents();
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const frag = document.createDocumentFragment();
+    let node, lastNode;
+    while ((node = temp.firstChild)) {
+        lastNode = frag.appendChild(node);
+    }
+    range.insertNode(frag);
+    if (lastNode) {
+        range.setStartAfter(lastNode);
+        range.collapse(true);
+        const s = window.getSelection();
+        if (s) {
+            s.removeAllRanges();
+            s.addRange(range);
+        }
+        savedRange = range.cloneRange();
+    }
+}
+
+/** Вставка блока с изображением(ями) и пустой строки после; курсор ставится в пустой блок, чтобы текст не привязывался к картинке */
+function insertImageBlockAtCaret(html) {
+    const ve = document.getElementById('contentVisual');
+    ve.focus();
+    const sel = window.getSelection();
+    let range = null;
+    if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+        range = savedRange;
+    } else if (sel && sel.rangeCount > 0) {
+        range = sel.getRangeAt(0);
+    }
+    var emptyDiv = document.createElement('div');
+    emptyDiv.innerHTML = '<br>';
+    if (!range) {
+        ve.insertAdjacentHTML('beforeend', html);
+        ve.appendChild(emptyDiv);
+        range = document.createRange();
+        range.setStart(emptyDiv, 0);
+        range.collapse(true);
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+        savedRange = range.cloneRange();
+        return;
+    }
+    range.deleteContents();
+    var temp = document.createElement('div');
+    temp.innerHTML = html;
+    var frag = document.createDocumentFragment();
+    var node, lastNode;
+    while ((node = temp.firstChild)) {
+        lastNode = frag.appendChild(node);
+    }
+    range.insertNode(frag);
+    if (lastNode) {
+        var parent = lastNode.parentNode;
+        parent.insertBefore(emptyDiv, lastNode.nextSibling);
+        range.setStart(emptyDiv, 0);
+        range.collapse(true);
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+        savedRange = range.cloneRange();
+    }
+}
+
+function insertList() {
+    const listTemplate = "\n<ul>\n  <li>Пункт 1</li>\n  <li>Пункт 2</li>\n  <li>Пункт 3</li>\n</ul>\n";
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const cursorPos = ta.selectionStart;
+        ta.value = ta.value.substring(0, cursorPos) + listTemplate + ta.value.substring(cursorPos);
+        ta.focus();
+    } else {
+        insertHtmlAtCaret(listTemplate);
+    }
+    saveToHistory();
+}
+
+function openTableDialog() {
+    if (window.Modal) {
+        Modal.open('#tableDialog');
+    } else {
+        const dlg = document.getElementById('tableDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
+    const rowsInput = document.getElementById('tableRows');
+    if (rowsInput) rowsInput.focus();
+}
+
+function closeTableDialog() {
+    if (window.Modal) {
+        Modal.close('#tableDialog');
+    } else {
+        const dlg = document.getElementById('tableDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
+    const rowsInput = document.getElementById('tableRows');
+    if (rowsInput) rowsInput.value = '3';
+    const colsInput = document.getElementById('tableCols');
+    if (colsInput) colsInput.value = '3';
+}
+
+function addTableRow() {
+    if (!window.contextMenuTableRow) return;
+
+    const row = window.contextMenuTableRow;
+    const table = row.closest('table');
+    if (!table) return;
+
+    const colCount = row.querySelectorAll('td, th').length;
+    const newRow = document.createElement('tr');
+
+    for (let i = 0; i < colCount; i++) {
+        const cell = document.createElement('td');
+        cell.innerHTML = '<br>';
+        cell.contentEditable = 'true';
+        newRow.appendChild(cell);
+    }
+
+    // Вставляем новую строку после текущей
+    if (row.parentNode.tagName === 'THEAD') {
+        // Если это строка заголовка, добавляем в tbody
+        const tbody = table.querySelector('tbody');
+        if (tbody && tbody.firstChild) {
+            tbody.insertBefore(newRow, tbody.firstChild);
+        } else if (tbody) {
+            tbody.appendChild(newRow);
+        }
+    } else {
+        row.parentNode.insertBefore(newRow, row.nextSibling);
+    }
+
+    saveToHistory();
+    showNotification('Строка добавлена', 'success');
+}
+
+function deleteTableRow() {
+    if (!window.contextMenuTableRow) return;
+
+    const row = window.contextMenuTableRow;
+    const table = row.closest('table');
+    if (!table) return;
+
+    // Проверяем, не является ли это единственной строкой в tbody
+    const tbody = table.querySelector('tbody');
+    if (tbody && tbody.querySelectorAll('tr').length === 1 && row.parentNode === tbody) {
+        showNotification('Нельзя удалить последнюю строку таблицы', 'warning');
+        return;
+    }
+
+    // Не даем удалить строку заголовка, если она единственная в thead
+    if (row.parentNode.tagName === 'THEAD') {
+        showNotification('Нельзя удалить строку заголовка', 'warning');
+        return;
+    }
+
+    row.parentNode.removeChild(row);
+    saveToHistory();
+    showNotification('Строка удалена', 'success');
+}
+
+function addTableColumn() {
+    if (!window.contextMenuTableCell) return;
+
+    const cell = window.contextMenuTableCell;
+    const table = cell.closest('table');
+    if (!table) return;
+
+    // Определяем индекс текущего столбца
+    const row = cell.closest('tr');
+    const cells = Array.from(row.querySelectorAll('td, th'));
+    const colIndex = cells.indexOf(cell);
+
+    // Добавляем ячейку в заголовок
+    const thead = table.querySelector('thead');
+    if (thead) {
+        const headerRow = thead.querySelector('tr');
+        if (headerRow) {
+            const headerCells = headerRow.querySelectorAll('th');
+            const newHeader = document.createElement('th');
+            newHeader.innerHTML = '<br>';
+            newHeader.contentEditable = 'true';
+
+            if (colIndex + 1 < headerCells.length) {
+                headerRow.insertBefore(newHeader, headerCells[colIndex + 1]);
+            } else {
+                headerRow.appendChild(newHeader);
+            }
+        }
+    }
+
+    // Добавляем ячейки во все строки tbody
+    const tbody = table.querySelector('tbody');
+    if (tbody) {
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(function (bodyRow) {
+            const bodyCells = bodyRow.querySelectorAll('td');
+            const newCell = document.createElement('td');
+            newCell.innerHTML = '<br>';
+            newCell.contentEditable = 'true';
+
+            if (colIndex + 1 < bodyCells.length) {
+                bodyRow.insertBefore(newCell, bodyCells[colIndex + 1]);
+            } else {
+                bodyRow.appendChild(newCell);
+            }
         });
     }
 
-    function insertHtmlAtCaret(html) {
-        const ve = document.getElementById('contentVisual');
-        ve.focus();
-        const sel = window.getSelection();
-        let range = null;
-        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-            range = savedRange;
-        } else if (sel && sel.rangeCount > 0) {
-            range = sel.getRangeAt(0);
+    // Обновляем ресайзеры
+    addColumnResizers();
+    saveToHistory();
+    showNotification('Столбец добавлен', 'success');
+}
+
+function deleteTableColumn() {
+    if (!window.contextMenuTableCell) return;
+
+    const cell = window.contextMenuTableCell;
+    const table = cell.closest('table');
+    if (!table) return;
+
+    // Определяем индекс текущего столбца
+    const row = cell.closest('tr');
+    const cells = Array.from(row.querySelectorAll('td, th'));
+    const colIndex = cells.indexOf(cell);
+
+    // Проверяем, не единственный ли это столбец
+    if (cells.length === 1) {
+        showNotification('Нельзя удалить единственный столбец', 'warning');
+        return;
+    }
+
+    // Удаляем ячейку из заголовка
+    const thead = table.querySelector('thead');
+    if (thead) {
+        const headerRow = thead.querySelector('tr');
+        if (headerRow) {
+            const headerCells = headerRow.querySelectorAll('th');
+            if (headerCells[colIndex]) {
+                headerCells[colIndex].parentNode.removeChild(headerCells[colIndex]);
+            }
         }
-        if (!range) {
-            ve.insertAdjacentHTML('beforeend', html);
-            return;
+    }
+
+    // Удаляем ячейки из всех строк tbody
+    const tbody = table.querySelector('tbody');
+    if (tbody) {
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(function (bodyRow) {
+            const bodyCells = bodyRow.querySelectorAll('td');
+            if (bodyCells[colIndex]) {
+                bodyCells[colIndex].parentNode.removeChild(bodyCells[colIndex]);
+            }
+        });
+    }
+
+    // Обновляем ресайзеры
+    addColumnResizers();
+    saveToHistory();
+    showNotification('Столбец удален', 'success');
+}
+
+function deleteTable() {
+    if (!window.contextMenuTableCell && !window.contextMenuTableRow) return;
+
+    const cell = window.contextMenuTableCell || window.contextMenuTableRow.querySelector('td, th');
+    if (!cell) return;
+
+    const table = cell.closest('table');
+    if (!table) return;
+
+    // Удаляем таблицу
+    table.parentNode.removeChild(table);
+    saveToHistory();
+    showNotification('Таблица удалена', 'success');
+}
+
+function openCellColorDialog() {
+    if (!window.contextMenuTableCell) return;
+    if (window.Modal) {
+        Modal.open('#cellColorDialog');
+    } else {
+        const dlg = document.getElementById('cellColorDialog');
+        if (dlg) dlg.style.display = 'flex';
+    }
+}
+
+function closeCellColorDialog() {
+    if (window.Modal) {
+        Modal.close('#cellColorDialog');
+    } else {
+        const dlg = document.getElementById('cellColorDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
+}
+
+function setCellColor(color) {
+    if (!window.contextMenuTableCell) return;
+
+    const cell = window.contextMenuTableCell;
+
+    if (color) {
+        cell.style.backgroundColor = color;
+        cell.style.color = '#000000'; // Устанавливаем черный цвет текста
+    } else {
+        cell.style.backgroundColor = '';
+        cell.style.color = ''; // Сбрасываем цвет текста
+    }
+
+    saveToHistory();
+    closeCellColorDialog();
+    showNotification(window.t ? window.t('notifications.cell_color_changed', 'Цвет ячейки изменен') : 'Цвет ячейки изменен', 'success');
+}
+
+window.openCellColorDialog = openCellColorDialog;
+window.closeCellColorDialog = closeCellColorDialog;
+window.setCellColor = setCellColor;
+
+function insertTable() {
+    const rows = parseInt(document.getElementById('tableRows').value);
+    const cols = parseInt(document.getElementById('tableCols').value);
+
+    if (!rows || rows < 1 || rows > 20) {
+        showNotification('Введите количество строк от 1 до 20', 'warning');
+        return;
+    }
+
+    if (!cols || cols < 1 || cols > 7) {
+        showNotification('Введите количество столбцов от 1 до 7', 'warning');
+        return;
+    }
+
+    if (window.enableMarkdown && editorMode === 'code') {
+        let mdTable = '\n';
+        mdTable += '| ' + Array.from({ length: cols }, (_, i) => `Заголовок ${i + 1}`).join(' | ') + ' |\n';
+        mdTable += '| ' + Array.from({ length: cols }, () => '---').join(' | ') + ' |\n';
+        for (let i = 0; i < rows; i++) {
+            mdTable += '| ' + Array.from({ length: cols }, () => ' ').join(' | ') + ' |\n';
         }
+        mdTable += '\n';
+
+        const ta = document.getElementById('content');
+        const cursorPos = ta.selectionStart;
+        ta.value = ta.value.substring(0, cursorPos) + mdTable + ta.value.substring(cursorPos);
+        ta.focus();
+        saveToHistory();
+        closeTableDialog();
+        showNotification('Таблица добавлена', 'success');
+        return;
+    }
+
+    let tableHtml = '<table><thead><tr>';
+
+    // Создаем заголовки
+    for (let i = 0; i < cols; i++) {
+        tableHtml += `<th>Заголовок ${i + 1}</th>`;
+    }
+    tableHtml += '</tr></thead><tbody>';
+
+    // Создаем строки с пустыми ячейками
+    for (let i = 0; i < rows; i++) {
+        tableHtml += '<tr>';
+        for (let j = 0; j < cols; j++) {
+            tableHtml += '<td><br></td>';
+        }
+        tableHtml += '</tr>';
+    }
+
+    tableHtml += '</tbody></table>';
+
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const cursorPos = ta.selectionStart;
+        ta.value = ta.value.substring(0, cursorPos) + tableHtml + '\n' + ta.value.substring(cursorPos);
+        ta.focus();
+    } else {
+        insertTableAtCaret(tableHtml);
+    }
+
+    saveToHistory();
+    closeTableDialog();
+    showNotification('Таблица добавлена', 'success');
+}
+
+// Функция для вставки таблицы в визуальном редакторе
+function insertTableAtCaret(tableHtml) {
+    const ve = document.getElementById('contentVisual');
+    ve.focus();
+    const sel = window.getSelection();
+    let range = null;
+
+    if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+        range = savedRange;
+    } else if (sel && sel.rangeCount > 0) {
+        range = sel.getRangeAt(0);
+    }
+
+    // Создаем пустой блок для курсора после таблицы
+    const emptyDiv = document.createElement('div');
+    emptyDiv.innerHTML = '<br>';
+
+    if (!range) {
+        ve.insertAdjacentHTML('beforeend', tableHtml);
+        ve.appendChild(emptyDiv);
+        range = document.createRange();
+        range.setStart(emptyDiv, 0);
+        range.collapse(true);
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+        savedRange = range.cloneRange();
+    } else {
         range.deleteContents();
+
+        // Создаем временный контейнер для парсинга HTML
         const temp = document.createElement('div');
-        temp.innerHTML = html;
+        temp.innerHTML = tableHtml;
+
         const frag = document.createDocumentFragment();
         let node, lastNode;
         while ((node = temp.firstChild)) {
             lastNode = frag.appendChild(node);
         }
-        range.insertNode(frag);
-        if (lastNode) {
-            range.setStartAfter(lastNode);
-            range.collapse(true);
-            const s = window.getSelection();
-            if (s) {
-                s.removeAllRanges();
-                s.addRange(range);
-            }
-            savedRange = range.cloneRange();
-        }
-    }
 
-    /** Вставка блока с изображением(ями) и пустой строки после; курсор ставится в пустой блок, чтобы текст не привязывался к картинке */
-    function insertImageBlockAtCaret(html) {
-        const ve = document.getElementById('contentVisual');
-        ve.focus();
-        const sel = window.getSelection();
-        let range = null;
-        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-            range = savedRange;
-        } else if (sel && sel.rangeCount > 0) {
-            range = sel.getRangeAt(0);
-        }
-        var emptyDiv = document.createElement('div');
-        emptyDiv.innerHTML = '<br>';
-        if (!range) {
-            ve.insertAdjacentHTML('beforeend', html);
-            ve.appendChild(emptyDiv);
-            range = document.createRange();
-            range.setStart(emptyDiv, 0);
-            range.collapse(true);
-            if (sel) {
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-            savedRange = range.cloneRange();
-            return;
-        }
-        range.deleteContents();
-        var temp = document.createElement('div');
-        temp.innerHTML = html;
-        var frag = document.createDocumentFragment();
-        var node, lastNode;
-        while ((node = temp.firstChild)) {
-            lastNode = frag.appendChild(node);
-        }
         range.insertNode(frag);
+
         if (lastNode) {
-            var parent = lastNode.parentNode;
+            const parent = lastNode.parentNode;
             parent.insertBefore(emptyDiv, lastNode.nextSibling);
             range.setStart(emptyDiv, 0);
             range.collapse(true);
@@ -1358,707 +1739,331 @@ function showNotification(message, type = 'info', title = '') {
         }
     }
 
-    function insertList() {
-        const listTemplate = "\n<ul>\n  <li>Пункт 1</li>\n  <li>Пункт 2</li>\n  <li>Пункт 3</li>\n</ul>\n";
-        if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const cursorPos = ta.selectionStart;
-            ta.value = ta.value.substring(0, cursorPos) + listTemplate + ta.value.substring(cursorPos);
-            ta.focus();
-        } else {
-            insertHtmlAtCaret(listTemplate);
-        }
-        saveToHistory();
-    }
-
-    function openTableDialog() {
-        if (window.Modal) {
-            Modal.open('#tableDialog');
-        } else {
-            const dlg = document.getElementById('tableDialog');
-            if (dlg) dlg.style.display = 'block';
-        }
-        const rowsInput = document.getElementById('tableRows');
-        if (rowsInput) rowsInput.focus();
-    }
-
-    function closeTableDialog() {
-        if (window.Modal) {
-            Modal.close('#tableDialog');
-        } else {
-            const dlg = document.getElementById('tableDialog');
-            if (dlg) dlg.style.display = 'none';
-        }
-        const rowsInput = document.getElementById('tableRows');
-        if (rowsInput) rowsInput.value = '3';
-        const colsInput = document.getElementById('tableCols');
-        if (colsInput) colsInput.value = '3';
-    }
-
-    function addTableRow() {
-        if (!window.contextMenuTableRow) return;
-        
-        const row = window.contextMenuTableRow;
-        const table = row.closest('table');
-        if (!table) return;
-        
-        const colCount = row.querySelectorAll('td, th').length;
-        const newRow = document.createElement('tr');
-        
-        for (let i = 0; i < colCount; i++) {
-            const cell = document.createElement('td');
-            cell.innerHTML = '<br>';
-            cell.contentEditable = 'true';
-            newRow.appendChild(cell);
-        }
-        
-        // Вставляем новую строку после текущей
-        if (row.parentNode.tagName === 'THEAD') {
-            // Если это строка заголовка, добавляем в tbody
-            const tbody = table.querySelector('tbody');
-            if (tbody && tbody.firstChild) {
-                tbody.insertBefore(newRow, tbody.firstChild);
-            } else if (tbody) {
-                tbody.appendChild(newRow);
-            }
-        } else {
-            row.parentNode.insertBefore(newRow, row.nextSibling);
-        }
-        
-        saveToHistory();
-        showNotification('Строка добавлена', 'success');
-    }
-
-    function deleteTableRow() {
-        if (!window.contextMenuTableRow) return;
-        
-        const row = window.contextMenuTableRow;
-        const table = row.closest('table');
-        if (!table) return;
-        
-        // Проверяем, не является ли это единственной строкой в tbody
-        const tbody = table.querySelector('tbody');
-        if (tbody && tbody.querySelectorAll('tr').length === 1 && row.parentNode === tbody) {
-            showNotification('Нельзя удалить последнюю строку таблицы', 'warning');
-            return;
-        }
-        
-        // Не даем удалить строку заголовка, если она единственная в thead
-        if (row.parentNode.tagName === 'THEAD') {
-            showNotification('Нельзя удалить строку заголовка', 'warning');
-            return;
-        }
-        
-        row.parentNode.removeChild(row);
-        saveToHistory();
-        showNotification('Строка удалена', 'success');
-    }
-
-    function addTableColumn() {
-        if (!window.contextMenuTableCell) return;
-        
-        const cell = window.contextMenuTableCell;
-        const table = cell.closest('table');
-        if (!table) return;
-        
-        // Определяем индекс текущего столбца
-        const row = cell.closest('tr');
-        const cells = Array.from(row.querySelectorAll('td, th'));
-        const colIndex = cells.indexOf(cell);
-        
-        // Добавляем ячейку в заголовок
-        const thead = table.querySelector('thead');
-        if (thead) {
-            const headerRow = thead.querySelector('tr');
-            if (headerRow) {
-                const headerCells = headerRow.querySelectorAll('th');
-                const newHeader = document.createElement('th');
-                newHeader.innerHTML = '<br>';
-                newHeader.contentEditable = 'true';
-                
-                if (colIndex + 1 < headerCells.length) {
-                    headerRow.insertBefore(newHeader, headerCells[colIndex + 1]);
-                } else {
-                    headerRow.appendChild(newHeader);
-                }
-            }
-        }
-        
-        // Добавляем ячейки во все строки tbody
-        const tbody = table.querySelector('tbody');
-        if (tbody) {
-            const rows = tbody.querySelectorAll('tr');
-            rows.forEach(function(bodyRow) {
-                const bodyCells = bodyRow.querySelectorAll('td');
-                const newCell = document.createElement('td');
-                newCell.innerHTML = '<br>';
-                newCell.contentEditable = 'true';
-                
-                if (colIndex + 1 < bodyCells.length) {
-                    bodyRow.insertBefore(newCell, bodyCells[colIndex + 1]);
-                } else {
-                    bodyRow.appendChild(newCell);
-                }
-            });
-        }
-        
-        // Обновляем ресайзеры
+    // Добавляем ручки изменения размера после небольшой задержки
+    setTimeout(() => {
         addColumnResizers();
-        saveToHistory();
-        showNotification('Столбец добавлен', 'success');
-    }
+    }, 100);
+}
 
-    function deleteTableColumn() {
-        if (!window.contextMenuTableCell) return;
-        
-        const cell = window.contextMenuTableCell;
-        const table = cell.closest('table');
-        if (!table) return;
-        
-        // Определяем индекс текущего столбца
-        const row = cell.closest('tr');
-        const cells = Array.from(row.querySelectorAll('td, th'));
-        const colIndex = cells.indexOf(cell);
-        
-        // Проверяем, не единственный ли это столбец
-        if (cells.length === 1) {
-            showNotification('Нельзя удалить единственный столбец', 'warning');
-            return;
-        }
-        
-        // Удаляем ячейку из заголовка
-        const thead = table.querySelector('thead');
-        if (thead) {
-            const headerRow = thead.querySelector('tr');
-            if (headerRow) {
-                const headerCells = headerRow.querySelectorAll('th');
-                if (headerCells[colIndex]) {
-                    headerCells[colIndex].parentNode.removeChild(headerCells[colIndex]);
-                }
-            }
-        }
-        
-        // Удаляем ячейки из всех строк tbody
-        const tbody = table.querySelector('tbody');
-        if (tbody) {
-            const rows = tbody.querySelectorAll('tr');
-            rows.forEach(function(bodyRow) {
-                const bodyCells = bodyRow.querySelectorAll('td');
-                if (bodyCells[colIndex]) {
-                    bodyCells[colIndex].parentNode.removeChild(bodyCells[colIndex]);
-                }
-            });
-        }
-        
-        // Обновляем ресайзеры
-        addColumnResizers();
-        saveToHistory();
-        showNotification('Столбец удален', 'success');
-    }
+// Функция для добавления ручек изменения размера столбцов
+function addColumnResizers() {
+    const ve = document.getElementById('contentVisual');
+    if (!ve) return;
 
-    function deleteTable() {
-        if (!window.contextMenuTableCell && !window.contextMenuTableRow) return;
-        
-        const cell = window.contextMenuTableCell || window.contextMenuTableRow.querySelector('td, th');
-        if (!cell) return;
-        
-        const table = cell.closest('table');
-        if (!table) return;
-        
-        // Удаляем таблицу
-        table.parentNode.removeChild(table);
-        saveToHistory();
-        showNotification('Таблица удалена', 'success');
-    }
+    const tables = ve.querySelectorAll('table');
+    tables.forEach(table => {
+        // Проверяем, не добавлены ли уже ручки
+        if (table.dataset.resizersAdded) return;
+        table.dataset.resizersAdded = 'true';
 
-    function openCellColorDialog() {
-        if (!window.contextMenuTableCell) return;
-        if (window.Modal) {
-            Modal.open('#cellColorDialog');
-        } else {
-            const dlg = document.getElementById('cellColorDialog');
-            if (dlg) dlg.style.display = 'flex';
-        }
-    }
+        const headerCells = table.querySelectorAll('thead th');
 
-    function closeCellColorDialog() {
-        if (window.Modal) {
-            Modal.close('#cellColorDialog');
-        } else {
-            const dlg = document.getElementById('cellColorDialog');
-            if (dlg) dlg.style.display = 'none';
-        }
-    }
-
-    function setCellColor(color) {
-        if (!window.contextMenuTableCell) return;
-        
-        const cell = window.contextMenuTableCell;
-        
-        if (color) {
-            cell.style.backgroundColor = color;
-            cell.style.color = '#000000'; // Устанавливаем черный цвет текста
-        } else {
-            cell.style.backgroundColor = '';
-            cell.style.color = ''; // Сбрасываем цвет текста
-        }
-        
-        saveToHistory();
-        closeCellColorDialog();
-        showNotification(window.t ? window.t('notifications.cell_color_changed', 'Цвет ячейки изменен') : 'Цвет ячейки изменен', 'success');
-    }
-
-    window.openCellColorDialog = openCellColorDialog;
-    window.closeCellColorDialog = closeCellColorDialog;
-    window.setCellColor = setCellColor;
-
-    function insertTable() {
-        const rows = parseInt(document.getElementById('tableRows').value);
-        const cols = parseInt(document.getElementById('tableCols').value);
-        
-        if (!rows || rows < 1 || rows > 20) {
-            showNotification('Введите количество строк от 1 до 20', 'warning');
-            return;
-        }
-        
-        if (!cols || cols < 1 || cols > 7) {
-            showNotification('Введите количество столбцов от 1 до 7', 'warning');
-            return;
-        }
-        
-        if (window.enableMarkdown && editorMode === 'code') {
-            let mdTable = '\n';
-            mdTable += '| ' + Array.from({length: cols}, (_, i) => `Заголовок ${i + 1}`).join(' | ') + ' |\n';
-            mdTable += '| ' + Array.from({length: cols}, () => '---').join(' | ') + ' |\n';
-            for (let i = 0; i < rows; i++) {
-                mdTable += '| ' + Array.from({length: cols}, () => ' ').join(' | ') + ' |\n';
-            }
-            mdTable += '\n';
-
-            const ta = document.getElementById('content');
-            const cursorPos = ta.selectionStart;
-            ta.value = ta.value.substring(0, cursorPos) + mdTable + ta.value.substring(cursorPos);
-            ta.focus();
-            saveToHistory();
-            closeTableDialog();
-            showNotification('Таблица добавлена', 'success');
-            return;
-        }
-        
-        let tableHtml = '<table><thead><tr>';
-        
-        // Создаем заголовки
-        for (let i = 0; i < cols; i++) {
-            tableHtml += `<th>Заголовок ${i + 1}</th>`;
-        }
-        tableHtml += '</tr></thead><tbody>';
-        
-        // Создаем строки с пустыми ячейками
-        for (let i = 0; i < rows; i++) {
-            tableHtml += '<tr>';
-            for (let j = 0; j < cols; j++) {
-                tableHtml += '<td><br></td>';
-            }
-            tableHtml += '</tr>';
-        }
-        
-        tableHtml += '</tbody></table>';
-        
-        if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const cursorPos = ta.selectionStart;
-            ta.value = ta.value.substring(0, cursorPos) + tableHtml + '\n' + ta.value.substring(cursorPos);
-            ta.focus();
-        } else {
-            insertTableAtCaret(tableHtml);
-        }
-        
-        saveToHistory();
-        closeTableDialog();
-        showNotification('Таблица добавлена', 'success');
-    }
-
-    // Функция для вставки таблицы в визуальном редакторе
-    function insertTableAtCaret(tableHtml) {
-        const ve = document.getElementById('contentVisual');
-        ve.focus();
-        const sel = window.getSelection();
-        let range = null;
-        
-        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-            range = savedRange;
-        } else if (sel && sel.rangeCount > 0) {
-            range = sel.getRangeAt(0);
-        }
-        
-        // Создаем пустой блок для курсора после таблицы
-        const emptyDiv = document.createElement('div');
-        emptyDiv.innerHTML = '<br>';
-        
-        if (!range) {
-            ve.insertAdjacentHTML('beforeend', tableHtml);
-            ve.appendChild(emptyDiv);
-            range = document.createRange();
-            range.setStart(emptyDiv, 0);
-            range.collapse(true);
-            if (sel) {
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-            savedRange = range.cloneRange();
-        } else {
-            range.deleteContents();
-            
-            // Создаем временный контейнер для парсинга HTML
-            const temp = document.createElement('div');
-            temp.innerHTML = tableHtml;
-            
-            const frag = document.createDocumentFragment();
-            let node, lastNode;
-            while ((node = temp.firstChild)) {
-                lastNode = frag.appendChild(node);
-            }
-            
-            range.insertNode(frag);
-            
-            if (lastNode) {
-                const parent = lastNode.parentNode;
-                parent.insertBefore(emptyDiv, lastNode.nextSibling);
-                range.setStart(emptyDiv, 0);
-                range.collapse(true);
-                if (sel) {
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                }
-                savedRange = range.cloneRange();
-            }
-        }
-        
-        // Добавляем ручки изменения размера после небольшой задержки
-        setTimeout(() => {
-            addColumnResizers();
-        }, 100);
-    }
-
-    // Функция для добавления ручек изменения размера столбцов
-    function addColumnResizers() {
-        const ve = document.getElementById('contentVisual');
-        if (!ve) return;
-        
-        const tables = ve.querySelectorAll('table');
-        tables.forEach(table => {
-            // Проверяем, не добавлены ли уже ручки
-            if (table.dataset.resizersAdded) return;
-            table.dataset.resizersAdded = 'true';
-            
-            const headerCells = table.querySelectorAll('thead th');
-            
-            // Устанавливаем начальную ширину в процентах
-            const colWidth = 100 / headerCells.length;
-            headerCells.forEach(th => {
-                th.style.width = colWidth + '%';
-            });
-            
-            headerCells.forEach((th, index) => {
-                // Не добавляем ручку к последнему столбцу
-                if (index === headerCells.length - 1) return;
-                
-                const resizer = document.createElement('div');
-                resizer.className = 'column-resizer';
-                resizer.contentEditable = 'false';
-                th.appendChild(resizer);
-                
-                let startX, startWidthPercent, nextStartWidthPercent, tableWidth;
-                
-                resizer.addEventListener('mousedown', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    resizer.classList.add('resizing');
-                    startX = e.pageX;
-                    tableWidth = table.offsetWidth;
-                    
-                    // Получаем текущую ширину в процентах
-                    startWidthPercent = (th.offsetWidth / tableWidth) * 100;
-                    
-                    const nextTh = headerCells[index + 1];
-                    nextStartWidthPercent = nextTh ? (nextTh.offsetWidth / tableWidth) * 100 : 0;
-                    
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                });
-                
-                function onMouseMove(e) {
-                    const diff = e.pageX - startX;
-                    const diffPercent = (diff / tableWidth) * 100;
-                    
-                    const newWidthPercent = startWidthPercent + diffPercent;
-                    const newNextWidthPercent = nextStartWidthPercent - diffPercent;
-                    
-                    // Минимальная ширина 5%
-                    if (newWidthPercent > 5 && newNextWidthPercent > 5) {
-                        th.style.width = newWidthPercent + '%';
-                        const nextTh = headerCells[index + 1];
-                        if (nextTh) {
-                            nextTh.style.width = newNextWidthPercent + '%';
-                        }
-                        
-                        // Применяем ширину ко всем ячейкам в столбце
-                        const rows = table.querySelectorAll('tbody tr');
-                        rows.forEach(row => {
-                            const cells = row.querySelectorAll('td');
-                            if (cells[index]) {
-                                cells[index].style.width = newWidthPercent + '%';
-                            }
-                            if (cells[index + 1]) {
-                                cells[index + 1].style.width = newNextWidthPercent + '%';
-                            }
-                        });
-                    }
-                }
-                
-                function onMouseUp() {
-                    resizer.classList.remove('resizing');
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                }
-            });
+        // Устанавливаем начальную ширину в процентах
+        const colWidth = 100 / headerCells.length;
+        headerCells.forEach(th => {
+            th.style.width = colWidth + '%';
         });
-    }
 
-    // Вызываем функцию при загрузке контента в визуальный редактор
-    function initTableResizers() {
-        const ve = document.getElementById('contentVisual');
-        if (!ve) return;
-        
-        // Добавляем ручки к существующим таблицам
-        addColumnResizers();
-        
-        // Наблюдаем за изменениями в редакторе
-        const observer = new MutationObserver(() => {
-            addColumnResizers();
-        });
-        
-        observer.observe(ve, {
-            childList: true,
-            subtree: true
-        });
-    }
+        headerCells.forEach((th, index) => {
+            // Не добавляем ручку к последнему столбцу
+            if (index === headerCells.length - 1) return;
 
-    // Инициализируем при загрузке страницы
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initTableResizers);
-    } else {
-        initTableResizers();
-    }
+            const resizer = document.createElement('div');
+            resizer.className = 'column-resizer';
+            resizer.contentEditable = 'false';
+            th.appendChild(resizer);
 
-    function addLink() {
-        var urlInput = document.getElementById('linkUrl');
-        var textInput = document.getElementById('linkText');
-        urlInput.value = 'https://';
-        if (editorMode === 'code') {
-            var ta = document.getElementById('content');
-            linkInsertStart = ta.selectionStart;
-            linkInsertEnd = ta.selectionEnd;
-            textInput.value = ta.value.substring(linkInsertStart, linkInsertEnd).trim();
-        } else {
-            textInput.value = document.getSelection().toString().trim();
-        }
-        if (window.Modal) {
-            Modal.open('#linkDialog');
-        } else {
-            const dlg = document.getElementById('linkDialog');
-            if (dlg) dlg.style.display = 'block';
-        }
-        urlInput.focus();
-        if (navigator.clipboard && navigator.clipboard.readText) {
-            navigator.clipboard.readText().then(function(text) {
-                if (text && (text = text.trim())) {
-                    if (!/^https?:\/\//i.test(text)) text = 'https://' + text.replace(/^\/+/, '');
-                    urlInput.value = text;
-                }
-            }).catch(function() {});
-        }
-    }
+            let startX, startWidthPercent, nextStartWidthPercent, tableWidth;
 
-    function closeLinkDialog() {
-        if (window.Modal) {
-            Modal.close('#linkDialog');
-        } else {
-            const dlg = document.getElementById('linkDialog');
-            if (dlg) dlg.style.display = 'none';
-        }
-        document.getElementById('linkUrl').value = '';
-        document.getElementById('linkText').value = '';
-    }
-
-    function insertLinkFromDialog() {
-        var url = document.getElementById('linkUrl').value.trim();
-        if (!url) {
-            showNotification('Введите URL ссылки', 'warning');
-            return;
-        }
-        var linkText = document.getElementById('linkText').value.trim();
-        
-        if (window.enableMarkdown && editorMode === 'code') {
-            var ta = document.getElementById('content');
-            var start = linkInsertStart;
-            var end = linkInsertEnd;
-            var selectedText = ta.value.substring(start, end);
-            var text = linkText || selectedText || 'ссылка';
-            var link = '[' + text + '](' + url + ')';
-            ta.value = ta.value.substring(0, start) + link + ta.value.substring(end);
-            ta.focus();
-        } else if (editorMode === 'code') {
-            var ta = document.getElementById('content');
-            var start = linkInsertStart;
-            var end = linkInsertEnd;
-            var selectedText = ta.value.substring(start, end);
-            var text = linkText || selectedText || 'ссылка';
-            var link = '<a href="' + url + '">' + text + '</a>';
-            ta.value = ta.value.substring(0, start) + link + ta.value.substring(end);
-            ta.focus();
-        } else {
-            var text = linkText || (savedRange ? savedRange.toString() : '') || 'ссылка';
-            var html = '<a href="' + url + '">' + text + '</a>';
-            insertHtmlAtCaret(html);
-        }
-        saveToHistory();
-        closeLinkDialog();
-    }
-
-    // Функции для работы с изображениями
-    let selectedImageFiles = [];
-    let isImageDragDropInitialized = false;
-
-    function initImageDragDrop() {
-        if (isImageDragDropInitialized) return;
-        const dropzone = document.getElementById('imageDropzone');
-        if (!dropzone) return;
-        
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
+            resizer.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-            }, false);
-        });
-        
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropzone.addEventListener(eventName, () => {
-                dropzone.classList.add('drag-over');
-            }, false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, () => {
-                dropzone.classList.remove('drag-over');
-            }, false);
-        });
-        
-        dropzone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files && files.length > 0) {
-                Array.from(files).forEach(file => {
-                    if (file.type.startsWith('image/')) {
-                        selectedImageFiles.push(file);
-                    }
-                });
-                renderImagePreviews();
-                checkInsertGalleryVisibility();
-            }
-        }, false);
-        
-        isImageDragDropInitialized = true;
-    }
 
-    function renderImagePreviews() {
-        const previewContainer = document.getElementById('imageFilesPreview');
-        const dropzoneText = document.getElementById('imageDropzoneText');
-        if (!previewContainer) return;
-        
-        if (selectedImageFiles.length === 0) {
-            previewContainer.style.display = 'none';
-            previewContainer.innerHTML = '';
-            if (dropzoneText) {
-                dropzoneText.textContent = 'Выберите изображения или перетащите их сюда';
-            }
-            return;
-        }
-        
-        previewContainer.style.display = 'grid';
-        previewContainer.innerHTML = '';
-        if (dropzoneText) {
-            dropzoneText.textContent = `Выбрано изображений: ${selectedImageFiles.length}`;
-        }
-        
-        selectedImageFiles.forEach((file, index) => {
-            const reader = new FileReader();
-            const thumbnail = document.createElement('div');
-            thumbnail.className = 'image-preview-thumbnail';
-            
-            const img = document.createElement('img');
-            thumbnail.appendChild(img);
-            
-            const deleteBtn = document.createElement('div');
-            deleteBtn.className = 'image-preview-thumbnail-delete';
-            deleteBtn.innerHTML = '×';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                selectedImageFiles.splice(index, 1);
-                renderImagePreviews();
-                checkInsertGalleryVisibility();
+                resizer.classList.add('resizing');
+                startX = e.pageX;
+                tableWidth = table.offsetWidth;
+
+                // Получаем текущую ширину в процентах
+                startWidthPercent = (th.offsetWidth / tableWidth) * 100;
+
+                const nextTh = headerCells[index + 1];
+                nextStartWidthPercent = nextTh ? (nextTh.offsetWidth / tableWidth) * 100 : 0;
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
             });
-            thumbnail.appendChild(deleteBtn);
-            previewContainer.appendChild(thumbnail);
-            
-            reader.onload = function(e) {
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-    }
 
-    function handleImageFileSelect(input) {
-        if (input.files && input.files.length > 0) {
-            const MAX_IMAGE_SIZE = 25 * 1024 * 1024; // 25 MB
-            Array.from(input.files).forEach(file => {
-                if (!file.type.startsWith('image/')) {
-                    showNotification(`Файл "${file.name}" не является изображением`, 'warning');
-                    return;
+            function onMouseMove(e) {
+                const diff = e.pageX - startX;
+                const diffPercent = (diff / tableWidth) * 100;
+
+                const newWidthPercent = startWidthPercent + diffPercent;
+                const newNextWidthPercent = nextStartWidthPercent - diffPercent;
+
+                // Минимальная ширина 5%
+                if (newWidthPercent > 5 && newNextWidthPercent > 5) {
+                    th.style.width = newWidthPercent + '%';
+                    const nextTh = headerCells[index + 1];
+                    if (nextTh) {
+                        nextTh.style.width = newNextWidthPercent + '%';
+                    }
+
+                    // Применяем ширину ко всем ячейкам в столбце
+                    const rows = table.querySelectorAll('tbody tr');
+                    rows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells[index]) {
+                            cells[index].style.width = newWidthPercent + '%';
+                        }
+                        if (cells[index + 1]) {
+                            cells[index + 1].style.width = newNextWidthPercent + '%';
+                        }
+                    });
                 }
-                if (file.size > MAX_IMAGE_SIZE) {
-                    showNotification(`Файл "${file.name}" слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 25 МБ.`, 'error');
-                    return;
+            }
+
+            function onMouseUp() {
+                resizer.classList.remove('resizing');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        });
+    });
+}
+
+// Вызываем функцию при загрузке контента в визуальный редактор
+function initTableResizers() {
+    const ve = document.getElementById('contentVisual');
+    if (!ve) return;
+
+    // Добавляем ручки к существующим таблицам
+    addColumnResizers();
+
+    // Наблюдаем за изменениями в редакторе
+    const observer = new MutationObserver(() => {
+        addColumnResizers();
+    });
+
+    observer.observe(ve, {
+        childList: true,
+        subtree: true
+    });
+}
+
+// Инициализируем при загрузке страницы
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTableResizers);
+} else {
+    initTableResizers();
+}
+
+function addLink() {
+    var urlInput = document.getElementById('linkUrl');
+    var textInput = document.getElementById('linkText');
+    urlInput.value = 'https://';
+    if (editorMode === 'code') {
+        var ta = document.getElementById('content');
+        linkInsertStart = ta.selectionStart;
+        linkInsertEnd = ta.selectionEnd;
+        textInput.value = ta.value.substring(linkInsertStart, linkInsertEnd).trim();
+    } else {
+        textInput.value = document.getSelection().toString().trim();
+    }
+    if (window.Modal) {
+        Modal.open('#linkDialog');
+    } else {
+        const dlg = document.getElementById('linkDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
+    urlInput.focus();
+    if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(function (text) {
+            if (text && (text = text.trim())) {
+                if (!/^https?:\/\//i.test(text)) text = 'https://' + text.replace(/^\/+/, '');
+                urlInput.value = text;
+            }
+        }).catch(function () { });
+    }
+}
+
+function closeLinkDialog() {
+    if (window.Modal) {
+        Modal.close('#linkDialog');
+    } else {
+        const dlg = document.getElementById('linkDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
+    document.getElementById('linkUrl').value = '';
+    document.getElementById('linkText').value = '';
+}
+
+function insertLinkFromDialog() {
+    var url = document.getElementById('linkUrl').value.trim();
+    if (!url) {
+        showNotification('Введите URL ссылки', 'warning');
+        return;
+    }
+    var linkText = document.getElementById('linkText').value.trim();
+
+    if (window.enableMarkdown && editorMode === 'code') {
+        var ta = document.getElementById('content');
+        var start = linkInsertStart;
+        var end = linkInsertEnd;
+        var selectedText = ta.value.substring(start, end);
+        var text = linkText || selectedText || 'ссылка';
+        var link = '[' + text + '](' + url + ')';
+        ta.value = ta.value.substring(0, start) + link + ta.value.substring(end);
+        ta.focus();
+    } else if (editorMode === 'code') {
+        var ta = document.getElementById('content');
+        var start = linkInsertStart;
+        var end = linkInsertEnd;
+        var selectedText = ta.value.substring(start, end);
+        var text = linkText || selectedText || 'ссылка';
+        var link = '<a href="' + url + '">' + text + '</a>';
+        ta.value = ta.value.substring(0, start) + link + ta.value.substring(end);
+        ta.focus();
+    } else {
+        var text = linkText || (savedRange ? savedRange.toString() : '') || 'ссылка';
+        var html = '<a href="' + url + '">' + text + '</a>';
+        insertHtmlAtCaret(html);
+    }
+    saveToHistory();
+    closeLinkDialog();
+}
+
+// Функции для работы с изображениями
+let selectedImageFiles = [];
+let isImageDragDropInitialized = false;
+
+function initImageDragDrop() {
+    if (isImageDragDropInitialized) return;
+    const dropzone = document.getElementById('imageDropzone');
+    if (!dropzone) return;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => {
+            dropzone.classList.add('drag-over');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => {
+            dropzone.classList.remove('drag-over');
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    selectedImageFiles.push(file);
                 }
-                selectedImageFiles.push(file);
             });
             renderImagePreviews();
             checkInsertGalleryVisibility();
         }
-        input.value = '';
+    }, false);
+
+    isImageDragDropInitialized = true;
+}
+
+function renderImagePreviews() {
+    const previewContainer = document.getElementById('imageFilesPreview');
+    const dropzoneText = document.getElementById('imageDropzoneText');
+    if (!previewContainer) return;
+
+    if (selectedImageFiles.length === 0) {
+        previewContainer.style.display = 'none';
+        previewContainer.innerHTML = '';
+        if (dropzoneText) {
+            dropzoneText.textContent = 'Выберите изображения или перетащите их сюда';
+        }
+        return;
     }
 
-    // Expose handleImageFileSelect to window
-    window.handleImageFileSelect = handleImageFileSelect;
+    previewContainer.style.display = 'grid';
+    previewContainer.innerHTML = '';
+    if (dropzoneText) {
+        dropzoneText.textContent = `Выбрано изображений: ${selectedImageFiles.length}`;
+    }
 
-    function showImageUpload() {
-        if (window.Modal) {
-            Modal.open('#imageUploadDialog');
-        } else {
-            const dlg = document.getElementById('imageUploadDialog');
-            if (dlg) dlg.style.display = 'block';
-        }
-        initImageDragDrop();
+    selectedImageFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        const thumbnail = document.createElement('div');
+        thumbnail.className = 'image-preview-thumbnail';
+
+        const img = document.createElement('img');
+        thumbnail.appendChild(img);
+
+        const deleteBtn = document.createElement('div');
+        deleteBtn.className = 'image-preview-thumbnail-delete';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedImageFiles.splice(index, 1);
+            renderImagePreviews();
+            checkInsertGalleryVisibility();
+        });
+        thumbnail.appendChild(deleteBtn);
+        previewContainer.appendChild(thumbnail);
+
+        reader.onload = function (e) {
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function handleImageFileSelect(input) {
+    if (input.files && input.files.length > 0) {
+        const MAX_IMAGE_SIZE = 25 * 1024 * 1024; // 25 MB
+        Array.from(input.files).forEach(file => {
+            if (!file.type.startsWith('image/')) {
+                showNotification(`Файл "${file.name}" не является изображением`, 'warning');
+                return;
+            }
+            if (file.size > MAX_IMAGE_SIZE) {
+                showNotification(`Файл "${file.name}" слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 25 МБ.`, 'error');
+                return;
+            }
+            selectedImageFiles.push(file);
+        });
+        renderImagePreviews();
         checkInsertGalleryVisibility();
     }
+    input.value = '';
+}
+
+// Expose handleImageFileSelect to window
+window.handleImageFileSelect = handleImageFileSelect;
+
+function showImageUpload() {
+    if (window.Modal) {
+        Modal.open('#imageUploadDialog');
+    } else {
+        const dlg = document.getElementById('imageUploadDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
+    initImageDragDrop();
+    checkInsertGalleryVisibility();
+}
 
 let gridTileFiles = {};
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const gridLayoutSelect = document.getElementById('gridLayout');
     if (gridLayoutSelect) {
-        gridLayoutSelect.addEventListener('change', function() {
+        gridLayoutSelect.addEventListener('change', function () {
             if (this.value) {
                 const insertGalleryChk = document.getElementById('insertGallery');
                 if (insertGalleryChk) insertGalleryChk.checked = false;
@@ -2070,7 +2075,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const insertGalleryChk = document.getElementById('insertGallery');
     if (insertGalleryChk) {
-        insertGalleryChk.addEventListener('change', function() {
+        insertGalleryChk.addEventListener('change', function () {
             if (this.checked) {
                 const gridLayoutSelect = document.getElementById('gridLayout');
                 if (gridLayoutSelect && gridLayoutSelect.value) {
@@ -2080,12 +2085,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     // Remember state of "Remove rounded corners" checkbox
     const noRadiusChk = document.getElementById('noBorderRadius');
     if (noRadiusChk) {
         noRadiusChk.checked = localStorage.getItem('noBorderRadius') === 'true';
-        noRadiusChk.addEventListener('change', function() {
+        noRadiusChk.addEventListener('change', function () {
             localStorage.setItem('noBorderRadius', this.checked ? 'true' : 'false');
         });
     }
@@ -2094,13 +2099,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!html || typeof html !== 'string') return '';
         const temp = document.createElement('div');
         temp.innerHTML = html;
-        
+
         // Удаляем опасные и недопустимые теги
         const forbidden = temp.querySelectorAll('script, style, link, meta, base, xml, object, embed, applet, iframe, form, input, button, select, textarea, o\\:p');
         forbidden.forEach(el => el.remove());
-        
+
         // Удаляем HTML-комментарии (например от Word <!--[if ...]-->)
-        const removeComments = function(element) {
+        const removeComments = function (element) {
             for (let i = element.childNodes.length - 1; i >= 0; i--) {
                 const child = element.childNodes[i];
                 if (child.nodeType === Node.COMMENT_NODE) {
@@ -2111,7 +2116,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
         removeComments(temp);
-        
+
         // Очищаем атрибуты и инлайн-стили
         const allNodes = temp.querySelectorAll('*');
         allNodes.forEach(node => {
@@ -2131,7 +2136,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
-            
+
             // Очищаем деструктивные инлайн-стили
             if (node.hasAttribute('style')) {
                 const styleStr = node.getAttribute('style') || '';
@@ -2150,7 +2155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     node.removeAttribute('style');
                 }
             }
-            
+
             // Разворачиваем устаревшие теги <font>
             if (node.tagName === 'FONT') {
                 const parent = node.parentNode;
@@ -2160,15 +2165,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 parent.removeChild(node);
             }
         });
-        
+
         return temp.innerHTML.trim();
     }
 
     // Support inserting images and clean rich text from clipboard (Ctrl+V / Paste)
-    const handlePaste = function(e) {
+    const handlePaste = function (e) {
         const clipboardData = e.clipboardData || e.originalEvent?.clipboardData;
         if (!clipboardData) return;
-        
+
         const items = clipboardData.items;
         let imageItem = null;
         if (items) {
@@ -2179,38 +2184,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         }
-        
+
         if (imageItem) {
             e.preventDefault();
             const file = imageItem.getAsFile();
             if (!file) return;
-            
+
             showNotification('Загрузка изображения из буфера обмена...', 'info');
-            
+
             const noBorderRadius = localStorage.getItem('noBorderRadius') === 'true';
-            
+
             const formData = new FormData();
             // Explicitly set filename with proper extension to ensure backend validation passes
             const extension = file.type === 'image/jpeg' || file.type === 'image/jpg' ? 'jpg' : 'png';
             formData.append('image', file, `clipboard-${Date.now()}.${extension}`);
-            
+
             fetch('upload_image.php', {
                 method: 'POST',
                 body: formData
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    insertImage(data.url, '100', '', '%', '', '', noBorderRadius);
-                    showNotification('Изображение успешно вставлено из буфера обмена', 'success');
-                    markEditorDirty();
-                } else {
-                    showNotification('Ошибка при загрузке изображения: ' + data.error, 'error');
-                }
-            })
-            .catch(() => {
-                showNotification('Ошибка при загрузке изображения из буфера обмена', 'error');
-            });
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        insertImage(data.url, '100', '', '%', '', '', noBorderRadius);
+                        showNotification('Изображение успешно вставлено из буфера обмена', 'success');
+                        markEditorDirty();
+                    } else {
+                        showNotification('Ошибка при загрузке изображения: ' + data.error, 'error');
+                    }
+                })
+                .catch(() => {
+                    showNotification('Ошибка при загрузке изображения из буфера обмена', 'error');
+                });
             return;
         }
 
@@ -2247,10 +2252,10 @@ function renderGridPreview() {
     const previewContainer = document.getElementById('imageGridPreviewContainer');
     const fileUploadContainer = document.getElementById('fileUploadContainer');
     const imageSource = document.querySelector('input[name="imageSource"]:checked').value;
-    
+
     // Clear old files
     gridTileFiles = {};
-    
+
     if (!gridLayout || imageSource !== 'file') {
         previewContainer.style.display = 'none';
         previewContainer.innerHTML = '';
@@ -2259,14 +2264,14 @@ function renderGridPreview() {
         }
         return;
     }
-    
+
     // Hide standard file upload input
     fileUploadContainer.style.display = 'none';
     previewContainer.style.display = 'grid';
-    
+
     const [cols, rows] = gridLayout.split('x').map(Number);
     previewContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-    
+
     let html = '';
     const totalTiles = cols * rows;
     for (let i = 0; i < totalTiles; i++) {
@@ -2286,38 +2291,38 @@ function renderGridPreview() {
     previewContainer.innerHTML = html;
 }
 
-window.triggerTileUpload = function(index) {
+window.triggerTileUpload = function (index) {
     const input = document.getElementById(`tile-file-input-${index}`);
     if (input) input.click();
 };
 
-window.clearTileImage = function(e, index) {
+window.clearTileImage = function (e, index) {
     e.stopPropagation();
     delete gridTileFiles[index];
-    
+
     const img = document.getElementById(`tile-img-${index}`);
     const content = document.getElementById(`tile-content-${index}`);
     const delBtn = document.getElementById(`tile-delete-${index}`);
     const input = document.getElementById(`tile-file-input-${index}`);
-    
+
     if (img) img.style.display = 'none';
     if (content) content.style.display = 'flex';
     if (delBtn) delBtn.style.display = 'none';
     if (input) input.value = '';
 };
 
-window.handleTileFileChange = function(e, index) {
+window.handleTileFileChange = function (e, index) {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     gridTileFiles[index] = file;
-    
+
     const reader = new FileReader();
-    reader.onload = function(evt) {
+    reader.onload = function (evt) {
         const img = document.getElementById(`tile-img-${index}`);
         const content = document.getElementById(`tile-content-${index}`);
         const delBtn = document.getElementById(`tile-delete-${index}`);
-        
+
         if (img) {
             img.src = evt.target.result;
             img.style.display = 'block';
@@ -2333,13 +2338,13 @@ window.handleTileFileChange = function(e, index) {
 };
 
 document.querySelectorAll('input[name="imageSource"]').forEach(radio => {
-    radio.addEventListener('change', function() {
+    radio.addEventListener('change', function () {
         document.querySelectorAll('input[name="imageSource"]').forEach(r => {
             r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
         });
         const isFile = this.value === 'file';
         const gridLayout = document.getElementById('gridLayout').value;
-        
+
         if (isFile && gridLayout) {
             document.getElementById('fileUploadContainer').style.display = 'none';
             document.getElementById('imageGridPreviewContainer').style.display = 'grid';
@@ -2347,10 +2352,10 @@ document.querySelectorAll('input[name="imageSource"]').forEach(radio => {
             document.getElementById('fileUploadContainer').style.display = isFile ? 'block' : 'none';
             document.getElementById('imageGridPreviewContainer').style.display = 'none';
         }
-        
-        document.getElementById('urlContainer').style.display = 
+
+        document.getElementById('urlContainer').style.display =
             this.value === 'url' ? 'block' : 'none';
-        
+
         // Обновляем видимость checkbox при переключении источника
         checkInsertGalleryVisibility();
     });
@@ -2365,9 +2370,9 @@ if (imageUrlInput) {
 function checkInsertGalleryVisibility() {
     const insertGalleryContainer = document.getElementById('insertGalleryContainer');
     if (!insertGalleryContainer) return;
-    
+
     const gridLayout = document.getElementById('gridLayout')?.value;
-    
+
     if (gridLayout) {
         insertGalleryContainer.style.opacity = '0.4';
         insertGalleryContainer.style.pointerEvents = 'none';
@@ -2402,7 +2407,7 @@ function processImage() {
             large: { width: 800 }
         };
         width = sizes[sizeValue].width;
-        
+
         const maxLimit = window.editorContentWidth || 920;
         if (width > maxLimit) {
             width = maxLimit;
@@ -2418,7 +2423,7 @@ function processImage() {
             showNotification('Введите URL изображения (можно несколько — каждое с новой строки или через запятую)', 'warning');
             return;
         }
-        const urls = urlInput.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+        const urls = urlInput.split(/[\n,]+/).map(function (s) { return s.trim(); }).filter(Boolean);
         if (urls.length === 1) {
             insertImage(urls[0], width, '', widthUnit, '', caption, noBorderRadius);
         } else {
@@ -2468,25 +2473,25 @@ function processImage() {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.urls) {
-            if (data.urls.length === 1 && !data.gridLayout) {
-                insertImage(data.urls[0], width, '', widthUnit, '', caption, noBorderRadius);
-            } else {
-                if (insertGallery && data.urls.length > 1) {
-                    insertImagesAsGallery(data.urls, caption, width, widthUnit, noBorderRadius);
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.urls) {
+                if (data.urls.length === 1 && !data.gridLayout) {
+                    insertImage(data.urls[0], width, '', widthUnit, '', caption, noBorderRadius);
                 } else {
-                    insertImagesInGrid(data.urls, data.gridLayout, caption, width, widthUnit, noBorderRadius);
+                    if (insertGallery && data.urls.length > 1) {
+                        insertImagesAsGallery(data.urls, caption, width, widthUnit, noBorderRadius);
+                    } else {
+                        insertImagesInGrid(data.urls, data.gridLayout, caption, width, widthUnit, noBorderRadius);
+                    }
                 }
+            } else {
+                showNotification('Ошибка при загрузке изображений: ' + data.error, 'error');
             }
-        } else {
-            showNotification('Ошибка при загрузке изображений: ' + data.error, 'error');
-        }
-    })
-    .catch(() => {
-        showNotification('Ошибка сети при загрузке изображений', 'error');
-    });
+        })
+        .catch(() => {
+            showNotification('Ошибка сети при загрузке изображений', 'error');
+        });
 
     closeImageDialog();
 }
@@ -2498,7 +2503,7 @@ function insertImagesInGrid(urls, layout, caption = '', width = '', widthUnit = 
     if (layout) {
         const [cols] = layout.split('x').map(Number);
         const className = `grid-container grid-${layout}`;
-        
+
         html += `<div class="${className}" style="display: grid; grid-template-columns: repeat(${cols}, 1fr); gap: 10px;">`;
         urls.forEach(url => {
             html += wrapImageWithHint(`<img src="${url}" style="width: 100%; height: auto; display: block; margin: 0; ${radiusStyle}" ${classAttr}>`);
@@ -2527,18 +2532,18 @@ function insertImagesInGrid(urls, layout, caption = '', width = '', widthUnit = 
 
 function insertImagesAsGallery(urls, caption = '', width = '', widthUnit = 'px', noBorderRadius = false) {
     if (!urls || urls.length === 0) return;
-    
+
     const galleryId = 'gallery-' + Date.now();
     const radiusStyle = noBorderRadius ? 'border-radius: 0px !important;' : 'border-radius: 8px;';
     const widthStyle = width ? `width: ${width}${widthUnit}; max-width: 100%;` : 'max-width: 100%;';
-    
+
     let galleryHtml = `<div class="image-gallery" id="${galleryId}" style="position: relative; ${widthStyle} margin: 0;">`;
-    
+
     urls.forEach((url, index) => {
         const displayStyle = index === 0 ? 'display: block;' : 'display: none;';
         galleryHtml += `<img src="${url}" style="width: 100%; height: auto; ${displayStyle} margin: 0; ${radiusStyle}" class="blog-image${noBorderRadius ? ' no-radius' : ''}" data-gallery="${galleryId}" data-index="${index}">`;
     });
-    
+
     if (urls.length > 1) {
         galleryHtml += `
             <button type="button" class="gallery-nav gallery-prev" onclick="event.stopPropagation(); window.navigateGallery('${galleryId}', -1);" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; user-select: none;">‹</button>
@@ -2546,12 +2551,12 @@ function insertImagesAsGallery(urls, caption = '', width = '', widthUnit = 'px',
             <div class="gallery-indicator" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 5px 12px; border-radius: 12px; font-size: 12px; z-index: 10; user-select: none; pointer-events: none;">1 / ${urls.length}</div>
         `;
     }
-    
+
     galleryHtml += `</div>`;
-    
+
     // Оборачиваем галерею в blog-image-wrap для поддержки тулбара и изменения размера
     const wrappedHtml = wrapImageWithHint(galleryHtml, caption);
-    
+
     if (editorMode === 'code') {
         const ta = document.getElementById('content');
         const cursorPos = ta.selectionStart;
@@ -2559,7 +2564,7 @@ function insertImagesAsGallery(urls, caption = '', width = '', widthUnit = 'px',
     } else {
         insertImageBlockAtCaret(wrappedHtml);
     }
-    
+
     closeImageDialog();
 }
 
@@ -2576,17 +2581,17 @@ function uploadImage(file, width, height, widthUnit, heightUnit, caption) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            insertImage(data.url, width, height, widthUnit, heightUnit, caption);
-        } else {
-            showNotification('Ошибка при загрузке изображения: ' + data.error, 'error');
-        }
-    })
-    .catch(error => {
-        showNotification('Ошибка при загрузке изображения', 'error');
-    });
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                insertImage(data.url, width, height, widthUnit, heightUnit, caption);
+            } else {
+                showNotification('Ошибка при загрузке изображения: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Ошибка при загрузке изображения', 'error');
+        });
 }
 
 function wrapImageWithHint(imgHtml, caption = '') {
@@ -2605,19 +2610,19 @@ function wrapMediaWithControls(mediaHtml, type = 'video') {
 function wrapExistingEditorImages() {
     var ve = document.getElementById('contentVisual');
     if (!ve || ve.style.display === 'none') return;
-    
+
     // Сначала удаляем все старые элементы управления, если они вдруг есть
     var legacyElements = ve.querySelectorAll('.image-toolbar, .image-align-dropdown, .image-size-indicator, .image-resize-handle, .blog-image-overlay');
-    legacyElements.forEach(function(el) {
+    legacyElements.forEach(function (el) {
         el.parentNode.removeChild(el);
     });
-    
+
     // Обрабатываем галереи отдельно
     var galleries = ve.querySelectorAll('.image-gallery');
-    galleries.forEach(function(gallery) {
+    galleries.forEach(function (gallery) {
         var wrap = gallery.closest('.blog-image-wrap');
         var alignWrap = gallery.closest('.blog-image-align-wrap');
-        
+
         // Если галерея не обёрнута, оборачиваем её
         if (!wrap) {
             wrap = document.createElement('div');
@@ -2628,13 +2633,13 @@ function wrapExistingEditorImages() {
         } else {
             wrap.setAttribute('data-media-type', 'gallery');
         }
-        
+
         wrap.style.position = 'relative';
         wrap.style.display = 'inline-block';
         wrap.style.maxWidth = '100%';
         wrap.style.verticalAlign = 'top';
         wrap.style.textAlign = 'center';
-        
+
         if (!alignWrap) {
             alignWrap = document.createElement('div');
             alignWrap.className = 'blog-image-align-wrap';
@@ -2643,34 +2648,34 @@ function wrapExistingEditorImages() {
             wrap.parentNode.insertBefore(alignWrap, wrap);
             alignWrap.appendChild(wrap);
         }
-        
+
         alignWrap.style.display = 'block';
         alignWrap.style.margin = '14px 0';
         alignWrap.style.width = '100%';
         alignWrap.style.clear = 'both';
         alignWrap.style.position = 'relative';
     });
-    
+
     var imgs = ve.querySelectorAll('img.blog-image, img[src], video, audio, iframe, pre.code-block, a.custom-blog-btn');
     for (var i = 0; i < imgs.length; i++) {
         var img = imgs[i];
-        
+
         // Пропускаем изображения внутри галерей
         if (img.closest('.image-gallery')) {
             continue;
         }
-        
+
         // Пропускаем, если элемент является частью каких-то других управляющих структур
         if (img.closest('.image-toolbar') || img.closest('.image-align-dropdown') || img.closest('.editor-context-menu')) {
             continue;
         }
-        
+
         var isImg = img.tagName.toLowerCase() === 'img';
         var type = img.classList.contains('custom-blog-btn') ? 'button' : img.tagName.toLowerCase();
-        
+
         var wrap = img.closest && img.closest('.blog-image-wrap');
         var alignWrap = img.closest && img.closest('.blog-image-align-wrap');
-        
+
         // 1. Если нет wrap, создаем его
         if (!wrap) {
             wrap = document.createElement('div');
@@ -2691,7 +2696,7 @@ function wrapExistingEditorImages() {
         wrap.style.maxWidth = '100%';
         wrap.style.verticalAlign = 'top';
         wrap.style.textAlign = 'center';
-        
+
         // 2. Если нет alignWrap, создаем его
         if (!alignWrap) {
             alignWrap = document.createElement('div');
@@ -2738,18 +2743,18 @@ var currentHandle = null;
 
 function showGlobalMediaOverlay(mediaWrap) {
     if (editorMode !== 'visual') return;
-    
+
     activeTarget = mediaWrap;
-    
+
     var overlay = document.getElementById('editorGlobalMediaOverlay');
     if (!overlay) {
         initGlobalMediaOverlayDOM();
         overlay = document.getElementById('editorGlobalMediaOverlay');
     }
-    
+
     overlay.style.display = 'block';
     updateOverlayPosition();
-    
+
     var innerMedia = mediaWrap.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, pre.code-block, a.custom-blog-btn, .image-gallery');
     var isImg = innerMedia && innerMedia.tagName.toLowerCase() === 'img';
     var isFile = innerMedia && innerMedia.classList.contains('blog-file-button');
@@ -2758,28 +2763,28 @@ function showGlobalMediaOverlay(mediaWrap) {
     var isBtn = innerMedia && innerMedia.classList.contains('custom-blog-btn');
     var isGallery = innerMedia && innerMedia.classList.contains('image-gallery');
     var isGrid = activeTarget.closest('.grid-container') !== null;
-    
+
     var editBtn = overlay.querySelector('.image-toolbar-btn[data-action="edit"]');
     var resizeBtn = overlay.querySelector('.image-toolbar-btn[data-action="resize"]');
     var sizeIndicator = overlay.querySelector('.image-size-indicator');
     var resizeHandles = overlay.querySelectorAll('.image-resize-handle');
-    
+
     // Для галереи показываем только редактирование первого изображения
     if (editBtn) editBtn.style.display = (isImg || isAscii || isCode || isBtn || isGallery) ? 'flex' : 'none';
     if (resizeBtn) resizeBtn.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'flex';
     if (sizeIndicator) sizeIndicator.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'block';
     resizeHandles.forEach(h => h.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'block');
-    
+
     var alignWrap = mediaWrap.closest('.blog-image-align-wrap');
     var align = alignWrap ? (alignWrap.style.textAlign || 'left') : 'left';
-    overlay.querySelectorAll('.image-align-option').forEach(function(opt) {
+    overlay.querySelectorAll('.image-align-option').forEach(function (opt) {
         if (opt.getAttribute('data-align') === align) {
             opt.classList.add('active');
         } else {
             opt.classList.remove('active');
         }
     });
-    
+
     var dropdown = overlay.querySelector('.image-align-dropdown');
     if (dropdown) dropdown.style.display = 'none';
     var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
@@ -2797,27 +2802,27 @@ function hideGlobalMediaOverlay() {
 function updateOverlayPosition() {
     var overlay = document.getElementById('editorGlobalMediaOverlay');
     if (!overlay || overlay.style.display === 'none' || !activeTarget) return;
-    
+
     var rect = activeTarget.getBoundingClientRect();
-    
+
     if (rect.width === 0 || rect.height === 0 || !document.body.contains(activeTarget)) {
         hideGlobalMediaOverlay();
         return;
     }
-    
+
     overlay.style.left = (rect.left + window.scrollX) + 'px';
     overlay.style.top = (rect.top + window.scrollY) + 'px';
     overlay.style.width = rect.width + 'px';
     overlay.style.height = rect.height + 'px';
-    
+
     var innerMedia = activeTarget.querySelector('img, video, audio, iframe, .blog-file-button, .blog-ascii-art, .image-gallery');
     var sizeIndicator = overlay.querySelector('.image-size-indicator');
-    
+
     if (innerMedia && sizeIndicator) {
         // Для галереи берём размер самой галереи, а не первого изображения
         var isGallery = innerMedia.classList && innerMedia.classList.contains('image-gallery');
         var w, h;
-        
+
         if (isGallery) {
             w = innerMedia.offsetWidth;
             h = innerMedia.offsetHeight;
@@ -2825,7 +2830,7 @@ function updateOverlayPosition() {
             w = innerMedia.offsetWidth;
             h = innerMedia.offsetHeight;
         }
-        
+
         if (innerMedia.classList.contains('blog-file-button') || innerMedia.classList.contains('blog-ascii-art')) {
             sizeIndicator.style.display = 'none';
         } else if (w && h) {
@@ -2846,7 +2851,7 @@ async function showImageResizeDialog(img) {
     var isAudio = img.tagName.toLowerCase() === 'audio';
     var isVideo = img.tagName.toLowerCase() === 'video';
     var label = isGallery ? 'галереи' : (isAudio ? 'плеера аудио' : (isVideo ? 'плеера видео' : 'изображения'));
-    
+
     var newWidth = await showPrompt('Введите новую ширину ' + label + ' (в пикселях):', currentWidth, 'Размер ' + label);
     if (newWidth && !isNaN(newWidth) && newWidth > 0) {
         newWidth = parseInt(newWidth);
@@ -2854,15 +2859,15 @@ async function showImageResizeDialog(img) {
         if (newWidth > maxLimit) {
             newWidth = maxLimit;
         }
-        
+
         if (isGallery) {
             // Для галереи изменяем размер самой галереи
             img.style.width = newWidth + 'px';
             img.style.maxWidth = '100%';
-            
+
             // И обновляем размер всех изображений внутри
             var galleryImages = img.querySelectorAll('img');
-            galleryImages.forEach(function(image) {
+            galleryImages.forEach(function (image) {
                 image.style.width = '100%';
                 image.style.height = 'auto';
             });
@@ -2880,13 +2885,13 @@ async function showImageResizeDialog(img) {
 
 function initGlobalMediaOverlayDOM() {
     if (document.getElementById('editorGlobalMediaOverlay')) return;
-    
+
     var overlay = document.createElement('div');
     overlay.id = 'editorGlobalMediaOverlay';
     overlay.className = 'editor-global-media-overlay';
     overlay.style.cssText = 'display: none; position: absolute; pointer-events: none; z-index: 990;';
-    
-    overlay.innerHTML = 
+
+    overlay.innerHTML =
         '<div class="media-overlay-outline" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; box-shadow: 0 0 0 2px var(--primary-color, #4CAF50); pointer-events: none; border-radius: 8px;"></div>' +
         '<div class="image-toolbar" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); padding: 6px; border-radius: 10px; z-index: 10; pointer-events: auto;">' +
         '    <button type="button" class="image-toolbar-btn" data-action="align" title="Выравнивание">⚏</button>' +
@@ -2902,40 +2907,40 @@ function initGlobalMediaOverlayDOM() {
         '<div class="image-size-indicator" style="position: absolute; bottom: 8px; left: 8px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-family: monospace; pointer-events: none;"></div>' +
         '<div class="image-resize-handle bottom-right" style="position: absolute; width: 12px; height: 12px; background: var(--primary-color, #4CAF50); border: 2px solid #fff; border-radius: 50%; cursor: nwse-resize; z-index: 11; bottom: -6px; right: -6px; pointer-events: auto;"></div>' +
         '<div class="image-resize-handle bottom-left" style="position: absolute; width: 12px; height: 12px; background: var(--primary-color, #4CAF50); border: 2px solid #fff; border-radius: 50%; cursor: nesw-resize; z-index: 11; bottom: -6px; left: -6px; pointer-events: auto;"></div>';
-        
+
     document.body.appendChild(overlay);
-    
-    overlay.addEventListener('mousedown', function(e) {
+
+    overlay.addEventListener('mousedown', function (e) {
         var handle = e.target.closest('.image-resize-handle');
         if (!handle) return;
-        
+
         e.preventDefault();
         e.stopPropagation();
-        
+
         isResizingMedia = true;
         currentHandle = handle;
-        
+
         var innerMedia = activeTarget ? activeTarget.querySelector('img, video, audio, iframe') : null;
         if (!innerMedia) return;
-        
+
         startX = e.clientX;
         startY = e.clientY;
         startWidth = innerMedia.offsetWidth;
         startHeight = innerMedia.offsetHeight;
-        
+
         overlay.classList.add('selected');
         document.body.style.cursor = handle.classList.contains('bottom-right') ? 'nwse-resize' : 'nesw-resize';
     });
-    
-    overlay.addEventListener('click', function(e) {
+
+    overlay.addEventListener('click', function (e) {
         var toolbarBtn = e.target.closest('.image-toolbar-btn');
         if (toolbarBtn) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             var action = toolbarBtn.getAttribute('data-action');
             var dropdown = overlay.querySelector('.image-align-dropdown');
-            
+
             if (action === 'align') {
                 if (dropdown) {
                     var isOpen = dropdown.style.display === 'flex';
@@ -2954,7 +2959,7 @@ function initGlobalMediaOverlayDOM() {
             } else if (action === 'edit') {
                 var gallery = activeTarget ? activeTarget.querySelector('.image-gallery') : null;
                 var img = null;
-                
+
                 if (gallery) {
                     // Для галереи редактируем первое видимое изображение
                     img = gallery.querySelector('img[style*="display: block"], img:not([style*="display: none"])');
@@ -2965,11 +2970,11 @@ function initGlobalMediaOverlayDOM() {
                 } else {
                     img = activeTarget ? activeTarget.querySelector('img') : null;
                 }
-                
+
                 var ascii = activeTarget ? activeTarget.querySelector('.blog-ascii-wrap') : null;
                 var codeBlock = activeTarget ? activeTarget.querySelector('pre.code-block') : null;
                 var customBtn = activeTarget ? activeTarget.querySelector('a.custom-blog-btn') : null;
-                
+
                 if (img) {
                     openImageEditorModal(img);
                 } else if (ascii) {
@@ -2990,9 +2995,9 @@ function initGlobalMediaOverlayDOM() {
                 var isCustomBtn = innerMedia && innerMedia.classList.contains('custom-blog-btn');
                 var isGallery = innerMedia && innerMedia.classList.contains('image-gallery');
                 var label = isGallery ? 'галерею' : (isImg ? 'изображение' : (isVideo || isIframe ? 'видео' : (isFile ? 'файл' : (isAscii ? 'ASCII-арт' : (isCode ? 'блок кода' : (isCustomBtn ? 'кнопку со ссылкой' : 'аудио'))))));
-                
+
                 var targetToDelete = activeTarget;
-                
+
                 showConfirm('Удалить это ' + label + '?').then(result => {
                     if (!result) return;
                     if (targetToDelete) {
@@ -3009,27 +3014,27 @@ function initGlobalMediaOverlayDOM() {
             }
             return;
         }
-        
+
         var alignOption = e.target.closest('.image-align-option');
         if (alignOption) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             var align = alignOption.getAttribute('data-align');
             var alignWrap = activeTarget ? activeTarget.closest('.blog-image-align-wrap') : null;
             if (alignWrap) {
                 alignWrap.style.textAlign = align;
-                
-                overlay.querySelectorAll('.image-align-option').forEach(function(opt) {
+
+                overlay.querySelectorAll('.image-align-option').forEach(function (opt) {
                     opt.classList.remove('active');
                 });
                 alignOption.classList.add('active');
-                
+
                 var dropdown = overlay.querySelector('.image-align-dropdown');
                 if (dropdown) dropdown.style.display = 'none';
                 var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
                 if (alignBtn) alignBtn.classList.remove('active');
-                
+
                 updateOverlayPosition();
             }
         }
@@ -3039,10 +3044,10 @@ function initGlobalMediaOverlayDOM() {
 function initImageAlignmentHandlers() {
     var ve = document.getElementById('contentVisual');
     if (!ve) return;
-    
+
     initGlobalMediaOverlayDOM();
-    
-    ve.addEventListener('mouseover', function(e) {
+
+    ve.addEventListener('mouseover', function (e) {
         if (editorMode !== 'visual' || isResizingMedia) return;
         var mediaWrap = e.target.closest('.blog-image-wrap');
         if (!mediaWrap) {
@@ -3057,16 +3062,16 @@ function initImageAlignmentHandlers() {
             showGlobalMediaOverlay(mediaWrap);
         }
     });
-    
-    ve.addEventListener('click', function(e) {
+
+    ve.addEventListener('click', function (e) {
         if (editorMode !== 'visual') return;
-        
+
         // Предотвращаем переход по ссылкам и скачивание файлов при редактировании
         const clickedLink = e.target.closest('a');
         if (clickedLink) {
             e.preventDefault();
         }
-        
+
         var mediaWrap = e.target.closest('.blog-image-wrap');
         if (!mediaWrap) {
             var fileBtn = e.target.closest('.blog-file-button');
@@ -3080,40 +3085,40 @@ function initImageAlignmentHandlers() {
     });
 }
 
-document.addEventListener('mousemove', function(e) {
+document.addEventListener('mousemove', function (e) {
     if (isResizingMedia && activeTarget) {
         var innerMedia = activeTarget.querySelector('img, video, audio, iframe, .image-gallery');
         if (!innerMedia) return;
-        
+
         e.preventDefault();
-        
+
         var deltaX = e.clientX - startX;
         var deltaY = e.clientY - startY;
-        
+
         if (currentHandle.classList.contains('bottom-left')) {
             deltaX = -deltaX;
         }
-        
+
         var isGallery = innerMedia.classList && innerMedia.classList.contains('image-gallery');
         var isAudio = innerMedia.tagName.toLowerCase() === 'audio';
         var isIframe = innerMedia.tagName.toLowerCase() === 'iframe';
         var isVideo = innerMedia.tagName.toLowerCase() === 'video';
         var newWidth = startWidth + deltaX;
-        
+
         const maxLimit = window.editorContentWidth || 920;
         if (newWidth > maxLimit) {
             newWidth = maxLimit;
         }
-        
+
         if (newWidth > 50 && newWidth <= maxLimit) {
             if (isGallery) {
                 // Для галереи изменяем размер самой галереи
                 innerMedia.style.width = newWidth + 'px';
                 innerMedia.style.maxWidth = '100%';
-                
+
                 // И обновляем размер всех изображений внутри
                 var galleryImages = innerMedia.querySelectorAll('img');
-                galleryImages.forEach(function(img) {
+                galleryImages.forEach(function (img) {
                     img.style.width = '100%';
                     img.style.height = 'auto';
                 });
@@ -3133,14 +3138,14 @@ document.addEventListener('mousemove', function(e) {
         }
     } else {
         if (editorMode !== 'visual') return;
-        
+
         var overlay = document.getElementById('editorGlobalMediaOverlay');
         if (!overlay || overlay.style.display === 'none') return;
-        
+
         var target = e.target;
         var insideActive = activeTarget && activeTarget.contains(target);
         var insideOverlay = overlay.contains(target);
-        
+
         if (!insideActive && !insideOverlay) {
             var newMediaWrap = target.closest('.blog-image-wrap');
             if (!newMediaWrap) {
@@ -3162,7 +3167,7 @@ document.addEventListener('mousemove', function(e) {
     }
 });
 
-document.addEventListener('mouseup', function(e) {
+document.addEventListener('mouseup', function (e) {
     if (isResizingMedia) {
         isResizingMedia = false;
         document.body.style.cursor = '';
@@ -3172,16 +3177,16 @@ document.addEventListener('mouseup', function(e) {
     }
 });
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (editorMode !== 'visual') return;
-    
+
     var overlay = document.getElementById('editorGlobalMediaOverlay');
     if (!overlay || overlay.style.display === 'none') return;
-    
+
     var target = e.target;
     var insideActive = activeTarget && activeTarget.contains(target);
     var insideOverlay = overlay.contains(target);
-    
+
     if (!insideActive && !insideOverlay) {
         hideGlobalMediaOverlay();
     }
@@ -3195,7 +3200,7 @@ initImageAlignmentHandlers();
 (function preventEnterInsideImageBlock() {
     var ve = document.getElementById('contentVisual');
     if (!ve) return;
-    ve.addEventListener('keydown', function(e) {
+    ve.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter' || editorMode !== 'visual') return;
         var sel = window.getSelection();
         if (!sel || sel.rangeCount === 0) return;
@@ -3234,7 +3239,7 @@ initImageAlignmentHandlers();
         menu.style.left = x + 'px';
         menu.style.top = y + 'px';
         menu.classList.add('is-open');
-        requestAnimationFrame(function() {
+        requestAnimationFrame(function () {
             var rect = menu.getBoundingClientRect();
             var w = window.innerWidth;
             var h = window.innerHeight;
@@ -3251,18 +3256,18 @@ initImageAlignmentHandlers();
 
     function onContextMenu(e) {
         var inEditor = e.target === contentVisual || contentVisual.contains(e.target) ||
-                       e.target === contentTa || contentTa.contains(e.target);
+            e.target === contentTa || contentTa.contains(e.target);
         if (!inEditor) return;
         e.preventDefault();
         e.stopPropagation();
         contextMenuImageTarget = null;
-        
+
         // Скрываем кнопки таблицы по умолчанию
         var tableItems = menu.querySelectorAll('.table-context-item, .table-context-sep');
-        tableItems.forEach(function(item) {
+        tableItems.forEach(function (item) {
             item.style.display = 'none';
         });
-        
+
         // Проверяем, находимся ли в таблице
         var tableRow = null;
         var tableCell = null;
@@ -3271,14 +3276,14 @@ initImageAlignmentHandlers();
             tableRow = e.target.closest('tr');
             if (tableRow && tableCell) {
                 // Показываем кнопки таблицы
-                tableItems.forEach(function(item) {
+                tableItems.forEach(function (item) {
                     item.style.display = '';
                 });
                 // Сохраняем ссылку на строку и ячейку
                 window.contextMenuTableRow = tableRow;
                 window.contextMenuTableCell = tableCell;
             }
-            
+
             var alignWrap = e.target.closest && e.target.closest('.blog-image-align-wrap');
             var imgWrap = e.target.closest && e.target.closest('.blog-image-wrap');
             var img = e.target.tagName === 'IMG' ? e.target : null;
@@ -3302,13 +3307,13 @@ initImageAlignmentHandlers();
         if (isRestoringHistory) return;
         const now = Date.now();
         let actionType = 'typing';
-        
+
         if (inputType && inputType.startsWith('delete')) {
             actionType = 'deleting';
         } else if (inputType === 'insertFromPaste') {
             actionType = 'paste';
         }
-        
+
         let startNewGroup = false;
         if (lastActionType !== actionType) {
             startNewGroup = true;
@@ -3324,14 +3329,14 @@ initImageAlignmentHandlers();
         } else if (actionType === 'paste') {
             startNewGroup = true;
         }
-        
+
         lastActionType = actionType;
         lastActionTime = now;
-        
+
         const ve = document.getElementById('contentVisual');
         const ta = document.getElementById('content');
         if (!ve || !ta) return;
-        
+
         const currentState = {
             visual: ve.innerHTML,
             code: ta.value,
@@ -3339,12 +3344,12 @@ initImageAlignmentHandlers();
             visualSelection: getSelectionOffsets(ve),
             codeSelection: { start: ta.selectionStart, end: ta.selectionEnd }
         };
-        
+
         if (startNewGroup || historyIndex === -1) {
             historyStack = historyStack.slice(0, historyIndex + 1);
             historyStack.push(currentState);
             historyIndex++;
-            
+
             while (historyStack.length > MAX_HISTORY_STATES) {
                 historyStack.shift();
                 historyIndex = Math.max(0, historyIndex - 1);
@@ -3352,27 +3357,27 @@ initImageAlignmentHandlers();
         } else {
             historyStack[historyIndex] = currentState;
         }
-        
+
         markEditorDirty();
         updateUndoRedoButtons();
-        
+
         clearTimeout(historySaveTimeout);
         historySaveTimeout = setTimeout(() => {
             saveHistoryToFile();
         }, 1000);
     }
 
-    const onCursorMove = function(e) {
+    const onCursorMove = function (e) {
         if (e.type === 'keyup') {
             const key = e.key;
-            if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'ArrowUp' && key !== 'ArrowDown' && 
+            if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'ArrowUp' && key !== 'ArrowDown' &&
                 key !== 'Home' && key !== 'End' && key !== 'PageUp' && key !== 'PageDown') {
                 return;
             }
         }
         cursorMoved = true;
     };
-    
+
     contentVisual.addEventListener('keyup', onCursorMove);
     contentVisual.addEventListener('click', onCursorMove);
     if (contentTa) {
@@ -3380,21 +3385,21 @@ initImageAlignmentHandlers();
         contentTa.addEventListener('click', onCursorMove);
     }
 
-    contentVisual.addEventListener('input', function(e) {
+    contentVisual.addEventListener('input', function (e) {
         const inputType = e.inputType || 'insertText';
         const data = e.data || '';
         handleInputHistory(inputType, data);
     });
-    
+
     if (contentTa) {
-        contentTa.addEventListener('input', function(e) {
+        contentTa.addEventListener('input', function (e) {
             const inputType = e.inputType || 'insertText';
             const data = e.data || '';
             handleInputHistory(inputType, data);
         });
     }
 
-    const onUndoRedoShortcut = function(e) {
+    const onUndoRedoShortcut = function (e) {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
             e.preventDefault();
             if (e.shiftKey) {
@@ -3414,12 +3419,12 @@ initImageAlignmentHandlers();
     }
 
     // Обработчик для обеспечения возможности редактирования после spoiler блоков
-    contentVisual.addEventListener('click', function(e) {
+    contentVisual.addEventListener('click', function (e) {
         // Проверяем, кликнули ли мы на spoiler блок или рядом с ним
         const ve = document.getElementById('contentVisual');
         const spoilers = ve.querySelectorAll('.spoiler-block');
-        
-        spoilers.forEach(function(spoiler) {
+
+        spoilers.forEach(function (spoiler) {
             // Проверяем, есть ли после spoiler следующий элемент
             if (!spoiler.nextSibling || (spoiler.nextSibling.nodeType === Node.TEXT_NODE && spoiler.nextSibling.textContent.trim() === '')) {
                 // Если нет следующего элемента или это пустой текстовый узел, создаем div
@@ -3435,13 +3440,13 @@ initImageAlignmentHandlers();
     });
 
     // Обработчик для клавиш - создаем пустой блок при нажатии Enter в конце spoiler
-    contentVisual.addEventListener('keydown', function(e) {
+    contentVisual.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
             const sel = window.getSelection();
             if (sel && sel.rangeCount > 0) {
                 const range = sel.getRangeAt(0);
                 let node = range.startContainer;
-                
+
                 // Ищем родительский spoiler-block
                 while (node && node !== contentVisual) {
                     if (node.classList && node.classList.contains('spoiler-block')) {
@@ -3454,7 +3459,7 @@ initImageAlignmentHandlers();
                                 const emptyDiv = document.createElement('div');
                                 emptyDiv.innerHTML = '<br>';
                                 node.parentNode.insertBefore(emptyDiv, node.nextSibling);
-                                
+
                                 // Устанавливаем курсор в новый блок
                                 const newRange = document.createRange();
                                 newRange.setStart(emptyDiv, 0);
@@ -3472,7 +3477,7 @@ initImageAlignmentHandlers();
         }
     });
 
-    menu.addEventListener('click', function(e) {
+    menu.addEventListener('click', function (e) {
         var item = e.target.closest('.editor-context-item');
         if (!item || !item.dataset.cmd) return;
         e.preventDefault();
@@ -3519,7 +3524,7 @@ initImageAlignmentHandlers();
     });
 
     document.addEventListener('click', hideMenu);
-    document.addEventListener('contextmenu', function(e) {
+    document.addEventListener('contextmenu', function (e) {
         if (!menu.contains(e.target)) hideMenu();
     });
 })();
@@ -3535,11 +3540,11 @@ function insertImage(url, width, height, widthUnit, heightUnit, caption = '', no
         return;
     }
     const radiusStyle = noBorderRadius ? 'border-radius: 0px !important;' : 'border-radius: 8px;';
-    const imgStyle = `width: ${width}${widthUnit}; max-width: 100%; height: auto; display: block; margin: 0; ` + 
-                    (height ? `height: ${height}${heightUnit};` : '') + radiusStyle;
+    const imgStyle = `width: ${width}${widthUnit}; max-width: 100%; height: auto; display: block; margin: 0; ` +
+        (height ? `height: ${height}${heightUnit};` : '') + radiusStyle;
     const classAttr = `blog-image${noBorderRadius ? ' no-radius' : ''}`;
     const imgTag = wrapImageWithHint(`<img src="${url}" style="${imgStyle}" class="${classAttr}">`, caption);
-    
+
     if (editorMode === 'code') {
         const ta = document.getElementById('content');
         const cursorPos = ta.selectionStart;
@@ -3600,140 +3605,140 @@ function closeImageDialog() {
     }
 }
 
-    // Функции для работы с размером шрифта
-    function setFontSize(size) {
-        if (editorMode === 'code') {
-            var ta = document.getElementById('content');
-            var start = colorInsertStart;
-            var end = colorInsertEnd;
-            var selectedText = ta.value.substring(start, end);
-            if (selectedText) {
-                var fontSpan = '<span style="font-size: ' + size + 'px;">' + selectedText + '</span>';
-                ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(end);
-                ta.focus();
-                saveToHistory();
-            }
-        } else {
-            var text = (savedRange && savedRange.toString()) || document.getSelection().toString();
-            if (text) {
-                var html = '<span style="font-size: ' + size + 'px;">' + text + '</span>';
-                insertHtmlAtCaret(html);
-                saveToHistory();
-            }
+// Функции для работы с размером шрифта
+function setFontSize(size) {
+    if (editorMode === 'code') {
+        var ta = document.getElementById('content');
+        var start = colorInsertStart;
+        var end = colorInsertEnd;
+        var selectedText = ta.value.substring(start, end);
+        if (selectedText) {
+            var fontSpan = '<span style="font-size: ' + size + 'px;">' + selectedText + '</span>';
+            ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(end);
+            ta.focus();
+            saveToHistory();
+        }
+    } else {
+        var text = (savedRange && savedRange.toString()) || document.getSelection().toString();
+        if (text) {
+            var html = '<span style="font-size: ' + size + 'px;">' + text + '</span>';
+            insertHtmlAtCaret(html);
+            saveToHistory();
         }
     }
+}
 
-    function closeFontSizeDialog() {
-        document.getElementById('fontSizeDialog').style.display = 'none';
-        document.getElementById('customFontSize').value = '';
+function closeFontSizeDialog() {
+    document.getElementById('fontSizeDialog').style.display = 'none';
+    document.getElementById('customFontSize').value = '';
+}
+
+function setCustomFontSize() {
+    const size = document.getElementById('customFontSize').value;
+    if (size && size >= 8 && size <= 72) {
+        setFontSize(size);
+        closeFontSizeDialog();
+    } else {
+        showNotification('Пожалуйста, введите размер от 8 до 72 пикселей', 'warning');
     }
+}
 
-    function setCustomFontSize() {
-        const size = document.getElementById('customFontSize').value;
-        if (size && size >= 8 && size <= 72) {
-            setFontSize(size);
-            closeFontSizeDialog();
-        } else {
-            showNotification('Пожалуйста, введите размер от 8 до 72 пикселей', 'warning');
-        }
-    }
+// Функции для работы с медиа
+let isMediaDragDropInitialized = false;
 
-    // Функции для работы с медиа
-    let isMediaDragDropInitialized = false;
+function initMediaDragDrop() {
+    if (isMediaDragDropInitialized) return;
 
-    function initMediaDragDrop() {
-        if (isMediaDragDropInitialized) return;
-        
-        const videoDropzone = document.getElementById('videoDropzone');
-        const audioDropzone = document.getElementById('audioDropzone');
-        
-        if (videoDropzone) {
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                videoDropzone.addEventListener(eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }, false);
-            });
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                videoDropzone.addEventListener(eventName, () => {
-                    videoDropzone.classList.add('drag-over');
-                }, false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                videoDropzone.addEventListener(eventName, () => {
-                    videoDropzone.classList.remove('drag-over');
-                }, false);
-            });
-            
-            videoDropzone.addEventListener('drop', (e) => {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                if (files && files[0]) {
-                    uploadVideoFileDirect(files[0]);
-                }
+    const videoDropzone = document.getElementById('videoDropzone');
+    const audioDropzone = document.getElementById('audioDropzone');
+
+    if (videoDropzone) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            videoDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
             }, false);
-        }
-        
-        if (audioDropzone) {
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                audioDropzone.addEventListener(eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }, false);
-            });
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                audioDropzone.addEventListener(eventName, () => {
-                    audioDropzone.classList.add('drag-over');
-                }, false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                audioDropzone.addEventListener(eventName, () => {
-                    audioDropzone.classList.remove('drag-over');
-                }, false);
-            });
-            
-            audioDropzone.addEventListener('drop', (e) => {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                if (files && files[0]) {
-                    uploadAudioFileDirect(files[0]);
-                }
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            videoDropzone.addEventListener(eventName, () => {
+                videoDropzone.classList.add('drag-over');
             }, false);
-        }
-        
-        isMediaDragDropInitialized = true;
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            videoDropzone.addEventListener(eventName, () => {
+                videoDropzone.classList.remove('drag-over');
+            }, false);
+        });
+
+        videoDropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files[0]) {
+                uploadVideoFileDirect(files[0]);
+            }
+        }, false);
     }
 
-    function uploadVideoFileDirect(file) {
-        if (!file) return;
-        if (!file.type.startsWith('video/')) {
-            showNotification('Пожалуйста, выберите видео файл', 'warning');
-            return;
-        }
-        
-        const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
-        if (file.size > MAX_VIDEO_SIZE) {
-            showNotification(`Видео файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 100 МБ.`, 'error');
-            return;
-        }
-        
-        const filenameEl = document.getElementById('videoFileName');
-        if (filenameEl) {
-            filenameEl.textContent = `Загрузка: ${file.name}...`;
-            filenameEl.style.display = 'block';
-        }
-        
-        const formData = new FormData();
-        formData.append('video', file);
-        
-        fetch('upload_video.php', {
-            method: 'POST',
-            body: formData
-        })
+    if (audioDropzone) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            audioDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            audioDropzone.addEventListener(eventName, () => {
+                audioDropzone.classList.add('drag-over');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            audioDropzone.addEventListener(eventName, () => {
+                audioDropzone.classList.remove('drag-over');
+            }, false);
+        });
+
+        audioDropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files[0]) {
+                uploadAudioFileDirect(files[0]);
+            }
+        }, false);
+    }
+
+    isMediaDragDropInitialized = true;
+}
+
+function uploadVideoFileDirect(file) {
+    if (!file) return;
+    if (!file.type.startsWith('video/')) {
+        showNotification('Пожалуйста, выберите видео файл', 'warning');
+        return;
+    }
+
+    const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+    if (file.size > MAX_VIDEO_SIZE) {
+        showNotification(`Видео файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 100 МБ.`, 'error');
+        return;
+    }
+
+    const filenameEl = document.getElementById('videoFileName');
+    if (filenameEl) {
+        filenameEl.textContent = `Загрузка: ${file.name}...`;
+        filenameEl.style.display = 'block';
+    }
+
+    const formData = new FormData();
+    formData.append('video', file);
+
+    fetch('upload_video.php', {
+        method: 'POST',
+        body: formData
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -3749,34 +3754,34 @@ function closeImageDialog() {
             showNotification('Ошибка загрузки файла', 'error');
             if (filenameEl) filenameEl.style.display = 'none';
         });
+}
+
+function uploadAudioFileDirect(file) {
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) {
+        showNotification('Пожалуйста, выберите аудио файл', 'warning');
+        return;
     }
 
-    function uploadAudioFileDirect(file) {
-        if (!file) return;
-        if (!file.type.startsWith('audio/')) {
-            showNotification('Пожалуйста, выберите аудио файл', 'warning');
-            return;
-        }
-        
-        const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50 MB
-        if (file.size > MAX_AUDIO_SIZE) {
-            showNotification(`Аудио файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 50 МБ.`, 'error');
-            return;
-        }
-        
-        const filenameEl = document.getElementById('audioFileName');
-        if (filenameEl) {
-            filenameEl.textContent = `Загрузка: ${file.name}...`;
-            filenameEl.style.display = 'block';
-        }
-        
-        const formData = new FormData();
-        formData.append('audio', file);
-        
-        fetch('upload_audio.php', {
-            method: 'POST',
-            body: formData
-        })
+    const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50 MB
+    if (file.size > MAX_AUDIO_SIZE) {
+        showNotification(`Аудио файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 50 МБ.`, 'error');
+        return;
+    }
+
+    const filenameEl = document.getElementById('audioFileName');
+    if (filenameEl) {
+        filenameEl.textContent = `Загрузка: ${file.name}...`;
+        filenameEl.style.display = 'block';
+    }
+
+    const formData = new FormData();
+    formData.append('audio', file);
+
+    fetch('upload_audio.php', {
+        method: 'POST',
+        body: formData
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -3792,167 +3797,167 @@ function closeImageDialog() {
             showNotification('Ошибка загрузки файла', 'error');
             if (filenameEl) filenameEl.style.display = 'none';
         });
+}
+
+window.handleMediaFileChange = function (input, type) {
+    if (input.files && input.files[0]) {
+        if (type === 'video') {
+            uploadVideoFileDirect(input.files[0]);
+        } else if (type === 'audio') {
+            uploadAudioFileDirect(input.files[0]);
+        }
     }
+    input.value = '';
+};
 
-    window.handleMediaFileChange = function(input, type) {
-        if (input.files && input.files[0]) {
-            if (type === 'video') {
-                uploadVideoFileDirect(input.files[0]);
-            } else if (type === 'audio') {
-                uploadAudioFileDirect(input.files[0]);
-            }
-        }
-        input.value = '';
-    };
+function showMediaDialog() {
+    if (window.Modal) {
+        Modal.open('#mediaDialog');
+    } else {
+        const dlg = document.getElementById('mediaDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
+    initMediaDragDrop();
 
-    function showMediaDialog() {
-        if (window.Modal) {
-            Modal.open('#mediaDialog');
-        } else {
-            const dlg = document.getElementById('mediaDialog');
-            if (dlg) dlg.style.display = 'block';
-        }
-        initMediaDragDrop();
-        
-        const mediaTypeRadios = document.querySelectorAll('input[name="mediaType"]');
-        mediaTypeRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                document.querySelectorAll('input[name="mediaType"]').forEach(r => {
-                    r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
-                });
-                document.getElementById('videoUrlSection').style.display = 'none';
-                document.getElementById('videoFileSection').style.display = 'none';
-                document.getElementById('audioMediaSection').style.display = 'none';
-                document.getElementById('audioStreamSection').style.display = 'none';
-                
-                if (this.value === 'video-url') {
-                    document.getElementById('videoUrlSection').style.display = 'block';
-                } else if (this.value === 'video-file') {
-                    document.getElementById('videoFileSection').style.display = 'block';
-                    loadVideoFilesList();
-                } else if (this.value === 'audio') {
-                    document.getElementById('audioMediaSection').style.display = 'block';
-                    loadAudioFilesList();
-                } else if (this.value === 'audio-stream') {
-                    document.getElementById('audioStreamSection').style.display = 'block';
-                }
+    const mediaTypeRadios = document.querySelectorAll('input[name="mediaType"]');
+    mediaTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('input[name="mediaType"]').forEach(r => {
+                r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
             });
-        });
-    }
+            document.getElementById('videoUrlSection').style.display = 'none';
+            document.getElementById('videoFileSection').style.display = 'none';
+            document.getElementById('audioMediaSection').style.display = 'none';
+            document.getElementById('audioStreamSection').style.display = 'none';
 
-    function closeMediaDialog() {
-        if (window.Modal) {
-            Modal.close('#mediaDialog');
+            if (this.value === 'video-url') {
+                document.getElementById('videoUrlSection').style.display = 'block';
+            } else if (this.value === 'video-file') {
+                document.getElementById('videoFileSection').style.display = 'block';
+                loadVideoFilesList();
+            } else if (this.value === 'audio') {
+                document.getElementById('audioMediaSection').style.display = 'block';
+                loadAudioFilesList();
+            } else if (this.value === 'audio-stream') {
+                document.getElementById('audioStreamSection').style.display = 'block';
+            }
+        });
+    });
+}
+
+function closeMediaDialog() {
+    if (window.Modal) {
+        Modal.close('#mediaDialog');
+    } else {
+        const dlg = document.getElementById('mediaDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
+    document.getElementById('mediaUrl').value = '';
+    document.getElementById('videoFile').value = '';
+    document.getElementById('audioFile').value = '';
+    document.getElementById('audioStreamUrl').value = '';
+    // Сбрасываем на видео URL
+    const videoRadio = document.querySelector('input[name="mediaType"][value="video-url"]');
+    if (videoRadio) videoRadio.checked = true;
+    document.querySelectorAll('input[name="mediaType"]').forEach(r => {
+        r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.value === 'video-url');
+    });
+    document.getElementById('videoUrlSection').style.display = 'block';
+    document.getElementById('videoFileSection').style.display = 'none';
+    document.getElementById('audioMediaSection').style.display = 'none';
+    document.getElementById('audioStreamSection').style.display = 'none';
+
+    const videoFileName = document.getElementById('videoFileName');
+    if (videoFileName) {
+        videoFileName.textContent = '';
+        videoFileName.style.display = 'none';
+    }
+    const audioFileName = document.getElementById('audioFileName');
+    if (audioFileName) {
+        audioFileName.textContent = '';
+        audioFileName.style.display = 'none';
+    }
+}
+
+function insertMedia() {
+    const mediaType = document.querySelector('input[name="mediaType"]:checked').value;
+
+    if (mediaType === 'video-url') {
+        const url = document.getElementById('mediaUrl').value.trim();
+        if (!url) {
+            showNotification('Пожалуйста, введите URL видео', 'warning');
+            return;
+        }
+
+        let embedCode = '';
+
+        // Определяем тип медиа по URL
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            const youtubeId = extractYoutubeId(url);
+            embedCode = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${youtubeId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        } else if (url.includes('vimeo.com')) {
+            const vimeoId = extractVimeoId(url);
+            embedCode = `<iframe width="560" height="315" src="https://player.vimeo.com/video/${vimeoId}" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
         } else {
-            const dlg = document.getElementById('mediaDialog');
-            if (dlg) dlg.style.display = 'none';
+            // Встраиваем как iframe
+            embedCode = `<iframe width="560" height="315" src="${url}" frameborder="0" sandbox="allow-same-origin allow-scripts allow-popups" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
         }
-        document.getElementById('mediaUrl').value = '';
-        document.getElementById('videoFile').value = '';
-        document.getElementById('audioFile').value = '';
-        document.getElementById('audioStreamUrl').value = '';
-        // Сбрасываем на видео URL
-        const videoRadio = document.querySelector('input[name="mediaType"][value="video-url"]');
-        if (videoRadio) videoRadio.checked = true;
-        document.querySelectorAll('input[name="mediaType"]').forEach(r => {
-            r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.value === 'video-url');
-        });
-        document.getElementById('videoUrlSection').style.display = 'block';
-        document.getElementById('videoFileSection').style.display = 'none';
-        document.getElementById('audioMediaSection').style.display = 'none';
-        document.getElementById('audioStreamSection').style.display = 'none';
-        
-        const videoFileName = document.getElementById('videoFileName');
-        if (videoFileName) {
-            videoFileName.textContent = '';
-            videoFileName.style.display = 'none';
+
+        if (editorMode === 'code') {
+            const ta = document.getElementById('content');
+            const cursorPos = ta.selectionStart;
+            ta.value = ta.value.substring(0, cursorPos) + embedCode + ta.value.substring(cursorPos);
+        } else {
+            insertHtmlAtCaret(wrapMediaWithControls(embedCode, 'iframe'));
         }
-        const audioFileName = document.getElementById('audioFileName');
-        if (audioFileName) {
-            audioFileName.textContent = '';
-            audioFileName.style.display = 'none';
-        }
-    }
 
-    function insertMedia() {
-        const mediaType = document.querySelector('input[name="mediaType"]:checked').value;
-        
-        if (mediaType === 'video-url') {
-            const url = document.getElementById('mediaUrl').value.trim();
-            if (!url) {
-                showNotification('Пожалуйста, введите URL видео', 'warning');
-                return;
-            }
-
-            let embedCode = '';
-
-            // Определяем тип медиа по URL
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                const youtubeId = extractYoutubeId(url);
-                embedCode = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${youtubeId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-            } else if (url.includes('vimeo.com')) {
-                const vimeoId = extractVimeoId(url);
-                embedCode = `<iframe width="560" height="315" src="https://player.vimeo.com/video/${vimeoId}" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-            } else {
-                // Встраиваем как iframe
-                embedCode = `<iframe width="560" height="315" src="${url}" frameborder="0" sandbox="allow-same-origin allow-scripts allow-popups" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-            }
-
-            if (editorMode === 'code') {
-                const ta = document.getElementById('content');
-                const cursorPos = ta.selectionStart;
-                ta.value = ta.value.substring(0, cursorPos) + embedCode + ta.value.substring(cursorPos);
-            } else {
-                insertHtmlAtCaret(wrapMediaWithControls(embedCode, 'iframe'));
-            }
-            
-            saveToHistory();
-            closeMediaDialog();
-        } else if (mediaType === 'audio-stream') {
-            const url = document.getElementById('audioStreamUrl').value.trim();
-            if (!url) {
-                showNotification('Пожалуйста, введите URL аудиопотока', 'warning');
-                return;
-            }
-
-            const audioElement = `<audio controls style="width: 100%; max-width: 600px; margin: 10px 0;"><source src="${url}">Ваш браузер не поддерживает аудио элемент.</audio>`;
-
-            if (editorMode === 'code') {
-                const ta = document.getElementById('content');
-                const cursorPos = ta.selectionStart;
-                ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
-            } else {
-                insertHtmlAtCaret(wrapMediaWithControls(audioElement, 'audio'));
-            }
-            
-            saveToHistory();
-            closeMediaDialog();
-        }
-        // Для аудио вставка происходит при клике на файл в списке
-    }
-
-    function uploadAudioFile() {
-        const fileInput = document.getElementById('audioFile');
-        const file = fileInput.files[0];
-        
-        if (!file) {
-            showNotification('Пожалуйста, выберите аудио файл', 'warning');
+        saveToHistory();
+        closeMediaDialog();
+    } else if (mediaType === 'audio-stream') {
+        const url = document.getElementById('audioStreamUrl').value.trim();
+        if (!url) {
+            showNotification('Пожалуйста, введите URL аудиопотока', 'warning');
             return;
         }
-        
-        // Проверяем тип файла
-        if (!file.type.startsWith('audio/')) {
-            showNotification('Пожалуйста, выберите аудио файл', 'warning');
-            return;
+
+        const audioElement = `<audio controls style="width: 100%; max-width: 600px; margin: 10px 0;"><source src="${url}">Ваш браузер не поддерживает аудио элемент.</audio>`;
+
+        if (editorMode === 'code') {
+            const ta = document.getElementById('content');
+            const cursorPos = ta.selectionStart;
+            ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
+        } else {
+            insertHtmlAtCaret(wrapMediaWithControls(audioElement, 'audio'));
         }
-        
-        const formData = new FormData();
-        formData.append('audio', file);
-        
-        fetch('upload_audio.php', {
-            method: 'POST',
-            body: formData
-        })
+
+        saveToHistory();
+        closeMediaDialog();
+    }
+    // Для аудио вставка происходит при клике на файл в списке
+}
+
+function uploadAudioFile() {
+    const fileInput = document.getElementById('audioFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showNotification('Пожалуйста, выберите аудио файл', 'warning');
+        return;
+    }
+
+    // Проверяем тип файла
+    if (!file.type.startsWith('audio/')) {
+        showNotification('Пожалуйста, выберите аудио файл', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('audio', file);
+
+    fetch('upload_audio.php', {
+        method: 'POST',
+        body: formData
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -3967,16 +3972,16 @@ function closeImageDialog() {
             console.error('Ошибка:', error);
             showNotification('Ошибка загрузки файла', 'error');
         });
-    }
+}
 
-    function loadAudioFilesList() {
-        fetch('get_audio_files.php')
-            .then(response => response.json())
-            .then(data => {
-                const list = document.getElementById('audioFilesList');
-                
-                if (data.success && data.files.length > 0) {
-                    list.innerHTML = data.files.map(file => `
+function loadAudioFilesList() {
+    fetch('get_audio_files.php')
+        .then(response => response.json())
+        .then(data => {
+            const list = document.getElementById('audioFilesList');
+
+            if (data.success && data.files.length > 0) {
+                list.innerHTML = data.files.map(file => `
                         <div style="padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" 
                              onmouseover="this.style.background='rgba(128,128,128,0.06)'" onmouseout="this.style.background='transparent'"
                              onclick="insertAudioFile('${file.path}', '${file.name}')">
@@ -3992,89 +3997,89 @@ function closeImageDialog() {
                             </button>
                         </div>
                     `).join('');
-                } else {
-                    list.innerHTML = '<div style="color: var(--text-color); opacity: 0.6;">Нет загруженных аудио файлов</div>';
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка:', error);
-                document.getElementById('audioFilesList').innerHTML = '<div style="color: #f44336;">Ошибка загрузки списка</div>';
-            });
-    }
-
-    function insertAudioFile(filePath, fileName) {
-        const audioElement = `<audio controls style="width: 100%; max-width: 600px; margin: 10px 0;"><source src="${filePath}" type="audio/mpeg">Ваш браузер не поддерживает аудио элемент.</audio>`;
-        
-        if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const cursorPos = ta.selectionStart;
-            ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
-        } else {
-            // Вставляем аудио элемент
-            const wrappedAudioHtml = wrapMediaWithControls(audioElement, 'audio');
-            const ve = document.getElementById('contentVisual');
-            ve.focus();
-            const sel = window.getSelection();
-            let range = null;
-            
-            if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-                range = savedRange;
-            } else if (sel && sel.rangeCount > 0) {
-                range = sel.getRangeAt(0);
-            }
-            
-            if (!range) {
-                ve.insertAdjacentHTML('beforeend', wrappedAudioHtml);
-                const emptyDiv = document.createElement('div');
-                emptyDiv.innerHTML = '<br>';
-                ve.appendChild(emptyDiv);
             } else {
-                range.deleteContents();
-                
-                // Создаем аудио элемент
-                const temp = document.createElement('div');
-                temp.innerHTML = wrappedAudioHtml;
-                const audioNode = temp.firstChild;
-                
-                // Создаем пустой блок для курсора
-                const emptyDiv = document.createElement('div');
-                emptyDiv.innerHTML = '<br>';
-                
-                // Вставляем аудио
-                range.insertNode(audioNode);
-                
-                // Вставляем пустой блок после аудио
-                if (audioNode.nextSibling) {
-                    audioNode.parentNode.insertBefore(emptyDiv, audioNode.nextSibling);
-                } else {
-                    audioNode.parentNode.appendChild(emptyDiv);
-                }
-                
-                // Устанавливаем курсор в пустой блок
-                const newRange = document.createRange();
-                newRange.setStart(emptyDiv, 0);
-                newRange.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(newRange);
+                list.innerHTML = '<div style="color: var(--text-color); opacity: 0.6;">Нет загруженных аудио файлов</div>';
             }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            document.getElementById('audioFilesList').innerHTML = '<div style="color: #f44336;">Ошибка загрузки списка</div>';
+        });
+}
+
+function insertAudioFile(filePath, fileName) {
+    const audioElement = `<audio controls style="width: 100%; max-width: 600px; margin: 10px 0;"><source src="${filePath}" type="audio/mpeg">Ваш браузер не поддерживает аудио элемент.</audio>`;
+
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const cursorPos = ta.selectionStart;
+        ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
+    } else {
+        // Вставляем аудио элемент
+        const wrappedAudioHtml = wrapMediaWithControls(audioElement, 'audio');
+        const ve = document.getElementById('contentVisual');
+        ve.focus();
+        const sel = window.getSelection();
+        let range = null;
+
+        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+            range = savedRange;
+        } else if (sel && sel.rangeCount > 0) {
+            range = sel.getRangeAt(0);
         }
-        
-        saveToHistory();
-        closeMediaDialog();
-        showNotification('Аудио файл добавлен в статью', 'success');
+
+        if (!range) {
+            ve.insertAdjacentHTML('beforeend', wrappedAudioHtml);
+            const emptyDiv = document.createElement('div');
+            emptyDiv.innerHTML = '<br>';
+            ve.appendChild(emptyDiv);
+        } else {
+            range.deleteContents();
+
+            // Создаем аудио элемент
+            const temp = document.createElement('div');
+            temp.innerHTML = wrappedAudioHtml;
+            const audioNode = temp.firstChild;
+
+            // Создаем пустой блок для курсора
+            const emptyDiv = document.createElement('div');
+            emptyDiv.innerHTML = '<br>';
+
+            // Вставляем аудио
+            range.insertNode(audioNode);
+
+            // Вставляем пустой блок после аудио
+            if (audioNode.nextSibling) {
+                audioNode.parentNode.insertBefore(emptyDiv, audioNode.nextSibling);
+            } else {
+                audioNode.parentNode.appendChild(emptyDiv);
+            }
+
+            // Устанавливаем курсор в пустой блок
+            const newRange = document.createRange();
+            newRange.setStart(emptyDiv, 0);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        }
     }
 
-    function deleteAudioFile(fileName) {
-        showConfirm('Удалить аудио файл?').then(result => {
-            if (!result) return;
-            
-            fetch('delete_audio.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ filename: fileName })
-            })
+    saveToHistory();
+    closeMediaDialog();
+    showNotification('Аудио файл добавлен в статью', 'success');
+}
+
+function deleteAudioFile(fileName) {
+    showConfirm('Удалить аудио файл?').then(result => {
+        if (!result) return;
+
+        fetch('delete_audio.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filename: fileName })
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -4088,32 +4093,32 @@ function closeImageDialog() {
                 console.error('Ошибка:', error);
                 showNotification('Ошибка удаления файла', 'error');
             });
-        });
+    });
+}
+
+// Функции для работы с видео файлами
+function uploadVideoFile() {
+    const fileInput = document.getElementById('videoFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showNotification('Пожалуйста, выберите видео файл', 'warning');
+        return;
     }
 
-    // Функции для работы с видео файлами
-    function uploadVideoFile() {
-        const fileInput = document.getElementById('videoFile');
-        const file = fileInput.files[0];
-        
-        if (!file) {
-            showNotification('Пожалуйста, выберите видео файл', 'warning');
-            return;
-        }
-        
-        // Проверяем тип файла
-        if (!file.type.startsWith('video/')) {
-            showNotification('Пожалуйста, выберите видео файл', 'warning');
-            return;
-        }
-        
-        const formData = new FormData();
-        formData.append('video', file);
-        
-        fetch('upload_video.php', {
-            method: 'POST',
-            body: formData
-        })
+    // Проверяем тип файла
+    if (!file.type.startsWith('video/')) {
+        showNotification('Пожалуйста, выберите видео файл', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('video', file);
+
+    fetch('upload_video.php', {
+        method: 'POST',
+        body: formData
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -4128,16 +4133,16 @@ function closeImageDialog() {
             console.error('Ошибка:', error);
             showNotification('Ошибка загрузки файла', 'error');
         });
-    }
+}
 
-    function loadVideoFilesList() {
-        fetch('get_video_files.php')
-            .then(response => response.json())
-            .then(data => {
-                const list = document.getElementById('videoFilesList');
-                
-                if (data.success && data.files.length > 0) {
-                    list.innerHTML = data.files.map(file => `
+function loadVideoFilesList() {
+    fetch('get_video_files.php')
+        .then(response => response.json())
+        .then(data => {
+            const list = document.getElementById('videoFilesList');
+
+            if (data.success && data.files.length > 0) {
+                list.innerHTML = data.files.map(file => `
                         <div style="padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" 
                              onmouseover="this.style.background='rgba(128,128,128,0.06)'" onmouseout="this.style.background='transparent'"
                              onclick="insertVideoFile('${file.path}', '${file.name}')">
@@ -4153,89 +4158,89 @@ function closeImageDialog() {
                             </button>
                         </div>
                     `).join('');
-                } else {
-                    list.innerHTML = '<div style="color: var(--text-color); opacity: 0.6;">Нет загруженных видео файлов</div>';
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка:', error);
-                document.getElementById('videoFilesList').innerHTML = '<div style="color: #f44336;">Ошибка загрузки списка</div>';
-            });
-    }
-
-    function insertVideoFile(filePath, fileName) {
-        const videoElement = `<video controls style="width: 100%; max-width: 800px; margin: 10px 0;"><source src="${filePath}" type="video/mp4">Ваш браузер не поддерживает видео элемент.</video>`;
-        
-        if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const cursorPos = ta.selectionStart;
-            ta.value = ta.value.substring(0, cursorPos) + videoElement + '\n' + ta.value.substring(cursorPos);
-        } else {
-            // Вставляем видео элемент
-            const wrappedVideoHtml = wrapMediaWithControls(videoElement, 'video');
-            const ve = document.getElementById('contentVisual');
-            ve.focus();
-            const sel = window.getSelection();
-            let range = null;
-            
-            if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-                range = savedRange;
-            } else if (sel && sel.rangeCount > 0) {
-                range = sel.getRangeAt(0);
-            }
-            
-            if (!range) {
-                ve.insertAdjacentHTML('beforeend', wrappedVideoHtml);
-                const emptyDiv = document.createElement('div');
-                emptyDiv.innerHTML = '<br>';
-                ve.appendChild(emptyDiv);
             } else {
-                range.deleteContents();
-                
-                // Создаем видео элемент
-                const temp = document.createElement('div');
-                temp.innerHTML = wrappedVideoHtml;
-                const videoNode = temp.firstChild;
-                
-                // Создаем пустой блок для курсора
-                const emptyDiv = document.createElement('div');
-                emptyDiv.innerHTML = '<br>';
-                
-                // Вставляем видео
-                range.insertNode(videoNode);
-                
-                // Вставляем пустой блок после видео
-                if (videoNode.nextSibling) {
-                    videoNode.parentNode.insertBefore(emptyDiv, videoNode.nextSibling);
-                } else {
-                    videoNode.parentNode.appendChild(emptyDiv);
-                }
-                
-                // Устанавливаем курсор в пустой блок
-                const newRange = document.createRange();
-                newRange.setStart(emptyDiv, 0);
-                newRange.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(newRange);
+                list.innerHTML = '<div style="color: var(--text-color); opacity: 0.6;">Нет загруженных видео файлов</div>';
             }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            document.getElementById('videoFilesList').innerHTML = '<div style="color: #f44336;">Ошибка загрузки списка</div>';
+        });
+}
+
+function insertVideoFile(filePath, fileName) {
+    const videoElement = `<video controls style="width: 100%; max-width: 800px; margin: 10px 0;"><source src="${filePath}" type="video/mp4">Ваш браузер не поддерживает видео элемент.</video>`;
+
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const cursorPos = ta.selectionStart;
+        ta.value = ta.value.substring(0, cursorPos) + videoElement + '\n' + ta.value.substring(cursorPos);
+    } else {
+        // Вставляем видео элемент
+        const wrappedVideoHtml = wrapMediaWithControls(videoElement, 'video');
+        const ve = document.getElementById('contentVisual');
+        ve.focus();
+        const sel = window.getSelection();
+        let range = null;
+
+        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+            range = savedRange;
+        } else if (sel && sel.rangeCount > 0) {
+            range = sel.getRangeAt(0);
         }
-        
-        saveToHistory();
-        closeMediaDialog();
-        showNotification('Видео файл добавлен в статью', 'success');
+
+        if (!range) {
+            ve.insertAdjacentHTML('beforeend', wrappedVideoHtml);
+            const emptyDiv = document.createElement('div');
+            emptyDiv.innerHTML = '<br>';
+            ve.appendChild(emptyDiv);
+        } else {
+            range.deleteContents();
+
+            // Создаем видео элемент
+            const temp = document.createElement('div');
+            temp.innerHTML = wrappedVideoHtml;
+            const videoNode = temp.firstChild;
+
+            // Создаем пустой блок для курсора
+            const emptyDiv = document.createElement('div');
+            emptyDiv.innerHTML = '<br>';
+
+            // Вставляем видео
+            range.insertNode(videoNode);
+
+            // Вставляем пустой блок после видео
+            if (videoNode.nextSibling) {
+                videoNode.parentNode.insertBefore(emptyDiv, videoNode.nextSibling);
+            } else {
+                videoNode.parentNode.appendChild(emptyDiv);
+            }
+
+            // Устанавливаем курсор в пустой блок
+            const newRange = document.createRange();
+            newRange.setStart(emptyDiv, 0);
+            newRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        }
     }
 
-    function deleteVideoFile(fileName) {
-        showConfirm('Удалить видео файл?').then(result => {
-            if (!result) return;
-            
-            fetch('delete_video.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ filename: fileName })
-            })
+    saveToHistory();
+    closeMediaDialog();
+    showNotification('Видео файл добавлен в статью', 'success');
+}
+
+function deleteVideoFile(fileName) {
+    showConfirm('Удалить видео файл?').then(result => {
+        if (!result) return;
+
+        fetch('delete_video.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filename: fileName })
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -4249,20 +4254,20 @@ function closeImageDialog() {
                 console.error('Ошибка:', error);
                 showNotification('Ошибка удаления файла', 'error');
             });
-        });
-    }
+    });
+}
 
-    function deleteAudioFile(fileName) {
-        showConfirm('Удалить аудио файл?').then(result => {
-            if (!result) return;
-            
-            fetch('delete_audio.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ filename: fileName })
-            })
+function deleteAudioFile(fileName) {
+    showConfirm('Удалить аудио файл?').then(result => {
+        if (!result) return;
+
+        fetch('delete_audio.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filename: fileName })
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -4276,8 +4281,8 @@ function closeImageDialog() {
                 console.error('Ошибка:', error);
                 showNotification('Ошибка удаления файла', 'error');
             });
-        });
-    }
+    });
+}
 
 // Вспомогательные функции для извлечения ID
 function extractYoutubeId(url) {
@@ -4292,361 +4297,361 @@ function extractVimeoId(url) {
     return match ? match[3] : null;
 }
 
-    // Функции для работы со spoiler
-    // Переменная для хранения выделенного текста для spoiler
-    let savedSpoilerText = '';
-    let savedSpoilerRange = null;
+// Функции для работы со spoiler
+// Переменная для хранения выделенного текста для spoiler
+let savedSpoilerText = '';
+let savedSpoilerRange = null;
 
-    function openSpoilerDialog() {
-        savedSpoilerText = '';
-        savedSpoilerRange = null;
-        
-        if (editorMode === 'visual') {
+function openSpoilerDialog() {
+    savedSpoilerText = '';
+    savedSpoilerRange = null;
+
+    if (editorMode === 'visual') {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            savedSpoilerRange = range.cloneRange();
+            const container = document.createElement('div');
+            container.appendChild(range.cloneContents());
+            savedSpoilerText = container.innerHTML;
+        }
+    } else if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        savedSpoilerText = ta.value.substring(start, end);
+    }
+
+    if (window.Modal) {
+        Modal.open('#spoilerDialog');
+    } else {
+        const dlg = document.getElementById('spoilerDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
+    const titleInput = document.getElementById('spoilerTitle');
+    if (titleInput) {
+        titleInput.value = '';
+        titleInput.focus();
+    }
+}
+
+function closeSpoilerDialog() {
+    if (window.Modal) {
+        Modal.close('#spoilerDialog');
+    } else {
+        const dlg = document.getElementById('spoilerDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
+    savedSpoilerText = '';
+    savedSpoilerRange = null;
+}
+
+function insertSpoiler() {
+    const title = document.getElementById('spoilerTitle').value.trim() || 'Подробности';
+
+    let selectedText = savedSpoilerText || 'Содержимое блока';
+
+    const spoilerHtml = `<details class="spoiler-block"><summary class="spoiler-title">${title}</summary><div class="spoiler-content">${selectedText}</div></details>`;
+
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const before = ta.value.substring(0, start);
+        const after = ta.value.substring(end);
+        ta.value = before + spoilerHtml + '\n' + after;
+    } else {
+        // Восстанавливаем сохраненный range если есть
+        if (savedSpoilerRange) {
             const sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-                const range = sel.getRangeAt(0);
-                savedSpoilerRange = range.cloneRange();
-                const container = document.createElement('div');
-                container.appendChild(range.cloneContents());
-                savedSpoilerText = container.innerHTML;
-            }
-        } else if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            savedSpoilerText = ta.value.substring(start, end);
+            sel.removeAllRanges();
+            sel.addRange(savedSpoilerRange);
+            savedSpoilerRange.deleteContents();
         }
-        
-        if (window.Modal) {
-            Modal.open('#spoilerDialog');
-        } else {
-            const dlg = document.getElementById('spoilerDialog');
-            if (dlg) dlg.style.display = 'block';
-        }
-        const titleInput = document.getElementById('spoilerTitle');
-        if (titleInput) {
-            titleInput.value = '';
-            titleInput.focus();
-        }
+        insertImageBlockAtCaret(spoilerHtml);
     }
 
-    function closeSpoilerDialog() {
-        if (window.Modal) {
-            Modal.close('#spoilerDialog');
-        } else {
-            const dlg = document.getElementById('spoilerDialog');
-            if (dlg) dlg.style.display = 'none';
+    saveToHistory();
+    closeSpoilerDialog();
+}
+
+// Функции для работы с маркером
+let savedMarkerText = '';
+let savedMarkerRange = null;
+let selectedMarkerStyle = 'straight';
+
+function openMarkerDialog() {
+    savedMarkerText = '';
+    savedMarkerRange = null;
+
+    if (editorMode === 'visual') {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            savedMarkerRange = range.cloneRange();
+            savedMarkerText = range.toString();
         }
-        savedSpoilerText = '';
-        savedSpoilerRange = null;
+    } else if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        savedMarkerText = ta.value.substring(start, end);
     }
 
-    function insertSpoiler() {
-        const title = document.getElementById('spoilerTitle').value.trim() || 'Подробности';
-        
-        let selectedText = savedSpoilerText || 'Содержимое блока';
-        
-        const spoilerHtml = `<details class="spoiler-block"><summary class="spoiler-title">${title}</summary><div class="spoiler-content">${selectedText}</div></details>`;
-        
-        if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            const before = ta.value.substring(0, start);
-            const after = ta.value.substring(end);
-            ta.value = before + spoilerHtml + '\n' + after;
-        } else {
-            // Восстанавливаем сохраненный range если есть
-            if (savedSpoilerRange) {
-                const sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(savedSpoilerRange);
-                savedSpoilerRange.deleteContents();
-            }
-            insertImageBlockAtCaret(spoilerHtml);
-        }
-        
-        saveToHistory();
-        closeSpoilerDialog();
+    if (!savedMarkerText) {
+        showNotification('Выделите текст для применения маркера', 'warning');
+        return;
     }
 
-    // Функции для работы с маркером
-    let savedMarkerText = '';
-    let savedMarkerRange = null;
-    let selectedMarkerStyle = 'straight';
-
-    function openMarkerDialog() {
-        savedMarkerText = '';
-        savedMarkerRange = null;
-        
-        if (editorMode === 'visual') {
-            const sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-                const range = sel.getRangeAt(0);
-                savedMarkerRange = range.cloneRange();
-                savedMarkerText = range.toString();
-            }
-        } else if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            savedMarkerText = ta.value.substring(start, end);
-        }
-        
-        if (!savedMarkerText) {
-            showNotification('Выделите текст для применения маркера', 'warning');
-            return;
-        }
-        
-        if (window.Modal) {
-            Modal.open('#markerDialog');
-        } else {
-            const dlg = document.getElementById('markerDialog');
-            if (dlg) dlg.style.display = 'block';
-        }
-        
-        // Добавляем обработчики на кнопки стилей
-        const styleBtns = document.querySelectorAll('.marker-style-btn');
-        styleBtns.forEach(btn => {
-            btn.onclick = function() {
-                styleBtns.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                selectedMarkerStyle = this.getAttribute('data-style');
-            };
-        });
-        
-        // Добавляем обработчики на кнопки цветов
-        const colorBtns = document.querySelectorAll('.marker-color-btn');
-        colorBtns.forEach(btn => {
-            btn.onclick = function() {
-                const color = this.getAttribute('data-color');
-                insertMarker(color, selectedMarkerStyle);
-            };
-        });
+    if (window.Modal) {
+        Modal.open('#markerDialog');
+    } else {
+        const dlg = document.getElementById('markerDialog');
+        if (dlg) dlg.style.display = 'block';
     }
 
-    function closeMarkerDialog() {
-        if (window.Modal) {
-            Modal.close('#markerDialog');
-        } else {
-            const dlg = document.getElementById('markerDialog');
-            if (dlg) dlg.style.display = 'none';
-        }
-        savedMarkerText = '';
-        savedMarkerRange = null;
-    }
-
-    function insertMarker(color, style) {
-        if (!savedMarkerText) {
-            closeMarkerDialog();
-            return;
-        }
-        
-        // Определяем название цвета для data-атрибута
-        const colorNames = {
-            '#ffeb3b': 'yellow',
-            '#4caf50': 'green',
-            '#2196f3': 'blue',
-            '#ff9800': 'orange',
-            '#e91e63': 'pink',
-            '#9c27b0': 'purple'
+    // Добавляем обработчики на кнопки стилей
+    const styleBtns = document.querySelectorAll('.marker-style-btn');
+    styleBtns.forEach(btn => {
+        btn.onclick = function () {
+            styleBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            selectedMarkerStyle = this.getAttribute('data-style');
         };
-        const colorName = colorNames[color] || 'yellow';
-        
-        const markerHtml = `<mark data-marker-color="${colorName}" data-marker-style="${style}">${savedMarkerText}</mark>`;
-        
-        if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            const before = ta.value.substring(0, start);
-            const after = ta.value.substring(end);
-            ta.value = before + markerHtml + after;
-            // Устанавливаем курсор после маркера
-            const newPos = start + markerHtml.length;
-            ta.setSelectionRange(newPos, newPos);
-            ta.focus();
-        } else {
-            if (savedMarkerRange) {
-                const sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(savedMarkerRange);
-                savedMarkerRange.deleteContents();
-                
-                const temp = document.createElement('div');
-                temp.innerHTML = markerHtml;
-                const frag = document.createDocumentFragment();
-                let node, lastNode;
-                while ((node = temp.firstChild)) {
-                    lastNode = frag.appendChild(node);
-                }
-                savedMarkerRange.insertNode(frag);
-                
-                // Устанавливаем курсор после маркера
-                if (lastNode) {
-                    const newRange = document.createRange();
-                    newRange.setStartAfter(lastNode);
-                    newRange.collapse(true);
-                    sel.removeAllRanges();
-                    sel.addRange(newRange);
-                    
-                    // Добавляем пробел после маркера чтобы выйти из форматирования
-                    const space = document.createTextNode('\u200B'); // Zero-width space
-                    newRange.insertNode(space);
-                    newRange.setStartAfter(space);
-                    newRange.collapse(true);
-                    sel.removeAllRanges();
-                    sel.addRange(newRange);
-                }
-            }
-        }
-        
-        saveToHistory();
+    });
+
+    // Добавляем обработчики на кнопки цветов
+    const colorBtns = document.querySelectorAll('.marker-color-btn');
+    colorBtns.forEach(btn => {
+        btn.onclick = function () {
+            const color = this.getAttribute('data-color');
+            insertMarker(color, selectedMarkerStyle);
+        };
+    });
+}
+
+function closeMarkerDialog() {
+    if (window.Modal) {
+        Modal.close('#markerDialog');
+    } else {
+        const dlg = document.getElementById('markerDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
+    savedMarkerText = '';
+    savedMarkerRange = null;
+}
+
+function insertMarker(color, style) {
+    if (!savedMarkerText) {
         closeMarkerDialog();
+        return;
     }
 
-    // Функции для работы с кодом
-    var editingCodeBlockTarget = null;
+    // Определяем название цвета для data-атрибута
+    const colorNames = {
+        '#ffeb3b': 'yellow',
+        '#4caf50': 'green',
+        '#2196f3': 'blue',
+        '#ff9800': 'orange',
+        '#e91e63': 'pink',
+        '#9c27b0': 'purple'
+    };
+    const colorName = colorNames[color] || 'yellow';
 
-    function insertCode() {
-        editingCodeBlockTarget = null;
-        const titleEl = document.getElementById('codeDialogTitle');
-        if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_title', 'Вставить код') : 'Вставить код';
-        const submitEl = document.getElementById('codeDialogSubmitBtn');
-        if (submitEl) submitEl.textContent = window.t ? window.t('modals.code_insert_btn', 'Вставить') : 'Вставить';
-        const langEl = document.getElementById('codeLanguage');
-        if (langEl) langEl.value = 'javascript';
-        const inputEl = document.getElementById('codeInput');
-        if (inputEl) inputEl.value = '';
-        if (window.Modal) {
-            Modal.open('#codeDialog');
-        } else {
-            const dlg = document.getElementById('codeDialog');
-            if (dlg) dlg.style.display = 'block';
-        }
-        if (inputEl) inputEl.focus();
-    }
+    const markerHtml = `<mark data-marker-color="${colorName}" data-marker-style="${style}">${savedMarkerText}</mark>`;
 
-    function openEditCodeBlockDialog(codeBlock) {
-        editingCodeBlockTarget = codeBlock;
-        const titleEl = document.getElementById('codeDialogTitle');
-        if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_edit_title', 'Редактировать код') : 'Редактировать код';
-        const submitEl = document.getElementById('codeDialogSubmitBtn');
-        if (submitEl) submitEl.textContent = window.t ? window.t('common.save', 'Сохранить') : 'Сохранить';
-        
-        const lang = codeBlock.getAttribute('data-language') || 'javascript';
-        const langEl = document.getElementById('codeLanguage');
-        if (langEl) langEl.value = lang;
-        const inputEl = document.getElementById('codeInput');
-        if (inputEl) inputEl.value = codeBlock.textContent;
-        if (window.Modal) {
-            Modal.open('#codeDialog');
-        } else {
-            const dlg = document.getElementById('codeDialog');
-            if (dlg) dlg.style.display = 'block';
-        }
-        if (inputEl) inputEl.focus();
-    }
+    if (editorMode === 'code') {
+        const ta = document.getElementById('content');
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const before = ta.value.substring(0, start);
+        const after = ta.value.substring(end);
+        ta.value = before + markerHtml + after;
+        // Устанавливаем курсор после маркера
+        const newPos = start + markerHtml.length;
+        ta.setSelectionRange(newPos, newPos);
+        ta.focus();
+    } else {
+        if (savedMarkerRange) {
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedMarkerRange);
+            savedMarkerRange.deleteContents();
 
-    function closeCodeDialog() {
-        if (window.Modal) {
-            Modal.close('#codeDialog');
-        } else {
-            const dlg = document.getElementById('codeDialog');
-            if (dlg) dlg.style.display = 'none';
-        }
-        const inputEl = document.getElementById('codeInput');
-        if (inputEl) inputEl.value = '';
-        editingCodeBlockTarget = null;
-    }
-
-    function insertCodeBlock() {
-        const code = document.getElementById('codeInput').value;
-        const language = document.getElementById('codeLanguage').value;
-        
-        if (code.trim() === '') {
-            showNotification('Пожалуйста, введите код', 'warning');
-            return;
-        }
-
-        const escapedCode = code
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-
-        if (editingCodeBlockTarget) {
-            editingCodeBlockTarget.setAttribute('data-language', language);
-            editingCodeBlockTarget.innerHTML = escapedCode;
-            editingCodeBlockTarget.setAttribute('contenteditable', 'false');
-            const wrap = editingCodeBlockTarget.closest('.blog-image-wrap');
-            if (wrap) {
-                wrap.setAttribute('data-media-type', 'pre');
+            const temp = document.createElement('div');
+            temp.innerHTML = markerHtml;
+            const frag = document.createDocumentFragment();
+            let node, lastNode;
+            while ((node = temp.firstChild)) {
+                lastNode = frag.appendChild(node);
             }
-        } else {
-            if (editorMode === 'code') {
-                const codeBlock = `<pre class="code-block" data-language="${language}">${escapedCode}</pre>\n`;
-                const ta = document.getElementById('content');
-                const cursorPos = ta.selectionStart;
-                ta.value = ta.value.substring(0, cursorPos) + codeBlock + ta.value.substring(cursorPos);
-            } else {
-                const codeBlock = wrapMediaWithControls(`<pre class="code-block" data-language="${language}" contenteditable="false">${escapedCode}</pre>`, 'pre');
-                insertImageBlockAtCaret(codeBlock);
-            }
-        }
-        
-        saveToHistory();
-        closeCodeDialog();
-    }
+            savedMarkerRange.insertNode(frag);
 
-    window.insertCode = insertCode;
-    window.insertCodeBlock = insertCodeBlock;
-    window.closeCodeDialog = closeCodeDialog;
-    window.openEditCodeBlockDialog = openEditCodeBlockDialog;
+            // Устанавливаем курсор после маркера
+            if (lastNode) {
+                const newRange = document.createRange();
+                newRange.setStartAfter(lastNode);
+                newRange.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(newRange);
 
-    // Функции для управления статьями
-    function toggleManagePosts() {
-        const managePanel = document.getElementById('managePosts');
-        managePanel.classList.toggle('active');
-        
-        if (managePanel.classList.contains('active')) {
-            if (typeof updateBlogSelectorUI === 'function' && window.allBlogPaths) {
-                updateBlogSelectorUI(window.allBlogPaths, window.currentActiveBlogPath);
-            }
-            loadPosts();
-        } else {
-            // Очищаем поле поиска при закрытии панели
-            const searchInput = document.getElementById('postsSearchInput');
-            if (searchInput) {
-                searchInput.value = '';
+                // Добавляем пробел после маркера чтобы выйти из форматирования
+                const space = document.createTextNode('\u200B'); // Zero-width space
+                newRange.insertNode(space);
+                newRange.setStartAfter(space);
+                newRange.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(newRange);
             }
         }
     }
 
-    function loadPosts() {
-        // Добавляем timestamp для предотвращения кэширования
-        fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now())
-            .then(response => response.json())
-            .then(posts => {
-                const postsList = document.getElementById('postsList');
-                if (!posts || posts.length === 0) {
-                    postsList.innerHTML = '<p class="manage-posts-empty">' + (window.t ? window.t('header.manage_posts_empty', 'Пока нет статей') : 'Пока нет статей') + '</p>';
-                    return;
-                }
-                const escapeHtml = function(str) {
-                    if (!str) return '';
-                    var div = document.createElement('div');
-                    div.textContent = str;
-                    return div.innerHTML;
-                };
-                
-                // Сортируем статьи по ID в обратном порядке (новые первыми)
-                const sortedPosts = [...posts].sort((a, b) => b.id - a.id);
-                const btnEdit = window.t ? window.t('header.manage_posts_edit', 'Изменить') : 'Изменить';
-                const btnExtra = window.t ? window.t('header.manage_posts_extra', 'Дополнительно') : 'Дополнительно';
-                const btnDelete = window.t ? window.t('header.manage_posts_delete', 'Удалить') : 'Удалить';
-                
-                postsList.innerHTML = '<ul class="post-list">' +
-                    sortedPosts.map(post => `
+    saveToHistory();
+    closeMarkerDialog();
+}
+
+// Функции для работы с кодом
+var editingCodeBlockTarget = null;
+
+function insertCode() {
+    editingCodeBlockTarget = null;
+    const titleEl = document.getElementById('codeDialogTitle');
+    if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_title', 'Вставить код') : 'Вставить код';
+    const submitEl = document.getElementById('codeDialogSubmitBtn');
+    if (submitEl) submitEl.textContent = window.t ? window.t('modals.code_insert_btn', 'Вставить') : 'Вставить';
+    const langEl = document.getElementById('codeLanguage');
+    if (langEl) langEl.value = 'javascript';
+    const inputEl = document.getElementById('codeInput');
+    if (inputEl) inputEl.value = '';
+    if (window.Modal) {
+        Modal.open('#codeDialog');
+    } else {
+        const dlg = document.getElementById('codeDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
+    if (inputEl) inputEl.focus();
+}
+
+function openEditCodeBlockDialog(codeBlock) {
+    editingCodeBlockTarget = codeBlock;
+    const titleEl = document.getElementById('codeDialogTitle');
+    if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_edit_title', 'Редактировать код') : 'Редактировать код';
+    const submitEl = document.getElementById('codeDialogSubmitBtn');
+    if (submitEl) submitEl.textContent = window.t ? window.t('common.save', 'Сохранить') : 'Сохранить';
+
+    const lang = codeBlock.getAttribute('data-language') || 'javascript';
+    const langEl = document.getElementById('codeLanguage');
+    if (langEl) langEl.value = lang;
+    const inputEl = document.getElementById('codeInput');
+    if (inputEl) inputEl.value = codeBlock.textContent;
+    if (window.Modal) {
+        Modal.open('#codeDialog');
+    } else {
+        const dlg = document.getElementById('codeDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
+    if (inputEl) inputEl.focus();
+}
+
+function closeCodeDialog() {
+    if (window.Modal) {
+        Modal.close('#codeDialog');
+    } else {
+        const dlg = document.getElementById('codeDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
+    const inputEl = document.getElementById('codeInput');
+    if (inputEl) inputEl.value = '';
+    editingCodeBlockTarget = null;
+}
+
+function insertCodeBlock() {
+    const code = document.getElementById('codeInput').value;
+    const language = document.getElementById('codeLanguage').value;
+
+    if (code.trim() === '') {
+        showNotification('Пожалуйста, введите код', 'warning');
+        return;
+    }
+
+    const escapedCode = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    if (editingCodeBlockTarget) {
+        editingCodeBlockTarget.setAttribute('data-language', language);
+        editingCodeBlockTarget.innerHTML = escapedCode;
+        editingCodeBlockTarget.setAttribute('contenteditable', 'false');
+        const wrap = editingCodeBlockTarget.closest('.blog-image-wrap');
+        if (wrap) {
+            wrap.setAttribute('data-media-type', 'pre');
+        }
+    } else {
+        if (editorMode === 'code') {
+            const codeBlock = `<pre class="code-block" data-language="${language}">${escapedCode}</pre>\n`;
+            const ta = document.getElementById('content');
+            const cursorPos = ta.selectionStart;
+            ta.value = ta.value.substring(0, cursorPos) + codeBlock + ta.value.substring(cursorPos);
+        } else {
+            const codeBlock = wrapMediaWithControls(`<pre class="code-block" data-language="${language}" contenteditable="false">${escapedCode}</pre>`, 'pre');
+            insertImageBlockAtCaret(codeBlock);
+        }
+    }
+
+    saveToHistory();
+    closeCodeDialog();
+}
+
+window.insertCode = insertCode;
+window.insertCodeBlock = insertCodeBlock;
+window.closeCodeDialog = closeCodeDialog;
+window.openEditCodeBlockDialog = openEditCodeBlockDialog;
+
+// Функции для управления статьями
+function toggleManagePosts() {
+    const managePanel = document.getElementById('managePosts');
+    managePanel.classList.toggle('active');
+
+    if (managePanel.classList.contains('active')) {
+        if (typeof updateBlogSelectorUI === 'function' && window.allBlogPaths) {
+            updateBlogSelectorUI(window.allBlogPaths, window.currentActiveBlogPath);
+        }
+        loadPosts();
+    } else {
+        // Очищаем поле поиска при закрытии панели
+        const searchInput = document.getElementById('postsSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+    }
+}
+
+function loadPosts() {
+    // Добавляем timestamp для предотвращения кэширования
+    fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now())
+        .then(response => response.json())
+        .then(posts => {
+            const postsList = document.getElementById('postsList');
+            if (!posts || posts.length === 0) {
+                postsList.innerHTML = '<p class="manage-posts-empty">' + (window.t ? window.t('header.manage_posts_empty', 'Пока нет статей') : 'Пока нет статей') + '</p>';
+                return;
+            }
+            const escapeHtml = function (str) {
+                if (!str) return '';
+                var div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            };
+
+            // Сортируем статьи по ID в обратном порядке (новые первыми)
+            const sortedPosts = [...posts].sort((a, b) => b.id - a.id);
+            const btnEdit = window.t ? window.t('header.manage_posts_edit', 'Изменить') : 'Изменить';
+            const btnExtra = window.t ? window.t('header.manage_posts_extra', 'Дополнительно') : 'Дополнительно';
+            const btnDelete = window.t ? window.t('header.manage_posts_delete', 'Удалить') : 'Удалить';
+
+            postsList.innerHTML = '<ul class="post-list">' +
+                sortedPosts.map(post => `
                         <li class="post-item">
                             <div class="post-item-title">${escapeHtml(post.title)}</div>
                             <span class="post-item-date">${escapeHtml(post.date)}</span>
@@ -4657,23 +4662,23 @@ function extractVimeoId(url) {
                             </div>
                         </li>
                     `).join('') +
-                    '</ul>';
-            })
-            .catch(error => {
-                console.error('Ошибка загрузки статей:', error);
-                const postsList = document.getElementById('postsList');
-                postsList.innerHTML = '<p class="manage-posts-empty">' + (window.t ? window.t('header.manage_posts_empty', 'Пока нет статей') : 'Пока нет статей') + '</p>';
-            });
-    }
-
-    function editPost(postId) {
-        fetch('get_post_content.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id: postId })
+                '</ul>';
         })
+        .catch(error => {
+            console.error('Ошибка загрузки статей:', error);
+            const postsList = document.getElementById('postsList');
+            postsList.innerHTML = '<p class="manage-posts-empty">' + (window.t ? window.t('header.manage_posts_empty', 'Пока нет статей') : 'Пока нет статей') + '</p>';
+        });
+}
+
+function editPost(postId) {
+    fetch('get_post_content.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: postId })
+    })
         .then(response => {
             // Проверяем что ответ действительно JSON
             const contentType = response.headers.get('content-type');
@@ -4714,7 +4719,7 @@ function extractVimeoId(url) {
                     document.body.classList.add('markdown-mode');
                     const enableMarkdownCheck = document.getElementById('enableMarkdown');
                     if (enableMarkdownCheck) enableMarkdownCheck.checked = true;
-                    
+
                     document.getElementById('content').value = mdContent;
                     const ve = document.getElementById('contentVisual');
                     if (ve) {
@@ -4738,7 +4743,7 @@ function extractVimeoId(url) {
                         document.body.classList.remove('markdown-mode');
                         const enableMarkdownCheck = document.getElementById('enableMarkdown');
                         if (enableMarkdownCheck) enableMarkdownCheck.checked = false;
-                        
+
                         let editedContent = formatHTML(data.content);
                         document.getElementById('content').value = editedContent;
                         const ve = document.getElementById('contentVisual');
@@ -4779,7 +4784,7 @@ function extractVimeoId(url) {
                 }
                 toggleManagePosts();
                 document.getElementById('blogForm').scrollIntoView();
-                
+
                 // Инициализируем историю с текущим состоянием
                 clearHistory();
                 saveToHistory();
@@ -4791,80 +4796,80 @@ function extractVimeoId(url) {
             console.error('Ошибка загрузки статьи:', error);
             showNotification('Ошибка при загрузке статьи: ' + error.message, 'error');
         });
-    }
+}
 
-    let deletePostId = null;
+let deletePostId = null;
 
-    function filterPosts() {
-        const searchInput = document.getElementById('postsSearchInput');
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        const postItems = document.querySelectorAll('.post-item');
-        
-        let visibleCount = 0;
-        
-        postItems.forEach(item => {
-            const title = item.querySelector('.post-item-title').textContent.toLowerCase();
-            const date = item.querySelector('.post-item-date').textContent.toLowerCase();
-            
-            if (title.includes(searchTerm) || date.includes(searchTerm)) {
-                item.style.display = '';
-                visibleCount++;
-            } else {
-                item.style.display = 'none';
-            }
-        });
-        
-        // Показываем сообщение если ничего не найдено
-        const postsList = document.getElementById('postsList');
-        let emptyMessage = postsList.querySelector('.search-empty-message');
-        
-        if (visibleCount === 0 && searchTerm !== '') {
-            if (!emptyMessage) {
-                emptyMessage = document.createElement('p');
-                emptyMessage.className = 'manage-posts-empty search-empty-message';
-                emptyMessage.textContent = 'Ничего не найдено';
-                postsList.appendChild(emptyMessage);
-            }
-        } else if (emptyMessage) {
-            emptyMessage.remove();
-        }
-    }
+function filterPosts() {
+    const searchInput = document.getElementById('postsSearchInput');
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    const postItems = document.querySelectorAll('.post-item');
 
-    function deletePost(postId) {
-        deletePostId = postId;
-        if (window.Modal) {
-            Modal.open('#deleteConfirmOverlay');
+    let visibleCount = 0;
+
+    postItems.forEach(item => {
+        const title = item.querySelector('.post-item-title').textContent.toLowerCase();
+        const date = item.querySelector('.post-item-date').textContent.toLowerCase();
+
+        if (title.includes(searchTerm) || date.includes(searchTerm)) {
+            item.style.display = '';
+            visibleCount++;
         } else {
-            const overlay = document.getElementById('deleteConfirmOverlay');
-            if (overlay) overlay.classList.add('show');
+            item.style.display = 'none';
         }
-    }
-    
-    function closeDeleteConfirm() {
-        if (window.Modal) {
-            Modal.close('#deleteConfirmOverlay');
-        } else {
-            const overlay = document.getElementById('deleteConfirmOverlay');
-            if (overlay) overlay.classList.remove('show');
+    });
+
+    // Показываем сообщение если ничего не найдено
+    const postsList = document.getElementById('postsList');
+    let emptyMessage = postsList.querySelector('.search-empty-message');
+
+    if (visibleCount === 0 && searchTerm !== '') {
+        if (!emptyMessage) {
+            emptyMessage = document.createElement('p');
+            emptyMessage.className = 'manage-posts-empty search-empty-message';
+            emptyMessage.textContent = 'Ничего не найдено';
+            postsList.appendChild(emptyMessage);
         }
-        deletePostId = null;
+    } else if (emptyMessage) {
+        emptyMessage.remove();
     }
-    
-    function confirmDelete() {
-        if (!deletePostId) return;
-        
-        fetch('delete_post.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id: deletePostId })
-        })
+}
+
+function deletePost(postId) {
+    deletePostId = postId;
+    if (window.Modal) {
+        Modal.open('#deleteConfirmOverlay');
+    } else {
+        const overlay = document.getElementById('deleteConfirmOverlay');
+        if (overlay) overlay.classList.add('show');
+    }
+}
+
+function closeDeleteConfirm() {
+    if (window.Modal) {
+        Modal.close('#deleteConfirmOverlay');
+    } else {
+        const overlay = document.getElementById('deleteConfirmOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
+    deletePostId = null;
+}
+
+function confirmDelete() {
+    if (!deletePostId) return;
+
+    fetch('delete_post.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: deletePostId })
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const message = data.renumbered 
-                    ? 'Статья удалена, нумерация обновлена' 
+                const message = data.renumbered
+                    ? 'Статья удалена, нумерация обновлена'
                     : 'Статья успешно удалена';
                 showNotification(message, 'success');
                 loadPosts();
@@ -4877,66 +4882,66 @@ function extractVimeoId(url) {
             console.error('Ошибка удаления:', error);
             showNotification('Ошибка при удалении статьи', 'error');
         });
+}
+
+// Обработчик отправки формы
+document.getElementById('modeVisualBtn').addEventListener('click', function () { setMode('visual'); });
+document.getElementById('modeCodeBtn').addEventListener('click', function () { setMode('code'); });
+setMode('visual');
+
+function handleSubmit(e) {
+    if (e) e.preventDefault();
+    if (isSavingArticle) return;
+
+    const titleInput = document.getElementById('title');
+    const title = titleInput.value.trim();
+
+    if (!title) {
+        showNotification('Пожалуйста, введите заголовок статьи', 'error');
+        titleInput.focus();
+        return;
     }
 
-    // Обработчик отправки формы
-    document.getElementById('modeVisualBtn').addEventListener('click', function(){ setMode('visual'); });
-    document.getElementById('modeCodeBtn').addEventListener('click', function(){ setMode('code'); });
-    setMode('visual');
+    const ta = document.getElementById('content');
+    const ve = document.getElementById('contentVisual');
 
-    function handleSubmit(e) {
-        if (e) e.preventDefault();
-        if (isSavingArticle) return;
-        
-        const titleInput = document.getElementById('title');
-        const title = titleInput.value.trim();
-        
-        if (!title) {
-            showNotification('Пожалуйста, введите заголовок статьи', 'error');
-            titleInput.focus();
-            return;
+    let content;
+    if (window.enableMarkdown) {
+        if (editorMode === 'visual') {
+            ta.value = convertHtmlToMarkdown(ve.innerHTML);
         }
+        const rawMarkdown = ta.value;
+        const base64Markdown = btoa(unescape(encodeURIComponent(rawMarkdown)));
+        content = parseMarkdownToHtml(rawMarkdown) + `\n<script type="text/markdown" id="markdown-source" data-base64="${base64Markdown}"></script>`;
+    } else if (editorMode === 'visual') {
+        // Очищаем контент от элементов интерфейса редактора
+        content = cleanContentForSave(ve.innerHTML);
+        ta.value = content;
+    } else {
+        content = ta.value;
+    }
 
-        const ta = document.getElementById('content');
-        const ve = document.getElementById('contentVisual');
-        
-        let content;
-        if (window.enableMarkdown) {
-            if (editorMode === 'visual') {
-                ta.value = convertHtmlToMarkdown(ve.innerHTML);
-            }
-            const rawMarkdown = ta.value;
-            const base64Markdown = btoa(unescape(encodeURIComponent(rawMarkdown)));
-            content = parseMarkdownToHtml(rawMarkdown) + `\n<script type="text/markdown" id="markdown-source" data-base64="${base64Markdown}"></script>`;
-        } else if (editorMode === 'visual') {
-            // Очищаем контент от элементов интерфейса редактора
-            content = cleanContentForSave(ve.innerHTML);
-            ta.value = content;
-        } else {
-            content = ta.value;
-        }
-        
-        const submitButton = document.getElementById('submitButton');
-        const floatingSaveBtn = document.getElementById('floatingSaveBtn');
-        
-        isSavingArticle = true;
-        if (submitButton) {
-            submitButton.disabled = true;
-            submitButton.textContent = 'Сохранение...';
-        }
-        if (floatingSaveBtn) {
-            floatingSaveBtn.disabled = true;
-            floatingSaveBtn.textContent = 'Сохранение...';
-        }
-        
-        const endpoint = currentEditId ? 'update_post.php' : 'save_post.php';
-        const data = { title: title, content: content };
-        if (currentEditId) { data.id = currentEditId; }
-        fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
+    const submitButton = document.getElementById('submitButton');
+    const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+
+    isSavingArticle = true;
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Сохранение...';
+    }
+    if (floatingSaveBtn) {
+        floatingSaveBtn.disabled = true;
+        floatingSaveBtn.textContent = 'Сохранение...';
+    }
+
+    const endpoint = currentEditId ? 'update_post.php' : 'save_post.php';
+    const data = { title: title, content: content };
+    if (currentEditId) { data.id = currentEditId; }
+    fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
         .then(async (response) => {
             let payload;
             try { payload = await response.json(); } catch (_) { payload = null; }
@@ -4947,28 +4952,28 @@ function extractVimeoId(url) {
                 currentEditId ? 'Статья успешно обновлена!' : 'Статья успешно добавлена!',
                 'success'
             );
-            
+
             // Очищаем локальный черновик и сбрасываем признак несохраненных изменений
             clearLocalDraft();
-            
+
             // Очищаем форму
             document.getElementById('blogForm').reset();
-            
+
             // Очищаем визуальный редактор
             const ve = document.getElementById('contentVisual');
             if (ve) {
                 ve.innerHTML = '';
             }
-            
+
             // Очищаем текстовое поле
             const ta = document.getElementById('content');
             if (ta) {
                 ta.value = '';
             }
-            
+
             // Обновляем список статей
             loadPosts();
-            
+
             currentEditId = null;
             if (submitButton) {
                 submitButton.textContent = 'Сохранить';
@@ -4978,7 +4983,7 @@ function extractVimeoId(url) {
                 floatingSaveBtn.textContent = 'Сохранить';
                 floatingSaveBtn.classList.remove('editing');
             }
-            
+
             // Очищаем историю
             clearHistory();
         })
@@ -5005,360 +5010,360 @@ function extractVimeoId(url) {
                 }
             }
         });
+}
+
+document.getElementById('blogForm').addEventListener('submit', handleSubmit);
+document.getElementById('submitButton').addEventListener('click', handleSubmit);
+
+// Обработчики изменения размера
+document.getElementById('imageSize').addEventListener('change', function (e) {
+    const customInputs = document.getElementById('customSizeInputs');
+    customInputs.style.display = e.target.value === 'custom' ? 'flex' : 'none';
+
+    if (e.target.value !== 'custom') {
+        document.getElementById('customWidth').value = '';
+        document.getElementById('customHeight').value = '';
+        document.getElementById('widthUnit').value = 'px';
+        document.getElementById('heightUnit').value = 'px';
     }
+});
 
-    document.getElementById('blogForm').addEventListener('submit', handleSubmit);
-    document.getElementById('submitButton').addEventListener('click', handleSubmit);
-
-    // Обработчики изменения размера
-    document.getElementById('imageSize').addEventListener('change', function(e) {
-        const customInputs = document.getElementById('customSizeInputs');
-        customInputs.style.display = e.target.value === 'custom' ? 'flex' : 'none';
-        
-        if (e.target.value !== 'custom') {
-            document.getElementById('customWidth').value = '';
-            document.getElementById('customHeight').value = '';
-            document.getElementById('widthUnit').value = 'px';
-            document.getElementById('heightUnit').value = 'px';
-        }
-    });
-
-    document.getElementById('customFontSize').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            setCustomFontSize();
-        }
-    });
-    function setTextColor(color) {
-        if (editorMode === 'code') {
-            var ta = document.getElementById('content');
-            var start = (ta.selectionStart !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionStart : colorInsertStart;
-            var end = (ta.selectionEnd !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionEnd : colorInsertEnd;
-            var selectedText = ta.value.substring(start, end);
-            if (selectedText) {
-                var colorSpan = '<span style="color: ' + color + ';">' + selectedText + '</span>';
-                ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(end);
-                ta.selectionStart = start;
-                ta.selectionEnd = start + colorSpan.length;
-                ta.focus();
-                saveToHistory();
-            } else {
-                var colorSpan = '<span style="color: ' + color + ';"></span>';
-                ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(start);
-                ta.selectionStart = ta.selectionEnd = start + colorSpan.length - 7;
-                ta.focus();
-                saveToHistory();
-            }
+document.getElementById('customFontSize').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        setCustomFontSize();
+    }
+});
+function setTextColor(color) {
+    if (editorMode === 'code') {
+        var ta = document.getElementById('content');
+        var start = (ta.selectionStart !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionStart : colorInsertStart;
+        var end = (ta.selectionEnd !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionEnd : colorInsertEnd;
+        var selectedText = ta.value.substring(start, end);
+        if (selectedText) {
+            var colorSpan = '<span style="color: ' + color + ';">' + selectedText + '</span>';
+            ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(end);
+            ta.selectionStart = start;
+            ta.selectionEnd = start + colorSpan.length;
+            ta.focus();
+            saveToHistory();
         } else {
-            var ve = document.getElementById('contentVisual');
-            if (!ve) return;
-            ve.focus();
-            if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-                var sel = window.getSelection();
-                if (sel) {
-                    sel.removeAllRanges();
-                    sel.addRange(savedRange);
-                }
-            }
-            try {
-                document.execCommand('styleWithCSS', false, true);
-            } catch (e) {}
-            document.execCommand('foreColor', false, color);
-            var sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-                savedRange = sel.getRangeAt(0).cloneRange();
-            }
+            var colorSpan = '<span style="color: ' + color + ';"></span>';
+            ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(start);
+            ta.selectionStart = ta.selectionEnd = start + colorSpan.length - 7;
+            ta.focus();
             saveToHistory();
         }
-    }
-
-    (function initColorPalette() {
-        var presetColors = ['#000000','#333333','#666666','#999999','#cccccc','#ffffff','#ff0000','#ff6600','#ff9900','#ffcc00','#99cc00','#00cc00','#00cccc','#0066ff','#0000ff','#6600cc','#9900cc','#cc0099','#ff0066','#8b4513','#a0522d','#cd853f','#deb887','#ff69b4','#ffc0cb','#add8e6','#98fb98','#f0e68c','#ffd700','#ff6347'];
-        function fillGrid(gridId) {
-            var grid = document.getElementById(gridId);
-            if (!grid) return;
-            grid.innerHTML = '';
-            presetColors.forEach(function(hex) {
-                var swatch = document.createElement('span');
-                swatch.className = 'color-swatch';
-                swatch.style.background = hex;
-                swatch.title = hex;
-                swatch.setAttribute('data-color', hex);
-                grid.appendChild(swatch);
-            });
-        }
-        fillGrid('colorPaletteGridMain');
-
-        function openColorPicker(wrap) {
-            document.querySelectorAll('.color-picker-wrap.is-open').forEach(function(w) { if (w !== wrap) w.classList.remove('is-open'); });
-            wrap.classList.add('is-open');
-        }
-        function toggleColorPicker(wrap) {
-            var isOpen = wrap.classList.contains('is-open');
-            document.querySelectorAll('.color-picker-wrap.is-open').forEach(function(w) { w.classList.remove('is-open'); });
-            if (!isOpen) {
-                wrap.classList.add('is-open');
+    } else {
+        var ve = document.getElementById('contentVisual');
+        if (!ve) return;
+        ve.focus();
+        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+            var sel = window.getSelection();
+            if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(savedRange);
             }
         }
-        function closeAllColorPickers() {
-            document.querySelectorAll('.color-picker-wrap.is-open').forEach(function(w) { w.classList.remove('is-open'); });
+        try {
+            document.execCommand('styleWithCSS', false, true);
+        } catch (e) { }
+        document.execCommand('foreColor', false, color);
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRange = sel.getRangeAt(0).cloneRange();
         }
-        function applyColorAndClose(hex, wrap) {
-            setTextColor(hex);
+        saveToHistory();
+    }
+}
+
+(function initColorPalette() {
+    var presetColors = ['#000000', '#333333', '#666666', '#999999', '#cccccc', '#ffffff', '#ff0000', '#ff6600', '#ff9900', '#ffcc00', '#99cc00', '#00cc00', '#00cccc', '#0066ff', '#0000ff', '#6600cc', '#9900cc', '#cc0099', '#ff0066', '#8b4513', '#a0522d', '#cd853f', '#deb887', '#ff69b4', '#ffc0cb', '#add8e6', '#98fb98', '#f0e68c', '#ffd700', '#ff6347'];
+    function fillGrid(gridId) {
+        var grid = document.getElementById(gridId);
+        if (!grid) return;
+        grid.innerHTML = '';
+        presetColors.forEach(function (hex) {
+            var swatch = document.createElement('span');
+            swatch.className = 'color-swatch';
+            swatch.style.background = hex;
+            swatch.title = hex;
+            swatch.setAttribute('data-color', hex);
+            grid.appendChild(swatch);
+        });
+    }
+    fillGrid('colorPaletteGridMain');
+
+    function openColorPicker(wrap) {
+        document.querySelectorAll('.color-picker-wrap.is-open').forEach(function (w) { if (w !== wrap) w.classList.remove('is-open'); });
+        wrap.classList.add('is-open');
+    }
+    function toggleColorPicker(wrap) {
+        var isOpen = wrap.classList.contains('is-open');
+        document.querySelectorAll('.color-picker-wrap.is-open').forEach(function (w) { w.classList.remove('is-open'); });
+        if (!isOpen) {
+            wrap.classList.add('is-open');
+        }
+    }
+    function closeAllColorPickers() {
+        document.querySelectorAll('.color-picker-wrap.is-open').forEach(function (w) { w.classList.remove('is-open'); });
+    }
+    function applyColorAndClose(hex, wrap) {
+        setTextColor(hex);
+        wrap.classList.remove('is-open');
+        var preview = wrap.querySelector('.color-preview');
+        if (preview) preview.style.background = hex;
+    }
+
+    // Функция для меню "Прочее"
+    window.toggleMoreMenu = function () {
+        const wrap = document.getElementById('moreMenuWrap');
+        if (!wrap) return;
+
+        const isOpen = wrap.classList.contains('is-open');
+
+        // Закрываем другие открытые меню
+        document.querySelectorAll('.color-picker-wrap.is-open, .font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function (w) {
+            w.classList.remove('is-open');
+        });
+
+        if (!isOpen) {
+            wrap.classList.add('is-open');
+        } else {
             wrap.classList.remove('is-open');
-            var preview = wrap.querySelector('.color-preview');
-            if (preview) preview.style.background = hex;
-        }
-        
-        // Функция для меню "Прочее"
-        window.toggleMoreMenu = function() {
-            const wrap = document.getElementById('moreMenuWrap');
-            if (!wrap) return;
-            
-            const isOpen = wrap.classList.contains('is-open');
-            
-            // Закрываем другие открытые меню
-            document.querySelectorAll('.color-picker-wrap.is-open, .font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function(w) {
-                w.classList.remove('is-open');
+            // Закрываем подменю
+            document.querySelectorAll('.more-menu-item.has-submenu').forEach(function (item) {
+                item.classList.remove('submenu-open');
             });
-            
-            if (!isOpen) {
-                wrap.classList.add('is-open');
-            } else {
-                wrap.classList.remove('is-open');
+        }
+    };
+
+    ['colorPickerWrapMain'].forEach(function (id) {
+        var wrap = document.getElementById(id);
+        if (!wrap) return;
+        var btn = wrap.querySelector('.color-picker-btn');
+        var popover = wrap.querySelector('.color-palette-popover');
+        var customInput = wrap.querySelector('input[type="color"]');
+        if (btn) {
+            btn.addEventListener('mousedown', function (e) {
+                if (editorMode === 'code') {
+                    var ta = document.getElementById('content');
+                    colorInsertStart = ta.selectionStart;
+                    colorInsertEnd = ta.selectionEnd;
+                } else {
+                    saveSelection();
+                }
+            });
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                toggleColorPicker(wrap);
+            });
+        }
+        if (popover) {
+            popover.addEventListener('mousedown', function (e) {
+                if (e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                }
+            });
+            popover.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var swatch = e.target.closest('.color-swatch');
+                if (swatch && swatch.dataset.color) applyColorAndClose(swatch.dataset.color, wrap);
+            });
+        }
+        if (customInput) {
+            ['change', 'input'].forEach(function (evtType) {
+                customInput.addEventListener(evtType, function () {
+                    applyColorAndClose(this.value, wrap);
+                });
+            });
+        }
+    });
+    document.addEventListener('click', closeAllColorPickers);
+})();
+
+function applyCustomFontSize(wrapId) {
+    var wrap = document.getElementById(wrapId);
+    var input = wrap.querySelector('.font-size-custom input[type="number"]');
+    var size = input && input.value ? parseInt(input.value, 10) : 0;
+    if (size >= 8 && size <= 72) {
+        var sizeStr = size + 'px';
+        setFontSize(String(size));
+
+        // Обновляем текст кнопки
+        const sizeBtn = document.getElementById('fontSizeBtn');
+        if (sizeBtn) {
+            sizeBtn.textContent = sizeStr;
+        }
+
+        input.value = '';
+        wrap.classList.remove('is-open');
+    } else {
+        showNotification('Введите размер от 8 до 72', 'warning');
+    }
+}
+function applyCustomFontFamily(wrapId) {
+    var wrap = document.getElementById(wrapId);
+    var input = wrap.querySelector('.font-family-custom input[type="text"]');
+    var font = input && input.value ? input.value.trim() : '';
+    if (font) {
+        setFontFamily(font);
+
+        // Обновляем текст кнопки
+        const fontBtn = document.getElementById('fontFamilyBtn');
+        if (fontBtn) {
+            fontBtn.textContent = font;
+            fontBtn.style.fontFamily = font;
+        }
+
+        input.value = '';
+        wrap.classList.remove('is-open');
+    } else {
+        showNotification('Введите название шрифта', 'warning');
+    }
+}
+
+(function initFontSizeAndFamilyPopovers() {
+    function closeAllFontPopovers() {
+        document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function (w) { w.classList.remove('is-open'); });
+    }
+    function toggleWrap(wrap) {
+        var isOpen = wrap.classList.contains('is-open');
+        document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function (w) { w.classList.remove('is-open'); });
+        if (!isOpen) {
+            wrap.classList.add('is-open');
+        }
+    }
+    function openWrap(wrap, closeOthers) {
+        if (closeOthers) {
+            document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function (w) { if (w !== wrap) w.classList.remove('is-open'); });
+        }
+        wrap.classList.add('is-open');
+    }
+
+    // Закрытие при клике вне меню
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.more-menu-wrap')) {
+            const moreMenu = document.getElementById('moreMenuWrap');
+            if (moreMenu) {
+                moreMenu.classList.remove('is-open');
                 // Закрываем подменю
-                document.querySelectorAll('.more-menu-item.has-submenu').forEach(function(item) {
+                document.querySelectorAll('.more-menu-item.has-submenu').forEach(function (item) {
                     item.classList.remove('submenu-open');
                 });
             }
-        };
+        }
+    });
 
-        ['colorPickerWrapMain'].forEach(function(id) {
-            var wrap = document.getElementById(id);
-            if (!wrap) return;
-            var btn = wrap.querySelector('.color-picker-btn');
-            var popover = wrap.querySelector('.color-palette-popover');
-            var customInput = wrap.querySelector('input[type="color"]');
-            if (btn) {
-                btn.addEventListener('mousedown', function(e) {
-                    if (editorMode === 'code') {
-                        var ta = document.getElementById('content');
-                        colorInsertStart = ta.selectionStart;
-                        colorInsertEnd = ta.selectionEnd;
-                    } else {
-                        saveSelection();
-                    }
-                });
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    toggleColorPicker(wrap);
-                });
-            }
-            if (popover) {
-                popover.addEventListener('mousedown', function(e) {
-                    if (e.target.tagName !== 'INPUT') {
-                        e.preventDefault();
-                    }
-                });
-                popover.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    var swatch = e.target.closest('.color-swatch');
-                    if (swatch && swatch.dataset.color) applyColorAndClose(swatch.dataset.color, wrap);
-                });
-            }
-            if (customInput) {
-                ['change', 'input'].forEach(function(evtType) {
-                    customInput.addEventListener(evtType, function() {
-                        applyColorAndClose(this.value, wrap);
-                    });
-                });
-            }
-        });
-        document.addEventListener('click', closeAllColorPickers);
-    })();
-
-    function applyCustomFontSize(wrapId) {
-        var wrap = document.getElementById(wrapId);
-        var input = wrap.querySelector('.font-size-custom input[type="number"]');
-        var size = input && input.value ? parseInt(input.value, 10) : 0;
-        if (size >= 8 && size <= 72) {
-            var sizeStr = size + 'px';
-            setFontSize(String(size));
-            
-            // Обновляем текст кнопки
-            const sizeBtn = document.getElementById('fontSizeBtn');
-            if (sizeBtn) {
-                sizeBtn.textContent = sizeStr;
-            }
-            
-            input.value = '';
-            wrap.classList.remove('is-open');
-        } else {
-            showNotification('Введите размер от 8 до 72', 'warning');
-        }
-    }
-    function applyCustomFontFamily(wrapId) {
-        var wrap = document.getElementById(wrapId);
-        var input = wrap.querySelector('.font-family-custom input[type="text"]');
-        var font = input && input.value ? input.value.trim() : '';
-        if (font) {
-            setFontFamily(font);
-            
-            // Обновляем текст кнопки
-            const fontBtn = document.getElementById('fontFamilyBtn');
-            if (fontBtn) {
-                fontBtn.textContent = font;
-                fontBtn.style.fontFamily = font;
-            }
-            
-            input.value = '';
-            wrap.classList.remove('is-open');
-        } else {
-            showNotification('Введите название шрифта', 'warning');
-        }
-    }
-
-    (function initFontSizeAndFamilyPopovers() {
-        function closeAllFontPopovers() {
-            document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function(w) { w.classList.remove('is-open'); });
-        }
-        function toggleWrap(wrap) {
-            var isOpen = wrap.classList.contains('is-open');
-            document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function(w) { w.classList.remove('is-open'); });
-            if (!isOpen) {
-                wrap.classList.add('is-open');
-            }
-        }
-        function openWrap(wrap, closeOthers) {
-            if (closeOthers) {
-                document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function(w) { if (w !== wrap) w.classList.remove('is-open'); });
-            }
-            wrap.classList.add('is-open');
-        }
-        
-        // Закрытие при клике вне меню
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.more-menu-wrap')) {
-                const moreMenu = document.getElementById('moreMenuWrap');
-                if (moreMenu) {
-                    moreMenu.classList.remove('is-open');
-                    // Закрываем подменю
-                    document.querySelectorAll('.more-menu-item.has-submenu').forEach(function(item) {
-                        item.classList.remove('submenu-open');
-                    });
+    ['fontSizeWrapMain'].forEach(function (id) {
+        var wrap = document.getElementById(id);
+        if (!wrap) return;
+        var btn = wrap.querySelector('.font-size-picker-btn');
+        var popover = wrap.querySelector('.font-size-popover-inner');
+        if (btn) {
+            btn.addEventListener('mousedown', function () {
+                if (editorMode === 'code') {
+                    var ta = document.getElementById('content');
+                    colorInsertStart = ta.selectionStart;
+                    colorInsertEnd = ta.selectionEnd;
                 }
-            }
-        });
-        
-        ['fontSizeWrapMain'].forEach(function(id) {
-            var wrap = document.getElementById(id);
-            if (!wrap) return;
-            var btn = wrap.querySelector('.font-size-picker-btn');
-            var popover = wrap.querySelector('.font-size-popover-inner');
-            if (btn) {
-                btn.addEventListener('mousedown', function() {
-                    if (editorMode === 'code') {
-                        var ta = document.getElementById('content');
-                        colorInsertStart = ta.selectionStart;
-                        colorInsertEnd = ta.selectionEnd;
+            });
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                toggleWrap(wrap);
+            });
+        }
+        if (popover) {
+            popover.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var item = e.target.closest('.font-size-item[data-size]');
+                if (item) {
+                    var sizeValue = item.getAttribute('data-size');
+                    setFontSize(sizeValue);
+
+                    // Обновляем текст кнопки
+                    const sizeBtn = document.getElementById('fontSizeBtn');
+                    if (sizeBtn) {
+                        sizeBtn.textContent = sizeValue + 'px';
                     }
-                });
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    toggleWrap(wrap);
-                });
-            }
-            if (popover) {
-                popover.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    var item = e.target.closest('.font-size-item[data-size]');
-                    if (item) {
-                        var sizeValue = item.getAttribute('data-size');
-                        setFontSize(sizeValue);
-                        
-                        // Обновляем текст кнопки
-                        const sizeBtn = document.getElementById('fontSizeBtn');
-                        if (sizeBtn) {
-                            sizeBtn.textContent = sizeValue + 'px';
-                        }
-                        
-                        wrap.classList.remove('is-open');
+
+                    wrap.classList.remove('is-open');
+                }
+            });
+        }
+    });
+    ['fontFamilyWrapMain'].forEach(function (id) {
+        var wrap = document.getElementById(id);
+        if (!wrap) return;
+        var btn = wrap.querySelector('.font-family-picker-btn');
+        var popover = wrap.querySelector('.font-family-popover-inner');
+        if (btn) {
+            btn.addEventListener('mousedown', function () {
+                if (editorMode === 'code') {
+                    var ta = document.getElementById('content');
+                    colorInsertStart = ta.selectionStart;
+                    colorInsertEnd = ta.selectionEnd;
+                }
+            });
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                toggleWrap(wrap);
+            });
+        }
+        if (popover) {
+            popover.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var item = e.target.closest('.font-family-item[data-font]');
+                if (item) {
+                    var fontName = item.getAttribute('data-font');
+                    setFontFamily(fontName);
+
+                    // Обновляем текст кнопки
+                    const fontBtn = document.getElementById('fontFamilyBtn');
+                    if (fontBtn) {
+                        fontBtn.textContent = fontName;
+                        fontBtn.style.fontFamily = fontName;
                     }
-                });
-            }
-        });
-        ['fontFamilyWrapMain'].forEach(function(id) {
-            var wrap = document.getElementById(id);
-            if (!wrap) return;
-            var btn = wrap.querySelector('.font-family-picker-btn');
-            var popover = wrap.querySelector('.font-family-popover-inner');
-            if (btn) {
-                btn.addEventListener('mousedown', function() {
-                    if (editorMode === 'code') {
-                        var ta = document.getElementById('content');
-                        colorInsertStart = ta.selectionStart;
-                        colorInsertEnd = ta.selectionEnd;
-                    }
-                });
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    toggleWrap(wrap);
-                });
-            }
-            if (popover) {
-                popover.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    var item = e.target.closest('.font-family-item[data-font]');
-                    if (item) {
-                        var fontName = item.getAttribute('data-font');
-                        setFontFamily(fontName);
-                        
-                        // Обновляем текст кнопки
-                        const fontBtn = document.getElementById('fontFamilyBtn');
-                        if (fontBtn) {
-                            fontBtn.textContent = fontName;
-                            fontBtn.style.fontFamily = fontName;
-                        }
-                        
-                        wrap.classList.remove('is-open');
-                    }
-                });
-            }
-        });
-        document.addEventListener('click', closeAllFontPopovers);
-    })();
+
+                    wrap.classList.remove('is-open');
+                }
+            });
+        }
+    });
+    document.addEventListener('click', closeAllFontPopovers);
+})();
 
 // Функции для работы со шрифтом
-    function setFontFamily(font) {
-        if (editorMode === 'code') {
-            var ta = document.getElementById('content');
-            var start = colorInsertStart;
-            var end = colorInsertEnd;
-            var selectedText = ta.value.substring(start, end);
-            if (selectedText) {
-                // Применяем к выделенному тексту
-                var fontSpan = '<span style="font-family: \'' + font.replace(/'/g, "\\'") + '\';">' + selectedText + '</span>';
-                ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(end);
-                ta.selectionStart = start;
-                ta.selectionEnd = start + fontSpan.length;
-                ta.focus();
-            } else {
-                // Вставляем span для последующего текста
-                var fontSpan = '<span style="font-family: \'' + font.replace(/'/g, "\\'") + '\';">​</span>';
-                ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(start);
-                // Ставим курсор перед закрывающим тегом
-                ta.selectionStart = ta.selectionEnd = start + fontSpan.length - 8;
-                ta.focus();
-            }
+function setFontFamily(font) {
+    if (editorMode === 'code') {
+        var ta = document.getElementById('content');
+        var start = colorInsertStart;
+        var end = colorInsertEnd;
+        var selectedText = ta.value.substring(start, end);
+        if (selectedText) {
+            // Применяем к выделенному тексту
+            var fontSpan = '<span style="font-family: \'' + font.replace(/'/g, "\\'") + '\';">' + selectedText + '</span>';
+            ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(end);
+            ta.selectionStart = start;
+            ta.selectionEnd = start + fontSpan.length;
+            ta.focus();
         } else {
-            var ve = document.getElementById('contentVisual');
-            if (!ve) return;
-            
-            ve.focus();
-            
-            // Применяем шрифт через execCommand
-            document.execCommand('fontName', false, font);
+            // Вставляем span для последующего текста
+            var fontSpan = '<span style="font-family: \'' + font.replace(/'/g, "\\'") + '\';">​</span>';
+            ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(start);
+            // Ставим курсор перед закрывающим тегом
+            ta.selectionStart = ta.selectionEnd = start + fontSpan.length - 8;
+            ta.focus();
         }
+    } else {
+        var ve = document.getElementById('contentVisual');
+        if (!ve) return;
+
+        ve.focus();
+
+        // Применяем шрифт через execCommand
+        document.execCommand('fontName', false, font);
     }
+}
 
 function closeFontFamilyDialog() {
     document.getElementById('fontFamilyDialog').style.display = 'none';
@@ -5375,14 +5380,14 @@ function setCustomFontFamily() {
     }
 }
 
-    function insertImageGrid(layout) {
+function insertImageGrid(layout) {
     const [cols, rows] = layout.split('x').map(Number);
     const gridStyle = `display: grid; grid-template-columns: repeat(${cols}, 1fr); gap: 10px;`;
     let imagesHTML = '';
 
     for (let i = 0; i < cols * rows; i++) {
         // Плейсхолдер для добавления реальных изображений
-        imagesHTML += `<img src="" alt="Изображение ${i+1}" style="width: 100%; height: auto;">`;
+        imagesHTML += `<img src="" alt="Изображение ${i + 1}" style="width: 100%; height: auto;">`;
     }
 
     const gridHTML = `<div style="${gridStyle}">${imagesHTML}</div>`;
@@ -5397,15 +5402,15 @@ function setCustomFontFamily() {
 }
 
 // Прилипающая строка кнопок: при прокрутке только панель форматирования фиксируется сверху
-(function() {
+(function () {
     var sentinel = document.getElementById('formatBarSentinel');
     var placeholder = document.getElementById('formatBarPlaceholder');
     var formatBar = document.getElementById('formatBarRow');
     var floatingSaveBtn = document.getElementById('floatingSaveBtn');
     var submitButton = document.getElementById('submitButton');
     if (!sentinel || !placeholder || !formatBar) return;
-    var stickyObserver = new IntersectionObserver(function(entries) {
-        entries.forEach(function(entry) {
+    var stickyObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
             if (entry.isIntersecting) {
                 formatBar.classList.remove('is-floating');
                 placeholder.style.display = 'none';
@@ -5426,7 +5431,7 @@ function setCustomFontFamily() {
 })();
 
 // Подсветка активных кнопок при изменении выделения
-document.addEventListener('selectionchange', function() {
+document.addEventListener('selectionchange', function () {
     updateActiveButtons();
 });
 
@@ -5435,7 +5440,7 @@ async function checkIntegrity() {
     try {
         const response = await fetch('check_integrity.php');
         const data = await response.json();
-        
+
         if (!data.success && data.errors.length > 0) {
             const overlay = document.getElementById('integrityErrorOverlay');
             overlay.classList.add('show');
@@ -5449,17 +5454,17 @@ async function fixIntegrityErrors() {
     const button = document.querySelector('.integrity-error-button');
     button.textContent = 'Исправление...';
     button.disabled = true;
-    
+
     try {
         const response = await fetch('fix_integrity.php');
         const data = await response.json();
-        
+
         if (data.success) {
             showNotification('Все ошибки успешно исправлены!', 'success');
-            
+
             const overlay = document.getElementById('integrityErrorOverlay');
             overlay.classList.remove('show');
-            
+
             button.textContent = 'Исправить';
             button.disabled = false;
         } else {
@@ -5480,22 +5485,22 @@ async function fixIntegrityErrors() {
 // ——— Менеджер бэкапов ———
 async function openBackupManager() {
     const content = document.getElementById('backupManagerContent');
-    
+
     if (window.Modal) {
         Modal.open('#backupManagerOverlay');
     } else {
         const overlay = document.getElementById('backupManagerOverlay');
         if (overlay) overlay.classList.add('show');
     }
-    
+
     if (content) {
         content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.loading', 'Загрузка...') : 'Загрузка...') + '</div>';
     }
-    
+
     try {
         const response = await fetch('get_backups.php');
         const data = await response.json();
-        
+
         if (data.success) {
             if (Object.keys(data.backups).length === 0) {
                 if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_no_backups', 'Нет сохраненных бэкапов') : 'Нет сохраненных бэкапов') + '</div>';
@@ -5524,19 +5529,19 @@ function renderBackups(backups) {
     const content = document.getElementById('backupManagerContent');
     if (!content) return;
     let html = '';
-    
+
     const viewText = window.t ? window.t('common.view', 'Посмотреть') : 'Посмотреть';
     const restoreText = window.t ? window.t('common.restore', 'Восстановить') : 'Восстановить';
     const deleteText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
-    
+
     for (const postId in backups) {
         const post = backups[postId];
         const isDeleted = post.deleted === true;
         const safeTitle = escapeHtml(post.postTitle);
-        const displayTitle = isDeleted 
-            ? `🗑️ ${safeTitle}` 
+        const displayTitle = isDeleted
+            ? `🗑️ ${safeTitle}`
             : (window.t ? window.t('modals.backup_article_prefix', `Статья #${postId}: ${safeTitle}`, { id: postId, title: safeTitle }) : `Статья #${postId}: ${safeTitle}`);
-        
+
         html += `
             <div class="backup-post-group ${isDeleted ? 'deleted-post' : ''}" id="backup-group-${postId}">
                 <div class="backup-post-header" onclick="toggleBackupGroup('${postId}')">
@@ -5545,13 +5550,13 @@ function renderBackups(backups) {
                 </div>
                 <div class="backup-list">
                     ${post.backups.map((backup, index) => {
-                        const backupNumText = window.t 
-                            ? window.t('modals.backup_item_number', `Бэкап #${backup.backupNumber}`, { number: backup.backupNumber })
-                            : `Бэкап #${backup.backupNumber}`;
-                        const deletedInfo = isDeleted 
-                            ? (window.t ? window.t('modals.backup_post_deleted_at', `Статья удалена: ${escapeHtml(post.deletedAt || '')}`, { date: escapeHtml(post.deletedAt || '') }) : `Статья удалена: ${escapeHtml(post.deletedAt || '')}`)
-                            : '';
-                        return `
+            const backupNumText = window.t
+                ? window.t('modals.backup_item_number', `Бэкап #${backup.backupNumber}`, { number: backup.backupNumber })
+                : `Бэкап #${backup.backupNumber}`;
+            const deletedInfo = isDeleted
+                ? (window.t ? window.t('modals.backup_post_deleted_at', `Статья удалена: ${escapeHtml(post.deletedAt || '')}`, { date: escapeHtml(post.deletedAt || '') }) : `Статья удалена: ${escapeHtml(post.deletedAt || '')}`)
+                : '';
+            return `
                         <div class="backup-item">
                             <div class="backup-info">
                                 <div class="backup-number">${backupNumText}</div>
@@ -5569,7 +5574,7 @@ function renderBackups(backups) {
             </div>
         `;
     }
-    
+
     content.innerHTML = html;
 }
 
@@ -5589,9 +5594,9 @@ async function viewBackup(postId, filename) {
             },
             body: JSON.stringify({ postId: postId, filename: filename })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             // Открываем в новом окне
             const newWindow = window.open('', '_blank');
@@ -5613,9 +5618,9 @@ function restoreBackup(postId, filename, backupNumber, backupDate) {
         'Восстановить бэкап?'
     ).then(async (result) => {
         if (!result) return;
-        
+
         showNotification('Восстановление бэкапа...', 'info');
-        
+
         try {
             const response = await fetch('restore_backup.php', {
                 method: 'POST',
@@ -5627,9 +5632,9 @@ function restoreBackup(postId, filename, backupNumber, backupDate) {
                     filename: filename
                 })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 showNotification('Бэкап успешно восстановлен', 'success');
                 // Закрываем окно менеджера бэкапов
@@ -5659,9 +5664,9 @@ function deleteBackup(postId, filename, backupNumber, backupDate) {
         'Удалить бэкап?'
     ).then(async (result) => {
         if (!result) return;
-        
+
         showNotification('Удаление бэкапа...', 'info');
-        
+
         try {
             const response = await fetch('delete_backup.php', {
                 method: 'POST',
@@ -5673,9 +5678,9 @@ function deleteBackup(postId, filename, backupNumber, backupDate) {
                     filename: filename
                 })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 showNotification('Бэкап успешно удален', 'success');
                 // Обновляем список бэкапов в окне менеджера
@@ -5690,21 +5695,21 @@ function deleteBackup(postId, filename, backupNumber, backupDate) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Обработчик для сохранения состояния галочки "Вставить как гиперссылку"
     const insertAsHyperlinkCheckbox = document.getElementById('insertAsHyperlink');
     if (insertAsHyperlinkCheckbox) {
-        insertAsHyperlinkCheckbox.addEventListener('change', function() {
+        insertAsHyperlinkCheckbox.addEventListener('change', function () {
             localStorage.setItem('insertAsHyperlink', this.checked);
         });
     }
-    
+
     // Загружаем настройки автосохранения при загрузке страницы
     loadAutosaveSettings();
-    
+
     // Применяем настройки внешнего вида
     applyAppearanceSettings();
-    
+
     // Применяем экспериментальные настройки
     applyExperimentalSettings();
 
@@ -5717,7 +5722,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Отслеживаем ввод в поле заголовка для локального сохранения
     const titleInputEl = document.getElementById('title');
     if (titleInputEl) {
-        titleInputEl.addEventListener('input', function() {
+        titleInputEl.addEventListener('input', function () {
             markEditorDirty();
         });
     }
@@ -5727,18 +5732,18 @@ document.addEventListener('DOMContentLoaded', function() {
 function openSaveInclude() {
     const input = document.getElementById('includeNameInput');
     if (input) input.value = '';
-    
+
     if (window.Modal) {
         Modal.open('#saveIncludeOverlay');
     } else {
         const overlay = document.getElementById('saveIncludeOverlay');
         if (overlay) overlay.classList.add('show');
     }
-    
+
     // Закрываем меню "Прочее"
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
-    
+
     if (input) setTimeout(() => input.focus(), 100);
 }
 
@@ -5754,35 +5759,35 @@ function closeSaveInclude() {
 async function confirmSaveInclude() {
     const input = document.getElementById('includeNameInput');
     const name = input.value.trim();
-    
+
     if (!name) {
         showNotification('Введите название файла', 'warning');
         return;
     }
-    
+
     // Получаем контент из редактора
     const ve = document.getElementById('contentVisual');
     const ta = document.getElementById('content');
     let content;
-    
+
     if (editorMode === 'visual') {
         content = ve.innerHTML;
     } else {
         content = ta.value;
     }
-    
+
     if (!content.trim()) {
         showNotification('Нет контента для сохранения', 'warning');
         return;
     }
-    
+
     // Блокируем кнопку
     const saveBtn = document.querySelector('.save-include-btn.save');
     if (saveBtn) {
         saveBtn.disabled = true;
         saveBtn.textContent = 'Сохранение...';
     }
-    
+
     try {
         const response = await fetch('save_include.php', {
             method: 'POST',
@@ -5791,9 +5796,9 @@ async function confirmSaveInclude() {
             },
             body: JSON.stringify({ name: name, content: content })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             showNotification('Include сохранен: ' + (data.displayName || data.filename), 'success');
             includesListLoaded = false; // Сбрасываем флаг для перезагрузки списка
@@ -5820,10 +5825,10 @@ let draftsListLoaded = false;
 // Функции для работы с черновиками
 function saveDraft() {
     const title = document.getElementById('title').value.trim();
-    let content = editorMode === 'visual' 
-        ? document.getElementById('contentVisual').innerHTML 
+    let content = editorMode === 'visual'
+        ? document.getElementById('contentVisual').innerHTML
         : document.getElementById('content').value;
-    
+
     if (window.enableMarkdown) {
         if (editorMode === 'visual') {
             document.getElementById('content').value = convertHtmlToMarkdown(document.getElementById('contentVisual').innerHTML);
@@ -5834,12 +5839,12 @@ function saveDraft() {
     } else if (editorMode === 'visual') {
         content = cleanContentForSave(content);
     }
-    
+
     if (!title && !content) {
         showAlert('Нечего сохранять в черновик');
         return;
     }
-    
+
     fetch('save_draft.php', {
         method: 'POST',
         headers: {
@@ -5847,20 +5852,20 @@ function saveDraft() {
         },
         body: JSON.stringify({ title: title, content: content })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showAlert('Черновик сохранен');
-            draftsListLoaded = false; // Сбрасываем флаг чтобы перезагрузить список
-        } else {
-            showAlert('Ошибка: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка сохранения черновика:', error);
-        showAlert('Ошибка при сохранении черновика');
-    });
-    
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Черновик сохранен');
+                draftsListLoaded = false; // Сбрасываем флаг чтобы перезагрузить список
+            } else {
+                showAlert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка сохранения черновика:', error);
+            showAlert('Ошибка при сохранении черновика');
+        });
+
     // Закрываем меню
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
@@ -5868,16 +5873,16 @@ function saveDraft() {
 
 function toggleDraftsSubmenu(event) {
     event.stopPropagation();
-    
+
     const button = event.currentTarget;
     const isOpen = button.classList.contains('submenu-open');
-    
+
     document.querySelectorAll('.more-menu-item.has-submenu').forEach(btn => {
         if (btn !== button) {
             btn.classList.remove('submenu-open');
         }
     });
-    
+
     if (!isOpen) {
         button.classList.add('submenu-open');
         loadDraftsList();
@@ -5889,11 +5894,11 @@ function toggleDraftsSubmenu(event) {
 async function loadDraftsList() {
     const submenu = document.getElementById('draftsSubmenu');
     if (!submenu) return;
-    
+
     try {
         const response = await fetch('get_drafts.php');
         const data = await response.json();
-        
+
         if (data.success) {
             if (data.drafts.length === 0) {
                 submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
@@ -5931,73 +5936,73 @@ async function loadDraft(filename) {
     try {
         const response = await fetch('get_drafts.php');
         const data = await response.json();
-        
+
         if (data.success) {
             const draft = data.drafts.find(d => d.filename === filename);
-            
-                if (draft) {
-                    // Вставляем заголовок и контент
-                    document.getElementById('title').value = draft.title || '';
-                    
-                    let isMarkdown = false;
-                    let mdContent = '';
-                    if (draft.content && draft.content.includes('id="markdown-source"')) {
-                        const match = draft.content.match(/id="markdown-source"\s+data-base64="([^"]*)"/);
-                        if (match && match[1]) {
-                            try {
-                                mdContent = decodeURIComponent(escape(atob(match[1])));
-                                isMarkdown = true;
-                            } catch (e) {
-                                console.error('Error decoding markdown', e);
-                            }
+
+            if (draft) {
+                // Вставляем заголовок и контент
+                document.getElementById('title').value = draft.title || '';
+
+                let isMarkdown = false;
+                let mdContent = '';
+                if (draft.content && draft.content.includes('id="markdown-source"')) {
+                    const match = draft.content.match(/id="markdown-source"\s+data-base64="([^"]*)"/);
+                    if (match && match[1]) {
+                        try {
+                            mdContent = decodeURIComponent(escape(atob(match[1])));
+                            isMarkdown = true;
+                        } catch (e) {
+                            console.error('Error decoding markdown', e);
                         }
                     }
-                    
-                    if (isMarkdown) {
-                        window.enableMarkdown = true;
-                        document.body.classList.add('markdown-mode');
-                        const enableMarkdownCheck = document.getElementById('enableMarkdown');
-                        if (enableMarkdownCheck) enableMarkdownCheck.checked = true;
-                        
-                        document.getElementById('content').value = mdContent;
+                }
+
+                if (isMarkdown) {
+                    window.enableMarkdown = true;
+                    document.body.classList.add('markdown-mode');
+                    const enableMarkdownCheck = document.getElementById('enableMarkdown');
+                    if (enableMarkdownCheck) enableMarkdownCheck.checked = true;
+
+                    document.getElementById('content').value = mdContent;
+                    const ve = document.getElementById('contentVisual');
+                    if (ve) {
+                        ve.contentEditable = 'true';
+                        if (editorMode === 'visual') {
+                            ve.innerHTML = parseMarkdownToHtml(mdContent);
+                        }
+                    }
+                } else {
+                    if (window.enableMarkdown) {
+                        document.getElementById('content').value = draft.content || '';
                         const ve = document.getElementById('contentVisual');
                         if (ve) {
                             ve.contentEditable = 'true';
                             if (editorMode === 'visual') {
-                                ve.innerHTML = parseMarkdownToHtml(mdContent);
+                                ve.innerHTML = parseMarkdownToHtml(draft.content || '');
                             }
                         }
                     } else {
-                        if (window.enableMarkdown) {
-                            document.getElementById('content').value = draft.content || '';
-                            const ve = document.getElementById('contentVisual');
-                            if (ve) {
-                                ve.contentEditable = 'true';
-                                if (editorMode === 'visual') {
-                                    ve.innerHTML = parseMarkdownToHtml(draft.content || '');
-                                }
-                            }
-                        } else {
-                            window.enableMarkdown = false;
-                            document.body.classList.remove('markdown-mode');
-                            const enableMarkdownCheck = document.getElementById('enableMarkdown');
-                            if (enableMarkdownCheck) enableMarkdownCheck.checked = false;
-                            
-                            document.getElementById('content').value = draft.content || '';
-                            const ve = document.getElementById('contentVisual');
-                            if (ve) {
-                                ve.contentEditable = 'true';
-                                if (editorMode === 'visual') {
-                                    ve.innerHTML = draft.content || '';
-                                }
+                        window.enableMarkdown = false;
+                        document.body.classList.remove('markdown-mode');
+                        const enableMarkdownCheck = document.getElementById('enableMarkdown');
+                        if (enableMarkdownCheck) enableMarkdownCheck.checked = false;
+
+                        document.getElementById('content').value = draft.content || '';
+                        const ve = document.getElementById('contentVisual');
+                        if (ve) {
+                            ve.contentEditable = 'true';
+                            if (editorMode === 'visual') {
+                                ve.innerHTML = draft.content || '';
                             }
                         }
                     }
-                    
-                    // Закрываем меню
-                    const moreMenu = document.getElementById('moreMenuWrap');
-                    if (moreMenu) moreMenu.classList.remove('is-open');
-                
+                }
+
+                // Закрываем меню
+                const moreMenu = document.getElementById('moreMenuWrap');
+                if (moreMenu) moreMenu.classList.remove('is-open');
+
                 showNotification(window.t ? window.t('notifications.draft_loaded', 'Черновик загружен') : 'Черновик загружен', 'success');
             } else {
                 showAlert(window.t ? window.t('notifications.draft_not_found', 'Черновик не найден') : 'Черновик не найден');
@@ -6013,10 +6018,10 @@ async function loadDraft(filename) {
 
 async function deleteDraft(filename, event) {
     event.stopPropagation();
-    
+
     const result = await showConfirm(window.t ? window.t('notifications.draft_delete_confirm', 'Удалить этот черновик?') : 'Удалить этот черновик?');
     if (!result) return;
-    
+
     try {
         const response = await fetch('delete_draft.php', {
             method: 'POST',
@@ -6025,9 +6030,9 @@ async function deleteDraft(filename, event) {
             },
             body: JSON.stringify({ filename: filename })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             showNotification(window.t ? window.t('notifications.draft_deleted', 'Черновик удален') : 'Черновик удален', 'success');
             draftsListLoaded = false;
@@ -6043,16 +6048,16 @@ async function deleteDraft(filename, event) {
 
 function toggleIncludesSubmenu(event) {
     event.stopPropagation();
-    
+
     const button = event.currentTarget;
     const isOpen = button.classList.contains('submenu-open');
-    
+
     document.querySelectorAll('.more-menu-item.has-submenu').forEach(btn => {
         if (btn !== button) {
             btn.classList.remove('submenu-open');
         }
     });
-    
+
     if (!isOpen) {
         button.classList.add('submenu-open');
         loadIncludesList();
@@ -6063,20 +6068,20 @@ function toggleIncludesSubmenu(event) {
 
 async function loadIncludesList() {
     if (includesListLoaded) return;
-    
+
     const submenu = document.getElementById('includesSubmenu');
     if (!submenu) return;
-    
+
     try {
         const response = await fetch('get_includes.php');
         const data = await response.json();
-        
+
         if (data.success) {
             if (data.files.length === 0) {
                 submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
             } else {
                 const delIncText = window.t ? window.t('more_menu.delete_include', 'Удалить include') : 'Удалить include';
-                submenu.innerHTML = data.files.map(file => 
+                submenu.innerHTML = data.files.map(file =>
                     `<div class="draft-item-wrap">
                         <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${file.name}')" title="${escapeHtml(file.displayName)}">${escapeHtml(file.displayName)}</button>
                         <button type="button" class="draft-delete-btn" onclick="deleteInclude('${file.name}', event)" title="${delIncText}">×</button>
@@ -6093,10 +6098,10 @@ async function loadIncludesList() {
 
 async function deleteInclude(filename, event) {
     if (event) event.stopPropagation();
-    
+
     const result = await showConfirm(window.t ? window.t('notifications.include_delete_confirm', 'Удалить этот include?') : 'Удалить этот include?');
     if (!result) return;
-    
+
     try {
         const response = await fetch('delete_include.php', {
             method: 'POST',
@@ -6105,9 +6110,9 @@ async function deleteInclude(filename, event) {
             },
             body: JSON.stringify({ filename: filename })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             showNotification(window.t ? window.t('notifications.include_deleted', 'Include успешно удален') : 'Include успешно удален', 'success');
             includesListLoaded = false;
@@ -6130,13 +6135,13 @@ async function insertInclude(filename) {
             },
             body: JSON.stringify({ filename: filename })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             const ve = document.getElementById('contentVisual');
             const ta = document.getElementById('content');
-            
+
             if (editorMode === 'visual') {
                 insertHtmlAtCursor(data.content);
             } else {
@@ -6146,11 +6151,11 @@ async function insertInclude(filename) {
                 ta.value = text.substring(0, start) + data.content + text.substring(end);
                 ta.selectionStart = ta.selectionEnd = start + data.content.length;
             }
-            
+
             // Закрываем меню
             const moreMenu = document.getElementById('moreMenuWrap');
             if (moreMenu) moreMenu.classList.remove('is-open');
-            
+
             showNotification(window.t ? window.t('notifications.include_inserted', 'Include вставлен') : 'Include вставлен', 'success');
         } else {
             showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
@@ -6164,16 +6169,16 @@ async function insertInclude(filename) {
 // Функции для вставки ссылок на статьи
 function toggleArticlesSubmenu(event) {
     event.stopPropagation();
-    
+
     const button = event.currentTarget;
     const isOpen = button.classList.contains('submenu-open');
-    
+
     document.querySelectorAll('.more-menu-item.has-submenu').forEach(btn => {
         if (btn !== button) {
             btn.classList.remove('submenu-open');
         }
     });
-    
+
     if (!isOpen) {
         button.classList.add('submenu-open');
         loadArticlesList();
@@ -6185,15 +6190,15 @@ function toggleArticlesSubmenu(event) {
 async function loadArticlesList() {
     const submenu = document.getElementById('articlesSubmenu');
     if (!submenu) return;
-    
+
     try {
         const response = await fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now());
         const articles = await response.json();
-        
+
         if (!articles || articles.length === 0) {
             submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_articles', 'Нет статей') : 'Нет статей') + '</div>';
         } else {
-            submenu.innerHTML = articles.map(article => 
+            submenu.innerHTML = articles.map(article =>
                 `<button type="button" class="more-submenu-item" onclick="insertArticleLink('${article.filename}', '${article.title.replace(/'/g, "\\'")}')">
                     ${article.title}
                 </button>`
@@ -6208,9 +6213,9 @@ async function loadArticlesList() {
 function insertArticleLink(filename, title) {
     const ve = document.getElementById('contentVisual');
     const ta = document.getElementById('content');
-    
+
     const linkHtml = `<a href="${filename}">${title}</a>`;
-    
+
     if (editorMode === 'visual') {
         insertHtmlAtCursor(linkHtml);
     } else {
@@ -6220,11 +6225,11 @@ function insertArticleLink(filename, title) {
         ta.value = text.substring(0, start) + linkHtml + text.substring(end);
         ta.selectionStart = ta.selectionEnd = start + linkHtml.length;
     }
-    
+
     // Закрываем меню
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
-    
+
     showNotification(window.t ? window.t('notifications.post_link_inserted', 'Ссылка на статью вставлена') : 'Ссылка на статью вставлена', 'success');
 }
 
@@ -6232,7 +6237,7 @@ function insertArticleLink(filename, title) {
 async function checkPostNumbering() {
     const content = document.getElementById('numberingCheckContent');
     const fixBtn = document.getElementById('fixNumberingBtn');
-    
+
     if (window.Modal) {
         Modal.open('#numberingCheckOverlay');
     } else {
@@ -6241,7 +6246,7 @@ async function checkPostNumbering() {
     }
     content.innerHTML = '<div class="numbering-status">Проверка нумерации...</div>';
     fixBtn.style.display = 'none';
-    
+
     try {
         const response = await fetch('renumber_posts.php', {
             method: 'POST',
@@ -6250,16 +6255,16 @@ async function checkPostNumbering() {
             },
             body: JSON.stringify({ action: 'check' })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             if (data.needsFix) {
                 let issuesHtml = '<div class="numbering-status warning">';
                 issuesHtml += '<strong>⚠ Обнаружены проблемы с нумерацией!</strong><br><br>';
                 issuesHtml += 'Следующие статьи имеют неправильную нумерацию:';
                 issuesHtml += '<div class="numbering-issues-list">';
-                
+
                 data.issues.forEach(issue => {
                     issuesHtml += `
                         <div class="numbering-issue-item">
@@ -6270,7 +6275,7 @@ async function checkPostNumbering() {
                         </div>
                     `;
                 });
-                
+
                 issuesHtml += '</div></div>';
                 content.innerHTML = issuesHtml;
                 fixBtn.style.display = 'block';
@@ -6307,10 +6312,10 @@ async function checkPostNumbering() {
 async function fixNumbering() {
     const content = document.getElementById('numberingCheckContent');
     const fixBtn = document.getElementById('fixNumberingBtn');
-    
+
     content.innerHTML = '<div class="numbering-status">Исправление нумерации...</div>';
     fixBtn.disabled = true;
-    
+
     try {
         const response = await fetch('renumber_posts.php', {
             method: 'POST',
@@ -6319,16 +6324,16 @@ async function fixNumbering() {
             },
             body: JSON.stringify({ action: 'fix' })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             if (data.changes && data.changes.length > 0) {
                 let changesHtml = '<div class="numbering-status success">';
                 changesHtml += '<strong>✓ Нумерация исправлена!</strong><br><br>';
                 changesHtml += 'Выполнены следующие изменения:';
                 changesHtml += '<div class="numbering-issues-list">';
-                
+
                 data.changes.forEach(change => {
                     changesHtml += `
                         <div class="numbering-issue-item">
@@ -6339,12 +6344,12 @@ async function fixNumbering() {
                         </div>
                     `;
                 });
-                
+
                 changesHtml += '</div></div>';
                 content.innerHTML = changesHtml;
-                
+
                 showNotification('Нумерация исправлена', 'success');
-                
+
                 // Обновляем список статей если он открыт
                 if (document.getElementById('managePosts').classList.contains('active')) {
                     loadPosts();
@@ -6357,7 +6362,7 @@ async function fixNumbering() {
                     </div>
                 `;
             }
-            
+
             fixBtn.style.display = 'none';
         } else {
             content.innerHTML = `
@@ -6466,7 +6471,7 @@ function startTutorial() {
         .then(data => {
             const settings = data.settings || {};
             if (settings.tutorialCompleted || settings.initial_setup_completed === false) return;
-            
+
             currentTutorialStep = 0;
             showTutorialStep();
         })
@@ -6480,17 +6485,17 @@ function showTutorialStep() {
     const tooltip = document.getElementById('tutorialTooltip');
     const complete = document.getElementById('tutorialComplete');
     const spotlight = document.getElementById('tutorialSpotlight');
-    
+
     overlay.classList.add('show');
     tooltip.style.display = 'block';
     complete.style.display = 'none';
-    
+
     const step = tutorialSteps[currentTutorialStep];
-    
+
     // Обновляем контент
     document.getElementById('tutorialTitle').textContent = step.title;
     document.getElementById('tutorialText').textContent = step.text;
-    
+
     // Обновляем прогресс
     const progressContainer = document.getElementById('tutorialProgress');
     progressContainer.innerHTML = '';
@@ -6500,10 +6505,10 @@ function showTutorialStep() {
         if (index === currentTutorialStep) dot.classList.add('active');
         progressContainer.appendChild(dot);
     });
-    
+
     // Сбрасываем стили
     tooltip.style.transform = '';
-    
+
     // Позиционируем spotlight и tooltip
     if (step.element) {
         const element = document.querySelector(step.element);
@@ -6511,38 +6516,38 @@ function showTutorialStep() {
             const rect = element.getBoundingClientRect();
             const scrollY = window.scrollY || window.pageYOffset;
             const scrollX = window.scrollX || window.pageXOffset;
-            
+
             spotlight.style.display = 'block';
             spotlight.style.top = (rect.top + scrollY - 8) + 'px';
             spotlight.style.left = (rect.left + scrollX - 8) + 'px';
             spotlight.style.width = (rect.width + 16) + 'px';
             spotlight.style.height = (rect.height + 16) + 'px';
-            
+
             // Позиционируем tooltip
             tooltip.style.position = 'fixed';
             const tooltipRect = tooltip.getBoundingClientRect();
             const padding = 20;
-            
+
             // Пробуем разместить снизу
             let tooltipTop = rect.bottom + padding;
             let tooltipLeft = rect.left;
-            
+
             // Если не помещается снизу, размещаем сверху
             if (tooltipTop + tooltipRect.height > window.innerHeight - padding) {
                 tooltipTop = rect.top - tooltipRect.height - padding;
             }
-            
+
             // Если не помещается сверху, размещаем справа
             if (tooltipTop < padding) {
                 tooltipTop = rect.top;
                 tooltipLeft = rect.right + padding;
             }
-            
+
             // Если не помещается справа, размещаем слева
             if (tooltipLeft + tooltipRect.width > window.innerWidth - padding) {
                 tooltipLeft = rect.left - tooltipRect.width - padding;
             }
-            
+
             // Проверяем границы по горизонтали
             if (tooltipLeft < padding) {
                 tooltipLeft = padding;
@@ -6550,7 +6555,7 @@ function showTutorialStep() {
             if (tooltipLeft + tooltipRect.width > window.innerWidth - padding) {
                 tooltipLeft = window.innerWidth - tooltipRect.width - padding;
             }
-            
+
             // Проверяем границы по вертикали
             if (tooltipTop < padding) {
                 tooltipTop = padding;
@@ -6558,7 +6563,7 @@ function showTutorialStep() {
             if (tooltipTop + tooltipRect.height > window.innerHeight - padding) {
                 tooltipTop = window.innerHeight - tooltipRect.height - padding;
             }
-            
+
             tooltip.style.top = tooltipTop + 'px';
             tooltip.style.left = tooltipLeft + 'px';
         }
@@ -6592,7 +6597,7 @@ function showTutorialComplete() {
     const tooltip = document.getElementById('tutorialTooltip');
     const complete = document.getElementById('tutorialComplete');
     const spotlight = document.getElementById('tutorialSpotlight');
-    
+
     tooltip.style.display = 'none';
     spotlight.style.display = 'none';
     complete.style.display = 'block';
@@ -6622,7 +6627,7 @@ function resetTutorial() {
 }
 
 // Запускаем гайд при загрузке страницы
-window.addEventListener('load', function() {
+window.addEventListener('load', function () {
     setTimeout(startTutorial, 500);
 });
 
@@ -6635,16 +6640,16 @@ function openFileUploadDialog() {
         const dlg = document.getElementById('fileUploadDialog');
         if (dlg) dlg.style.display = 'block';
     }
-    
+
     // Инициализируем Drag & Drop
     initDragDrop();
-    
+
     // Загружаем сохраненное состояние галочки из localStorage
     const savedState = localStorage.getItem('insertAsHyperlink');
     if (savedState !== null) {
         document.getElementById('insertAsHyperlink').checked = savedState === 'true';
     }
-    
+
     loadDocumentsList();
     closeMoreMenu();
 }
@@ -6655,30 +6660,30 @@ function initDragDrop() {
     if (isDragDropInitialized) return;
     const dropzone = document.getElementById('fileDropzone');
     if (!dropzone) return;
-    
+
     // Предотвращаем дефолтное поведение для drag events
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropzone.addEventListener(eventName, preventDefaults, false);
     });
-    
+
     function preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
     }
-    
+
     // Подсветка зоны при перетаскивании
     ['dragenter', 'dragover'].forEach(eventName => {
         dropzone.addEventListener(eventName, () => {
             dropzone.classList.add('drag-over');
         }, false);
     });
-    
+
     ['dragleave', 'drop'].forEach(eventName => {
         dropzone.addEventListener(eventName, () => {
             dropzone.classList.remove('drag-over');
         }, false);
     });
-    
+
     // Обработка сброшенного файла
     dropzone.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
@@ -6692,7 +6697,7 @@ function initDragDrop() {
             uploadDocument(files[0]);
         }
     }, false);
-    
+
     isDragDropInitialized = true;
 }
 
@@ -6737,22 +6742,22 @@ function loadDocumentsList() {
         .then(response => response.json())
         .then(data => {
             const listContainer = document.getElementById('fileUploadList');
-            
+
             if (data.success && data.files.length > 0) {
                 listContainer.innerHTML = '';
                 data.files.forEach(file => {
                     const item = document.createElement('div');
                     item.className = 'file-upload-item';
-                    
+
                     const info = document.createElement('div');
                     info.className = 'file-upload-item-info';
                     info.onclick = () => insertFileButton(file.name, file.url, file.size);
-                    
+
                     const ext = file.name.split('.').pop().toLowerCase();
                     let icon = '📄';
                     let iconBg = 'rgba(96, 125, 139, 0.1)';
                     let iconColor = 'rgb(96, 125, 139)';
-                    
+
                     if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
                         icon = '🖼️';
                         iconBg = 'rgba(76, 175, 80, 0.1)';
@@ -6789,18 +6794,18 @@ function loadDocumentsList() {
                     iconSpan.style.color = iconColor;
                     iconSpan.textContent = icon;
                     info.appendChild(iconSpan);
-                    
+
                     const textDiv = document.createElement('div');
                     textDiv.className = 'file-upload-item-text';
-                    
+
                     const name = document.createElement('div');
                     name.className = 'file-upload-item-name';
                     name.textContent = file.name;
                     name.title = file.name;
-                    
+
                     const meta = document.createElement('div');
                     meta.className = 'file-upload-item-meta';
-                    
+
                     const formattedSize = formatFileSize(file.size);
                     const formattedDate = file.mtime ? new Date(file.mtime * 1000).toLocaleString('ru-RU', {
                         day: '2-digit',
@@ -6809,16 +6814,16 @@ function loadDocumentsList() {
                         hour: '2-digit',
                         minute: '2-digit'
                     }) : '';
-                    
+
                     meta.textContent = formattedSize + (formattedDate ? ' • ' + formattedDate : '');
-                    
+
                     textDiv.appendChild(name);
                     textDiv.appendChild(meta);
                     info.appendChild(textDiv);
-                    
+
                     const actionsDiv = document.createElement('div');
                     actionsDiv.className = 'file-upload-item-actions';
-                    
+
                     const insertBtn = document.createElement('button');
                     insertBtn.type = 'button';
                     insertBtn.className = 'file-upload-item-btn insert';
@@ -6827,7 +6832,7 @@ function loadDocumentsList() {
                         e.stopPropagation();
                         insertFileButton(file.name, file.url, file.size);
                     };
-                    
+
                     const deleteBtn = document.createElement('button');
                     deleteBtn.type = 'button';
                     deleteBtn.className = 'file-upload-item-btn delete';
@@ -6836,10 +6841,10 @@ function loadDocumentsList() {
                         e.stopPropagation();
                         deleteDocument(file.path);
                     };
-                    
+
                     actionsDiv.appendChild(insertBtn);
                     actionsDiv.appendChild(deleteBtn);
-                    
+
                     item.appendChild(info);
                     item.appendChild(actionsDiv);
                     listContainer.appendChild(item);
@@ -6857,12 +6862,12 @@ function loadDocumentsList() {
 function uploadDocument(fileToUpload = null) {
     const fileInput = document.getElementById('documentFile');
     const file = fileToUpload || (fileInput ? fileInput.files[0] : null);
-    
+
     if (!file) {
         showNotification(window.t ? window.t('notifications.file_select_upload', 'Выберите файл для загрузки') : 'Выберите файл для загрузки', 'error');
         return;
     }
-    
+
     // Отображаем анимацию загрузки в зоне
     const dropzone = document.getElementById('fileDropzone');
     const dropzoneText = dropzone ? dropzone.querySelector('.dropzone-text') : null;
@@ -6872,44 +6877,44 @@ function uploadDocument(fileToUpload = null) {
         const uploadingText = window.t ? window.t('notifications.file_uploading_param', `Загрузка "${file.name}"...`, { name: file.name }) : `Загрузка "${file.name}"...`;
         dropzoneText.innerHTML = `<span class="loading-spinner"></span> ${uploadingText}`;
     }
-    
+
     const formData = new FormData();
     formData.append('file', file);
-    
+
     fetch('upload_document.php', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        if (dropzoneText) {
-            dropzoneText.textContent = originalText;
-        }
-        if (data.success) {
-            showNotification(window.t ? window.t('notifications.file_uploaded', 'Файл успешно загружен') : 'Файл успешно загружен', 'success');
-            if (fileInput) fileInput.value = '';
-            const fileNameEl = document.getElementById('documentFileName');
-            if (fileNameEl) {
-                fileNameEl.textContent = window.t ? window.t('modals.file_none', 'Файл не выбран') : 'Файл не выбран';
+        .then(response => response.json())
+        .then(data => {
+            if (dropzoneText) {
+                dropzoneText.textContent = originalText;
             }
-            loadDocumentsList();
-        } else {
-            showNotification(window.t ? window.t('notifications.file_upload_error_param', 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), 'error');
-        }
-    })
-    .catch(error => {
-        if (dropzoneText) {
-            dropzoneText.textContent = originalText;
-        }
-        console.error('Ошибка:', error);
-        showNotification(window.t ? window.t('notifications.file_upload_network_error', 'Ошибка загрузки файла') : 'Ошибка загрузки файла', 'error');
-    });
+            if (data.success) {
+                showNotification(window.t ? window.t('notifications.file_uploaded', 'Файл успешно загружен') : 'Файл успешно загружен', 'success');
+                if (fileInput) fileInput.value = '';
+                const fileNameEl = document.getElementById('documentFileName');
+                if (fileNameEl) {
+                    fileNameEl.textContent = window.t ? window.t('modals.file_none', 'Файл не выбран') : 'Файл не выбран';
+                }
+                loadDocumentsList();
+            } else {
+                showNotification(window.t ? window.t('notifications.file_upload_error_param', 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), 'error');
+            }
+        })
+        .catch(error => {
+            if (dropzoneText) {
+                dropzoneText.textContent = originalText;
+            }
+            console.error('Ошибка:', error);
+            showNotification(window.t ? window.t('notifications.file_upload_network_error', 'Ошибка загрузки файла') : 'Ошибка загрузки файла', 'error');
+        });
 }
 
 function deleteDocument(filePath) {
     showConfirm(window.t ? window.t('notifications.confirm_delete_file', 'Удалить этот файл?') : 'Удалить этот файл?').then(result => {
         if (!result) return;
-        
+
         fetch('delete_document.php', {
             method: 'POST',
             headers: {
@@ -6917,36 +6922,36 @@ function deleteDocument(filePath) {
             },
             body: JSON.stringify({ filePath: filePath })
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification(window.t ? window.t('notifications.file_deleted', 'Файл удален') : 'Файл удален', 'success');
-                loadDocumentsList();
-            } else {
-                showNotification(window.t ? window.t('notifications.file_delete_error_param', 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка:', error);
-            showNotification(window.t ? window.t('notifications.file_delete_network_error', 'Ошибка удаления файла') : 'Ошибка удаления файла', 'error');
-        });
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(window.t ? window.t('notifications.file_deleted', 'Файл удален') : 'Файл удален', 'success');
+                    loadDocumentsList();
+                } else {
+                    showNotification(window.t ? window.t('notifications.file_delete_error_param', 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                showNotification(window.t ? window.t('notifications.file_delete_network_error', 'Ошибка удаления файла') : 'Ошибка удаления файла', 'error');
+            });
     });
 }
 
 function insertFileButton(fileName, filePath, fileSize) {
     const ve = document.getElementById('contentVisual');
     ve.focus();
-    
+
     // Преобразуем путь к файлу, добавляя / в начало если его нет
     if (!filePath.startsWith('/')) {
         filePath = '/' + filePath;
     }
-    
+
     // Проверяем, нужно ли вставить как гиперссылку
     const insertAsHyperlink = document.getElementById('insertAsHyperlink').checked;
-    
+
     let elementToInsert;
-    
+
     if (insertAsHyperlink) {
         // Вставляем как простую гиперссылку
         const link = document.createElement('a');
@@ -6960,11 +6965,11 @@ function insertFileButton(fileName, filePath, fileSize) {
         const alignWrap = document.createElement('div');
         alignWrap.className = 'blog-image-align-wrap';
         alignWrap.style.textAlign = 'left'; // По умолчанию слева
-        
+
         const mediaWrap = document.createElement('div');
         mediaWrap.className = 'blog-image-wrap';
         mediaWrap.style.display = 'inline-block';
-        
+
         const fileButton = document.createElement('a');
         fileButton.href = filePath;
         fileButton.className = 'blog-file-button';
@@ -6975,48 +6980,48 @@ function insertFileButton(fileName, filePath, fileSize) {
         fileButton.style.setProperty('-webkit-font-smoothing', 'antialiased', 'important');
         fileButton.style.setProperty('-moz-osx-font-smoothing', 'grayscale', 'important');
         fileButton.style.setProperty('text-rendering', 'optimizeLegibility', 'important');
-        
+
         const icon = document.createElement('div');
         icon.className = 'blog-file-icon';
         icon.textContent = '📥';
-        
+
         const info = document.createElement('div');
         info.className = 'blog-file-info';
-        
+
         const name = document.createElement('div');
         name.className = 'blog-file-name';
         name.textContent = fileName;
-        
+
         const size = document.createElement('div');
         size.className = 'blog-file-size';
         size.textContent = formatFileSize(fileSize);
-        
+
         info.appendChild(name);
         info.appendChild(size);
         fileButton.appendChild(icon);
         fileButton.appendChild(info);
-        
+
         mediaWrap.appendChild(fileButton);
         alignWrap.appendChild(mediaWrap);
-        
+
         elementToInsert = alignWrap;
     }
-    
+
     // Создаем пустой блок для курсора после элемента
     const emptyDiv = document.createElement('div');
     emptyDiv.innerHTML = '<br>';
-    
+
     // Вставляем в редактор
     const sel = window.getSelection();
     let range = null;
-    
+
     // Используем savedRange если он есть
     if (typeof savedRange !== 'undefined' && savedRange && ve.contains(savedRange.commonAncestorContainer)) {
         range = savedRange;
     } else if (sel && sel.rangeCount > 0) {
         range = sel.getRangeAt(0);
     }
-    
+
     if (!range) {
         // Если нет range, добавляем в конец
         ve.appendChild(elementToInsert);
@@ -7036,22 +7041,22 @@ function insertFileButton(fileName, filePath, fileSize) {
     } else {
         // Удаляем выделенный контент
         range.deleteContents();
-        
+
         // Вставляем элемент
         range.insertNode(elementToInsert);
-        
+
         if (!insertAsHyperlink) {
             // Вставляем пустой блок после кнопки
             const parent = elementToInsert.parentNode;
             parent.insertBefore(emptyDiv, elementToInsert.nextSibling);
-            
+
             // Устанавливаем курсор в пустой блок
             range.setStart(emptyDiv, 0);
         } else {
             // Для гиперссылки ставим курсор после неё
             range.setStartAfter(elementToInsert);
         }
-        
+
         range.collapse(true);
         if (sel) {
             sel.removeAllRanges();
@@ -7061,7 +7066,7 @@ function insertFileButton(fileName, filePath, fileSize) {
             savedRange = range.cloneRange();
         }
     }
-    
+
     saveToHistory();
     closeFileUploadDialog();
     showNotification('Файл добавлен в статью', 'success');
@@ -7073,15 +7078,15 @@ function addAnchor() {
         showNotification('Якоря можно добавлять только в визуальном режиме', 'warning');
         return;
     }
-    
+
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) {
         showNotification('Пожалуйста, выделите текст для якоря', 'warning');
         return;
     }
-    
+
     const range = sel.getRangeAt(0);
-    
+
     // Проверяем, находится ли выделение уже внутри существующего якоря
     let anchorSpan = null;
     let startNode = range.startContainer;
@@ -7089,7 +7094,7 @@ function addAnchor() {
         startNode = startNode.parentNode;
     }
     anchorSpan = startNode.closest('span[data-npblog-anchor="true"]');
-    
+
     if (!anchorSpan) {
         let endNode = range.endContainer;
         if (endNode.nodeType === Node.TEXT_NODE) {
@@ -7097,7 +7102,7 @@ function addAnchor() {
         }
         anchorSpan = endNode.closest('span[data-npblog-anchor="true"]');
     }
-    
+
     // Если якорь найден, убираем его (unwrap)
     if (anchorSpan) {
         const parent = anchorSpan.parentNode;
@@ -7117,21 +7122,21 @@ function addAnchor() {
             return;
         }
     }
-    
+
     // Автоматически определяем следующий числовой ID
     const ve = document.getElementById('contentVisual');
     if (!ve) return;
-    
+
     let nextId = 1;
     while (ve.querySelector('[id="' + nextId + '"]')) {
         nextId++;
     }
     const anchorId = String(nextId);
-    
+
     const span = document.createElement('span');
     span.id = anchorId;
     span.setAttribute('data-npblog-anchor', 'true');
-    
+
     if (range.collapsed) {
         span.innerHTML = '⚓'; // Если текст не выделен, вставляем иконку
         range.insertNode(span);
@@ -7146,30 +7151,30 @@ function addAnchor() {
             return;
         }
     }
-    
+
     // Выделяем добавленный якорь
     const newRange = document.createRange();
     newRange.selectNodeContents(span);
     sel.removeAllRanges();
     sel.addRange(newRange);
-    
+
     saveToHistory();
     showNotification(`Якорь #${anchorId} успешно добавлен`, 'success');
 }
 
 function toggleTocSubmenu(event) {
     event.stopPropagation();
-    
+
     const button = event.currentTarget;
     const isOpen = button.classList.contains('submenu-open');
-    
+
     // Закрываем другие подменю
     document.querySelectorAll('.more-menu-item.has-submenu').forEach(btn => {
         if (btn !== button) {
             btn.classList.remove('submenu-open');
         }
     });
-    
+
     if (!isOpen) {
         button.classList.add('submenu-open');
         loadTocList();
@@ -7181,29 +7186,29 @@ function toggleTocSubmenu(event) {
 function loadTocList() {
     const submenu = document.getElementById('tocSubmenu');
     if (!submenu) return;
-    
+
     const ve = document.getElementById('contentVisual');
     if (!ve) return;
-    
+
     // Ищем все элементы с ID
     const anchors = ve.querySelectorAll('[id]');
-    
+
     if (anchors.length === 0) {
         submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_anchors', 'Нет якорей в статье') : 'Нет якорей в статье') + '</div>';
         return;
     }
-    
+
     let html = '';
     anchors.forEach(el => {
         const id = el.id;
         if (!id) return;
-        
+
         let text = el.innerText.trim();
         // Убираем иконку якоря ⚓ из текста пункта меню, если она там есть
         if (text.startsWith('⚓')) {
             text = text.substring(1).trim();
         }
-        
+
         if (!text) {
             text = `#${id}`;
         } else {
@@ -7212,14 +7217,14 @@ function loadTocList() {
             }
             text = `${text} (#${id})`;
         }
-        
+
         html += `
         <div class="toc-menu-item-row">
             <button type="button" class="more-submenu-item" onclick="insertAnchorLink('${escapeHtmlJS(id)}')">${escapeHtml(text)}</button>
             <button type="button" class="toc-delete-btn" onclick="removeAnchorById('${escapeHtmlJS(id)}', event)">×</button>
         </div>`;
     });
-    
+
     submenu.innerHTML = html;
 }
 
@@ -7227,15 +7232,15 @@ function removeAnchorById(id, event) {
     if (event) {
         event.stopPropagation();
     }
-    
+
     if (editorMode !== 'visual') {
         showNotification('Якоря можно удалять только в визуальном режиме', 'warning');
         return;
     }
-    
+
     const ve = document.getElementById('contentVisual');
     if (!ve) return;
-    
+
     const anchorSpan = ve.querySelector('[id="' + id + '"]');
     if (anchorSpan) {
         const parent = anchorSpan.parentNode;
@@ -7262,11 +7267,11 @@ async function insertAnchorLink(id) {
         showNotification('Ссылки на якоря можно вставлять только в визуальном режиме', 'warning');
         return;
     }
-    
+
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const range = sel.getRangeAt(0);
-    
+
     let text = sel.toString().trim();
     if (!text) {
         const ve = document.getElementById('contentVisual');
@@ -7278,39 +7283,39 @@ async function insertAnchorLink(id) {
                 anchorText = anchorText.substring(1).trim();
             }
         }
-        
+
         if (!anchorText) {
             anchorText = "Перейти к разделу";
         }
-        
+
         text = await showPrompt("Введите текст для ссылки-якоря:", anchorText, "Ссылка-якорь");
         if (text === null) return; // Отмена
         if (!text) text = anchorText;
     }
-    
+
     const link = document.createElement('a');
     link.href = '#' + id;
     link.innerText = text;
-    
+
     range.deleteContents();
     range.insertNode(link);
-    
+
     // Ставим курсор после вставленной ссылки
     const newRange = document.createRange();
     newRange.setStartAfter(link);
     newRange.collapse(true);
     sel.removeAllRanges();
     sel.addRange(newRange);
-    
+
     saveToHistory();
-    
+
     // Закрываем выпадающие меню
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
     document.querySelectorAll('.more-menu-item.has-submenu').forEach(btn => {
         btn.classList.remove('submenu-open');
     });
-    
+
     showNotification('Ссылка на якорь вставлена', 'success');
 }
 
@@ -7362,24 +7367,24 @@ function drawCell(cell) {
 
 function floodFill(startX, startY, targetChar, replacementChar) {
     if (targetChar === replacementChar) return;
-    
+
     const cells = document.querySelectorAll('.ascii-cell');
     const getCell = (x, y) => {
         if (x < 0 || x >= asciiGridWidth || y < 0 || y >= asciiGridHeight) return null;
         return cells[y * asciiGridWidth + x];
     };
-    
+
     const startCell = getCell(startX, startY);
     if (!startCell || startCell.textContent !== targetChar) return;
-    
+
     const queue = [[startX, startY]];
-    
+
     while (queue.length > 0) {
         const [x, y] = queue.shift();
         const cell = getCell(x, y);
         if (cell && cell.textContent === targetChar) {
             cell.textContent = replacementChar;
-            
+
             queue.push([x + 1, y]);
             queue.push([x - 1, y]);
             queue.push([x, y + 1]);
@@ -7398,15 +7403,15 @@ async function changeAsciiGridSize(sizeStr) {
         }
         return;
     }
-    
+
     if (customContainer) {
         customContainer.style.display = 'none';
     }
-    
+
     const parts = sizeStr.split('x');
     const newWidth = parseInt(parts[0]);
     const newHeight = parseInt(parts[1]);
-    
+
     const isConfirmed = await showConfirm('Смена размера сетки очистит текущий рисунок. Продолжить?', 'Изменение размера сетки');
     if (isConfirmed) {
         asciiGridWidth = newWidth;
@@ -7426,10 +7431,10 @@ async function applyCustomAsciiGridSize() {
     const widthInput = document.getElementById('asciiCustomWidth');
     const heightInput = document.getElementById('asciiCustomHeight');
     if (!widthInput || !heightInput) return;
-    
+
     const newWidth = parseInt(widthInput.value);
     const newHeight = parseInt(heightInput.value);
-    
+
     if (isNaN(newWidth) || newWidth < 5 || newWidth > 120) {
         showNotification('Ширина должна быть от 5 до 120 символов', 'warning');
         return;
@@ -7438,7 +7443,7 @@ async function applyCustomAsciiGridSize() {
         showNotification('Высота должна быть от 5 до 60 символов', 'warning');
         return;
     }
-    
+
     const isConfirmed = await showConfirm('Смена размера сетки очистит текущий рисунок. Продолжить?', 'Изменение размера сетки');
     if (isConfirmed) {
         asciiGridWidth = newWidth;
@@ -7453,26 +7458,26 @@ async function applyCustomAsciiGridSize() {
 function createAsciiGrid(initialData = null) {
     const gridContainer = document.getElementById('asciiGrid');
     if (!gridContainer) return;
-    
+
     gridContainer.innerHTML = '';
     gridContainer.style.gridTemplateColumns = `repeat(${asciiGridWidth}, 9px)`;
     gridContainer.style.gridTemplateRows = `repeat(${asciiGridHeight}, 18px)`;
-    
+
     for (let y = 0; y < asciiGridHeight; y++) {
         for (let x = 0; x < asciiGridWidth; x++) {
             const cell = document.createElement('div');
             cell.className = 'ascii-cell';
             cell.setAttribute('data-x', x);
             cell.setAttribute('data-y', y);
-            
+
             const index = y * asciiGridWidth + x;
             if (initialData && initialData[index] !== undefined) {
                 cell.textContent = initialData[index];
             } else {
                 cell.textContent = ' ';
             }
-            
-            cell.addEventListener('mousedown', function(e) {
+
+            cell.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 if (asciiCurrentTool === 'fill') {
                     const targetChar = cell.textContent;
@@ -7483,22 +7488,22 @@ function createAsciiGrid(initialData = null) {
                     drawCell(cell);
                 }
             });
-            
-            cell.addEventListener('mouseenter', function(e) {
+
+            cell.addEventListener('mouseenter', function (e) {
                 cell.classList.add('hovered');
                 if (asciiIsDrawing) {
                     drawCell(cell);
                 }
             });
-            
-            cell.addEventListener('mouseleave', function() {
+
+            cell.addEventListener('mouseleave', function () {
                 cell.classList.remove('hovered');
             });
-            
+
             gridContainer.appendChild(cell);
         }
     }
-    
+
     setTimeout(fitAsciiGridToContainer, 0);
 }
 
@@ -7506,27 +7511,27 @@ function fitAsciiGridToContainer() {
     const container = document.getElementById('asciiEditorCanvasContainer');
     const grid = document.getElementById('asciiGrid');
     if (!container || !grid) return;
-    
+
     grid.style.transform = 'none';
     grid.style.transformOrigin = 'center center';
-    
+
     const padding = 40;
     const containerWidth = container.clientWidth - padding;
     const containerHeight = container.clientHeight - padding;
-    
+
     const gridWidth = grid.offsetWidth;
     const gridHeight = grid.offsetHeight;
-    
+
     if (gridWidth === 0 || gridHeight === 0) return;
-    
+
     const scaleX = containerWidth / gridWidth;
     const scaleY = containerHeight / gridHeight;
     const scale = Math.min(scaleX, scaleY);
-    
+
     grid.style.transform = `scale(${scale})`;
 }
 
-window.addEventListener('resize', function() {
+window.addEventListener('resize', function () {
     const modal = document.getElementById('asciiEditorModal');
     if (modal && modal.style.display === 'flex') {
         fitAsciiGridToContainer();
@@ -7534,7 +7539,7 @@ window.addEventListener('resize', function() {
 });
 
 // Global mouse up to end drawing
-window.addEventListener('mouseup', function() {
+window.addEventListener('mouseup', function () {
     if (asciiIsDrawing) {
         asciiIsDrawing = false;
         saveAsciiHistory();
@@ -7542,7 +7547,7 @@ window.addEventListener('mouseup', function() {
 });
 
 // Global shortcut keys interception (Ctrl+Z) in ASCII editor
-window.addEventListener('keydown', function(e) {
+window.addEventListener('keydown', function (e) {
     const modal = document.getElementById('asciiEditorModal');
     if (modal && modal.style.display === 'flex') {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -7562,17 +7567,17 @@ function saveAsciiHistory() {
     const cells = document.querySelectorAll('.ascii-cell');
     if (cells.length === 0) return;
     const state = Array.from(cells).map(c => c.textContent);
-    
+
     asciiHistory = asciiHistory.slice(0, asciiHistoryIndex + 1);
     asciiHistory.push(state);
     asciiHistoryIndex++;
-    
+
     updateAsciiUndoBtn();
 }
 
 function undoAsciiState() {
     if (asciiHistoryIndex <= 0) return;
-    
+
     asciiHistoryIndex--;
     restoreAsciiHistoryState(asciiHistory[asciiHistoryIndex]);
     updateAsciiUndoBtn();
@@ -7633,13 +7638,13 @@ function renderAsciiPresets() {
     const container = document.getElementById('asciiCharPresets');
     const indicator = document.getElementById('asciiPageIndicator');
     if (!container) return;
-    
+
     const category = asciiPresetCategories[asciiCurrentCategoryIndex];
     if (indicator) indicator.textContent = category.name;
-    
+
     container.innerHTML = '';
     container.style.opacity = '0';
-    
+
     category.chars.forEach(char => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -7648,12 +7653,12 @@ function renderAsciiPresets() {
             btn.classList.add('active');
         }
         btn.textContent = char;
-        btn.onclick = function() {
+        btn.onclick = function () {
             setAsciiChar(char, btn);
         };
         container.appendChild(btn);
     });
-    
+
     requestAnimationFrame(() => {
         container.style.transition = 'opacity 0.15s ease-in-out';
         container.style.opacity = '1';
@@ -7672,7 +7677,7 @@ function prevAsciiPage() {
 
 function setAsciiChar(char, presetBtn = null) {
     asciiCurrentChar = char;
-    
+
     if (presetBtn) {
         document.querySelectorAll('.ascii-char-preset').forEach(btn => {
             btn.classList.remove('active');
@@ -7697,27 +7702,27 @@ function openAsciiDrawer(targetWrap = null) {
         showNotification('ASCII Рисовалка доступна только в визуальном режиме', 'warning');
         return;
     }
-    
+
     asciiTargetWrap = targetWrap;
     const modal = document.getElementById('asciiEditorModal');
     if (!modal) return;
-    
+
     const customInput = document.getElementById('asciiCustomChar');
     if (customInput) customInput.value = '';
-    
+
     setAsciiTool('draw');
     asciiCurrentCategoryIndex = 0;
     setAsciiChar('█');
     renderAsciiPresets();
-    
+
     if (asciiTargetWrap) {
         const width = parseInt(asciiTargetWrap.getAttribute('data-ascii-width')) || 40;
         const height = parseInt(asciiTargetWrap.getAttribute('data-ascii-height')) || 15;
         const gridData = JSON.parse(asciiTargetWrap.getAttribute('data-ascii-grid') || '[]');
-        
+
         asciiGridWidth = width;
         asciiGridHeight = height;
-        
+
         const sizeSelect = document.getElementById('asciiGridSize');
         const customContainer = document.getElementById('asciiCustomSizeContainer');
         if (sizeSelect) {
@@ -7735,7 +7740,7 @@ function openAsciiDrawer(targetWrap = null) {
                 }
             }
         }
-        
+
         createAsciiGrid(gridData);
     } else {
         const sizeSelect = document.getElementById('asciiGridSize');
@@ -7753,13 +7758,13 @@ function openAsciiDrawer(targetWrap = null) {
             asciiGridHeight = parseInt(parts[1]) || 15;
             if (customContainer) customContainer.style.display = 'none';
         }
-        
+
         createAsciiGrid();
     }
-    
+
     clearAsciiHistory();
     saveAsciiHistory();
-    
+
     if (window.Modal) {
         Modal.open('#asciiEditorModal');
     } else {
@@ -7796,7 +7801,7 @@ async function clearAsciiGrid() {
 function saveAsciiArt() {
     const cells = document.querySelectorAll('.ascii-cell');
     const gridData = Array.from(cells).map(c => c.textContent);
-    
+
     let textLines = [];
     for (let y = 0; y < asciiGridHeight; y++) {
         let line = '';
@@ -7807,15 +7812,15 @@ function saveAsciiArt() {
         textLines.push(line.trimRight());
     }
     const plainText = textLines.join('\n');
-    
+
     const gridJson = JSON.stringify(gridData).replace(/"/g, '&quot;');
     const asciiHtml = `<pre class="blog-ascii-art">${plainText}</pre>`;
-    
+
     if (asciiTargetWrap) {
         asciiTargetWrap.setAttribute('data-ascii-width', asciiGridWidth);
         asciiTargetWrap.setAttribute('data-ascii-height', asciiGridHeight);
         asciiTargetWrap.setAttribute('data-ascii-grid', JSON.stringify(gridData));
-        
+
         const artEl = asciiTargetWrap.querySelector('.blog-ascii-art');
         if (artEl) {
             artEl.textContent = plainText;
@@ -7828,7 +7833,7 @@ function saveAsciiArt() {
         insertHtmlAtCursor(fullHtml);
         showNotification('ASCII-арт вставлен в статью', 'success');
     }
-    
+
     saveToHistory();
     closeAsciiEditor();
 }
@@ -7855,40 +7860,40 @@ let caretScrollListener = null;
 function applySmoothTypingState() {
     const editor = document.getElementById('contentVisual');
     if (!editor) return;
-    
+
     let caret = document.getElementById('customCaret');
-    
+
     if (window.smoothTypingEnabled) {
         editor.classList.add('smooth-typing');
-        
+
         if (!caret) {
             caret = document.createElement('div');
             caret.id = 'customCaret';
             document.body.appendChild(caret);
         }
-        
+
         if (!window.smoothTypingListenersAdded) {
             document.addEventListener('selectionchange', handleCaretUpdate);
-            
+
             caretScrollListener = () => {
                 requestAnimationFrame(updateCustomCaret);
             };
             editor.addEventListener('scroll', caretScrollListener);
             window.addEventListener('resize', caretScrollListener);
-            
+
             editor.addEventListener('focus', handleCaretUpdate);
             editor.addEventListener('blur', handleCaretBlur);
-            
+
             window.smoothTypingListenersAdded = true;
         }
-        
+
         updateCustomCaret();
     } else {
         editor.classList.remove('smooth-typing');
         if (caret) {
             caret.style.display = 'none';
         }
-        
+
         if (window.smoothTypingListenersAdded) {
             document.removeEventListener('selectionchange', handleCaretUpdate);
             if (caretScrollListener) {
@@ -7919,37 +7924,37 @@ function handleCaretUpdate() {
 function getCaretCoordinates() {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return null;
-    
+
     const range = sel.getRangeAt(0);
     let rect = null;
-    
+
     try {
         rect = range.getBoundingClientRect();
-    } catch(e) {}
-    
+    } catch (e) { }
+
     if (rect && rect.height > 0 && rect.left > 0) {
         return rect;
     }
-    
+
     try {
         const rects = range.getClientRects();
         if (rects && rects.length > 0 && rects[0].height > 0) {
             return rects[0];
         }
-    } catch(e) {}
-    
+    } catch (e) { }
+
     let node = range.startContainer;
     let offset = range.startOffset;
-    
+
     if (!node) return null;
-    
+
     if (node.nodeType === Node.ELEMENT_NODE) {
         if (node.childNodes.length > 0 && offset < node.childNodes.length) {
             let child = node.childNodes[offset];
             if (child && child.nodeType === Node.ELEMENT_NODE) {
                 try {
                     return child.getBoundingClientRect();
-                } catch(e) {}
+                } catch (e) { }
             }
         }
         try {
@@ -7963,7 +7968,7 @@ function getCaretCoordinates() {
                 top: nodeRect.top + padTop,
                 height: lineH
             };
-        } catch(e) {}
+        } catch (e) { }
     } else if (node.nodeType === Node.TEXT_NODE) {
         let parent = node.parentNode;
         if (parent) {
@@ -7976,10 +7981,10 @@ function getCaretCoordinates() {
                     top: parentRect.top,
                     height: lineH
                 };
-            } catch(e) {}
+            } catch (e) { }
         }
     }
-    
+
     return null;
 }
 
@@ -7987,33 +7992,33 @@ function updateCustomCaret() {
     const editor = document.getElementById('contentVisual');
     const caret = document.getElementById('customCaret');
     if (!editor || !caret || !window.smoothTypingEnabled) return;
-    
+
     if (document.activeElement !== editor) {
         caret.style.display = 'none';
         return;
     }
-    
+
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) {
         caret.style.display = 'none';
         return;
     }
-    
+
     const rect = getCaretCoordinates();
     if (rect && rect.height > 0) {
         const editorRect = editor.getBoundingClientRect();
-        
+
         if (rect.top >= editorRect.top - 5 && rect.bottom <= editorRect.bottom + 5 &&
             rect.left >= editorRect.left - 5 && rect.left <= editorRect.right + 5) {
-            
+
             caret.style.left = `${rect.left}px`;
             caret.style.top = `${rect.top}px`;
             caret.style.height = `${rect.height}px`;
             caret.style.display = 'block';
-            
+
             caret.classList.remove('blink');
             void caret.offsetWidth;
-            
+
             clearTimeout(caretTimeout);
             caretTimeout = setTimeout(() => {
                 caret.classList.add('blink');
@@ -8077,7 +8082,7 @@ function parseMarkdownToHtml(md) {
 
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
-        
+
         // Headers
         let headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
         if (headerMatch) {
@@ -8135,7 +8140,7 @@ function parseMarkdownToHtml(md) {
                     i++;
                 }
                 i--;
-                
+
                 let tableHtml = '<table>';
                 let headers = tableLines[0].split('|').map(x => x.trim()).filter((x, idx, arr) => idx > 0 && idx < arr.length - 1);
                 tableHtml += '<thead><tr>' + headers.map(h => `<th>${parseInlineMarkdown(h)}</th>`).join('') + '</tr></thead>';
@@ -8222,19 +8227,19 @@ function nodeToMarkdown(node) {
     if (node.nodeType === Node.TEXT_NODE) {
         return node.textContent;
     }
-    
+
     if (node.nodeType !== Node.ELEMENT_NODE) {
         return '';
     }
-    
+
     const tagName = node.tagName.toUpperCase();
     let childrenMarkdown = '';
-    
+
     // Process children
     for (let child of node.childNodes) {
         childrenMarkdown += nodeToMarkdown(child);
     }
-    
+
     switch (tagName) {
         case 'DIV':
             if (node.classList.contains('spoiler-content')) {
@@ -8319,7 +8324,7 @@ function nodeToMarkdown(node) {
                 const firstRowCells = rows[0].querySelectorAll('th, td');
                 const colCount = firstRowCells.length;
                 tableMd += '| ' + Array.from(firstRowCells).map(cell => nodeToMarkdown(cell).trim()).join(' | ') + ' |\n';
-                tableMd += '| ' + Array.from({length: colCount}, () => '---').join(' | ') + ' |\n';
+                tableMd += '| ' + Array.from({ length: colCount }, () => '---').join(' | ') + ' |\n';
                 for (let r = 1; r < rows.length; r++) {
                     const cells = rows[r].querySelectorAll('th, td');
                     tableMd += '| ' + Array.from(cells).map(cell => nodeToMarkdown(cell).trim()).join(' | ') + ' |\n';
@@ -8338,71 +8343,71 @@ function nodeToMarkdown(node) {
 }
 
 window.convertHtmlToMarkdown = convertHtmlToMarkdown;
-window.getCurrentEditId = function() {
+window.getCurrentEditId = function () {
     return typeof currentEditId !== 'undefined' ? currentEditId : null;
 };
 
-    // --- Менеджер шаблонов ---
-    let templatesList = [];
-    let postsList = [];
-    let currentTemplateName = null;
-    let postTemplatesMeta = {};
-    let defaultTemplateName = 'main';
+// --- Менеджер шаблонов ---
+let templatesList = [];
+let postsList = [];
+let currentTemplateName = null;
+let postTemplatesMeta = {};
+let defaultTemplateName = 'main';
 
-    function openTemplateManager() {
-        fetch('get_templates.php')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    templatesList = data.templates;
-                    postsList = data.posts;
-                    defaultTemplateName = data.default;
-                    postTemplatesMeta = data.post_templates || {};
-                    renderTemplatesGrid();
-                    if (window.Modal) {
-                        Modal.open('#templateManagerDialog');
-                    } else {
-                        document.getElementById('templateManagerDialog').style.display = 'block';
-                    }
+function openTemplateManager() {
+    fetch('get_templates.php')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                templatesList = data.templates;
+                postsList = data.posts;
+                defaultTemplateName = data.default;
+                postTemplatesMeta = data.post_templates || {};
+                renderTemplatesGrid();
+                if (window.Modal) {
+                    Modal.open('#templateManagerDialog');
                 } else {
-                    showNotification('Не удалось загрузить шаблоны: ' + data.error, 'error');
+                    document.getElementById('templateManagerDialog').style.display = 'block';
                 }
-            })
-            .catch(err => {
-                showNotification('Ошибка загрузки шаблонов', 'error');
-            });
-    }
+            } else {
+                showNotification('Не удалось загрузить шаблоны: ' + data.error, 'error');
+            }
+        })
+        .catch(err => {
+            showNotification('Ошибка загрузки шаблонов', 'error');
+        });
+}
 
-    function closeTemplateManager() {
-        if (window.Modal) {
-            Modal.close('#templateManagerDialog');
-        } else {
-            document.getElementById('templateManagerDialog').style.display = 'none';
+function closeTemplateManager() {
+    if (window.Modal) {
+        Modal.close('#templateManagerDialog');
+    } else {
+        document.getElementById('templateManagerDialog').style.display = 'none';
+    }
+}
+
+function renderTemplatesGrid() {
+    const grid = document.getElementById('templatesGrid');
+    grid.innerHTML = '';
+
+    templatesList.forEach(tpl => {
+        const card = document.createElement('div');
+        card.className = 'template-card';
+        card.onclick = () => openTemplateDetails(tpl.name);
+
+        // Build badges
+        let badges = '';
+        if (tpl.name === 'main') {
+            badges += `<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">Главный</span>`;
         }
-    }
+        if (tpl.name === defaultTemplateName) {
+            badges += `<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">По умолчанию</span>`;
+        }
 
-    function renderTemplatesGrid() {
-        const grid = document.getElementById('templatesGrid');
-        grid.innerHTML = '';
-        
-        templatesList.forEach(tpl => {
-            const card = document.createElement('div');
-            card.className = 'template-card';
-            card.onclick = () => openTemplateDetails(tpl.name);
-            
-            // Build badges
-            let badges = '';
-            if (tpl.name === 'main') {
-                badges += `<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">Главный</span>`;
-            }
-            if (tpl.name === defaultTemplateName) {
-                badges += `<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">По умолчанию</span>`;
-            }
-            
-            // Generate miniature preview HTML
-            const previewHtml = getTemplatePreviewHtml(tpl.code);
-            
-            card.innerHTML = `
+        // Generate miniature preview HTML
+        const previewHtml = getTemplatePreviewHtml(tpl.code);
+
+        card.innerHTML = `
                 <div class="template-preview-card-wrap">
                     <iframe class="template-preview-iframe" srcdoc="${escapeHtml(previewHtml)}"></iframe>
                     <div style="position: absolute; top:0; left:0; right:0; bottom:0; background:transparent; z-index:2;"></div>
@@ -8417,12 +8422,12 @@ window.getCurrentEditId = function() {
                     </div>
                 </div>
             `;
-            grid.appendChild(card);
-        });
-    }
+        grid.appendChild(card);
+    });
+}
 
-    function getTemplatePreviewHtml(templateCode) {
-        let mockContent = `
+function getTemplatePreviewHtml(templateCode) {
+    let mockContent = `
             <p>Это пример текста статьи для предпросмотра шаблона. Здесь вы можете увидеть, как будут выглядеть ваши абзацы, ссылки, списки и другие элементы.</p>
             <h2>Подзаголовок статьи</h2>
             <p>А здесь ссылка на <a href="#">какой-то внешний ресурс</a>.</p>
@@ -8437,169 +8442,169 @@ window.getCurrentEditId = function() {
                 </div>
             </div>
         `;
-        let preview = templateCode
-            .replace(/\{\{TITLE\}\}/g, 'Пример заголовка статьи')
-            .replace(/\{\{DATE\}\}/g, '20.06.2026 12:00')
-            .replace(/\{\{POST_ID\}\}/g, '1')
-            .replace(/\{\{META_TAGS\}\}/g, '')
-            .replace(/\{\{CUSTOM_FONTS\}\}/g, '')
-            .replace(/\{\{BODY_STYLE\}\}/g, '')
-            .replace(/\{\{CONTENT_WRAPPER_START\}\}/g, '')
-            .replace(/\{\{CONTENT_WRAPPER_END\}\}/g, '')
-            .replace(/\{\{CONTENT\}\}/g, mockContent);
+    let preview = templateCode
+        .replace(/\{\{TITLE\}\}/g, 'Пример заголовка статьи')
+        .replace(/\{\{DATE\}\}/g, '20.06.2026 12:00')
+        .replace(/\{\{POST_ID\}\}/g, '1')
+        .replace(/\{\{META_TAGS\}\}/g, '')
+        .replace(/\{\{CUSTOM_FONTS\}\}/g, '')
+        .replace(/\{\{BODY_STYLE\}\}/g, '')
+        .replace(/\{\{CONTENT_WRAPPER_START\}\}/g, '')
+        .replace(/\{\{CONTENT_WRAPPER_END\}\}/g, '')
+        .replace(/\{\{CONTENT\}\}/g, mockContent);
 
-        // Inject <base href="data/blog/"> inside <head> if present to resolve relative URLs of CSS and JS assets correctly
-        if (!preview.includes('<base ') && preview.includes('<head>')) {
-            preview = preview.replace('<head>', '<head>\n    <base href="data/blog/">');
-        } else if (!preview.includes('<base ')) {
-            preview = '<base href="data/blog/">' + preview;
-        }
-
-        return preview;
+    // Inject <base href="data/blog/"> inside <head> if present to resolve relative URLs of CSS and JS assets correctly
+    if (!preview.includes('<base ') && preview.includes('<head>')) {
+        preview = preview.replace('<head>', '<head>\n    <base href="data/blog/">');
+    } else if (!preview.includes('<base ')) {
+        preview = '<base href="data/blog/">' + preview;
     }
 
-    function escapeHtml(str) {
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
+    return preview;
+}
 
-    function triggerTemplateUpload() {
-        document.getElementById('templateFileInput').click();
-    }
+function escapeHtml(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
-    async function handleTemplateUpload(input) {
-        if (!input.files || input.files.length === 0) return;
-        
-        const files = Array.from(input.files);
-        input.value = '';
-        
-        let successCount = 0;
-        let errors = [];
-        
-        for (const file of files) {
-            const formData = new FormData();
-            formData.append('template_file', file);
-            
-            try {
-                const res = await fetch('upload_template.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    successCount++;
-                } else {
-                    if (data.missing) {
-                        errors.push(`Файл ${file.name}: не хватает плейсхолдеров: ${data.missing.join(', ')}`);
-                    } else {
-                        errors.push(`Файл ${file.name}: ${data.error}`);
-                    }
-                }
-            } catch (err) {
-                errors.push(`Файл ${file.name}: ошибка сети`);
-            }
-        }
-        
-        if (successCount > 0) {
-            showNotification(`Успешно загружено шаблонов: ${successCount}`, 'success');
-            openTemplateManager();
-        }
-        
-        if (errors.length > 0) {
-            errors.forEach(err => {
-                showNotification(err, 'error');
+function triggerTemplateUpload() {
+    document.getElementById('templateFileInput').click();
+}
+
+async function handleTemplateUpload(input) {
+    if (!input.files || input.files.length === 0) return;
+
+    const files = Array.from(input.files);
+    input.value = '';
+
+    let successCount = 0;
+    let errors = [];
+
+    for (const file of files) {
+        const formData = new FormData();
+        formData.append('template_file', file);
+
+        try {
+            const res = await fetch('upload_template.php', {
+                method: 'POST',
+                body: formData
             });
+            const data = await res.json();
+
+            if (data.success) {
+                successCount++;
+            } else {
+                if (data.missing) {
+                    errors.push(`Файл ${file.name}: не хватает плейсхолдеров: ${data.missing.join(', ')}`);
+                } else {
+                    errors.push(`Файл ${file.name}: ${data.error}`);
+                }
+            }
+        } catch (err) {
+            errors.push(`Файл ${file.name}: ошибка сети`);
         }
     }
 
-    function openTemplateDetails(name) {
-        currentTemplateName = name;
-        const tpl = templatesList.find(t => t.name === name);
-        if (!tpl) return;
-        
-        document.getElementById('detailsTemplateTitle').textContent = `Детали шаблона: ${tpl.title}`;
-        document.getElementById('detailsTemplateNameInput').value = tpl.title;
-        document.getElementById('detailsTemplateNameInput').disabled = tpl.is_system;
-        document.getElementById('detailsTemplateDescriptionInput').value = tpl.description || '';
-        document.getElementById('detailsTemplateCodeInput').value = tpl.code;
-        
-        const deleteBtn = document.getElementById('deleteTemplateBtn');
-        if (tpl.is_system || tpl.name === 'main' || tpl.name === defaultTemplateName) {
-            deleteBtn.style.display = 'none';
-        } else {
-            deleteBtn.style.display = 'block';
-        }
-        
-        updateTemplateLivePreview();
-        if (window.Modal) {
-            Modal.open('#templateDetailsDialog');
-        } else {
-            document.getElementById('templateDetailsDialog').style.display = 'block';
-        }
+    if (successCount > 0) {
+        showNotification(`Успешно загружено шаблонов: ${successCount}`, 'success');
+        openTemplateManager();
     }
 
-    // Live update live preview inside text area
-    let previewDebounce = null;
-    function updateTemplateLivePreview() {
-        if (previewDebounce) clearTimeout(previewDebounce);
-        previewDebounce = setTimeout(() => {
-            const code = document.getElementById('detailsTemplateCodeInput').value;
-            const previewHtml = getTemplatePreviewHtml(code);
-            const iframe = document.getElementById('templatePreviewIframe');
-            iframe.srcdoc = previewHtml;
-        }, 300);
+    if (errors.length > 0) {
+        errors.forEach(err => {
+            showNotification(err, 'error');
+        });
+    }
+}
+
+function openTemplateDetails(name) {
+    currentTemplateName = name;
+    const tpl = templatesList.find(t => t.name === name);
+    if (!tpl) return;
+
+    document.getElementById('detailsTemplateTitle').textContent = `Детали шаблона: ${tpl.title}`;
+    document.getElementById('detailsTemplateNameInput').value = tpl.title;
+    document.getElementById('detailsTemplateNameInput').disabled = tpl.is_system;
+    document.getElementById('detailsTemplateDescriptionInput').value = tpl.description || '';
+    document.getElementById('detailsTemplateCodeInput').value = tpl.code;
+
+    const deleteBtn = document.getElementById('deleteTemplateBtn');
+    if (tpl.is_system || tpl.name === 'main' || tpl.name === defaultTemplateName) {
+        deleteBtn.style.display = 'none';
+    } else {
+        deleteBtn.style.display = 'block';
     }
 
-    function closeTemplateDetails() {
-        if (window.Modal) {
-            Modal.close('#templateDetailsDialog');
-        } else {
-            document.getElementById('templateDetailsDialog').style.display = 'none';
-        }
-        const menu = document.getElementById('saveTemplateDropdownMenu');
-        if (menu) menu.style.display = 'none';
+    updateTemplateLivePreview();
+    if (window.Modal) {
+        Modal.open('#templateDetailsDialog');
+    } else {
+        document.getElementById('templateDetailsDialog').style.display = 'block';
     }
+}
 
-    function toggleSaveTemplateDropdown() {
-        const menu = document.getElementById('saveTemplateDropdownMenu');
-        const isVisible = menu.style.display === 'flex';
-        menu.style.display = isVisible ? 'none' : 'flex';
-    }
-
-    // Hide dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        const btn = document.getElementById('saveTemplateDropdownBtn');
-        const menu = document.getElementById('saveTemplateDropdownMenu');
-        if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
-            menu.style.display = 'none';
-        }
-    });
-
-    function saveTemplateData() {
-        const title = document.getElementById('detailsTemplateNameInput').value.trim();
-        const description = document.getElementById('detailsTemplateDescriptionInput').value.trim();
+// Live update live preview inside text area
+let previewDebounce = null;
+function updateTemplateLivePreview() {
+    if (previewDebounce) clearTimeout(previewDebounce);
+    previewDebounce = setTimeout(() => {
         const code = document.getElementById('detailsTemplateCodeInput').value;
-        
-        if (title === '') {
-            showNotification('Введите название шаблона', 'warning');
-            return Promise.reject('Empty title');
-        }
-        
-        return fetch('save_template.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: currentTemplateName,
-                title: title,
-                description: description,
-                code: code
-            })
+        const previewHtml = getTemplatePreviewHtml(code);
+        const iframe = document.getElementById('templatePreviewIframe');
+        iframe.srcdoc = previewHtml;
+    }, 300);
+}
+
+function closeTemplateDetails() {
+    if (window.Modal) {
+        Modal.close('#templateDetailsDialog');
+    } else {
+        document.getElementById('templateDetailsDialog').style.display = 'none';
+    }
+    const menu = document.getElementById('saveTemplateDropdownMenu');
+    if (menu) menu.style.display = 'none';
+}
+
+function toggleSaveTemplateDropdown() {
+    const menu = document.getElementById('saveTemplateDropdownMenu');
+    const isVisible = menu.style.display === 'flex';
+    menu.style.display = isVisible ? 'none' : 'flex';
+}
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', function (e) {
+    const btn = document.getElementById('saveTemplateDropdownBtn');
+    const menu = document.getElementById('saveTemplateDropdownMenu');
+    if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+});
+
+function saveTemplateData() {
+    const title = document.getElementById('detailsTemplateNameInput').value.trim();
+    const description = document.getElementById('detailsTemplateDescriptionInput').value.trim();
+    const code = document.getElementById('detailsTemplateCodeInput').value;
+
+    if (title === '') {
+        showNotification('Введите название шаблона', 'warning');
+        return Promise.reject('Empty title');
+    }
+
+    return fetch('save_template.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: currentTemplateName,
+            title: title,
+            description: description,
+            code: code
         })
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -8613,77 +8618,77 @@ window.getCurrentEditId = function() {
                 throw new Error(data.error);
             }
         });
-    }
+}
 
-    function saveAndApplyTemplateToAll() {
-        saveTemplateData()
-            .then(() => {
-                return fetch('apply_template.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        template_name: currentTemplateName,
-                        mode: 'default'
-                    })
-                });
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(data.message, 'success');
-                    closeTemplateDetails();
-                    openTemplateManager(); // Refresh grid
-                } else {
-                    showNotification('Ошибка применения шаблона: ' + data.error, 'error');
-                }
-            })
-            .catch(err => {
-                console.error(err);
+function saveAndApplyTemplateToAll() {
+    saveTemplateData()
+        .then(() => {
+            return fetch('apply_template.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    template_name: currentTemplateName,
+                    mode: 'default'
+                })
             });
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                closeTemplateDetails();
+                openTemplateManager(); // Refresh grid
+            } else {
+                showNotification('Ошибка применения шаблона: ' + data.error, 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+        });
+}
+
+function showApplyToSpecificPostList() {
+    saveTemplateData()
+        .then(() => {
+            document.getElementById('templatePostSearchInput').value = '';
+            renderTemplatePostList();
+            if (window.Modal) {
+                Modal.open('#applyToPostModal');
+            } else {
+                document.getElementById('applyToPostModal').style.display = 'block';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+        });
+}
+
+function closeApplyToPostModal() {
+    if (window.Modal) {
+        Modal.close('#applyToPostModal');
+    } else {
+        document.getElementById('applyToPostModal').style.display = 'none';
+    }
+}
+
+function renderTemplatePostList() {
+    const container = document.getElementById('templatePostList');
+    container.innerHTML = '';
+
+    if (postsList.length === 0) {
+        container.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px;">Нет статей</div>';
+        return;
     }
 
-    function showApplyToSpecificPostList() {
-        saveTemplateData()
-            .then(() => {
-                document.getElementById('templatePostSearchInput').value = '';
-                renderTemplatePostList();
-                if (window.Modal) {
-                    Modal.open('#applyToPostModal');
-                } else {
-                    document.getElementById('applyToPostModal').style.display = 'block';
-                }
-            })
-            .catch(err => {
-                console.error(err);
-            });
-    }
+    postsList.forEach(post => {
+        const item = document.createElement('div');
+        item.className = 'template-post-item';
+        item.setAttribute('data-title', post.title.toLowerCase());
 
-    function closeApplyToPostModal() {
-        if (window.Modal) {
-            Modal.close('#applyToPostModal');
-        } else {
-            document.getElementById('applyToPostModal').style.display = 'none';
-        }
-    }
+        // Check if this post currently uses this template
+        const isAssigned = postTemplatesMeta[post.id] === currentTemplateName;
 
-    function renderTemplatePostList() {
-        const container = document.getElementById('templatePostList');
-        container.innerHTML = '';
-        
-        if (postsList.length === 0) {
-            container.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px;">Нет статей</div>';
-            return;
-        }
-        
-        postsList.forEach(post => {
-            const item = document.createElement('div');
-            item.className = 'template-post-item';
-            item.setAttribute('data-title', post.title.toLowerCase());
-            
-            // Check if this post currently uses this template
-            const isAssigned = postTemplatesMeta[post.id] === currentTemplateName;
-            
-            item.innerHTML = `
+        item.innerHTML = `
                 <div style="flex: 1; min-width: 0; padding-right: 10px;">
                     <div style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-color);">${post.title}</div>
                     <div style="font-size: 11px; opacity: 0.6; margin-top: 2px;">Дата: ${post.date} ${isAssigned ? '• <span style="color:#10b981; font-weight:600;">Уже применен</span>' : ''}</div>
@@ -8692,34 +8697,34 @@ window.getCurrentEditId = function() {
                     ${isAssigned ? 'Переприменить' : 'Выбрать'}
                 </button>
             `;
-            container.appendChild(item);
-        });
-    }
+        container.appendChild(item);
+    });
+}
 
-    function filterTemplatePosts() {
-        const query = document.getElementById('templatePostSearchInput').value.toLowerCase().trim();
-        const items = document.querySelectorAll('.template-post-item');
-        
-        items.forEach(item => {
-            const title = item.getAttribute('data-title');
-            if (title.indexOf(query) !== -1) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    }
+function filterTemplatePosts() {
+    const query = document.getElementById('templatePostSearchInput').value.toLowerCase().trim();
+    const items = document.querySelectorAll('.template-post-item');
 
-    function applyTemplateToPost(postId) {
-        fetch('apply_template.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                template_name: currentTemplateName,
-                mode: 'post',
-                post_id: postId
-            })
+    items.forEach(item => {
+        const title = item.getAttribute('data-title');
+        if (title.indexOf(query) !== -1) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function applyTemplateToPost(postId) {
+    fetch('apply_template.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            template_name: currentTemplateName,
+            mode: 'post',
+            post_id: postId
         })
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -8734,19 +8739,19 @@ window.getCurrentEditId = function() {
         .catch(err => {
             showNotification('Ошибка сети при применении шаблона', 'error');
         });
-    }
+}
 
-    function deleteCurrentTemplate() {
-        showConfirm('Вы действительно хотите удалить этот шаблон?').then(confirmed => {
-            if (!confirmed) return;
-            
-            fetch('delete_template.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: currentTemplateName
-                })
+function deleteCurrentTemplate() {
+    showConfirm('Вы действительно хотите удалить этот шаблон?').then(confirmed => {
+        if (!confirmed) return;
+
+        fetch('delete_template.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: currentTemplateName
             })
+        })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
@@ -8760,58 +8765,58 @@ window.getCurrentEditId = function() {
             .catch(err => {
                 showNotification('Ошибка сети при удалении шаблона', 'error');
             });
-        });
-    }
+    });
+}
 
-    function showTemplatePlaceholdersInfo(e) {
-        e.preventDefault();
-        const info = `Обязательные плейсхолдеры в шаблоне:\n\n` +
-            `{{TITLE}} - заголовок статьи\n` +
-            `{{DATE}} - дата публикации\n` +
-            `{{POST_ID}} - ID статьи\n` +
-            `{{CONTENT}} - основной контент\n` +
-            `{{META_TAGS}} - метатеги SEO\n` +
-            `{{CUSTOM_FONTS}} - блок шрифтов\n` +
-            `{{BODY_STYLE}} - стили тела документа\n` +
-            `{{CONTENT_WRAPPER_START}} - начало обертки контента\n` +
-            `{{CONTENT_WRAPPER_END}} - конец обертки контента`;
-        showAlert(info, 'Теги шаблонов');
-    }
+function showTemplatePlaceholdersInfo(e) {
+    e.preventDefault();
+    const info = `Обязательные плейсхолдеры в шаблоне:\n\n` +
+        `{{TITLE}} - заголовок статьи\n` +
+        `{{DATE}} - дата публикации\n` +
+        `{{POST_ID}} - ID статьи\n` +
+        `{{CONTENT}} - основной контент\n` +
+        `{{META_TAGS}} - метатеги SEO\n` +
+        `{{CUSTOM_FONTS}} - блок шрифтов\n` +
+        `{{BODY_STYLE}} - стили тела документа\n` +
+        `{{CONTENT_WRAPPER_START}} - начало обертки контента\n` +
+        `{{CONTENT_WRAPPER_END}} - конец обертки контента`;
+    showAlert(info, 'Теги шаблонов');
+}
 
-    function showTemplateInstructions() {
-        if (window.Modal) {
-            Modal.open('#templateInstructionsDialog');
-        } else {
-            document.getElementById('templateInstructionsDialog').style.display = 'block';
-        }
+function showTemplateInstructions() {
+    if (window.Modal) {
+        Modal.open('#templateInstructionsDialog');
+    } else {
+        document.getElementById('templateInstructionsDialog').style.display = 'block';
     }
+}
 
-    function closeTemplateInstructions() {
-        if (window.Modal) {
-            Modal.close('#templateInstructionsDialog');
-        } else {
-            document.getElementById('templateInstructionsDialog').style.display = 'none';
-        }
+function closeTemplateInstructions() {
+    if (window.Modal) {
+        Modal.close('#templateInstructionsDialog');
+    } else {
+        document.getElementById('templateInstructionsDialog').style.display = 'none';
     }
+}
 
-    // Export functions to window scope
-    window.openTemplateManager = openTemplateManager;
-    window.closeTemplateManager = closeTemplateManager;
-    window.triggerTemplateUpload = triggerTemplateUpload;
-    window.handleTemplateUpload = handleTemplateUpload;
-    window.openTemplateDetails = openTemplateDetails;
-    window.closeTemplateDetails = closeTemplateDetails;
-    window.updateTemplateLivePreview = updateTemplateLivePreview;
-    window.toggleSaveTemplateDropdown = toggleSaveTemplateDropdown;
-    window.saveAndApplyTemplateToAll = saveAndApplyTemplateToAll;
-    window.showApplyToSpecificPostList = showApplyToSpecificPostList;
-    window.closeApplyToPostModal = closeApplyToPostModal;
-    window.filterTemplatePosts = filterTemplatePosts;
-    window.applyTemplateToPost = applyTemplateToPost;
-    window.deleteCurrentTemplate = deleteCurrentTemplate;
-    window.showTemplatePlaceholdersInfo = showTemplatePlaceholdersInfo;
-    window.showTemplateInstructions = showTemplateInstructions;
-    window.closeTemplateInstructions = closeTemplateInstructions;
+// Export functions to window scope
+window.openTemplateManager = openTemplateManager;
+window.closeTemplateManager = closeTemplateManager;
+window.triggerTemplateUpload = triggerTemplateUpload;
+window.handleTemplateUpload = handleTemplateUpload;
+window.openTemplateDetails = openTemplateDetails;
+window.closeTemplateDetails = closeTemplateDetails;
+window.updateTemplateLivePreview = updateTemplateLivePreview;
+window.toggleSaveTemplateDropdown = toggleSaveTemplateDropdown;
+window.saveAndApplyTemplateToAll = saveAndApplyTemplateToAll;
+window.showApplyToSpecificPostList = showApplyToSpecificPostList;
+window.closeApplyToPostModal = closeApplyToPostModal;
+window.filterTemplatePosts = filterTemplatePosts;
+window.applyTemplateToPost = applyTemplateToPost;
+window.deleteCurrentTemplate = deleteCurrentTemplate;
+window.showTemplatePlaceholdersInfo = showTemplatePlaceholdersInfo;
+window.showTemplateInstructions = showTemplateInstructions;
+window.closeTemplateInstructions = closeTemplateInstructions;
 
 // --- Наборы смайлов ---
 let smileFilesToUpload = [];
@@ -8914,7 +8919,7 @@ function handleSmileFileSelect(e) {
 
 function processSelectedSmiles(files) {
     smileFilesToUpload = files.filter(file => file.name.toLowerCase().endsWith('.gif'));
-    
+
     if (smileFilesToUpload.length === 0) {
         showNotification('В выбранных файлах не найдено изображений формата .gif', 'warning');
         resetSmileUploadState();
@@ -8924,7 +8929,7 @@ function processSelectedSmiles(files) {
     let detectedName = '';
     const firstFile = smileFilesToUpload[0];
     const relPath = firstFile.customRelativePath || firstFile.webkitRelativePath;
-    
+
     if (relPath && relPath.includes('/')) {
         detectedName = relPath.split('/')[0];
     }
@@ -8948,7 +8953,7 @@ function processSelectedSmiles(files) {
     if (countSpan) countSpan.textContent = smileFilesToUpload.length;
     if (infoText) infoText.style.display = 'block';
     if (btnContainer) btnContainer.style.display = 'block';
-    
+
     const dropzoneText = document.getElementById('smileDropzoneText');
     if (dropzoneText) dropzoneText.textContent = window.t ? window.t('modals.smiles_files_selected_notice', 'Файлы успешно выбраны') : 'Файлы успешно выбраны';
 }
@@ -8956,7 +8961,7 @@ function processSelectedSmiles(files) {
 function resetSmileUploadState() {
     smileFilesToUpload = [];
     smileSetNameTarget = '';
-    
+
     const folderInput = document.getElementById('smileFolderInput');
     const filesInput = document.getElementById('smileFilesInput');
     const nameInput = document.getElementById('smileSetNameInput');
@@ -8977,11 +8982,11 @@ function resetSmileUploadState() {
 async function loadSmileSetsList() {
     const listContainer = document.getElementById('smileSetsList');
     if (!listContainer) return;
-    
+
     try {
         const response = await fetch('get_smiles.php?t=' + Date.now());
         const data = await response.json();
-        
+
         if (data.success) {
             const setNames = Object.keys(data.sets);
             if (setNames.length === 0) {
@@ -9058,10 +9063,10 @@ window.handleSmileSetUpload = handleSmileSetUpload;
 async function deleteSmileSet(setName) {
     showConfirm(window.t ? window.t('notifications.smiles_delete_confirm_param', `Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`, { setName: setName }) : `Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`).then(async (result) => {
         if (!result) return;
-        
+
         const formData = new FormData();
         formData.append('setName', setName);
-        
+
         try {
             const response = await fetch('delete_smile_set.php', {
                 method: 'POST',
@@ -9083,16 +9088,16 @@ async function deleteSmileSet(setName) {
 
 function toggleSmilesSubmenu(event) {
     event.stopPropagation();
-    
+
     const button = event.currentTarget;
     const isOpen = button.classList.contains('submenu-open');
-    
+
     document.querySelectorAll('.more-menu-item.has-submenu').forEach(btn => {
         if (btn !== button) {
             btn.classList.remove('submenu-open');
         }
     });
-    
+
     if (!isOpen) {
         button.classList.add('submenu-open');
         loadSmilesSubmenuList();
@@ -9104,15 +9109,15 @@ function toggleSmilesSubmenu(event) {
 async function loadSmilesSubmenuList() {
     const submenu = document.getElementById('smilesSubmenu');
     if (!submenu) return;
-    
+
     try {
         const response = await fetch('get_smiles.php?t=' + Date.now());
         const data = await response.json();
-        
+
         if (data.success) {
             const setNames = Object.keys(data.sets);
             const nonEmptySets = setNames.filter(name => data.sets[name].length > 0);
-            
+
             if (nonEmptySets.length === 0) {
                 submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_smiles_hint', 'Нет смайлов. Добавьте их через "Наборы смайлов"') : 'Нет смайлов. Добавьте их через "Наборы смайлов"') + '</div>';
             } else {
@@ -9121,13 +9126,13 @@ async function loadSmilesSubmenuList() {
                     html += `<div class="smile-set-section">
                         <div class="smile-set-title">${escapeHtml(setName)}</div>
                         <div class="smile-items-grid">`;
-                    
+
                     data.sets[setName].forEach(url => {
                         html += `<button type="button" class="smile-item-btn" onclick="insertSmile('${escapeHtmlJS(url)}')" title="Вставить смайл">
                             <img src="${url}" alt="smile">
                         </button>`;
                     });
-                    
+
                     html += `</div></div>`;
                 });
                 html += '</div>';
@@ -9295,7 +9300,7 @@ function switchBtnTab(tab) {
     const codeContent = document.getElementById('btnTabCodeContent');
     const guiBtn = document.getElementById('btnTabGui');
     const codeBtn = document.getElementById('btnTabCode');
-    
+
     if (!guiContent || !codeContent) return;
 
     if (tab === 'code') {
@@ -9400,7 +9405,7 @@ function updateCustomBtnPreview() {
     const text = textInput.value || (window.t ? window.t('modals.btn_text_fallback', 'Текст кнопки') : 'Текст кнопки');
     const url = urlInput.value || '#';
     const targetBlank = targetInput ? targetInput.checked : true;
-    
+
     const bgColor = bgInput ? (bgInput.value || 'rgba(15, 22, 36, 0.72)') : 'rgba(15, 22, 36, 0.72)';
     const textColor = textColInput ? (textColInput.value || '#f3f4f6') : '#f3f4f6';
     const radius = radiusInput ? (radiusInput.value || '12px') : '12px';
@@ -9588,29 +9593,29 @@ window.confirmDevWarning = confirmDevWarning;
 
 
 // Глобальная функция навигации по галерее
-window.navigateGallery = function(galleryId, direction) {
+window.navigateGallery = function (galleryId, direction) {
     const gallery = document.getElementById(galleryId);
     if (!gallery) return;
-    
+
     const images = gallery.querySelectorAll(`img[data-gallery="${galleryId}"]`);
     if (images.length <= 1) return;
-    
+
     let currentIndex = -1;
     images.forEach((img, index) => {
         if (img.style.display !== 'none') {
             currentIndex = index;
         }
     });
-    
+
     if (currentIndex === -1) currentIndex = 0;
-    
+
     let newIndex = currentIndex + direction;
     if (newIndex < 0) newIndex = images.length - 1;
     if (newIndex >= images.length) newIndex = 0;
-    
+
     images[currentIndex].style.display = 'none';
     images[newIndex].style.display = 'block';
-    
+
     const indicator = gallery.querySelector('.gallery-indicator');
     if (indicator) {
         indicator.textContent = `${newIndex + 1} / ${images.length}`;
@@ -9618,25 +9623,25 @@ window.navigateGallery = function(galleryId, direction) {
 };
 
 // Поддержка свайпов на мобильных устройствах для галерей
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     let touchStartX = 0;
     let touchEndX = 0;
     let targetGallery = null;
-    
-    document.addEventListener('touchstart', function(e) {
+
+    document.addEventListener('touchstart', function (e) {
         const gallery = e.target.closest('.image-gallery');
         if (gallery) {
             targetGallery = gallery;
             touchStartX = e.changedTouches[0].screenX;
         }
     }, { passive: true });
-    
-    document.addEventListener('touchend', function(e) {
+
+    document.addEventListener('touchend', function (e) {
         if (!targetGallery) return;
-        
+
         touchEndX = e.changedTouches[0].screenX;
         const galleryId = targetGallery.id;
-        
+
         const swipeThreshold = 50;
         if (touchStartX - touchEndX > swipeThreshold) {
             // Свайп влево - следующее изображение
@@ -9645,18 +9650,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Свайп вправо - предыдущее изображение
             window.navigateGallery(galleryId, -1);
         }
-        
+
         targetGallery = null;
     }, { passive: true });
-    
+
     // Поддержка клавиатуры (стрелки) для активной галереи в редакторе
     const contentVisual = document.getElementById('contentVisual');
     if (contentVisual) {
-        contentVisual.addEventListener('keydown', function(e) {
+        contentVisual.addEventListener('keydown', function (e) {
             // Проверяем, находится ли фокус внутри галереи или рядом с ней
             const selection = window.getSelection();
             if (!selection || selection.rangeCount === 0) return;
-            
+
             let node = selection.anchorNode;
             while (node && node !== contentVisual) {
                 if (node.classList && node.classList.contains('image-gallery')) {
@@ -9672,16 +9677,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 node = node.parentNode;
             }
         });
-        
+
         // Добавляем возможность наведения для фокуса на галерее
-        contentVisual.addEventListener('mouseenter', function(e) {
+        contentVisual.addEventListener('mouseenter', function (e) {
             const gallery = e.target.closest('.image-gallery');
             if (gallery) {
                 gallery.setAttribute('data-focused', 'true');
             }
         }, true);
-        
-        contentVisual.addEventListener('mouseleave', function(e) {
+
+        contentVisual.addEventListener('mouseleave', function (e) {
             const gallery = e.target.closest('.image-gallery');
             if (gallery) {
                 gallery.removeAttribute('data-focused');
@@ -9693,15 +9698,15 @@ document.addEventListener('DOMContentLoaded', function() {
 /* ==========================================================================
    Custom Select Dropdown Engine
    ========================================================================== */
-(function() {
+(function () {
     // Intercept HTMLSelectElement.prototype.value and selectedIndex to auto-sync custom UI
     const originalValueDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
     if (originalValueDescriptor && originalValueDescriptor.set) {
         Object.defineProperty(HTMLSelectElement.prototype, 'value', {
-            get: function() {
+            get: function () {
                 return originalValueDescriptor.get.call(this);
             },
-            set: function(val) {
+            set: function (val) {
                 const res = originalValueDescriptor.set.call(this, val);
                 if (this.dataset && this.dataset.customSelectInitialized === 'true') {
                     syncCustomSelectFromNative(this);
@@ -9716,10 +9721,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const originalIndexDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
     if (originalIndexDescriptor && originalIndexDescriptor.set) {
         Object.defineProperty(HTMLSelectElement.prototype, 'selectedIndex', {
-            get: function() {
+            get: function () {
                 return originalIndexDescriptor.get.call(this);
             },
-            set: function(val) {
+            set: function (val) {
                 const res = originalIndexDescriptor.set.call(this, val);
                 if (this.dataset && this.dataset.customSelectInitialized === 'true') {
                     syncCustomSelectFromNative(this);
@@ -9746,10 +9751,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function rebuildCustomSelectOptions(select, wrapper) {
         const popoverInner = wrapper.querySelector('.custom-select-popover-inner');
         if (!popoverInner) return;
-        
+
         popoverInner.innerHTML = '';
         const currentValue = select.value;
-        
+
         Array.from(select.options).forEach((opt, index) => {
             const optBtn = document.createElement('button');
             optBtn.type = 'button';
@@ -9763,29 +9768,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 optBtn.style.opacity = '0.4';
                 optBtn.style.cursor = 'not-allowed';
             }
-            
+
             const textSpan = document.createElement('span');
             textSpan.className = 'custom-option-text';
             textSpan.textContent = opt.textContent || opt.innerText;
-            
+
             const checkSpan = document.createElement('span');
             checkSpan.className = 'custom-option-check';
             checkSpan.textContent = '✓';
-            
+
             optBtn.appendChild(textSpan);
             optBtn.appendChild(checkSpan);
-            
-            optBtn.addEventListener('click', function(e) {
+
+            optBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 if (opt.disabled) return;
-                
+
                 selectCustomOption(select, wrapper, opt.value);
                 closeCustomSelect(wrapper);
                 const trigger = wrapper.querySelector('.custom-select-trigger');
                 if (trigger) trigger.focus();
             });
-            
+
             popoverInner.appendChild(optBtn);
         });
 
@@ -9810,13 +9815,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function syncCustomSelectFromNative(select) {
         const wrapper = select.closest('.custom-select-wrapper');
         if (!wrapper) return;
-        
+
         const selData = getSelectedOptionData(select);
         const valSpan = wrapper.querySelector('.custom-select-value');
         if (valSpan) {
             valSpan.textContent = selData.text || 'Выберите...';
         }
-        
+
         const options = wrapper.querySelectorAll('.custom-select-option');
         options.forEach(optBtn => {
             const isMatch = optBtn.dataset.value === String(select.value);
@@ -9833,17 +9838,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function getAvailableDropdownSpace(wrapper) {
         const trigger = wrapper.querySelector('.custom-select-trigger') || wrapper;
         const rect = trigger.getBoundingClientRect();
-        
+
         let container = wrapper.parentElement;
         let containerTop = 0;
         let containerBottom = window.innerHeight;
-        
+
         while (container && container !== document.body && container !== document.documentElement) {
             const style = window.getComputedStyle(container);
             const overflow = (style.overflow || '') + (style.overflowY || '');
-            if (/auto|scroll|hidden/.test(overflow) || 
-                container.classList.contains('dialog-content') || 
-                container.classList.contains('modal-content') || 
+            if (/auto|scroll|hidden/.test(overflow) ||
+                container.classList.contains('dialog-content') ||
+                container.classList.contains('modal-content') ||
                 container.classList.contains('manage-posts')) {
                 const cRect = container.getBoundingClientRect();
                 containerTop = Math.max(containerTop, cRect.top);
@@ -9852,7 +9857,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             container = container.parentElement;
         }
-        
+
         const spaceBelow = containerBottom - rect.bottom;
         const spaceAbove = rect.top - containerTop;
         return { spaceBelow, spaceAbove };
@@ -9860,18 +9865,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function openCustomSelect(wrapper) {
         closeAllCustomSelects(wrapper);
-        
+
         const popover = wrapper.querySelector('.custom-select-popover');
         const popoverInner = wrapper.querySelector('.custom-select-popover-inner');
         const trigger = wrapper.querySelector('.custom-select-trigger');
         if (!popover || !trigger) return;
-        
+
         // Smart flip positioning calculation based on container bounds
         const { spaceBelow, spaceAbove } = getAvailableDropdownSpace(wrapper);
         const estimatedHeight = Math.min(200, popover.scrollHeight || 160);
-        
+
         const shouldDropUp = (spaceBelow < estimatedHeight + 10 && spaceAbove > spaceBelow) || (spaceBelow < 120 && spaceAbove >= 100);
-        
+
         if (shouldDropUp) {
             popover.classList.add('drop-up');
             if (popoverInner) {
@@ -9885,10 +9890,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 popoverInner.style.maxHeight = maxHeight + 'px';
             }
         }
-        
+
         wrapper.classList.add('is-open');
         trigger.setAttribute('aria-expanded', 'true');
-        
+
         // Scroll selected option into view
         const selectedOpt = popover.querySelector('.custom-select-option.is-selected');
         if (selectedOpt) {
@@ -9917,22 +9922,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!select || select.tagName !== 'SELECT') return;
         if (select.dataset && select.dataset.customSelectInitialized === 'true') return;
         if (select.hasAttribute('data-custom-select-ignore')) return;
-        
+
         select.dataset.customSelectInitialized = 'true';
         select.classList.add('custom-select-native');
         select.setAttribute('tabindex', '-1');
         select.setAttribute('aria-hidden', 'true');
-        
+
         // Create wrapper
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-select-wrapper';
         if (select.id) wrapper.dataset.forSelect = select.id;
-        
+
         // Detect compact / inline styling
         if (select.closest('.size-input-group') || select.classList.contains('compact-select')) {
             wrapper.classList.add('custom-select-compact');
         }
-        
+
         // Transfer relevant classes or styling
         if (select.classList.contains('language-select')) {
             wrapper.classList.add('language-select-wrapper');
@@ -9951,11 +9956,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (select.style.marginLeft) {
             wrapper.style.marginLeft = select.style.marginLeft;
         }
-        
+
         // Insert wrapper before select and move select inside wrapper
         select.parentNode.insertBefore(wrapper, select);
         wrapper.appendChild(select);
-        
+
         // Create trigger button
         const selData = getSelectedOptionData(select);
         const trigger = document.createElement('button');
@@ -9967,34 +9972,34 @@ document.addEventListener('DOMContentLoaded', function() {
         trigger.setAttribute('tabindex', '0');
         if (select.id) trigger.id = select.id + '_customTrigger';
         if (select.title) trigger.title = select.title;
-        
+
         const valSpan = document.createElement('span');
         valSpan.className = 'custom-select-value';
         valSpan.textContent = selData.text || 'Выберите...';
-        
+
         const arrowSpan = document.createElement('span');
         arrowSpan.className = 'custom-select-arrow';
         arrowSpan.innerHTML = createChevronSvg();
-        
+
         trigger.appendChild(valSpan);
         trigger.appendChild(arrowSpan);
         wrapper.appendChild(trigger);
-        
+
         // Create popover menu
         const popover = document.createElement('div');
         popover.className = 'custom-select-popover';
         popover.setAttribute('role', 'listbox');
-        
+
         const popoverInner = document.createElement('div');
         popoverInner.className = 'custom-select-popover-inner';
         popover.appendChild(popoverInner);
         wrapper.appendChild(popover);
-        
+
         // Populate options
         rebuildCustomSelectOptions(select, wrapper);
-        
+
         // Trigger click handler
-        trigger.addEventListener('click', function(e) {
+        trigger.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
             if (select.disabled) return;
@@ -10004,17 +10009,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 openCustomSelect(wrapper);
             }
         });
-        
+
         // Keyboard navigation
-        trigger.addEventListener('keydown', function(e) {
+        trigger.addEventListener('keydown', function (e) {
             if (select.disabled) return;
             const isOpen = wrapper.classList.contains('is-open');
             const options = Array.from(wrapper.querySelectorAll('.custom-select-option:not([disabled])'));
             if (!options.length) return;
-            
+
             let currentIndex = options.findIndex(opt => opt.classList.contains('is-selected'));
             if (currentIndex === -1) currentIndex = 0;
-            
+
             if (e.key === 'ArrowDown' || e.key === 'Down') {
                 e.preventDefault();
                 if (!isOpen) {
@@ -10052,9 +10057,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         // MutationObserver for select childList & attributes
-        const observer = new MutationObserver(function(mutations) {
+        const observer = new MutationObserver(function (mutations) {
             let optionsChanged = false;
             let attrsChanged = false;
             for (const mut of mutations) {
@@ -10071,9 +10076,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         observer.observe(select, { childList: true, attributes: true, subtree: true });
-        
+
         // Listen to native change event
-        select.addEventListener('change', function() {
+        select.addEventListener('change', function () {
             syncCustomSelectFromNative(select);
         });
     }
@@ -10085,14 +10090,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Global click listener to close open selects
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (!e.target.closest('.custom-select-wrapper')) {
             closeAllCustomSelects();
         }
     });
 
     // Global escape key listener
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' || e.key === 'Esc') {
             closeAllCustomSelects();
         }
@@ -10100,7 +10105,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Observe document for dynamically added select elements
     if (typeof MutationObserver !== 'undefined') {
-        const domObserver = new MutationObserver(function(mutations) {
+        const domObserver = new MutationObserver(function (mutations) {
             for (const mutation of mutations) {
                 for (const node of mutation.addedNodes) {
                     if (node.nodeType === 1) {
@@ -10113,11 +10118,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         if (document.body) {
             domObserver.observe(document.body, { childList: true, subtree: true });
         } else {
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function () {
                 domObserver.observe(document.body, { childList: true, subtree: true });
             });
         }
@@ -10125,7 +10130,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize on DOM ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             initAllCustomSelects();
         });
     } else {
@@ -10139,30 +10144,30 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 
 // Listen for language changes to invalidate caches and re-render dynamic submenus
-window.addEventListener('npblog:langchange', function(e) {
+window.addEventListener('npblog:langchange', function (e) {
     if (typeof draftsListLoaded !== 'undefined') draftsListLoaded = false;
     if (typeof includesListLoaded !== 'undefined') includesListLoaded = false;
-    
+
     // If manage posts panel is active, refresh the list
     const managePanel = document.getElementById('managePosts');
     if (managePanel && managePanel.classList.contains('active')) {
         if (typeof loadPosts === 'function') loadPosts();
     }
-    
+
     // If drafts submenu is currently open, refresh it
     const draftsSubmenu = document.getElementById('draftsSubmenu');
     const draftsItem = draftsSubmenu ? draftsSubmenu.closest('.more-menu-item.has-submenu') : null;
     if (draftsItem && draftsItem.classList.contains('submenu-open') && typeof loadDraftsList === 'function') {
         loadDraftsList();
     }
-    
+
     // If includes submenu is currently open, refresh it
     const includesSubmenu = document.getElementById('includesSubmenu');
     const includesItem = includesSubmenu ? includesSubmenu.closest('.more-menu-item.has-submenu') : null;
     if (includesItem && includesItem.classList.contains('submenu-open') && typeof loadIncludesList === 'function') {
         loadIncludesList();
     }
-    
+
     // If articles submenu is currently open, refresh it
     const articlesSubmenu = document.getElementById('articlesSubmenu');
     const articlesItem = articlesSubmenu ? articlesSubmenu.closest('.more-menu-item.has-submenu') : null;

@@ -1,1 +1,16 @@
-[]
+{
+    "deleted_1_1787771352": {
+        "postId": "deleted_1_1787771352",
+        "postTitle": "[УДАЛЕНО] ПИЗДА",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "1-1.html",
+                "date": "26.08.2026 21:09",
+                "title": "ПИЗДА"
+            }
+        ],
+        "deleted": true,
+        "deletedAt": "26.08.2026 21:09"
+    }
+}
