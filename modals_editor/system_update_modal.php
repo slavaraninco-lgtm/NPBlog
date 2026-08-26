@@ -16,7 +16,7 @@
                 <span class="modal-icon icon-primary">🚀</span>
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.sys_title">Обновление NPBlog</h3>
-                    <div class="modal-subtitle">Обновление компонентов и ядра системы</div>
+                    <p class="modal-subtitle" data-i18n="modals.sys_subtitle">Обновление компонентов и ядра системы</p>
                 </div>
             </div>
             <div class="modal-header-actions">
@@ -99,8 +99,8 @@
             <div class="modal-header-start">
                 <span class="modal-icon icon-warning">⏪</span>
                 <div class="modal-titles">
-                    <h3 class="modal-title">Откат системы (Rollback)</h3>
-                    <div class="modal-subtitle">Восстановление предыдущей версии из резервной копии</div>
+                    <h3 class="modal-title" data-i18n="modals.sys_rollback_title">Откат системы (Rollback)</h3>
+                    <p class="modal-subtitle" data-i18n="modals.sys_rollback_subtitle">Восстановление предыдущей версии из резервной копии</p>
                 </div>
             </div>
             <div class="modal-header-actions">
@@ -110,20 +110,20 @@
 
         <!-- Тело -->
         <div class="modal-body">
-            <p class="modal-text" style="margin-bottom: 12px;">Выберите резервную копию для отката системы:</p>
+            <p class="modal-text" style="margin-bottom: 12px;" data-i18n="modals.sys_rollback_choose">Выберите резервную копию для отката системы:</p>
             <div id="restoreBackupsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto;">
-                <div style="text-align: center; padding: 20px; opacity: 0.6;">Загрузка списка бэкапов...</div>
+                <div style="text-align: center; padding: 20px; opacity: 0.6;" data-i18n="modals.sys_rollback_loading">Загрузка списка бэкапов...</div>
             </div>
 
             <div id="restoreProgressContainer" style="display: none; flex-direction: column; gap: 10px; margin-top: 16px; text-align: center;">
                 <div class="modal-spinner" style="margin: 0 auto;"></div>
-                <p class="modal-text" style="font-weight: 600; margin: 0;">Восстановление системы... (Пожалуйста, подождите)</p>
+                <p class="modal-text" style="font-weight: 600; margin: 0;" data-i18n="modals.rollback_in_progress">Восстановление системы... (Пожалуйста, подождите)</p>
             </div>
 
             <div id="restoreSuccessContainer" style="display: none; flex-direction: column; gap: 14px; align-items: center; text-align: center; padding: 20px 0;">
                 <div style="font-size: 40px;">✅</div>
-                <p style="color: #10b981; font-weight: 700; font-size: 18px; margin: 0;">Система успешно восстановлена!</p>
-                <button type="button" onclick="window.location.reload()" class="modal-btn modal-btn-primary" style="padding: 10px 24px;">
+                <p style="color: #10b981; font-weight: 700; font-size: 18px; margin: 0;" data-i18n="modals.rollback_success">Система успешно восстановлена!</p>
+                <button type="button" onclick="window.location.reload()" class="modal-btn modal-btn-primary" style="padding: 10px 24px;" data-i18n="modals.sys_reload_page">
                     🔄 Обновить страницу
                 </button>
             </div>

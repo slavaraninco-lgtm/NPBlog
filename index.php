@@ -336,7 +336,7 @@ if (file_exists($versionFile)) {
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openBackupManager()" data-i18n="header.menu_backup_manager">Менеджер бэкапов</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openAutosaveManager()" data-i18n="header.menu_autosave_manager">Менеджер автосохранений</button>
                     <button type="button" class="editor-menu-item" id="theme-toggle" role="menuitem" onclick="openThemeManager()" data-i18n="header.menu_theme_manager">Изменить тему</button>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="window.location.href='ftp.php'" data-i18n="header.menu_ftp_publish">Опубликовать по FTP</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openFtpModal()" data-i18n="header.menu_ftp_publish">Опубликовать по FTP</button>
                     <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='<?php echo getDataUrl('blog.html'); ?>'" data-i18n="header.menu_go_to_blog">Перейти к Blog.html</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openSystemUpdateModal()" data-i18n="header.menu_update_npblog">Обновить NPBlog</button>
                     <?php if (!empty($passwordHash)): ?>
@@ -474,6 +474,9 @@ if (file_exists($versionFile)) {
 <!-- Модальные окна обновления и отката системы -->
 <?php require_once __DIR__ . '/modals_editor/system_update_modal.php'; ?>
 
+<!-- Модальное окно публикации и загрузки по FTP -->
+<?php require_once __DIR__ . '/modals_editor/ftp_upload_modal.php'; ?>
+
 <script>
 function openRestoreModal() {
     closeSystemUpdateModal();
@@ -563,7 +566,7 @@ let currentSelectedFont = null;
 
 function openAdditionalSettings(postId, postTitle) {
     currentAdditionalPostId = postId;
-    document.getElementById('additionalSettingsPostTitle').textContent = 'Статья: ' + postTitle;
+    document.getElementById('additionalSettingsPostTitle').textContent = (window.t ? window.t('modals.post_label', 'Статья: ') : 'Статья: ') + postTitle;
     
     // Загружаем настройки из post_backgrounds.json
     fetch('get_post_backgrounds.php?postId=' + postId)
@@ -3916,21 +3919,24 @@ function startSystemUpdateProcess() {
     <div class="modal-content" style="background: var(--bg-color); border-radius: 16px; max-width: 95vw; width: 1200px; height: 90vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-color);">
         <!-- Заголовок -->
         <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <h3 style="margin: 0; color: var(--text-color); font-size: 20px; display: flex; align-items: center; gap: 10px;">
-                <span>🎨</span> Редактор изображений
-            </h3>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+                <h3 style="margin: 0; color: var(--text-color); font-size: 18px; display: flex; align-items: center; gap: 10px;">
+                    <span>🎨</span> <span data-i18n="modals.img_editor_title">Редактор изображений</span>
+                </h3>
+                <p class="modal-subtitle" style="margin: 0; font-size: 12px; opacity: 0.7; color: var(--text-color);" data-i18n="modals.img_editor_subtitle">Рисование, аннотации, стрелки и обрезка</p>
+            </div>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" id="imgEditorUndoBtn" onclick="undoImgEditorState()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px;" title="Отменить последнее действие (Ctrl+Z)">
+                <button type="button" id="imgEditorUndoBtn" onclick="undoImgEditorState()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px;" title="Отменить последнее действие (Ctrl+Z)" data-i18n-title="modals.img_editor_undo_title">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
                         <path d="M3 7v6h6" />
                         <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
                     </svg>
-                    Отменить
+                    <span data-i18n="modals.ascii_undo">Отменить</span>
                 </button>
                 <button type="button" onclick="saveImgEditorChanges()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color); color: #fff; border: none; font-weight: bold; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
-                    <span>💾</span> Сохранить
+                    <span>💾</span> <span data-i18n="common.save">Сохранить</span>
                 </button>
-                <button type="button" onclick="closeImgEditorModal()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;">×</button>
+                <button type="button" onclick="closeImgEditorModal()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;" title="Закрыть" data-i18n-title="common.close">×</button>
             </div>
         </div>
         

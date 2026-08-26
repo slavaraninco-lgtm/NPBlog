@@ -33,6 +33,7 @@
 | [`custom_fonts_modal.php`](custom_fonts_modal.php) | `customFontsModal` | Управление и выбор пользовательских шрифтов (.ttf, .otf, .woff, .woff2) | ✅ Переписано на фреймворк |
 | [`additional_settings_modal.php`](additional_settings_modal.php) | `additionalSettingsModal` | Дополнительные настройки статьи (индивидуальный фон, область, подложка) | ✅ Переписано на фреймворк |
 | [`cell_color_modal.php`](cell_color_modal.php) | `cellColorDialog` | Выбор цвета заливки ячейки таблицы (палитра и кастомный цвет) | ✅ Переписано на фреймворк |
+| [`ftp_upload_modal.php`](ftp_upload_modal.php) | `ftpUploadModal` | Публикация и стриминговая загрузка файлов блога по FTP/FTPS | ✅ Переписано на фреймворк |
 
 ---
 

@@ -15,6 +15,7 @@
                 <span class="modal-icon icon-info">🔢</span>
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.numbering_check_title">Проверка нумерации статей</h3>
+                    <p class="modal-subtitle" data-i18n="modals.numbering_check_subtitle">Анализ порядка и целостности ID статей</p>
                 </div>
             </div>
             <div class="modal-header-actions">
