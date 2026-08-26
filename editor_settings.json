@@ -1,6 +1,7 @@
 {
     "language": "ru",
     "tutorialCompleted": true,
+    "initial_setup_completed": true,
     "blog_paths": [
         "C:\\xampp\\htdocs\\data"
     ],
@@ -225,5 +226,8 @@
         }
     ],
     "headerHeight": 64,
-    "headerTwoRows": false
+    "headerTwoRows": false,
+    "autosaveEnabled": true,
+    "autosaveInterval": 60,
+    "data_path": "C:\\xampp\\htdocs\\data"
 }

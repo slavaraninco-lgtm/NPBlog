@@ -6465,7 +6465,7 @@ function startTutorial() {
         .then(response => response.json())
         .then(data => {
             const settings = data.settings || {};
-            if (settings.tutorialCompleted) return;
+            if (settings.tutorialCompleted || settings.initial_setup_completed === false) return;
             
             currentTutorialStep = 0;
             showTutorialStep();

@@ -477,6 +477,9 @@ if (file_exists($versionFile)) {
 <!-- Модальное окно публикации и загрузки по FTP -->
 <?php require_once __DIR__ . '/modals_editor/ftp_upload_modal.php'; ?>
 
+<!-- Модальное окно первоначальной настройки -->
+<?php require_once __DIR__ . '/modals_editor/initial_setup_modal.php'; ?>
+
 <script>
 function openRestoreModal() {
     closeSystemUpdateModal();
@@ -2293,6 +2296,15 @@ function loadAndApplyAllSettings() {
                 
                 if (typeof adjustHeaderPadding === 'function') {
                     adjustHeaderPadding();
+                }
+
+                // Проверка первоначальной настройки (Onboarding Wizard)
+                if (settings.initial_setup_completed === false) {
+                    setTimeout(() => {
+                        if (typeof openInitialSetupModal === 'function') {
+                            openInitialSetupModal();
+                        }
+                    }, 200);
                 }
             }
         })

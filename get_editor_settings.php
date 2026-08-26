@@ -18,6 +18,7 @@ $defaults = [
     'autosaveEnabled' => false,
     'autosaveInterval' => 60,
     'tutorialCompleted' => false,
+    'initial_setup_completed' => false,
     'contentWidth' => 920,
     'blog_paths' => [],
     'active_blog_path' => '',

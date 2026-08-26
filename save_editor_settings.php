@@ -63,6 +63,20 @@ if (isset($data['tutorialCompleted'])) {
     $existingSettings['tutorialCompleted'] = (bool)$data['tutorialCompleted'];
 }
 
+if (isset($data['initial_setup_completed'])) {
+    $existingSettings['initial_setup_completed'] = (bool)$data['initial_setup_completed'];
+}
+
+if (isset($data['blog_title'])) {
+    $blogViewFile = getDataPath('blog-view-settings.json');
+    $blogViewSettings = [];
+    if (file_exists($blogViewFile)) {
+        $blogViewSettings = json_decode(file_get_contents($blogViewFile), true) ?: [];
+    }
+    $blogViewSettings['title'] = trim($data['blog_title']);
+    safeWriteJson($blogViewFile, $blogViewSettings);
+}
+
 if (isset($data['headerLayout']) && is_array($data['headerLayout'])) {
     $existingSettings['headerLayout'] = $data['headerLayout'];
 }
@@ -174,6 +188,8 @@ if (isset($data['password_enabled'])) {
             $existingSettings['password_hash'] = password_hash($data['new_password'], $algo);
             $existingSettings['failed_attempts'] = 0;
             $existingSettings['lockout_until'] = 0;
+            $_SESSION['authenticated'] = true;
+            $_SESSION['auth_time'] = time();
         } else if (empty($existingSettings['password_hash'])) {
             echo json_encode(['success' => false, 'error' => 'Необходимо указать новый пароль для включения защиты']);
             exit;
