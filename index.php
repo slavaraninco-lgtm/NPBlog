@@ -336,7 +336,7 @@ if (file_exists($versionFile)) {
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openBackupManager()" data-i18n="header.menu_backup_manager">Менеджер бэкапов</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openAutosaveManager()" data-i18n="header.menu_autosave_manager">Менеджер автосохранений</button>
                     <button type="button" class="editor-menu-item" id="theme-toggle" role="menuitem" onclick="openThemeManager()" data-i18n="header.menu_theme_manager">Изменить тему</button>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="window.location.href='ftp.php'" data-i18n="header.menu_ftp_publish">Опубликовать по FTP</button>
+                    <button type="button" class="editor-menu-item" role="menuitem" onclick="openFtpModal()" data-i18n="header.menu_ftp_publish">Опубликовать по FTP</button>
                     <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='<?php echo getDataUrl('blog.html'); ?>'" data-i18n="header.menu_go_to_blog">Перейти к Blog.html</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openSystemUpdateModal()" data-i18n="header.menu_update_npblog">Обновить NPBlog</button>
                     <?php if (!empty($passwordHash)): ?>
@@ -473,6 +473,9 @@ if (file_exists($versionFile)) {
 
 <!-- Модальные окна обновления и отката системы -->
 <?php require_once __DIR__ . '/modals_editor/system_update_modal.php'; ?>
+
+<!-- Модальное окно публикации и загрузки по FTP -->
+<?php require_once __DIR__ . '/modals_editor/ftp_upload_modal.php'; ?>
 
 <script>
 function openRestoreModal() {

@@ -21,6 +21,25 @@ function resetCredentials() {
     }
 }
 
+if (isset($_GET['action']) && $_GET['action'] === 'get_settings') {
+    header('Content-Type: application/json; charset=utf-8');
+    $savedCredentials = loadCredentials();
+    $settingsFile = __DIR__ . '/editor_settings.json';
+    $settings = file_exists($settingsFile) ? (json_decode(file_get_contents($settingsFile), true) ?: []) : [];
+    $availableBlogPaths = isset($settings['blog_paths']) && is_array($settings['blog_paths']) ? $settings['blog_paths'] : [];
+    if (empty($availableBlogPaths)) {
+        $availableBlogPaths = [isset($settings['data_path']) ? $settings['data_path'] : 'data'];
+    }
+    $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_path'] : (isset($settings['active_blog_path']) ? $settings['active_blog_path'] : $availableBlogPaths[0]);
+    echo json_encode([
+        'success' => true,
+        'credentials' => $savedCredentials,
+        'availableBlogPaths' => $availableBlogPaths,
+        'currentActiveBlog' => $currentActiveBlog
+    ]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reset') {
     header('Content-Type: application/json; charset=utf-8');
     resetCredentials();
