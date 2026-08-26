@@ -56,6 +56,39 @@ if (file_exists($versionFile)) {
         if(/Android/i.test(navigator.userAgent)) document.documentElement.classList.add('is-android');
         const DATA_URL_PREFIX = '<?php echo getDataUrl(); ?>';
         window.isDevBuild = <?php echo $isDevBuild ? 'true' : 'false'; ?>;
+
+        // Ранний перехватчик ошибок для перехода в Safe Mode
+        window._pendingSafeModeError = null;
+        window.addEventListener('error', function(e) {
+            const msg = e.message || 'Ошибка выполнения скрипта';
+            const src = e.filename || '';
+            const errorObj = {
+                message: msg,
+                filename: src,
+                lineno: e.lineno,
+                colno: e.colno,
+                stack: e.error ? e.error.stack : ''
+            };
+            if (typeof window.enterSafeMode === 'function') {
+                window.enterSafeMode(errorObj);
+            } else {
+                window._pendingSafeModeError = errorObj;
+            }
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            const reason = e.reason || {};
+            const msg = reason.message || (typeof reason === 'string' ? reason : 'Необработанная ошибка Promise');
+            const errorObj = {
+                message: msg,
+                stack: reason.stack || ''
+            };
+            if (typeof window.enterSafeMode === 'function') {
+                window.enterSafeMode(errorObj);
+            } else {
+                window._pendingSafeModeError = errorObj;
+            }
+        });
         
         // Global Fetch Interceptor to automatically append CSRF Token headers
         // Global Fetch Interceptor to automatically append CSRF Token headers and handle session expiration
@@ -479,6 +512,9 @@ if (file_exists($versionFile)) {
 
 <!-- Модальное окно первоначальной настройки -->
 <?php require_once __DIR__ . '/modals_editor/initial_setup_modal.php'; ?>
+
+<!-- Модальное окно Safe Mode (Аварийное восстановление) -->
+<?php require_once __DIR__ . '/modals_editor/safe_mode_modal.php'; ?>
 
 <script>
 function openRestoreModal() {

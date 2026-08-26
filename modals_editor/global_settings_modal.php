@@ -293,6 +293,7 @@ if (!isset($availableLanguages)) {
                             <button type="button" onclick="checkPostNumbering()" class="modal-btn modal-btn-primary" data-i18n="settings.exp_check_num_btn">Проверка нумерации</button>
                             <button type="button" onclick="resetTutorial()" class="modal-btn modal-btn-secondary" data-i18n="settings.exp_reset_guide_btn">Сбросить обучение</button>
                             <button type="button" onclick="closeGlobalSettings(); openInitialSetupModal();" class="modal-btn modal-btn-secondary" data-i18n="setup.rerun_setup_btn">🚀 Первоначальная настройка</button>
+                            <button type="button" onclick="closeGlobalSettings(); enterSafeMode('Тестовый запуск Safe Mode (проверка интерфейса аварийного восстановления)');" class="modal-btn modal-btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">🛡️ Safe Mode</button>
                             <button type="button" onclick="deleteAllCustomTemplates()" class="modal-btn modal-btn-danger" data-i18n="settings.exp_delete_templates_btn">Удалить кастомные шаблоны</button>
                         </div>
                     </div>

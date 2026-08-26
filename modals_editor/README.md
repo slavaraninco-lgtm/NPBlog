@@ -35,6 +35,7 @@
 | [`cell_color_modal.php`](cell_color_modal.php) | `cellColorDialog` | Выбор цвета заливки ячейки таблицы (палитра и кастомный цвет) | ✅ Переписано на фреймворк |
 | [`ftp_upload_modal.php`](ftp_upload_modal.php) | `ftpUploadModal` | Публикация и стриминговая загрузка файлов блога по FTP/FTPS | ✅ Переписано на фреймворк |
 | [`initial_setup_modal.php`](initial_setup_modal.php) | `initialSetupModal` | Мастер первоначальной настройки редактора (Onboarding Wizard) | ✅ Переписано на фреймворк |
+| [`safe_mode_modal.php`](safe_mode_modal.php) | `safeModeOverlay` | Аварийный режим Safe Mode и восстановление системы из ZIP-архива | ✅ Переписано на фреймворк |
 
 ---
 

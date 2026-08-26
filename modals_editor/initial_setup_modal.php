@@ -38,11 +38,9 @@ if (file_exists($blogViewSettingsFile)) {
         <!-- Шапка мастера настройки -->
         <div class="modal-header" style="padding: 18px 24px 14px 24px;">
             <div class="modal-header-start" style="gap: 14px;">
-                <span class="modal-icon icon-primary" style="font-size: 26px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(59, 130, 246, 0.12); border-radius: 12px;">🚀</span>
                 <div class="modal-titles">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
                         <h3 class="modal-title" data-i18n="setup.title" style="font-size: 19px; font-weight: 700; letter-spacing: -0.01em;">Первоначальная настройка</h3>
-                        
                     </div>
                     <p class="modal-subtitle" data-i18n="setup.subtitle" style="font-size: 13px; opacity: 0.75; margin: 0;">Быстрая конфигурация основных параметров редактора NPBlog</p>
                 </div>
