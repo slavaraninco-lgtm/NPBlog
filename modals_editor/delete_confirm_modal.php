@@ -15,6 +15,7 @@
                 <span class="modal-icon icon-danger">🗑️</span>
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.delete_confirm_title">Удалить статью?</h3>
+                    <p class="modal-subtitle" data-i18n="modals.delete_confirm_subtitle">Действие нельзя будет отменить</p>
                 </div>
             </div>
             <div class="modal-header-actions">

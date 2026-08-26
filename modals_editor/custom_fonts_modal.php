@@ -15,7 +15,7 @@
                 <span class="modal-icon icon-primary">🔤</span>
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.fonts_title">Пользовательские шрифты</h3>
-                    <div class="modal-subtitle" data-i18n="modals.fonts_subtitle">Загрузка и выбор шрифтов (.ttf, .otf, .woff, .woff2)</div>
+                    <p class="modal-subtitle" data-i18n="modals.fonts_subtitle">Загрузка и выбор шрифтов (.ttf, .otf, .woff, .woff2)</p>
                 </div>
             </div>
             <div class="modal-header-actions">
