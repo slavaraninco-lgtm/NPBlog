@@ -139,7 +139,7 @@ $articleHtml = str_replace('{{CONTENT}}', $wrappedContent, $articleHtml);
 
 // Сохраняем обновленный файл
 $filename = validateSafePath($blogDir, $meta[$postIndex]['filename']);
-file_put_contents($filename, $articleHtml);
+file_put_contents($filename, $articleHtml, LOCK_EX);
 
 // Создаем бэкап перед обновлением
 $backupDir = validateSafePath(__DIR__ . '/data_backup/', (string)$postId) . '/';
@@ -162,7 +162,7 @@ $nextBackupNumber = $maxBackupNumber + 1;
 
 // Сохраняем бэкап
 $backupFilename = validateSafePath($backupDir, $postId . '-' . $nextBackupNumber . '.html');
-file_put_contents($backupFilename, $articleHtml);
+file_put_contents($backupFilename, $articleHtml, LOCK_EX);
 
 // Сохраняем метаданные бэкапа
 $backupMetaFile = validateSafePath(__DIR__ . '/data_backup/', 'backup-meta.json');
@@ -187,12 +187,12 @@ $backupMeta[$postId]['backups'][] = [
     'title' => $data['title']
 ];
 
-file_put_contents($backupMetaFile, json_encode($backupMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+safeWriteJson($backupMetaFile, $backupMeta);
 
 // Обновляем posts-meta.json (сохраняем оригинальную дату)
 $meta[$postIndex]['title'] = $data['title'];
 // Дату НЕ обновляем - она остается оригинальной
-file_put_contents($metaFile, json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+safeWriteJson($metaFile, $meta);
 
 require_once __DIR__ . '/rss_helper.php';
 generateRssFeed();

@@ -66,10 +66,10 @@ try {
 
     $content = file_get_contents($filename);
 
-    // Парсим HTML
+    // Парсим HTML с явным указанием UTF-8 кодировки
     $dom = new DOMDocument();
     libxml_use_internal_errors(true);
-    $dom->loadHTML($content, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    $dom->loadHTML('<?xml encoding="UTF-8">' . $content, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
     libxml_clear_errors();
 
     $xpath = new DOMXPath($dom);

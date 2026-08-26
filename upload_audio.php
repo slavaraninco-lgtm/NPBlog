@@ -42,6 +42,13 @@ if (!is_writable($uploadDir)) {
     exit;
 }
 
+$allowedAudioExts = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'opus'];
+$extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+if (!in_array($extension, $allowedAudioExts)) {
+    echo json_encode(['success' => false, 'error' => 'Недопустимое расширение аудио файла. Разрешены только: ' . implode(', ', $allowedAudioExts)]);
+    exit;
+}
+
 // Проверяем тип файла безопасно
 $mimeType = '';
 if (function_exists('finfo_open')) {
@@ -54,21 +61,20 @@ if (function_exists('finfo_open')) {
 if (empty($mimeType) && function_exists('mime_content_type')) {
     $mimeType = @mime_content_type($file['tmp_name']);
 }
-if (empty($mimeType)) {
-    $mimeType = $file['type'];
-}
 
-$allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/aac'];
-if (empty($mimeType) || (!in_array($mimeType, $allowedTypes) && !in_array($file['type'], $allowedTypes))) {
+$allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/flac', 'audio/opus', 'application/ogg', 'application/octet-stream'];
+if (!empty($mimeType) && !in_array($mimeType, $allowedTypes)) {
     echo json_encode(['success' => false, 'error' => 'Недопустимый тип файла. Разрешены только аудио файлы.']);
     exit;
 }
 
 // Генерируем безопасное имя файла
-$extension = pathinfo($file['name'], PATHINFO_EXTENSION);
 $baseName = pathinfo($file['name'], PATHINFO_FILENAME);
 // Удаляем только опасные символы, сохраняя кириллицу
-$safeName = preg_replace('/[\/\\\:*?"<>|]/', '_', $baseName);
+$safeName = preg_replace('/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/u', '_', $baseName);
+if (empty($safeName)) {
+    $safeName = 'audio_' . uniqid();
+}
 $fileName = $safeName . '.' . $extension;
 
 // Проверяем, существует ли файл с таким именем

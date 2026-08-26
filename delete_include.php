@@ -31,7 +31,7 @@ if (unlink($filepath)) {
         $meta = json_decode(file_get_contents($metaFile), true) ?: [];
         if (isset($meta[$filename])) {
             unset($meta[$filename]);
-            file_put_contents($metaFile, json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            safeWriteJson($metaFile, $meta);
         }
     }
     

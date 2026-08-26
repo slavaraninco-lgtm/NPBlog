@@ -75,7 +75,7 @@ function generateRssFeed() {
         }
         
         // Формируем абсолютный URL статьи
-        $articleUrl = $baseUrl . '/data/blog/' . $post['filename'];
+        $articleUrl = !empty($baseUrl) ? rtrim($baseUrl, '/') . '/' . ltrim(getDataUrl('blog/' . $post['filename']), '/') : getDataUrl('blog/' . $post['filename']);
         
         // Заменяем плейсхолдеры в шаблоне контента
         $formattedContent = str_replace(
@@ -84,9 +84,25 @@ function generateRssFeed() {
             $contentTemplate
         );
         
-        // Преобразуем дату статьи (формат d.m.Y H:i) в формат RFC 822 (DATE_RSS)
-        $cleanDate = trim(preg_replace('/\s*\(отредактировано\)/u', '', $post['date']));
-        $dateObj = DateTime::createFromFormat('d.m.Y H:i', $cleanDate);
+        // Преобразуем дату статьи в формат RFC 822 (DATE_RSS)
+        $cleanDate = isset($post['date']) ? trim(preg_replace('/\s*\(отредактировано\)/u', '', $post['date'])) : '';
+        $dateObj = null;
+        if (!empty($cleanDate)) {
+            $formats = ['d.m.Y H:i', 'd.m.Y H:i:s', 'd.m.Y', 'Y-m-d H:i:s', 'Y-m-d H:i', 'Y-m-d'];
+            foreach ($formats as $fmt) {
+                $parsed = DateTime::createFromFormat($fmt, $cleanDate);
+                if ($parsed !== false) {
+                    $dateObj = $parsed;
+                    break;
+                }
+            }
+            if (!$dateObj) {
+                $ts = strtotime($cleanDate);
+                if ($ts !== false && $ts > 0) {
+                    $dateObj = (new DateTime())->setTimestamp($ts);
+                }
+            }
+        }
         $pubDate = $dateObj ? $dateObj->format(DATE_RSS) : date(DATE_RSS);
         
         $itemsXml .= "    <item>\n";

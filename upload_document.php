@@ -23,11 +23,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
     
     if ($file['error'] === UPLOAD_ERR_OK) {
         $fileName = basename($file['name']);
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $baseName = pathinfo($fileName, PATHINFO_FILENAME);
+        
+        $allowedDocExts = [
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 
+            'odt', 'ods', 'odp', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'
+        ];
+        
+        if (!in_array($extension, $allowedDocExts)) {
+            echo json_encode(['success' => false, 'error' => 'Недопустимый формат документа']);
+            exit;
+        }
         
         // Очищаем имя файла от опасных символов
-        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
-        $baseName = pathinfo($fileName, PATHINFO_FILENAME);
         $safeName = preg_replace('/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/u', '_', $baseName);
+        if (empty($safeName)) {
+            $safeName = 'doc_' . uniqid();
+        }
         $fileName = $safeName . '.' . $extension;
         
         $targetPath = $uploadDir . $fileName;

@@ -51,11 +51,34 @@ if ($file['size'] > $maxSize) {
 
 // Генерируем безопасное имя файла
 $originalName = basename($file['name']);
-$extension = pathinfo($originalName, PATHINFO_EXTENSION);
+$extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 $baseName = pathinfo($originalName, PATHINFO_FILENAME);
+
+// Список разрешенных расширений для общих файлов
+$allowedExtensions = [
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 
+    'odt', 'ods', 'odp', 'csv', 'zip', 'rar', '7z', 'tar', 'gz', 'bz2',
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'mp3', 'wav', 'ogg', 
+    'mp4', 'webm', 'flac', 'aac', 'm4a', 'mov', 'mkv', 'avi', 'json', 'xml'
+];
+
+// Черный список исполняемых расширений
+$blockedExtensions = [
+    'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps', 'phar', 
+    'inc', 'pht', 'htm', 'html', 'shtml', 'cgi', 'pl', 'py', 'jsp', 'asp', 
+    'aspx', 'exe', 'bat', 'sh', 'cmd', 'htaccess', 'htpasswd', 'js', 'vbs'
+];
+
+if (in_array($extension, $blockedExtensions) || !in_array($extension, $allowedExtensions)) {
+    echo json_encode(['success' => false, 'error' => 'Недопустимый тип файла. Загрузка исполняемых файлов запрещена.']);
+    exit;
+}
 
 // Очищаем имя файла от опасных символов
 $safeName = preg_replace('/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/u', '_', $baseName);
+if (empty($safeName)) {
+    $safeName = 'file_' . uniqid();
+}
 $fileName = $safeName . '.' . $extension;
 
 // Проверяем, существует ли файл с таким именем

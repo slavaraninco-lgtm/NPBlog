@@ -138,14 +138,14 @@ function renumberPosts() {
     }
     
     // Сохраняем обновленные метаданные
-    file_put_contents($metaFile, json_encode($newMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    safeWriteJson($metaFile, $newMeta);
     
     // Сохраняем обновленные настройки фонов
     saveBackgrounds($newBackgrounds);
     
     // Сортируем бэкапы по ключам и сохраняем
     ksort($backupMeta);
-    file_put_contents($backupMetaFile, json_encode($backupMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    safeWriteJson($backupMetaFile, $backupMeta);
     
     return [
         'success' => true,

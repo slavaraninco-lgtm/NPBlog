@@ -1,0 +1,26 @@
+[
+    {
+        "code": "ru",
+        "name": "Русский",
+        "file": "ru.json",
+        "smile": "🇷🇺"
+    },
+    {
+        "code": "en",
+        "name": "English",
+        "file": "en.json",
+        "smile": "🇬🇧"
+    },
+    {
+        "code": "uk",
+        "name": "Українська",
+        "file": "uk.json",
+        "smile": "🇺🇦"
+    },
+    {
+        "code": "lv",
+        "name": "Latviešu",
+        "file": "lv.json",
+        "smile": "🇱🇻"
+    }
+]

@@ -1,24 +1,48 @@
+// ——— Вспомогательные функции экранирования ———
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function escapeHtmlJS(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
 // ——— Система уведомлений ———
-    function showNotification(message, type = 'info', title = '') {
-        const container = document.getElementById('notificationContainer');
-        if (!container) return;
-        
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        
-        const icons = {
-            success: '✓',
-            error: '✕',
-            warning: '⚠',
-            info: 'ℹ'
-        };
-        
-        const titles = {
-            success: title || 'Успешно',
-            error: title || 'Ошибка',
-            warning: title || 'Внимание',
-            info: title || 'Информация'
-        };
+function showNotification(message, type = 'info', title = '') {
+    const container = document.getElementById('notificationContainer');
+    if (!container) return;
+    
+    // Auto-translate message and title through i18n engine
+    if (window.NPBlogI18n && typeof window.NPBlogI18n.translateMessage === 'function') {
+        message = window.NPBlogI18n.translateMessage(message);
+        if (title) {
+            title = window.NPBlogI18n.translateMessage(title);
+        }
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    
+    const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+    
+    const titles = {
+        success: title || (window.t ? window.t('common.success', 'Успешно') : 'Успешно'),
+        error: title || (window.t ? window.t('common.error', 'Ошибка') : 'Ошибка'),
+        warning: title || (window.t ? window.t('common.warning', 'Внимание') : 'Внимание'),
+        info: title || (window.t ? window.t('common.info', 'Информация') : 'Информация')
+    };
         
         notification.innerHTML = `
             <div class="notification-icon">${icons[type] || icons.info}</div>
@@ -58,7 +82,13 @@
     let editorMode = 'visual'; // 'visual' | 'code'
     let savedRange = null;
     
+    // Флаги состояния и защита от потери данных
+    let isEditorDirty = false;
+    let localDraftSaveTimeout = null;
+    let isSavingArticle = false;
+    
     // Система истории изменений
+    const MAX_HISTORY_STATES = 50;
     let historyStack = [];
     let historyIndex = -1;
     let isRestoringHistory = false;
@@ -66,6 +96,148 @@
     let lastActionType = null;
     let lastActionTime = 0;
     let cursorMoved = false;
+
+    function getLocalDraftStorageKey() {
+        return currentEditId ? `npblog_draft_post_${currentEditId}` : 'npblog_draft_new_post';
+    }
+
+    function markEditorDirty() {
+        isEditorDirty = true;
+        scheduleLocalDraftSave();
+    }
+
+    function scheduleLocalDraftSave() {
+        clearTimeout(localDraftSaveTimeout);
+        localDraftSaveTimeout = setTimeout(() => {
+            saveLocalDraftNow();
+        }, 1200);
+    }
+
+    function saveLocalDraftNow() {
+        try {
+            const titleInput = document.getElementById('title');
+            const ve = document.getElementById('contentVisual');
+            const ta = document.getElementById('content');
+            if (!titleInput || (!ve && !ta)) return;
+            
+            const title = titleInput.value.trim();
+            const content = editorMode === 'visual' ? (ve ? ve.innerHTML : '') : (ta ? ta.value : '');
+            
+            const hasText = title.length > 0 || (content.length > 0 && content !== '<br>' && content !== '<div><br></div>');
+            if (!hasText) {
+                localStorage.removeItem(getLocalDraftStorageKey());
+                return;
+            }
+            
+            const draft = {
+                title: title,
+                content: content,
+                mode: editorMode,
+                currentEditId: currentEditId,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(getLocalDraftStorageKey(), JSON.stringify(draft));
+        } catch (e) {
+            console.warn('Не удалось сохранить локальный черновик:', e);
+        }
+    }
+
+    function clearLocalDraft() {
+        isEditorDirty = false;
+        try {
+            localStorage.removeItem(getLocalDraftStorageKey());
+            localStorage.removeItem('npblog_draft_new_post');
+        } catch (e) {}
+    }
+
+    function checkLocalDraftOnStartup() {
+        try {
+            if (currentEditId) return;
+            const raw = localStorage.getItem('npblog_draft_new_post');
+            if (!raw) return;
+            const draft = JSON.parse(raw);
+            if (!draft || (!draft.title && !draft.content)) return;
+            
+            const title = document.getElementById('title')?.value?.trim();
+            const ve = document.getElementById('contentVisual');
+            const ta = document.getElementById('content');
+            const currentContent = editorMode === 'visual' ? (ve?.innerHTML?.trim() || '') : (ta?.value?.trim() || '');
+            
+            if (!title && (!currentContent || currentContent === '<br>' || currentContent === '<div><br></div>')) {
+                const dateObj = new Date(draft.timestamp);
+                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = dateObj.toLocaleDateString();
+                showDraftRestoreToast(draft, `${dateStr} ${timeStr}`);
+            }
+        } catch (e) {
+            console.error('Ошибка проверки локального черновика:', e);
+        }
+    }
+
+    function showDraftRestoreToast(draft, timeFormatted) {
+        const container = document.getElementById('notificationContainer');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = 'notification info draft-restore-toast';
+        toast.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-left: 4px solid #2196F3; max-width: 480px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);';
+        
+        const textSpan = document.createElement('span');
+        textSpan.style.flex = '1';
+        const displayTitle = draft.title ? (draft.title.length > 30 ? draft.title.substring(0, 30) + '...' : draft.title) : 'Без названия';
+        textSpan.innerHTML = `📝 Несохранённый черновик (${timeFormatted}): <b>${escapeHtml(displayTitle)}</b>`;
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.style.display = 'flex';
+        actionsDiv.style.gap = '8px';
+        actionsDiv.style.alignItems = 'center';
+        
+        const restoreBtn = document.createElement('button');
+        restoreBtn.type = 'button';
+        restoreBtn.textContent = 'Восстановить';
+        restoreBtn.style.cssText = 'background: #2196F3; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;';
+        restoreBtn.onclick = () => {
+            if (draft.title) document.getElementById('title').value = draft.title;
+            const ve = document.getElementById('contentVisual');
+            const ta = document.getElementById('content');
+            if (draft.mode === 'code') {
+                setMode('code');
+                if (ta) ta.value = draft.content || '';
+            } else {
+                setMode('visual');
+                if (ve) {
+                    ve.innerHTML = draft.content || '';
+                    wrapExistingEditorImages();
+                }
+            }
+            markEditorDirty();
+            showNotification('Локальный черновик успешно восстановлен!', 'success');
+            toast.remove();
+        };
+        
+        const dismissBtn = document.createElement('button');
+        dismissBtn.type = 'button';
+        dismissBtn.textContent = '×';
+        dismissBtn.style.cssText = 'background: transparent; border: none; color: inherit; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px;';
+        dismissBtn.onclick = () => {
+            localStorage.removeItem('npblog_draft_new_post');
+            toast.remove();
+        };
+        
+        actionsDiv.appendChild(restoreBtn);
+        actionsDiv.appendChild(dismissBtn);
+        toast.appendChild(textSpan);
+        toast.appendChild(actionsDiv);
+        container.appendChild(toast);
+    }
+
+    window.addEventListener('beforeunload', function(e) {
+        if (isEditorDirty && typeof hasEditorContent === 'function' && hasEditorContent()) {
+            e.preventDefault();
+            e.returnValue = 'У вас есть несохраненные изменения в статье. Вы уверены, что хотите покинуть страницу?';
+            return e.returnValue;
+        }
+    });
     
     // Загружаем пользовательские шрифты при инициализации редактора
     function loadEditorCustomFonts() {
@@ -980,6 +1152,12 @@
             historyStack = historyStack.slice(0, historyIndex + 1);
             historyStack.push(currentState);
             historyIndex++;
+            
+            while (historyStack.length > MAX_HISTORY_STATES) {
+                historyStack.shift();
+                historyIndex = Math.max(0, historyIndex - 1);
+            }
+            markEditorDirty();
         }
         
         updateUndoRedoButtons();
@@ -1194,14 +1372,27 @@
     }
 
     function openTableDialog() {
-        document.getElementById('tableDialog').style.display = 'block';
-        document.getElementById('tableRows').focus();
+        if (window.Modal) {
+            Modal.open('#tableDialog');
+        } else {
+            const dlg = document.getElementById('tableDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        const rowsInput = document.getElementById('tableRows');
+        if (rowsInput) rowsInput.focus();
     }
 
     function closeTableDialog() {
-        document.getElementById('tableDialog').style.display = 'none';
-        document.getElementById('tableRows').value = '3';
-        document.getElementById('tableCols').value = '3';
+        if (window.Modal) {
+            Modal.close('#tableDialog');
+        } else {
+            const dlg = document.getElementById('tableDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
+        const rowsInput = document.getElementById('tableRows');
+        if (rowsInput) rowsInput.value = '3';
+        const colsInput = document.getElementById('tableCols');
+        if (colsInput) colsInput.value = '3';
     }
 
     function addTableRow() {
@@ -1382,11 +1573,21 @@
 
     function openCellColorDialog() {
         if (!window.contextMenuTableCell) return;
-        document.getElementById('cellColorDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#cellColorDialog');
+        } else {
+            const dlg = document.getElementById('cellColorDialog');
+            if (dlg) dlg.style.display = 'flex';
+        }
     }
 
     function closeCellColorDialog() {
-        document.getElementById('cellColorDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#cellColorDialog');
+        } else {
+            const dlg = document.getElementById('cellColorDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
     }
 
     function setCellColor(color) {
@@ -1404,8 +1605,12 @@
         
         saveToHistory();
         closeCellColorDialog();
-        showNotification('Цвет ячейки изменен', 'success');
+        showNotification(window.t ? window.t('notifications.cell_color_changed', 'Цвет ячейки изменен') : 'Цвет ячейки изменен', 'success');
     }
+
+    window.openCellColorDialog = openCellColorDialog;
+    window.closeCellColorDialog = closeCellColorDialog;
+    window.setCellColor = setCellColor;
 
     function insertTable() {
         const rows = parseInt(document.getElementById('tableRows').value);
@@ -1659,7 +1864,12 @@
         } else {
             textInput.value = document.getSelection().toString().trim();
         }
-        document.getElementById('linkDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#linkDialog');
+        } else {
+            const dlg = document.getElementById('linkDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
         urlInput.focus();
         if (navigator.clipboard && navigator.clipboard.readText) {
             navigator.clipboard.readText().then(function(text) {
@@ -1672,7 +1882,12 @@
     }
 
     function closeLinkDialog() {
-        document.getElementById('linkDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#linkDialog');
+        } else {
+            const dlg = document.getElementById('linkDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
         document.getElementById('linkUrl').value = '';
         document.getElementById('linkText').value = '';
     }
@@ -1750,6 +1965,7 @@
                     }
                 });
                 renderImagePreviews();
+                checkInsertGalleryVisibility();
             }
         }, false);
         
@@ -1791,6 +2007,7 @@
                 e.stopPropagation();
                 selectedImageFiles.splice(index, 1);
                 renderImagePreviews();
+                checkInsertGalleryVisibility();
             });
             thumbnail.appendChild(deleteBtn);
             previewContainer.appendChild(thumbnail);
@@ -1804,10 +2021,17 @@
 
     function handleImageFileSelect(input) {
         if (input.files && input.files.length > 0) {
+            const MAX_IMAGE_SIZE = 25 * 1024 * 1024; // 25 MB
             Array.from(input.files).forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    selectedImageFiles.push(file);
+                if (!file.type.startsWith('image/')) {
+                    showNotification(`Файл "${file.name}" не является изображением`, 'warning');
+                    return;
                 }
+                if (file.size > MAX_IMAGE_SIZE) {
+                    showNotification(`Файл "${file.name}" слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимум 25 МБ.`, 'error');
+                    return;
+                }
+                selectedImageFiles.push(file);
             });
             renderImagePreviews();
             checkInsertGalleryVisibility();
@@ -1819,16 +2043,42 @@
     window.handleImageFileSelect = handleImageFileSelect;
 
     function showImageUpload() {
-    document.getElementById('imageUploadDialog').style.display = 'block';
-    initImageDragDrop();
-}
+        if (window.Modal) {
+            Modal.open('#imageUploadDialog');
+        } else {
+            const dlg = document.getElementById('imageUploadDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        initImageDragDrop();
+        checkInsertGalleryVisibility();
+    }
 
 let gridTileFiles = {};
 
 document.addEventListener('DOMContentLoaded', function() {
     const gridLayoutSelect = document.getElementById('gridLayout');
     if (gridLayoutSelect) {
-        gridLayoutSelect.addEventListener('change', renderGridPreview);
+        gridLayoutSelect.addEventListener('change', function() {
+            if (this.value) {
+                const insertGalleryChk = document.getElementById('insertGallery');
+                if (insertGalleryChk) insertGalleryChk.checked = false;
+            }
+            checkInsertGalleryVisibility();
+            renderGridPreview();
+        });
+    }
+
+    const insertGalleryChk = document.getElementById('insertGallery');
+    if (insertGalleryChk) {
+        insertGalleryChk.addEventListener('change', function() {
+            if (this.checked) {
+                const gridLayoutSelect = document.getElementById('gridLayout');
+                if (gridLayoutSelect && gridLayoutSelect.value) {
+                    gridLayoutSelect.value = '';
+                    renderGridPreview();
+                }
+            }
+        });
     }
     
     // Remember state of "Remove rounded corners" checkbox
@@ -1840,16 +2090,93 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Support inserting images from clipboard (Ctrl+V / Paste)
-    const handlePaste = function(e) {
-        const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
-        if (!items) return;
+    function sanitizePastedHtml(html) {
+        if (!html || typeof html !== 'string') return '';
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
         
+        // Удаляем опасные и недопустимые теги
+        const forbidden = temp.querySelectorAll('script, style, link, meta, base, xml, object, embed, applet, iframe, form, input, button, select, textarea, o\\:p');
+        forbidden.forEach(el => el.remove());
+        
+        // Удаляем HTML-комментарии (например от Word <!--[if ...]-->)
+        const removeComments = function(element) {
+            for (let i = element.childNodes.length - 1; i >= 0; i--) {
+                const child = element.childNodes[i];
+                if (child.nodeType === Node.COMMENT_NODE) {
+                    element.removeChild(child);
+                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                    removeComments(child);
+                }
+            }
+        };
+        removeComments(temp);
+        
+        // Очищаем атрибуты и инлайн-стили
+        const allNodes = temp.querySelectorAll('*');
+        allNodes.forEach(node => {
+            // Удаляем обработчики событий и служебные id
+            Array.from(node.attributes).forEach(attr => {
+                const name = attr.name.toLowerCase();
+                if (name.startsWith('on') || name === 'id' || name.startsWith('data-')) {
+                    node.removeAttribute(attr.name);
+                }
+                // Очищаем классы от стилей Word/сторонних библиотек
+                if (name === 'class') {
+                    const safeClasses = Array.from(node.classList).filter(c => c.startsWith('blog-') || c === 'content' || c === 'table-container');
+                    if (safeClasses.length) {
+                        node.className = safeClasses.join(' ');
+                    } else {
+                        node.removeAttribute('class');
+                    }
+                }
+            });
+            
+            // Очищаем деструктивные инлайн-стили
+            if (node.hasAttribute('style')) {
+                const styleStr = node.getAttribute('style') || '';
+                const cleanRules = styleStr.split(';')
+                    .map(r => r.trim())
+                    .filter(r => {
+                        if (!r) return false;
+                        const lower = r.toLowerCase();
+                        if (lower.startsWith('mso-') || lower.startsWith('font-family') || lower.startsWith('line-height') || lower.startsWith('margin-') || lower.startsWith('padding-')) return false;
+                        if (lower.includes('background') && (lower.includes('#fff') || lower.includes('#000') || lower.includes('white') || lower.includes('black') || lower.includes('transparent') || lower.includes('rgb(255') || lower.includes('rgb(0'))) return false;
+                        return true;
+                    });
+                if (cleanRules.length) {
+                    node.setAttribute('style', cleanRules.join('; '));
+                } else {
+                    node.removeAttribute('style');
+                }
+            }
+            
+            // Разворачиваем устаревшие теги <font>
+            if (node.tagName === 'FONT') {
+                const parent = node.parentNode;
+                while (node.firstChild) {
+                    parent.insertBefore(node.firstChild, node);
+                }
+                parent.removeChild(node);
+            }
+        });
+        
+        return temp.innerHTML.trim();
+    }
+
+    // Support inserting images and clean rich text from clipboard (Ctrl+V / Paste)
+    const handlePaste = function(e) {
+        const clipboardData = e.clipboardData || e.originalEvent?.clipboardData;
+        if (!clipboardData) return;
+        
+        const items = clipboardData.items;
         let imageItem = null;
-        for (const item of items) {
-            if (item.type.indexOf('image') !== -1) {
-                imageItem = item;
-                break;
+        if (items) {
+            for (const item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    imageItem = item;
+                    break;
+                }
             }
         }
         
@@ -1876,13 +2203,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     insertImage(data.url, '100', '', '%', '', '', noBorderRadius);
                     showNotification('Изображение успешно вставлено из буфера обмена', 'success');
+                    markEditorDirty();
                 } else {
                     showNotification('Ошибка при загрузке изображения: ' + data.error, 'error');
                 }
             })
-            .catch(err => {
+            .catch(() => {
                 showNotification('Ошибка при загрузке изображения из буфера обмена', 'error');
             });
+            return;
+        }
+
+        // Smart Paste Sanitization for Visual Mode
+        if (editorMode === 'visual') {
+            const html = clipboardData.getData('text/html');
+            if (html && (html.includes('MsoNormal') || html.includes('style=') || html.includes('<!--[if') || html.includes('<font') || html.includes('<span'))) {
+                e.preventDefault();
+                const cleanHtml = sanitizePastedHtml(html);
+                if (cleanHtml) {
+                    document.execCommand('insertHTML', false, cleanHtml);
+                } else {
+                    const text = clipboardData.getData('text/plain');
+                    if (text) document.execCommand('insertText', false, text);
+                }
+                markEditorDirty();
+                saveToHistory();
+            }
         }
     };
 
@@ -1988,6 +2334,9 @@ window.handleTileFileChange = function(e, index) {
 
 document.querySelectorAll('input[name="imageSource"]').forEach(radio => {
     radio.addEventListener('change', function() {
+        document.querySelectorAll('input[name="imageSource"]').forEach(r => {
+            r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
+        });
         const isFile = this.value === 'file';
         const gridLayout = document.getElementById('gridLayout').value;
         
@@ -2017,26 +2366,16 @@ function checkInsertGalleryVisibility() {
     const insertGalleryContainer = document.getElementById('insertGalleryContainer');
     if (!insertGalleryContainer) return;
     
-    const imageSource = document.querySelector('input[name="imageSource"]:checked')?.value;
+    const gridLayout = document.getElementById('gridLayout')?.value;
     
-    if (imageSource === 'file') {
-        // Для файлов проверяем количество выбранных файлов
-        if (selectedImageFiles.length > 1) {
-            insertGalleryContainer.style.display = 'flex';
-        } else {
-            insertGalleryContainer.style.display = 'none';
-        }
-    } else if (imageSource === 'url') {
-        // Для URL проверяем количество введённых адресов
-        const urlInput = document.getElementById('imageUrl').value.trim();
-        const urls = urlInput.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-        if (urls.length > 1) {
-            insertGalleryContainer.style.display = 'flex';
-        } else {
-            insertGalleryContainer.style.display = 'none';
-        }
+    if (gridLayout) {
+        insertGalleryContainer.style.opacity = '0.4';
+        insertGalleryContainer.style.pointerEvents = 'none';
+        const chk = document.getElementById('insertGallery');
+        if (chk) chk.checked = false;
     } else {
-        insertGalleryContainer.style.display = 'none';
+        insertGalleryContainer.style.opacity = '1';
+        insertGalleryContainer.style.pointerEvents = 'auto';
     }
 }
 function processImage() {
@@ -2501,14 +2840,14 @@ function updateOverlayPosition() {
     }
 }
 
-function showImageResizeDialog(img) {
+async function showImageResizeDialog(img) {
     var isGallery = img.classList && img.classList.contains('image-gallery');
     var currentWidth = img.offsetWidth || (img.naturalWidth || img.videoWidth || 0);
     var isAudio = img.tagName.toLowerCase() === 'audio';
     var isVideo = img.tagName.toLowerCase() === 'video';
     var label = isGallery ? 'галереи' : (isAudio ? 'плеера аудио' : (isVideo ? 'плеера видео' : 'изображения'));
     
-    var newWidth = prompt('Введите новую ширину ' + label + ' (в пикселях):', currentWidth);
+    var newWidth = await showPrompt('Введите новую ширину ' + label + ' (в пикселях):', currentWidth, 'Размер ' + label);
     if (newWidth && !isNaN(newWidth) && newWidth > 0) {
         newWidth = parseInt(newWidth);
         const maxLimit = window.editorContentWidth || 920;
@@ -3005,10 +3344,16 @@ initImageAlignmentHandlers();
             historyStack = historyStack.slice(0, historyIndex + 1);
             historyStack.push(currentState);
             historyIndex++;
+            
+            while (historyStack.length > MAX_HISTORY_STATES) {
+                historyStack.shift();
+                historyIndex = Math.max(0, historyIndex - 1);
+            }
         } else {
             historyStack[historyIndex] = currentState;
         }
         
+        markEditorDirty();
         updateUndoRedoButtons();
         
         clearTimeout(historySaveTimeout);
@@ -3207,7 +3552,12 @@ function insertImage(url, width, height, widthUnit, heightUnit, caption = '', no
 }
 
 function closeImageDialog() {
-    document.getElementById('imageUploadDialog').style.display = 'none';
+    if (window.Modal) {
+        Modal.close('#imageUploadDialog');
+    } else {
+        const dlg = document.getElementById('imageUploadDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
     document.getElementById('imageFile').value = '';
     document.getElementById('imageUrl').value = '';
     document.getElementById('imageCaption').value = '';
@@ -3219,12 +3569,24 @@ function closeImageDialog() {
     const insertGalleryChk = document.getElementById('insertGallery');
     if (insertGalleryChk) insertGalleryChk.checked = false;
     const insertGalleryContainer = document.getElementById('insertGalleryContainer');
-    if (insertGalleryContainer) insertGalleryContainer.style.display = 'none';
-    document.querySelector('input[name="imageSource"][value="file"]').checked = true;
-    document.getElementById('fileUploadContainer').style.display = 'block';
-    document.getElementById('imageGridPreviewContainer').style.display = 'none';
-    document.getElementById('imageGridPreviewContainer').innerHTML = '';
-    document.getElementById('urlContainer').style.display = 'none';
+    if (insertGalleryContainer) {
+        insertGalleryContainer.style.opacity = '1';
+        insertGalleryContainer.style.pointerEvents = 'auto';
+    }
+    const fileRadio = document.querySelector('input[name="imageSource"][value="file"]');
+    if (fileRadio) fileRadio.checked = true;
+    document.querySelectorAll('input[name="imageSource"]').forEach(r => {
+        r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.value === 'file');
+    });
+    const fileUploadContainer = document.getElementById('fileUploadContainer');
+    if (fileUploadContainer) fileUploadContainer.style.display = 'block';
+    const imageGridPreviewContainer = document.getElementById('imageGridPreviewContainer');
+    if (imageGridPreviewContainer) {
+        imageGridPreviewContainer.style.display = 'none';
+        imageGridPreviewContainer.innerHTML = '';
+    }
+    const urlContainer = document.getElementById('urlContainer');
+    if (urlContainer) urlContainer.style.display = 'none';
     gridTileFiles = {};
     selectedImageFiles = [];
     const previewContainer = document.getElementById('imageFilesPreview');
@@ -3353,6 +3715,12 @@ function closeImageDialog() {
             return;
         }
         
+        const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+        if (file.size > MAX_VIDEO_SIZE) {
+            showNotification(`Видео файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 100 МБ.`, 'error');
+            return;
+        }
+        
         const filenameEl = document.getElementById('videoFileName');
         if (filenameEl) {
             filenameEl.textContent = `Загрузка: ${file.name}...`;
@@ -3387,6 +3755,12 @@ function closeImageDialog() {
         if (!file) return;
         if (!file.type.startsWith('audio/')) {
             showNotification('Пожалуйста, выберите аудио файл', 'warning');
+            return;
+        }
+        
+        const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50 MB
+        if (file.size > MAX_AUDIO_SIZE) {
+            showNotification(`Аудио файл слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 50 МБ.`, 'error');
             return;
         }
         
@@ -3432,12 +3806,20 @@ function closeImageDialog() {
     };
 
     function showMediaDialog() {
-        document.getElementById('mediaDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#mediaDialog');
+        } else {
+            const dlg = document.getElementById('mediaDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
         initMediaDragDrop();
         
         const mediaTypeRadios = document.querySelectorAll('input[name="mediaType"]');
         mediaTypeRadios.forEach(radio => {
             radio.addEventListener('change', function() {
+                document.querySelectorAll('input[name="mediaType"]').forEach(r => {
+                    r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
+                });
                 document.getElementById('videoUrlSection').style.display = 'none';
                 document.getElementById('videoFileSection').style.display = 'none';
                 document.getElementById('audioMediaSection').style.display = 'none';
@@ -3459,13 +3841,22 @@ function closeImageDialog() {
     }
 
     function closeMediaDialog() {
-        document.getElementById('mediaDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#mediaDialog');
+        } else {
+            const dlg = document.getElementById('mediaDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
         document.getElementById('mediaUrl').value = '';
         document.getElementById('videoFile').value = '';
         document.getElementById('audioFile').value = '';
         document.getElementById('audioStreamUrl').value = '';
         // Сбрасываем на видео URL
-        document.querySelector('input[name="mediaType"][value="video-url"]').checked = true;
+        const videoRadio = document.querySelector('input[name="mediaType"][value="video-url"]');
+        if (videoRadio) videoRadio.checked = true;
+        document.querySelectorAll('input[name="mediaType"]').forEach(r => {
+            r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.value === 'video-url');
+        });
         document.getElementById('videoUrlSection').style.display = 'block';
         document.getElementById('videoFileSection').style.display = 'none';
         document.getElementById('audioMediaSection').style.display = 'none';
@@ -3926,13 +4317,26 @@ function extractVimeoId(url) {
             savedSpoilerText = ta.value.substring(start, end);
         }
         
-        document.getElementById('spoilerDialog').style.display = 'block';
-        document.getElementById('spoilerTitle').value = '';
-        document.getElementById('spoilerTitle').focus();
+        if (window.Modal) {
+            Modal.open('#spoilerDialog');
+        } else {
+            const dlg = document.getElementById('spoilerDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        const titleInput = document.getElementById('spoilerTitle');
+        if (titleInput) {
+            titleInput.value = '';
+            titleInput.focus();
+        }
     }
 
     function closeSpoilerDialog() {
-        document.getElementById('spoilerDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#spoilerDialog');
+        } else {
+            const dlg = document.getElementById('spoilerDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
         savedSpoilerText = '';
         savedSpoilerRange = null;
     }
@@ -3994,7 +4398,12 @@ function extractVimeoId(url) {
             return;
         }
         
-        document.getElementById('markerDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#markerDialog');
+        } else {
+            const dlg = document.getElementById('markerDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
         
         // Добавляем обработчики на кнопки стилей
         const styleBtns = document.querySelectorAll('.marker-style-btn');
@@ -4017,7 +4426,12 @@ function extractVimeoId(url) {
     }
 
     function closeMarkerDialog() {
-        document.getElementById('markerDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#markerDialog');
+        } else {
+            const dlg = document.getElementById('markerDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
         savedMarkerText = '';
         savedMarkerRange = null;
     }
@@ -4097,30 +4511,52 @@ function extractVimeoId(url) {
     function insertCode() {
         editingCodeBlockTarget = null;
         const titleEl = document.getElementById('codeDialogTitle');
-        if (titleEl) titleEl.textContent = 'Вставить код';
+        if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_title', 'Вставить код') : 'Вставить код';
         const submitEl = document.getElementById('codeDialogSubmitBtn');
-        if (submitEl) submitEl.textContent = 'Вставить';
-        document.getElementById('codeLanguage').value = 'javascript';
-        document.getElementById('codeInput').value = '';
-        document.getElementById('codeDialog').style.display = 'block';
+        if (submitEl) submitEl.textContent = window.t ? window.t('modals.code_insert_btn', 'Вставить') : 'Вставить';
+        const langEl = document.getElementById('codeLanguage');
+        if (langEl) langEl.value = 'javascript';
+        const inputEl = document.getElementById('codeInput');
+        if (inputEl) inputEl.value = '';
+        if (window.Modal) {
+            Modal.open('#codeDialog');
+        } else {
+            const dlg = document.getElementById('codeDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        if (inputEl) inputEl.focus();
     }
 
     function openEditCodeBlockDialog(codeBlock) {
         editingCodeBlockTarget = codeBlock;
         const titleEl = document.getElementById('codeDialogTitle');
-        if (titleEl) titleEl.textContent = 'Редактировать код';
+        if (titleEl) titleEl.textContent = window.t ? window.t('modals.code_edit_title', 'Редактировать код') : 'Редактировать код';
         const submitEl = document.getElementById('codeDialogSubmitBtn');
-        if (submitEl) submitEl.textContent = 'Сохранить';
+        if (submitEl) submitEl.textContent = window.t ? window.t('common.save', 'Сохранить') : 'Сохранить';
         
         const lang = codeBlock.getAttribute('data-language') || 'javascript';
-        document.getElementById('codeLanguage').value = lang;
-        document.getElementById('codeInput').value = codeBlock.textContent;
-        document.getElementById('codeDialog').style.display = 'block';
+        const langEl = document.getElementById('codeLanguage');
+        if (langEl) langEl.value = lang;
+        const inputEl = document.getElementById('codeInput');
+        if (inputEl) inputEl.value = codeBlock.textContent;
+        if (window.Modal) {
+            Modal.open('#codeDialog');
+        } else {
+            const dlg = document.getElementById('codeDialog');
+            if (dlg) dlg.style.display = 'block';
+        }
+        if (inputEl) inputEl.focus();
     }
 
     function closeCodeDialog() {
-        document.getElementById('codeDialog').style.display = 'none';
-        document.getElementById('codeInput').value = '';
+        if (window.Modal) {
+            Modal.close('#codeDialog');
+        } else {
+            const dlg = document.getElementById('codeDialog');
+            if (dlg) dlg.style.display = 'none';
+        }
+        const inputEl = document.getElementById('codeInput');
+        if (inputEl) inputEl.value = '';
         editingCodeBlockTarget = null;
     }
 
@@ -4193,7 +4629,7 @@ function extractVimeoId(url) {
             .then(posts => {
                 const postsList = document.getElementById('postsList');
                 if (!posts || posts.length === 0) {
-                    postsList.innerHTML = '<p class="manage-posts-empty">Пока нет статей</p>';
+                    postsList.innerHTML = '<p class="manage-posts-empty">' + (window.t ? window.t('header.manage_posts_empty', 'Пока нет статей') : 'Пока нет статей') + '</p>';
                     return;
                 }
                 const escapeHtml = function(str) {
@@ -4205,6 +4641,9 @@ function extractVimeoId(url) {
                 
                 // Сортируем статьи по ID в обратном порядке (новые первыми)
                 const sortedPosts = [...posts].sort((a, b) => b.id - a.id);
+                const btnEdit = window.t ? window.t('header.manage_posts_edit', 'Изменить') : 'Изменить';
+                const btnExtra = window.t ? window.t('header.manage_posts_extra', 'Дополнительно') : 'Дополнительно';
+                const btnDelete = window.t ? window.t('header.manage_posts_delete', 'Удалить') : 'Удалить';
                 
                 postsList.innerHTML = '<ul class="post-list">' +
                     sortedPosts.map(post => `
@@ -4212,9 +4651,9 @@ function extractVimeoId(url) {
                             <div class="post-item-title">${escapeHtml(post.title)}</div>
                             <span class="post-item-date">${escapeHtml(post.date)}</span>
                             <div class="post-item-actions">
-                                <button type="button" class="edit-btn" onclick="editPost(${post.id})">Изменить</button>
-                                <button type="button" class="additional-btn" onclick="openAdditionalSettings(${post.id}, '${escapeHtml(post.title)}')">Дополнительно</button>
-                                <button type="button" class="delete-btn" onclick="deletePost(${post.id})">Удалить</button>
+                                <button type="button" class="edit-btn" onclick="editPost(${post.id})">${btnEdit}</button>
+                                <button type="button" class="additional-btn" onclick="openAdditionalSettings(${post.id}, '${escapeHtml(post.title)}')">${btnExtra}</button>
+                                <button type="button" class="delete-btn" onclick="deletePost(${post.id})">${btnDelete}</button>
                             </div>
                         </li>
                     `).join('') +
@@ -4223,7 +4662,7 @@ function extractVimeoId(url) {
             .catch(error => {
                 console.error('Ошибка загрузки статей:', error);
                 const postsList = document.getElementById('postsList');
-                postsList.innerHTML = '<p class="manage-posts-empty">Пока нет статей</p>';
+                postsList.innerHTML = '<p class="manage-posts-empty">' + (window.t ? window.t('header.manage_posts_empty', 'Пока нет статей') : 'Пока нет статей') + '</p>';
             });
     }
 
@@ -4393,13 +4832,21 @@ function extractVimeoId(url) {
 
     function deletePost(postId) {
         deletePostId = postId;
-        const overlay = document.getElementById('deleteConfirmOverlay');
-        overlay.classList.add('show');
+        if (window.Modal) {
+            Modal.open('#deleteConfirmOverlay');
+        } else {
+            const overlay = document.getElementById('deleteConfirmOverlay');
+            if (overlay) overlay.classList.add('show');
+        }
     }
     
     function closeDeleteConfirm() {
-        const overlay = document.getElementById('deleteConfirmOverlay');
-        overlay.classList.remove('show');
+        if (window.Modal) {
+            Modal.close('#deleteConfirmOverlay');
+        } else {
+            const overlay = document.getElementById('deleteConfirmOverlay');
+            if (overlay) overlay.classList.remove('show');
+        }
         deletePostId = null;
     }
     
@@ -4439,6 +4886,8 @@ function extractVimeoId(url) {
 
     function handleSubmit(e) {
         if (e) e.preventDefault();
+        if (isSavingArticle) return;
+        
         const titleInput = document.getElementById('title');
         const title = titleInput.value.trim();
         
@@ -4467,6 +4916,19 @@ function extractVimeoId(url) {
             content = ta.value;
         }
         
+        const submitButton = document.getElementById('submitButton');
+        const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+        
+        isSavingArticle = true;
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Сохранение...';
+        }
+        if (floatingSaveBtn) {
+            floatingSaveBtn.disabled = true;
+            floatingSaveBtn.textContent = 'Сохранение...';
+        }
+        
         const endpoint = currentEditId ? 'update_post.php' : 'save_post.php';
         const data = { title: title, content: content };
         if (currentEditId) { data.id = currentEditId; }
@@ -4479,12 +4941,15 @@ function extractVimeoId(url) {
             let payload;
             try { payload = await response.json(); } catch (_) { payload = null; }
             if (!response.ok || (payload && payload.success === false)) {
-                throw new Error((payload && payload.error) || 'Server error');
+                throw new Error((payload && payload.error) || (payload && payload.message) || 'Server error');
             }
             showNotification(
                 currentEditId ? 'Статья успешно обновлена!' : 'Статья успешно добавлена!',
                 'success'
             );
+            
+            // Очищаем локальный черновик и сбрасываем признак несохраненных изменений
+            clearLocalDraft();
             
             // Очищаем форму
             document.getElementById('blogForm').reset();
@@ -4505,10 +4970,10 @@ function extractVimeoId(url) {
             loadPosts();
             
             currentEditId = null;
-            const submitButton = document.getElementById('submitButton');
-            submitButton.textContent = 'Сохранить';
-            submitButton.classList.remove('editing');
-            const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+            if (submitButton) {
+                submitButton.textContent = 'Сохранить';
+                submitButton.classList.remove('editing');
+            }
             if (floatingSaveBtn) {
                 floatingSaveBtn.textContent = 'Сохранить';
                 floatingSaveBtn.classList.remove('editing');
@@ -4517,8 +4982,28 @@ function extractVimeoId(url) {
             // Очищаем историю
             clearHistory();
         })
-        .catch(() => {
-            showNotification('Ошибка при сохранении статьи', 'error');
+        .catch((err) => {
+            const msg = err && err.message ? err.message : 'Ошибка при сохранении статьи';
+            showNotification(msg, 'error');
+        })
+        .finally(() => {
+            isSavingArticle = false;
+            if (submitButton) {
+                submitButton.disabled = false;
+                if (currentEditId) {
+                    submitButton.textContent = 'Сохранить изменения';
+                } else {
+                    submitButton.textContent = 'Сохранить';
+                }
+            }
+            if (floatingSaveBtn) {
+                floatingSaveBtn.disabled = false;
+                if (currentEditId) {
+                    floatingSaveBtn.textContent = 'Сохранить изменения';
+                } else {
+                    floatingSaveBtn.textContent = 'Сохранить';
+                }
+            }
         });
     }
 
@@ -4994,11 +5479,18 @@ async function fixIntegrityErrors() {
 
 // ——— Менеджер бэкапов ———
 async function openBackupManager() {
-    const overlay = document.getElementById('backupManagerOverlay');
     const content = document.getElementById('backupManagerContent');
     
-    overlay.classList.add('show');
-    content.innerHTML = '<div class="backup-empty">Загрузка...</div>';
+    if (window.Modal) {
+        Modal.open('#backupManagerOverlay');
+    } else {
+        const overlay = document.getElementById('backupManagerOverlay');
+        if (overlay) overlay.classList.add('show');
+    }
+    
+    if (content) {
+        content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.loading', 'Загрузка...') : 'Загрузка...') + '</div>';
+    }
     
     try {
         const response = await fetch('get_backups.php');
@@ -5006,34 +5498,44 @@ async function openBackupManager() {
         
         if (data.success) {
             if (Object.keys(data.backups).length === 0) {
-                content.innerHTML = '<div class="backup-empty">Нет сохраненных бэкапов</div>';
+                if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_no_backups', 'Нет сохраненных бэкапов') : 'Нет сохраненных бэкапов') + '</div>';
             } else {
                 renderBackups(data.backups);
             }
         } else {
-            content.innerHTML = '<div class="backup-empty">Ошибка загрузки бэкапов</div>';
+            if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_load_error', 'Ошибка загрузки бэкапов') : 'Ошибка загрузки бэкапов') + '</div>';
         }
     } catch (error) {
         console.error('Ошибка загрузки бэкапов:', error);
-        content.innerHTML = '<div class="backup-empty">Ошибка загрузки бэкапов</div>';
+        if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_load_error', 'Ошибка загрузки бэкапов') : 'Ошибка загрузки бэкапов') + '</div>';
     }
 }
 
 function closeBackupManager() {
-    const overlay = document.getElementById('backupManagerOverlay');
-    overlay.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#backupManagerOverlay');
+    } else {
+        const overlay = document.getElementById('backupManagerOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
 }
 
 function renderBackups(backups) {
     const content = document.getElementById('backupManagerContent');
+    if (!content) return;
     let html = '';
+    
+    const viewText = window.t ? window.t('common.view', 'Посмотреть') : 'Посмотреть';
+    const restoreText = window.t ? window.t('common.restore', 'Восстановить') : 'Восстановить';
+    const deleteText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
     
     for (const postId in backups) {
         const post = backups[postId];
         const isDeleted = post.deleted === true;
+        const safeTitle = escapeHtml(post.postTitle);
         const displayTitle = isDeleted 
-            ? `🗑️ ${escapeHtml(post.postTitle)}` 
-            : `Статья #${postId}: ${escapeHtml(post.postTitle)}`;
+            ? `🗑️ ${safeTitle}` 
+            : (window.t ? window.t('modals.backup_article_prefix', `Статья #${postId}: ${safeTitle}`, { id: postId, title: safeTitle }) : `Статья #${postId}: ${safeTitle}`);
         
         html += `
             <div class="backup-post-group ${isDeleted ? 'deleted-post' : ''}" id="backup-group-${postId}">
@@ -5042,20 +5544,27 @@ function renderBackups(backups) {
                     <span class="backup-post-toggle">▼</span>
                 </div>
                 <div class="backup-list">
-                    ${post.backups.map((backup, index) => `
+                    ${post.backups.map((backup, index) => {
+                        const backupNumText = window.t 
+                            ? window.t('modals.backup_item_number', `Бэкап #${backup.backupNumber}`, { number: backup.backupNumber })
+                            : `Бэкап #${backup.backupNumber}`;
+                        const deletedInfo = isDeleted 
+                            ? (window.t ? window.t('modals.backup_post_deleted_at', `Статья удалена: ${escapeHtml(post.deletedAt || '')}`, { date: escapeHtml(post.deletedAt || '') }) : `Статья удалена: ${escapeHtml(post.deletedAt || '')}`)
+                            : '';
+                        return `
                         <div class="backup-item">
                             <div class="backup-info">
-                                <div class="backup-number">Бэкап #${backup.backupNumber}</div>
+                                <div class="backup-number">${backupNumText}</div>
                                 <div class="backup-date">${escapeHtml(backup.date)}</div>
-                                ${isDeleted ? '<div class="backup-date" style="color: #d32f2f; font-weight: 600; margin-top: 4px;">Статья удалена: ' + escapeHtml(post.deletedAt || '') + '</div>' : ''}
+                                ${isDeleted ? '<div class="backup-date" style="color: #d32f2f; font-weight: 600; margin-top: 4px;">' + deletedInfo + '</div>' : ''}
                             </div>
                             <div class="backup-actions">
-                                <button class="backup-btn view" onclick="viewBackup('${postId}', '${backup.filename}')">Посмотреть</button>
-                                ${!isDeleted ? `<button class="backup-btn restore" onclick="restoreBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">Восстановить</button>` : ''}
-                                <button class="backup-btn delete" onclick="deleteBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">Удалить</button>
+                                <button type="button" class="backup-btn view" onclick="viewBackup('${postId}', '${backup.filename}')">${viewText}</button>
+                                ${!isDeleted ? `<button type="button" class="backup-btn restore" onclick="restoreBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">${restoreText}</button>` : ''}
+                                <button type="button" class="backup-btn delete" onclick="deleteBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">${deleteText}</button>
                             </div>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             </div>
         `;
@@ -5201,25 +5710,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Проверяем предупреждение о DEV сборке
     checkDevWarning();
+
+    // Проверяем наличие несохраненного локального черновика
+    setTimeout(checkLocalDraftOnStartup, 500);
+
+    // Отслеживаем ввод в поле заголовка для локального сохранения
+    const titleInputEl = document.getElementById('title');
+    if (titleInputEl) {
+        titleInputEl.addEventListener('input', function() {
+            markEditorDirty();
+        });
+    }
 });
 
 // ——— Система includes ———
 function openSaveInclude() {
-    const overlay = document.getElementById('saveIncludeOverlay');
     const input = document.getElementById('includeNameInput');
-    input.value = '';
-    overlay.classList.add('show');
+    if (input) input.value = '';
+    
+    if (window.Modal) {
+        Modal.open('#saveIncludeOverlay');
+    } else {
+        const overlay = document.getElementById('saveIncludeOverlay');
+        if (overlay) overlay.classList.add('show');
+    }
     
     // Закрываем меню "Прочее"
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
     
-    setTimeout(() => input.focus(), 100);
+    if (input) setTimeout(() => input.focus(), 100);
 }
 
 function closeSaveInclude() {
-    const overlay = document.getElementById('saveIncludeOverlay');
-    overlay.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#saveIncludeOverlay');
+    } else {
+        const overlay = document.getElementById('saveIncludeOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
 }
 
 async function confirmSaveInclude() {
@@ -5367,11 +5896,14 @@ async function loadDraftsList() {
         
         if (data.success) {
             if (data.drafts.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">Нет черновиков</div>';
+                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
             } else {
+                const untitledText = window.t ? window.t('more_menu.untitled', 'Без названия') : 'Без названия';
+                const delDraftText = window.t ? window.t('more_menu.delete_draft', 'Удалить черновик') : 'Удалить черновик';
+                const currentLocale = (window.NPBlogI18n && typeof window.NPBlogI18n.getLocale === 'function') ? window.NPBlogI18n.getLocale() : 'ru-RU';
                 submenu.innerHTML = data.drafts.map(draft => {
-                    const displayTitle = draft.title || 'Без названия';
-                    const date = new Date(draft.timestamp * 1000).toLocaleString('ru-RU', {
+                    const displayTitle = draft.title || untitledText;
+                    const date = new Date(draft.timestamp * 1000).toLocaleString(currentLocale, {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',
@@ -5379,11 +5911,11 @@ async function loadDraftsList() {
                         minute: '2-digit'
                     });
                     return `<div class="draft-item-wrap">
-                        <button type="button" class="more-submenu-item draft-load-btn" onclick="loadDraft('${draft.filename}')" title="${displayTitle}">
-                            <div class="draft-title">${displayTitle}</div>
+                        <button type="button" class="more-submenu-item draft-load-btn" onclick="loadDraft('${draft.filename}')" title="${escapeHtml(displayTitle)}">
+                            <div class="draft-title">${escapeHtml(displayTitle)}</div>
                             <div class="draft-date">${date}</div>
                         </button>
-                        <button type="button" class="draft-delete-btn" onclick="deleteDraft('${draft.filename}', event)" title="Удалить черновик">×</button>
+                        <button type="button" class="draft-delete-btn" onclick="deleteDraft('${draft.filename}', event)" title="${delDraftText}">×</button>
                     </div>`;
                 }).join('');
             }
@@ -5391,7 +5923,7 @@ async function loadDraftsList() {
         }
     } catch (error) {
         console.error('Ошибка загрузки черновиков:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">Ошибка загрузки</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
     }
 }
 
@@ -5466,23 +5998,23 @@ async function loadDraft(filename) {
                     const moreMenu = document.getElementById('moreMenuWrap');
                     if (moreMenu) moreMenu.classList.remove('is-open');
                 
-                showNotification('Черновик загружен', 'success');
+                showNotification(window.t ? window.t('notifications.draft_loaded', 'Черновик загружен') : 'Черновик загружен', 'success');
             } else {
-                showAlert('Черновик не найден');
+                showAlert(window.t ? window.t('notifications.draft_not_found', 'Черновик не найден') : 'Черновик не найден');
             }
         } else {
-            showAlert('Ошибка загрузки черновика');
+            showAlert(window.t ? window.t('notifications.draft_load_error', 'Ошибка загрузки черновика') : 'Ошибка загрузки черновика');
         }
     } catch (error) {
         console.error('Ошибка загрузки черновика:', error);
-        showAlert('Ошибка при загрузке черновика');
+        showAlert(window.t ? window.t('notifications.draft_load_failed', 'Ошибка при загрузке черновика') : 'Ошибка при загрузке черновика');
     }
 }
 
 async function deleteDraft(filename, event) {
     event.stopPropagation();
     
-    const result = await showConfirm('Удалить этот черновик?');
+    const result = await showConfirm(window.t ? window.t('notifications.draft_delete_confirm', 'Удалить этот черновик?') : 'Удалить этот черновик?');
     if (!result) return;
     
     try {
@@ -5497,15 +6029,15 @@ async function deleteDraft(filename, event) {
         const data = await response.json();
         
         if (data.success) {
-            showNotification('Черновик удален', 'success');
+            showNotification(window.t ? window.t('notifications.draft_deleted', 'Черновик удален') : 'Черновик удален', 'success');
             draftsListLoaded = false;
             loadDraftsList(); // Перезагружаем список
         } else {
-            showAlert('Ошибка: ' + data.error);
+            showAlert((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error);
         }
     } catch (error) {
         console.error('Ошибка удаления черновика:', error);
-        showAlert('Ошибка при удалении черновика');
+        showAlert(window.t ? window.t('notifications.draft_delete_error', 'Ошибка при удалении черновика') : 'Ошибка при удалении черновика');
     }
 }
 
@@ -5541,12 +6073,13 @@ async function loadIncludesList() {
         
         if (data.success) {
             if (data.files.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">Нет сохраненных includes</div>';
+                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
             } else {
+                const delIncText = window.t ? window.t('more_menu.delete_include', 'Удалить include') : 'Удалить include';
                 submenu.innerHTML = data.files.map(file => 
                     `<div class="draft-item-wrap">
-                        <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${file.name}')" title="${file.displayName}">${file.displayName}</button>
-                        <button type="button" class="draft-delete-btn" onclick="deleteInclude('${file.name}', event)" title="Удалить include">×</button>
+                        <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${file.name}')" title="${escapeHtml(file.displayName)}">${escapeHtml(file.displayName)}</button>
+                        <button type="button" class="draft-delete-btn" onclick="deleteInclude('${file.name}', event)" title="${delIncText}">×</button>
                     </div>`
                 ).join('');
             }
@@ -5554,14 +6087,14 @@ async function loadIncludesList() {
         }
     } catch (error) {
         console.error('Ошибка загрузки includes:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">Ошибка загрузки</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
     }
 }
 
 async function deleteInclude(filename, event) {
     if (event) event.stopPropagation();
     
-    const result = await showConfirm('Удалить этот include?');
+    const result = await showConfirm(window.t ? window.t('notifications.include_delete_confirm', 'Удалить этот include?') : 'Удалить этот include?');
     if (!result) return;
     
     try {
@@ -5576,15 +6109,15 @@ async function deleteInclude(filename, event) {
         const data = await response.json();
         
         if (data.success) {
-            showNotification('Include успешно удален', 'success');
+            showNotification(window.t ? window.t('notifications.include_deleted', 'Include успешно удален') : 'Include успешно удален', 'success');
             includesListLoaded = false;
             loadIncludesList();
         } else {
-            showNotification('Ошибка: ' + data.error, 'error');
+            showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Ошибка удаления include:', error);
-        showNotification('Ошибка при удалении include', 'error');
+        showNotification(window.t ? window.t('notifications.include_delete_error', 'Ошибка при удалении include') : 'Ошибка при удалении include', 'error');
     }
 }
 
@@ -5618,13 +6151,13 @@ async function insertInclude(filename) {
             const moreMenu = document.getElementById('moreMenuWrap');
             if (moreMenu) moreMenu.classList.remove('is-open');
             
-            showNotification('Include вставлен', 'success');
+            showNotification(window.t ? window.t('notifications.include_inserted', 'Include вставлен') : 'Include вставлен', 'success');
         } else {
-            showNotification('Ошибка: ' + data.error, 'error');
+            showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Ошибка вставки include:', error);
-        showNotification('Ошибка при вставке include', 'error');
+        showNotification(window.t ? window.t('notifications.include_insert_error', 'Ошибка при вставке include') : 'Ошибка при вставке include', 'error');
     }
 }
 
@@ -5657,8 +6190,8 @@ async function loadArticlesList() {
         const response = await fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now());
         const articles = await response.json();
         
-        if (articles.length === 0) {
-            submenu.innerHTML = '<div class="more-submenu-empty">Нет статей</div>';
+        if (!articles || articles.length === 0) {
+            submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_articles', 'Нет статей') : 'Нет статей') + '</div>';
         } else {
             submenu.innerHTML = articles.map(article => 
                 `<button type="button" class="more-submenu-item" onclick="insertArticleLink('${article.filename}', '${article.title.replace(/'/g, "\\'")}')">
@@ -5668,7 +6201,7 @@ async function loadArticlesList() {
         }
     } catch (error) {
         console.error('Ошибка загрузки статей:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">Ошибка загрузки</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
     }
 }
 
@@ -5692,16 +6225,20 @@ function insertArticleLink(filename, title) {
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
     
-    showNotification('Ссылка на статью вставлена', 'success');
+    showNotification(window.t ? window.t('notifications.post_link_inserted', 'Ссылка на статью вставлена') : 'Ссылка на статью вставлена', 'success');
 }
 
 // ——— Проверка нумерации статей ———
 async function checkPostNumbering() {
-    const overlay = document.getElementById('numberingCheckOverlay');
     const content = document.getElementById('numberingCheckContent');
     const fixBtn = document.getElementById('fixNumberingBtn');
     
-    overlay.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#numberingCheckOverlay');
+    } else {
+        const overlay = document.getElementById('numberingCheckOverlay');
+        if (overlay) overlay.classList.add('show');
+    }
     content.innerHTML = '<div class="numbering-status">Проверка нумерации...</div>';
     fixBtn.style.display = 'none';
     
@@ -5844,8 +6381,12 @@ async function fixNumbering() {
 }
 
 function closeNumberingCheck() {
-    const overlay = document.getElementById('numberingCheckOverlay');
-    overlay.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#numberingCheckOverlay');
+    } else {
+        const overlay = document.getElementById('numberingCheckOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
 }
 
 // ——— Гайд для первого запуска ———
@@ -6088,7 +6629,12 @@ window.addEventListener('load', function() {
 // ——— Функции для загрузки файлов ———
 
 function openFileUploadDialog() {
-    document.getElementById('fileUploadDialog').style.display = 'block';
+    if (window.Modal) {
+        Modal.open('#fileUploadDialog');
+    } else {
+        const dlg = document.getElementById('fileUploadDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
     
     // Инициализируем Drag & Drop
     initDragDrop();
@@ -6163,7 +6709,12 @@ function handleFileSelect(input) {
 }
 
 function closeFileUploadDialog() {
-    document.getElementById('fileUploadDialog').style.display = 'none';
+    if (window.Modal) {
+        Modal.close('#fileUploadDialog');
+    } else {
+        const dlg = document.getElementById('fileUploadDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
 }
 
 function closeMoreMenu() {
@@ -6271,7 +6822,7 @@ function loadDocumentsList() {
                     const insertBtn = document.createElement('button');
                     insertBtn.type = 'button';
                     insertBtn.className = 'file-upload-item-btn insert';
-                    insertBtn.textContent = 'Вставить';
+                    insertBtn.textContent = window.t ? window.t('common.insert', 'Вставить') : 'Вставить';
                     insertBtn.onclick = (e) => {
                         e.stopPropagation();
                         insertFileButton(file.name, file.url, file.size);
@@ -6280,7 +6831,7 @@ function loadDocumentsList() {
                     const deleteBtn = document.createElement('button');
                     deleteBtn.type = 'button';
                     deleteBtn.className = 'file-upload-item-btn delete';
-                    deleteBtn.textContent = 'Удалить';
+                    deleteBtn.textContent = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
                     deleteBtn.onclick = (e) => {
                         e.stopPropagation();
                         deleteDocument(file.path);
@@ -6294,12 +6845,12 @@ function loadDocumentsList() {
                     listContainer.appendChild(item);
                 });
             } else {
-                listContainer.innerHTML = '<div class="file-upload-empty">Нет загруженных файлов</div>';
+                listContainer.innerHTML = '<div class="file-upload-empty">' + (window.t ? window.t('modals.file_none_uploaded', 'Нет загруженных файлов') : 'Нет загруженных файлов') + '</div>';
             }
         })
         .catch(error => {
             console.error('Ошибка загрузки списка файлов:', error);
-            document.getElementById('fileUploadList').innerHTML = '<div class="file-upload-empty">Ошибка загрузки списка</div>';
+            document.getElementById('fileUploadList').innerHTML = '<div class="file-upload-empty">' + (window.t ? window.t('modals.file_load_error', 'Ошибка загрузки списка') : 'Ошибка загрузки списка') + '</div>';
         });
 }
 
@@ -6308,7 +6859,7 @@ function uploadDocument(fileToUpload = null) {
     const file = fileToUpload || (fileInput ? fileInput.files[0] : null);
     
     if (!file) {
-        showNotification('Выберите файл для загрузки', 'error');
+        showNotification(window.t ? window.t('notifications.file_select_upload', 'Выберите файл для загрузки') : 'Выберите файл для загрузки', 'error');
         return;
     }
     
@@ -6318,7 +6869,8 @@ function uploadDocument(fileToUpload = null) {
     let originalText = '';
     if (dropzoneText) {
         originalText = dropzoneText.textContent;
-        dropzoneText.innerHTML = `<span class="loading-spinner"></span> Загрузка "${file.name}"...`;
+        const uploadingText = window.t ? window.t('notifications.file_uploading_param', `Загрузка "${file.name}"...`, { name: file.name }) : `Загрузка "${file.name}"...`;
+        dropzoneText.innerHTML = `<span class="loading-spinner"></span> ${uploadingText}`;
     }
     
     const formData = new FormData();
@@ -6334,15 +6886,15 @@ function uploadDocument(fileToUpload = null) {
             dropzoneText.textContent = originalText;
         }
         if (data.success) {
-            showNotification('Файл успешно загружен', 'success');
+            showNotification(window.t ? window.t('notifications.file_uploaded', 'Файл успешно загружен') : 'Файл успешно загружен', 'success');
             if (fileInput) fileInput.value = '';
             const fileNameEl = document.getElementById('documentFileName');
             if (fileNameEl) {
-                fileNameEl.textContent = 'Файл не выбран';
+                fileNameEl.textContent = window.t ? window.t('modals.file_none', 'Файл не выбран') : 'Файл не выбран';
             }
             loadDocumentsList();
         } else {
-            showNotification('Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), 'error');
+            showNotification(window.t ? window.t('notifications.file_upload_error_param', 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), 'error');
         }
     })
     .catch(error => {
@@ -6350,12 +6902,12 @@ function uploadDocument(fileToUpload = null) {
             dropzoneText.textContent = originalText;
         }
         console.error('Ошибка:', error);
-        showNotification('Ошибка загрузки файла', 'error');
+        showNotification(window.t ? window.t('notifications.file_upload_network_error', 'Ошибка загрузки файла') : 'Ошибка загрузки файла', 'error');
     });
 }
 
 function deleteDocument(filePath) {
-    showConfirm('Удалить этот файл?', 'Подтверждение удаления').then(result => {
+    showConfirm(window.t ? window.t('notifications.confirm_delete_file', 'Удалить этот файл?') : 'Удалить этот файл?').then(result => {
         if (!result) return;
         
         fetch('delete_document.php', {
@@ -6368,15 +6920,15 @@ function deleteDocument(filePath) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showNotification('Файл удален', 'success');
+                showNotification(window.t ? window.t('notifications.file_deleted', 'Файл удален') : 'Файл удален', 'success');
                 loadDocumentsList();
             } else {
-                showNotification('Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), 'error');
+                showNotification(window.t ? window.t('notifications.file_delete_error_param', 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), 'error');
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showNotification('Ошибка удаления файла', 'error');
+            showNotification(window.t ? window.t('notifications.file_delete_network_error', 'Ошибка удаления файла') : 'Ошибка удаления файла', 'error');
         });
     });
 }
@@ -6637,7 +7189,7 @@ function loadTocList() {
     const anchors = ve.querySelectorAll('[id]');
     
     if (anchors.length === 0) {
-        submenu.innerHTML = '<div class="more-submenu-empty">Нет якорей в статье</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_anchors', 'Нет якорей в статье') : 'Нет якорей в статье') + '</div>';
         return;
     }
     
@@ -6653,7 +7205,7 @@ function loadTocList() {
         }
         
         if (!text) {
-            text = `Якорь: #${id}`;
+            text = `#${id}`;
         } else {
             if (text.length > 25) {
                 text = text.substring(0, 22) + '...';
@@ -6663,8 +7215,8 @@ function loadTocList() {
         
         html += `
         <div class="toc-menu-item-row">
-            <button type="button" class="more-submenu-item" onclick="insertAnchorLink('${id}')" title="Вставить ссылку на #${id}">${text}</button>
-            <button type="button" class="toc-delete-btn" onclick="removeAnchorById('${id}', event)" title="Удалить якорь #${id}">×</button>
+            <button type="button" class="more-submenu-item" onclick="insertAnchorLink('${escapeHtmlJS(id)}')">${escapeHtml(text)}</button>
+            <button type="button" class="toc-delete-btn" onclick="removeAnchorById('${escapeHtmlJS(id)}', event)">×</button>
         </div>`;
     });
     
@@ -6705,7 +7257,7 @@ function removeAnchorById(id, event) {
     }
 }
 
-function insertAnchorLink(id) {
+async function insertAnchorLink(id) {
     if (editorMode !== 'visual') {
         showNotification('Ссылки на якоря можно вставлять только в визуальном режиме', 'warning');
         return;
@@ -6731,7 +7283,7 @@ function insertAnchorLink(id) {
             anchorText = "Перейти к разделу";
         }
         
-        text = prompt("Введите текст для ссылки-якоря:", anchorText);
+        text = await showPrompt("Введите текст для ссылки-якоря:", anchorText, "Ссылка-якорь");
         if (text === null) return; // Отмена
         if (!text) text = anchorText;
     }
@@ -6836,7 +7388,7 @@ function floodFill(startX, startY, targetChar, replacementChar) {
     }
 }
 
-function changeAsciiGridSize(sizeStr) {
+async function changeAsciiGridSize(sizeStr) {
     const customContainer = document.getElementById('asciiCustomSizeContainer');
     if (sizeStr === 'custom') {
         if (customContainer) {
@@ -6855,7 +7407,8 @@ function changeAsciiGridSize(sizeStr) {
     const newWidth = parseInt(parts[0]);
     const newHeight = parseInt(parts[1]);
     
-    if (confirm('Смена размера сетки очистит текущий рисунок. Продолжить?')) {
+    const isConfirmed = await showConfirm('Смена размера сетки очистит текущий рисунок. Продолжить?', 'Изменение размера сетки');
+    if (isConfirmed) {
         asciiGridWidth = newWidth;
         asciiGridHeight = newHeight;
         createAsciiGrid();
@@ -6869,7 +7422,7 @@ function changeAsciiGridSize(sizeStr) {
     }
 }
 
-function applyCustomAsciiGridSize() {
+async function applyCustomAsciiGridSize() {
     const widthInput = document.getElementById('asciiCustomWidth');
     const heightInput = document.getElementById('asciiCustomHeight');
     if (!widthInput || !heightInput) return;
@@ -6886,7 +7439,8 @@ function applyCustomAsciiGridSize() {
         return;
     }
     
-    if (confirm('Смена размера сетки очистит текущий рисунок. Продолжить?')) {
+    const isConfirmed = await showConfirm('Смена размера сетки очистит текущий рисунок. Продолжить?', 'Изменение размера сетки');
+    if (isConfirmed) {
         asciiGridWidth = newWidth;
         asciiGridHeight = newHeight;
         createAsciiGrid();
@@ -7206,21 +7760,31 @@ function openAsciiDrawer(targetWrap = null) {
     clearAsciiHistory();
     saveAsciiHistory();
     
-    modal.style.display = 'flex';
-    modal.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#asciiEditorModal');
+    } else {
+        modal.style.display = 'flex';
+        modal.classList.add('show');
+    }
+    setTimeout(fitAsciiGridToContainer, 50);
 }
 
 function closeAsciiEditor() {
-    const modal = document.getElementById('asciiEditorModal');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#asciiEditorModal');
+    } else {
+        const modal = document.getElementById('asciiEditorModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+        }
     }
     asciiTargetWrap = null;
 }
 
-function clearAsciiGrid() {
-    if (confirm('Очистить холст? Это действие удалит весь текущий рисунок.')) {
+async function clearAsciiGrid() {
+    const isConfirmed = await showConfirm('Очистить холст? Это действие удалит весь текущий рисунок.', 'Очистка холста');
+    if (isConfirmed) {
         const cells = document.querySelectorAll('.ascii-cell');
         cells.forEach(cell => {
             cell.textContent = ' ';
@@ -7795,7 +8359,11 @@ window.getCurrentEditId = function() {
                     defaultTemplateName = data.default;
                     postTemplatesMeta = data.post_templates || {};
                     renderTemplatesGrid();
-                    document.getElementById('templateManagerDialog').style.display = 'block';
+                    if (window.Modal) {
+                        Modal.open('#templateManagerDialog');
+                    } else {
+                        document.getElementById('templateManagerDialog').style.display = 'block';
+                    }
                 } else {
                     showNotification('Не удалось загрузить шаблоны: ' + data.error, 'error');
                 }
@@ -7806,7 +8374,11 @@ window.getCurrentEditId = function() {
     }
 
     function closeTemplateManager() {
-        document.getElementById('templateManagerDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#templateManagerDialog');
+        } else {
+            document.getElementById('templateManagerDialog').style.display = 'none';
+        }
     }
 
     function renderTemplatesGrid() {
@@ -7964,7 +8536,11 @@ window.getCurrentEditId = function() {
         }
         
         updateTemplateLivePreview();
-        document.getElementById('templateDetailsDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#templateDetailsDialog');
+        } else {
+            document.getElementById('templateDetailsDialog').style.display = 'block';
+        }
     }
 
     // Live update live preview inside text area
@@ -7980,8 +8556,13 @@ window.getCurrentEditId = function() {
     }
 
     function closeTemplateDetails() {
-        document.getElementById('templateDetailsDialog').style.display = 'none';
-        document.getElementById('saveTemplateDropdownMenu').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#templateDetailsDialog');
+        } else {
+            document.getElementById('templateDetailsDialog').style.display = 'none';
+        }
+        const menu = document.getElementById('saveTemplateDropdownMenu');
+        if (menu) menu.style.display = 'none';
     }
 
     function toggleSaveTemplateDropdown() {
@@ -8066,7 +8647,11 @@ window.getCurrentEditId = function() {
             .then(() => {
                 document.getElementById('templatePostSearchInput').value = '';
                 renderTemplatePostList();
-                document.getElementById('applyToPostModal').style.display = 'block';
+                if (window.Modal) {
+                    Modal.open('#applyToPostModal');
+                } else {
+                    document.getElementById('applyToPostModal').style.display = 'block';
+                }
             })
             .catch(err => {
                 console.error(err);
@@ -8074,7 +8659,11 @@ window.getCurrentEditId = function() {
     }
 
     function closeApplyToPostModal() {
-        document.getElementById('applyToPostModal').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#applyToPostModal');
+        } else {
+            document.getElementById('applyToPostModal').style.display = 'none';
+        }
     }
 
     function renderTemplatePostList() {
@@ -8186,15 +8775,23 @@ window.getCurrentEditId = function() {
             `{{BODY_STYLE}} - стили тела документа\n` +
             `{{CONTENT_WRAPPER_START}} - начало обертки контента\n` +
             `{{CONTENT_WRAPPER_END}} - конец обертки контента`;
-        alert(info);
+        showAlert(info, 'Теги шаблонов');
     }
 
     function showTemplateInstructions() {
-        document.getElementById('templateInstructionsDialog').style.display = 'block';
+        if (window.Modal) {
+            Modal.open('#templateInstructionsDialog');
+        } else {
+            document.getElementById('templateInstructionsDialog').style.display = 'block';
+        }
     }
 
     function closeTemplateInstructions() {
-        document.getElementById('templateInstructionsDialog').style.display = 'none';
+        if (window.Modal) {
+            Modal.close('#templateInstructionsDialog');
+        } else {
+            document.getElementById('templateInstructionsDialog').style.display = 'none';
+        }
     }
 
     // Export functions to window scope
@@ -8221,13 +8818,23 @@ let smileFilesToUpload = [];
 let smileSetNameTarget = '';
 
 function openSmileSetsDialog() {
-    document.getElementById('smileSetsDialog').style.display = 'block';
+    if (window.Modal) {
+        Modal.open('#smileSetsDialog');
+    } else {
+        const dlg = document.getElementById('smileSetsDialog');
+        if (dlg) dlg.style.display = 'block';
+    }
     loadSmileSetsList();
     resetSmileUploadState();
 }
 
 function closeSmileSetsDialog() {
-    document.getElementById('smileSetsDialog').style.display = 'none';
+    if (window.Modal) {
+        Modal.close('#smileSetsDialog');
+    } else {
+        const dlg = document.getElementById('smileSetsDialog');
+        if (dlg) dlg.style.display = 'none';
+    }
     resetSmileUploadState();
 }
 
@@ -8343,7 +8950,7 @@ function processSelectedSmiles(files) {
     if (btnContainer) btnContainer.style.display = 'block';
     
     const dropzoneText = document.getElementById('smileDropzoneText');
-    if (dropzoneText) dropzoneText.textContent = 'Файлы успешно выбраны';
+    if (dropzoneText) dropzoneText.textContent = window.t ? window.t('modals.smiles_files_selected_notice', 'Файлы успешно выбраны') : 'Файлы успешно выбраны';
 }
 
 function resetSmileUploadState() {
@@ -8364,7 +8971,7 @@ function resetSmileUploadState() {
     if (nameField) nameField.style.display = 'none';
     if (infoText) infoText.style.display = 'none';
     if (btnContainer) btnContainer.style.display = 'none';
-    if (dropzoneText) dropzoneText.textContent = 'Перетащите папку со смайлами сюда';
+    if (dropzoneText) dropzoneText.textContent = window.t ? window.t('modals.smiles_drop_text', 'Перетащите ZIP архив со смайлами сюда или кликните для выбора') : 'Перетащите ZIP архив со смайлами сюда или кликните для выбора';
 }
 
 async function loadSmileSetsList() {
@@ -8378,22 +8985,25 @@ async function loadSmileSetsList() {
         if (data.success) {
             const setNames = Object.keys(data.sets);
             if (setNames.length === 0) {
-                listContainer.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">Нет загруженных наборов</div>';
+                listContainer.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">' + (window.t ? window.t('modals.smiles_no_sets', 'Нет загруженных наборов') : 'Нет загруженных наборов') + '</div>';
             } else {
+                const pcsTemplate = window.t ? window.t('modals.smiles_count_pcs', '({count} шт.)') : '({count} шт.)';
+                const delText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
                 listContainer.innerHTML = setNames.map(name => {
                     const count = data.sets[name].length;
+                    const countFormatted = pcsTemplate.replace('{count}', count);
                     return `<div class="smile-set-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-color); transition: background 0.2s;" onmouseover="this.style.background='rgba(128,128,128,0.04)'" onmouseout="this.style.background='transparent'">
-                        <span class="smile-set-name" style="font-weight: 500; font-size: 14px;">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.5; margin-left: 8px;">(${count} шт.)</span></span>
-                        <button type="button" class="smile-set-delete-btn" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(239,68,68,0.4)'" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">Удалить</button>
+                        <span class="smile-set-name" style="font-weight: 500; font-size: 14px;">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.5; margin-left: 8px;">${countFormatted}</span></span>
+                        <button type="button" class="smile-set-delete-btn" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(239,68,68,0.4)'" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">${delText}</button>
                     </div>`;
                 }).join('');
             }
         } else {
-            listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">Ошибка загрузки списка</div>';
+            listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">' + (window.t ? window.t('modals.smiles_load_error', 'Ошибка загрузки списка') : 'Ошибка загрузки списка') + '</div>';
         }
     } catch (error) {
         console.error('Error loading smile sets:', error);
-        listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">Ошибка сети</div>';
+        listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">' + (window.t ? window.t('more_menu.network_error', 'Ошибка сети') : 'Ошибка сети') + '</div>';
     }
 }
 
@@ -8403,11 +9013,11 @@ async function handleSmileSetUpload() {
     let setName = document.getElementById('smileSetNameInput').value.trim();
 
     if (files.length === 0) {
-        showNotification('Выберите файлы или папку для загрузки', 'warning');
+        showNotification(window.t ? window.t('notifications.smiles_select_files_or_folder', 'Выберите файлы или папку для загрузки') : 'Выберите файлы или папку для загрузки', 'warning');
         return;
     }
     if (!setName) {
-        showNotification('Введите название для набора', 'warning');
+        showNotification(window.t ? window.t('notifications.smiles_enter_set_name', 'Введите название для набора') : 'Введите название для набора', 'warning');
         return;
     }
 
@@ -8417,22 +9027,22 @@ async function handleSmileSetUpload() {
     });
 
     try {
-        showNotification('Загрузка смайлов...', 'info');
+        showNotification(window.t ? window.t('notifications.smiles_uploading', 'Загрузка смайлов...') : 'Загрузка смайлов...', 'info');
         const response = await fetch('upload_smiles.php', {
             method: 'POST',
             body: formData
         });
         const data = await response.json();
         if (data.success) {
-            showNotification(`Набор "${setName}" успешно загружен (${data.count} смайлов)`, 'success');
+            showNotification(window.t ? window.t('notifications.smiles_uploaded_param', `Набор "${setName}" успешно загружен (${data.count} смайлов)`, { setName: setName, count: data.count }) : `Набор "${setName}" успешно загружен (${data.count} смайлов)`, 'success');
             loadSmileSetsList();
             resetSmileUploadState();
         } else {
-            showNotification('Ошибка загрузки: ' + data.error, 'error');
+            showNotification(window.t ? window.t('notifications.file_upload_error_param', 'Ошибка загрузки: ' + data.error, { error: data.error }) : 'Ошибка загрузки: ' + data.error, 'error');
         }
     } catch (error) {
         console.error('Error uploading smiles:', error);
-        showNotification('Ошибка сети при загрузке набора', 'error');
+        showNotification(window.t ? window.t('notifications.smiles_upload_network_error', 'Ошибка сети при загрузке набора') : 'Ошибка сети при загрузке набора', 'error');
     }
 }
 
@@ -8446,7 +9056,7 @@ window.handleSmileFileSelect = handleSmileFileSelect;
 window.handleSmileSetUpload = handleSmileSetUpload;
 
 async function deleteSmileSet(setName) {
-    showConfirm(`Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`).then(async (result) => {
+    showConfirm(window.t ? window.t('notifications.smiles_delete_confirm_param', `Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`, { setName: setName }) : `Удалить набор смайлов "${setName}"? Все файлы этого набора будут удалены.`).then(async (result) => {
         if (!result) return;
         
         const formData = new FormData();
@@ -8459,14 +9069,14 @@ async function deleteSmileSet(setName) {
             });
             const data = await response.json();
             if (data.success) {
-                showNotification(`Набор "${setName}" успешно удален`, 'success');
+                showNotification(window.t ? window.t('notifications.smiles_deleted_param', `Набор "${setName}" успешно удален`, { setName: setName }) : `Набор "${setName}" успешно удален`, 'success');
                 loadSmileSetsList();
             } else {
-                showNotification('Ошибка удаления: ' + data.error, 'error');
+                showNotification(window.t ? window.t('notifications.file_delete_error_param', 'Ошибка удаления: ' + data.error, { error: data.error }) : 'Ошибка удаления: ' + data.error, 'error');
             }
         } catch (error) {
             console.error('Error deleting smile set:', error);
-            showNotification('Ошибка сети при удалении набора', 'error');
+            showNotification(window.t ? window.t('notifications.smiles_delete_network_error', 'Ошибка сети при удалении набора') : 'Ошибка сети при удалении набора', 'error');
         }
     });
 }
@@ -8504,7 +9114,7 @@ async function loadSmilesSubmenuList() {
             const nonEmptySets = setNames.filter(name => data.sets[name].length > 0);
             
             if (nonEmptySets.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">Нет смайлов. Добавьте их через "Наборы смайлов"</div>';
+                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_smiles_hint', 'Нет смайлов. Добавьте их через "Наборы смайлов"') : 'Нет смайлов. Добавьте их через "Наборы смайлов"') + '</div>';
             } else {
                 let html = '<div class="smiles-submenu-container">';
                 nonEmptySets.forEach(setName => {
@@ -8524,11 +9134,11 @@ async function loadSmilesSubmenuList() {
                 submenu.innerHTML = html;
             }
         } else {
-            submenu.innerHTML = '<div class="more-submenu-empty">Ошибка загрузки смайлов</div>';
+            submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.smiles_load_error', 'Ошибка загрузки смайлов') : 'Ошибка загрузки смайлов') + '</div>';
         }
     } catch (error) {
         console.error('Error loading smiles for submenu:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">Ошибка сети</div>';
+        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.network_error', 'Ошибка сети') : 'Ошибка сети') + '</div>';
     }
 }
 
@@ -8562,23 +9172,29 @@ let editingCustomBtnTarget = null;
 function openInsertButtonDialog() {
     editingCustomBtnTarget = null;
     const dialogTitle = document.getElementById('customButtonDialogTitle');
-    if (dialogTitle) dialogTitle.textContent = 'Вставить кнопку со ссылкой';
+    if (dialogTitle) dialogTitle.textContent = window.t ? window.t('modals.btn_title', 'Вставить кнопку со ссылкой') : 'Вставить кнопку со ссылкой';
     const submitBtn = document.getElementById('customButtonSubmitBtn');
-    if (submitBtn) submitBtn.textContent = 'Вставить кнопку';
+    if (submitBtn) submitBtn.innerHTML = '<span>💾</span> <span>' + (window.t ? window.t('modals.btn_submit', 'Вставить кнопку') : 'Вставить кнопку') + '</span>';
 
     const textInput = document.getElementById('btnTextInput');
     const urlInput = document.getElementById('btnUrlInput');
     const targetInput = document.getElementById('btnTargetInput');
-    if (textInput) textInput.value = 'Перейти на сайт';
+    const defaultText = window.t ? window.t('modals.btn_default_text', 'Перейти на сайт') : 'Перейти на сайт';
+    if (textInput) textInput.value = defaultText;
     if (urlInput) urlInput.value = 'https://example.com';
     if (targetInput) targetInput.checked = true;
 
     applyBtnPreset('editor');
 
-    const dialog = document.getElementById('customButtonDialog');
-    if (!dialog) return;
-    dialog.style.display = 'flex';
-    dialog.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#customButtonDialog');
+    } else {
+        const dialog = document.getElementById('customButtonDialog');
+        if (dialog) {
+            dialog.style.display = 'flex';
+            dialog.classList.add('show');
+        }
+    }
     switchBtnTab('gui');
     updateCustomBtnPreview();
 }
@@ -8588,9 +9204,9 @@ function openEditCustomButtonDialog(customBtn) {
     editingCustomBtnTarget = customBtn;
 
     const dialogTitle = document.getElementById('customButtonDialogTitle');
-    if (dialogTitle) dialogTitle.textContent = 'Редактировать кнопку';
+    if (dialogTitle) dialogTitle.textContent = window.t ? window.t('modals.btn_edit_title', 'Редактировать кнопку') : 'Редактировать кнопку';
     const submitBtn = document.getElementById('customButtonSubmitBtn');
-    if (submitBtn) submitBtn.textContent = 'Сохранить изменения';
+    if (submitBtn) submitBtn.innerHTML = '<span>💾</span> <span>' + (window.t ? window.t('modals.btn_save_changes', 'Сохранить изменения') : 'Сохранить изменения') + '</span>';
 
     const text = customBtn.textContent.trim();
     const url = customBtn.getAttribute('href') || '';
@@ -8648,19 +9264,29 @@ function openEditCustomButtonDialog(customBtn) {
         rawCssEl.value = styleStr;
     }
 
-    const dialog = document.getElementById('customButtonDialog');
-    if (!dialog) return;
-    dialog.style.display = 'flex';
-    dialog.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#customButtonDialog');
+    } else {
+        const dialog = document.getElementById('customButtonDialog');
+        if (dialog) {
+            dialog.style.display = 'flex';
+            dialog.classList.add('show');
+        }
+    }
     switchBtnTab('gui');
     updateCustomBtnPreview();
 }
 
 function closeCustomButtonDialog() {
-    const dialog = document.getElementById('customButtonDialog');
-    if (!dialog) return;
-    dialog.style.display = 'none';
-    dialog.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#customButtonDialog');
+    } else {
+        const dialog = document.getElementById('customButtonDialog');
+        if (dialog) {
+            dialog.style.display = 'none';
+            dialog.classList.remove('show');
+        }
+    }
     editingCustomBtnTarget = null;
 }
 
@@ -8771,7 +9397,7 @@ function updateCustomBtnPreview() {
 
     if (!textInput || !urlInput) return;
 
-    const text = textInput.value || 'Текст кнопки';
+    const text = textInput.value || (window.t ? window.t('modals.btn_text_fallback', 'Текст кнопки') : 'Текст кнопки');
     const url = urlInput.value || '#';
     const targetBlank = targetInput ? targetInput.checked : true;
     
@@ -8859,7 +9485,7 @@ function insertCustomButtonToEditor() {
 
     if (!btnHtml) {
         if (typeof showNotification === 'function') {
-            showNotification('Пожалуйста, введите текст и ссылку для кнопки', 'warning');
+            showNotification(window.t ? window.t('notifications.custom_btn_enter_text_url', 'Пожалуйста, введите текст и ссылку для кнопки') : 'Пожалуйста, введите текст и ссылку для кнопки', 'warning');
         }
         return;
     }
@@ -8879,7 +9505,7 @@ function insertCustomButtonToEditor() {
             hideGlobalMediaOverlay();
         }
         if (typeof showNotification === 'function') {
-            showNotification('Кнопка со ссылкой успешно обновлена!', 'success');
+            showNotification(window.t ? window.t('notifications.custom_btn_updated', 'Кнопка со ссылкой успешно обновлена!') : 'Кнопка со ссылкой успешно обновлена!', 'success');
         }
     } else {
         // Вставка новой кнопки с оберткой медиа-элементов
@@ -8902,7 +9528,7 @@ function insertCustomButtonToEditor() {
             }
         }
         if (typeof showNotification === 'function') {
-            showNotification('Кнопка со ссылкой успешно вставлена!', 'success');
+            showNotification(window.t ? window.t('notifications.custom_btn_inserted', 'Кнопка со ссылкой успешно вставлена!') : 'Кнопка со ссылкой успешно вставлена!', 'success');
         }
     }
 
@@ -8937,9 +9563,11 @@ function checkDevWarning() {
     if (window.isDevBuild) {
         const warningAccepted = localStorage.getItem('devWarningAccepted');
         if (!warningAccepted) {
-            const devWarningDialog = document.getElementById('devWarningDialog');
-            if (devWarningDialog) {
-                devWarningDialog.style.display = 'flex';
+            if (window.Modal) {
+                Modal.open('#devWarningDialog');
+            } else {
+                const devWarningDialog = document.getElementById('devWarningDialog');
+                if (devWarningDialog) devWarningDialog.style.display = 'flex';
             }
         }
     }
@@ -8947,9 +9575,11 @@ function checkDevWarning() {
 
 function confirmDevWarning() {
     localStorage.setItem('devWarningAccepted', 'true');
-    const devWarningDialog = document.getElementById('devWarningDialog');
-    if (devWarningDialog) {
-        devWarningDialog.style.display = 'none';
+    if (window.Modal) {
+        Modal.close('#devWarningDialog');
+    } else {
+        const devWarningDialog = document.getElementById('devWarningDialog');
+        if (devWarningDialog) devWarningDialog.style.display = 'none';
     }
 }
 
@@ -9059,3 +9689,500 @@ document.addEventListener('DOMContentLoaded', function() {
         }, true);
     }
 });
+
+/* ==========================================================================
+   Custom Select Dropdown Engine
+   ========================================================================== */
+(function() {
+    // Intercept HTMLSelectElement.prototype.value and selectedIndex to auto-sync custom UI
+    const originalValueDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    if (originalValueDescriptor && originalValueDescriptor.set) {
+        Object.defineProperty(HTMLSelectElement.prototype, 'value', {
+            get: function() {
+                return originalValueDescriptor.get.call(this);
+            },
+            set: function(val) {
+                const res = originalValueDescriptor.set.call(this, val);
+                if (this.dataset && this.dataset.customSelectInitialized === 'true') {
+                    syncCustomSelectFromNative(this);
+                }
+                return res;
+            },
+            configurable: true,
+            enumerable: true
+        });
+    }
+
+    const originalIndexDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'selectedIndex');
+    if (originalIndexDescriptor && originalIndexDescriptor.set) {
+        Object.defineProperty(HTMLSelectElement.prototype, 'selectedIndex', {
+            get: function() {
+                return originalIndexDescriptor.get.call(this);
+            },
+            set: function(val) {
+                const res = originalIndexDescriptor.set.call(this, val);
+                if (this.dataset && this.dataset.customSelectInitialized === 'true') {
+                    syncCustomSelectFromNative(this);
+                }
+                return res;
+            },
+            configurable: true,
+            enumerable: true
+        });
+    }
+
+    function createChevronSvg() {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    }
+
+    function getSelectedOptionData(select) {
+        const selectedOption = select.options[select.selectedIndex] || select.options[0];
+        return {
+            text: selectedOption ? (selectedOption.textContent || selectedOption.innerText || '') : '',
+            value: selectedOption ? selectedOption.value : ''
+        };
+    }
+
+    function rebuildCustomSelectOptions(select, wrapper) {
+        const popoverInner = wrapper.querySelector('.custom-select-popover-inner');
+        if (!popoverInner) return;
+        
+        popoverInner.innerHTML = '';
+        const currentValue = select.value;
+        
+        Array.from(select.options).forEach((opt, index) => {
+            const optBtn = document.createElement('button');
+            optBtn.type = 'button';
+            optBtn.className = 'custom-select-option' + (opt.value === currentValue || (!currentValue && index === 0) ? ' is-selected' : '');
+            optBtn.dataset.value = opt.value;
+            optBtn.dataset.index = index;
+            optBtn.setAttribute('role', 'option');
+            optBtn.setAttribute('aria-selected', opt.value === currentValue ? 'true' : 'false');
+            if (opt.disabled) {
+                optBtn.disabled = true;
+                optBtn.style.opacity = '0.4';
+                optBtn.style.cursor = 'not-allowed';
+            }
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'custom-option-text';
+            textSpan.textContent = opt.textContent || opt.innerText;
+            
+            const checkSpan = document.createElement('span');
+            checkSpan.className = 'custom-option-check';
+            checkSpan.textContent = '✓';
+            
+            optBtn.appendChild(textSpan);
+            optBtn.appendChild(checkSpan);
+            
+            optBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (opt.disabled) return;
+                
+                selectCustomOption(select, wrapper, opt.value);
+                closeCustomSelect(wrapper);
+                const trigger = wrapper.querySelector('.custom-select-trigger');
+                if (trigger) trigger.focus();
+            });
+            
+            popoverInner.appendChild(optBtn);
+        });
+
+        // Update trigger label
+        const selData = getSelectedOptionData(select);
+        const valSpan = wrapper.querySelector('.custom-select-value');
+        if (valSpan) {
+            valSpan.textContent = selData.text || 'Выберите...';
+        }
+    }
+
+    function selectCustomOption(select, wrapper, value) {
+        if (select.value !== value) {
+            select.value = value;
+            // Dispatch standard events
+            select.dispatchEvent(new Event('input', { bubbles: true }));
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        syncCustomSelectFromNative(select);
+    }
+
+    function syncCustomSelectFromNative(select) {
+        const wrapper = select.closest('.custom-select-wrapper');
+        if (!wrapper) return;
+        
+        const selData = getSelectedOptionData(select);
+        const valSpan = wrapper.querySelector('.custom-select-value');
+        if (valSpan) {
+            valSpan.textContent = selData.text || 'Выберите...';
+        }
+        
+        const options = wrapper.querySelectorAll('.custom-select-option');
+        options.forEach(optBtn => {
+            const isMatch = optBtn.dataset.value === String(select.value);
+            if (isMatch) {
+                optBtn.classList.add('is-selected');
+                optBtn.setAttribute('aria-selected', 'true');
+            } else {
+                optBtn.classList.remove('is-selected');
+                optBtn.setAttribute('aria-selected', 'false');
+            }
+        });
+    }
+
+    function getAvailableDropdownSpace(wrapper) {
+        const trigger = wrapper.querySelector('.custom-select-trigger') || wrapper;
+        const rect = trigger.getBoundingClientRect();
+        
+        let container = wrapper.parentElement;
+        let containerTop = 0;
+        let containerBottom = window.innerHeight;
+        
+        while (container && container !== document.body && container !== document.documentElement) {
+            const style = window.getComputedStyle(container);
+            const overflow = (style.overflow || '') + (style.overflowY || '');
+            if (/auto|scroll|hidden/.test(overflow) || 
+                container.classList.contains('dialog-content') || 
+                container.classList.contains('modal-content') || 
+                container.classList.contains('manage-posts')) {
+                const cRect = container.getBoundingClientRect();
+                containerTop = Math.max(containerTop, cRect.top);
+                containerBottom = Math.min(containerBottom, cRect.bottom);
+                break;
+            }
+            container = container.parentElement;
+        }
+        
+        const spaceBelow = containerBottom - rect.bottom;
+        const spaceAbove = rect.top - containerTop;
+        return { spaceBelow, spaceAbove };
+    }
+
+    function openCustomSelect(wrapper) {
+        closeAllCustomSelects(wrapper);
+        
+        const popover = wrapper.querySelector('.custom-select-popover');
+        const popoverInner = wrapper.querySelector('.custom-select-popover-inner');
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        if (!popover || !trigger) return;
+        
+        // Smart flip positioning calculation based on container bounds
+        const { spaceBelow, spaceAbove } = getAvailableDropdownSpace(wrapper);
+        const estimatedHeight = Math.min(200, popover.scrollHeight || 160);
+        
+        const shouldDropUp = (spaceBelow < estimatedHeight + 10 && spaceAbove > spaceBelow) || (spaceBelow < 120 && spaceAbove >= 100);
+        
+        if (shouldDropUp) {
+            popover.classList.add('drop-up');
+            if (popoverInner) {
+                const maxHeight = Math.max(90, Math.min(200, spaceAbove - 16));
+                popoverInner.style.maxHeight = maxHeight + 'px';
+            }
+        } else {
+            popover.classList.remove('drop-up');
+            if (popoverInner) {
+                const maxHeight = Math.max(90, Math.min(200, spaceBelow - 16));
+                popoverInner.style.maxHeight = maxHeight + 'px';
+            }
+        }
+        
+        wrapper.classList.add('is-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        
+        // Scroll selected option into view
+        const selectedOpt = popover.querySelector('.custom-select-option.is-selected');
+        if (selectedOpt) {
+            selectedOpt.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function closeCustomSelect(wrapper) {
+        if (!wrapper) return;
+        wrapper.classList.remove('is-open');
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        if (trigger) {
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function closeAllCustomSelects(exceptWrapper) {
+        document.querySelectorAll('.custom-select-wrapper.is-open').forEach(w => {
+            if (w !== exceptWrapper) {
+                closeCustomSelect(w);
+            }
+        });
+    }
+
+    function initCustomSelect(select) {
+        if (!select || select.tagName !== 'SELECT') return;
+        if (select.dataset && select.dataset.customSelectInitialized === 'true') return;
+        if (select.hasAttribute('data-custom-select-ignore')) return;
+        
+        select.dataset.customSelectInitialized = 'true';
+        select.classList.add('custom-select-native');
+        select.setAttribute('tabindex', '-1');
+        select.setAttribute('aria-hidden', 'true');
+        
+        // Create wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select-wrapper';
+        if (select.id) wrapper.dataset.forSelect = select.id;
+        
+        // Detect compact / inline styling
+        if (select.closest('.size-input-group') || select.classList.contains('compact-select')) {
+            wrapper.classList.add('custom-select-compact');
+        }
+        
+        // Transfer relevant classes or styling
+        if (select.classList.contains('language-select')) {
+            wrapper.classList.add('language-select-wrapper');
+        }
+
+        // Transfer spacing styles if present on native select
+        if (select.style.marginBottom) {
+            wrapper.style.marginBottom = select.style.marginBottom;
+        }
+        if (select.style.marginTop) {
+            wrapper.style.marginTop = select.style.marginTop;
+        }
+        if (select.style.marginRight) {
+            wrapper.style.marginRight = select.style.marginRight;
+        }
+        if (select.style.marginLeft) {
+            wrapper.style.marginLeft = select.style.marginLeft;
+        }
+        
+        // Insert wrapper before select and move select inside wrapper
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(select);
+        
+        // Create trigger button
+        const selData = getSelectedOptionData(select);
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'custom-select-trigger';
+        trigger.setAttribute('role', 'combobox');
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.setAttribute('tabindex', '0');
+        if (select.id) trigger.id = select.id + '_customTrigger';
+        if (select.title) trigger.title = select.title;
+        
+        const valSpan = document.createElement('span');
+        valSpan.className = 'custom-select-value';
+        valSpan.textContent = selData.text || 'Выберите...';
+        
+        const arrowSpan = document.createElement('span');
+        arrowSpan.className = 'custom-select-arrow';
+        arrowSpan.innerHTML = createChevronSvg();
+        
+        trigger.appendChild(valSpan);
+        trigger.appendChild(arrowSpan);
+        wrapper.appendChild(trigger);
+        
+        // Create popover menu
+        const popover = document.createElement('div');
+        popover.className = 'custom-select-popover';
+        popover.setAttribute('role', 'listbox');
+        
+        const popoverInner = document.createElement('div');
+        popoverInner.className = 'custom-select-popover-inner';
+        popover.appendChild(popoverInner);
+        wrapper.appendChild(popover);
+        
+        // Populate options
+        rebuildCustomSelectOptions(select, wrapper);
+        
+        // Trigger click handler
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (select.disabled) return;
+            if (wrapper.classList.contains('is-open')) {
+                closeCustomSelect(wrapper);
+            } else {
+                openCustomSelect(wrapper);
+            }
+        });
+        
+        // Keyboard navigation
+        trigger.addEventListener('keydown', function(e) {
+            if (select.disabled) return;
+            const isOpen = wrapper.classList.contains('is-open');
+            const options = Array.from(wrapper.querySelectorAll('.custom-select-option:not([disabled])'));
+            if (!options.length) return;
+            
+            let currentIndex = options.findIndex(opt => opt.classList.contains('is-selected'));
+            if (currentIndex === -1) currentIndex = 0;
+            
+            if (e.key === 'ArrowDown' || e.key === 'Down') {
+                e.preventDefault();
+                if (!isOpen) {
+                    openCustomSelect(wrapper);
+                } else {
+                    const nextIndex = (currentIndex + 1) % options.length;
+                    selectCustomOption(select, wrapper, options[nextIndex].dataset.value);
+                    options[nextIndex].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowUp' || e.key === 'Up') {
+                e.preventDefault();
+                if (!isOpen) {
+                    openCustomSelect(wrapper);
+                } else {
+                    const prevIndex = (currentIndex - 1 + options.length) % options.length;
+                    selectCustomOption(select, wrapper, options[prevIndex].dataset.value);
+                    options[prevIndex].scrollIntoView({ block: 'nearest' });
+                }
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (!isOpen) {
+                    openCustomSelect(wrapper);
+                } else {
+                    closeCustomSelect(wrapper);
+                }
+            } else if (e.key === 'Escape' || e.key === 'Esc') {
+                if (isOpen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeCustomSelect(wrapper);
+                }
+            } else if (e.key === 'Tab') {
+                if (isOpen) {
+                    closeCustomSelect(wrapper);
+                }
+            }
+        });
+        
+        // MutationObserver for select childList & attributes
+        const observer = new MutationObserver(function(mutations) {
+            let optionsChanged = false;
+            let attrsChanged = false;
+            for (const mut of mutations) {
+                if (mut.type === 'childList') {
+                    optionsChanged = true;
+                } else if (mut.type === 'attributes') {
+                    attrsChanged = true;
+                }
+            }
+            if (optionsChanged) {
+                rebuildCustomSelectOptions(select, wrapper);
+            } else if (attrsChanged) {
+                syncCustomSelectFromNative(select);
+            }
+        });
+        observer.observe(select, { childList: true, attributes: true, subtree: true });
+        
+        // Listen to native change event
+        select.addEventListener('change', function() {
+            syncCustomSelectFromNative(select);
+        });
+    }
+
+    function initAllCustomSelects(root) {
+        const scope = root || document;
+        const selects = scope.querySelectorAll('select:not([data-custom-select-initialized="true"]):not([data-custom-select-ignore])');
+        selects.forEach(initCustomSelect);
+    }
+
+    // Global click listener to close open selects
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.custom-select-wrapper')) {
+            closeAllCustomSelects();
+        }
+    });
+
+    // Global escape key listener
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+            closeAllCustomSelects();
+        }
+    });
+
+    // Observe document for dynamically added select elements
+    if (typeof MutationObserver !== 'undefined') {
+        const domObserver = new MutationObserver(function(mutations) {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === 1) {
+                        if (node.tagName === 'SELECT') {
+                            initCustomSelect(node);
+                        } else if (node.querySelectorAll) {
+                            initAllCustomSelects(node);
+                        }
+                    }
+                }
+            }
+        });
+        
+        if (document.body) {
+            domObserver.observe(document.body, { childList: true, subtree: true });
+        } else {
+            document.addEventListener('DOMContentLoaded', function() {
+                domObserver.observe(document.body, { childList: true, subtree: true });
+            });
+        }
+    }
+
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initAllCustomSelects();
+        });
+    } else {
+        initAllCustomSelects();
+    }
+
+    // Expose APIs globally
+    window.initCustomSelect = initCustomSelect;
+    window.initCustomSelects = initAllCustomSelects;
+    window.syncCustomSelect = syncCustomSelectFromNative;
+})();
+
+// Listen for language changes to invalidate caches and re-render dynamic submenus
+window.addEventListener('npblog:langchange', function(e) {
+    if (typeof draftsListLoaded !== 'undefined') draftsListLoaded = false;
+    if (typeof includesListLoaded !== 'undefined') includesListLoaded = false;
+    
+    // If manage posts panel is active, refresh the list
+    const managePanel = document.getElementById('managePosts');
+    if (managePanel && managePanel.classList.contains('active')) {
+        if (typeof loadPosts === 'function') loadPosts();
+    }
+    
+    // If drafts submenu is currently open, refresh it
+    const draftsSubmenu = document.getElementById('draftsSubmenu');
+    const draftsItem = draftsSubmenu ? draftsSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (draftsItem && draftsItem.classList.contains('submenu-open') && typeof loadDraftsList === 'function') {
+        loadDraftsList();
+    }
+    
+    // If includes submenu is currently open, refresh it
+    const includesSubmenu = document.getElementById('includesSubmenu');
+    const includesItem = includesSubmenu ? includesSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (includesItem && includesItem.classList.contains('submenu-open') && typeof loadIncludesList === 'function') {
+        loadIncludesList();
+    }
+    
+    // If articles submenu is currently open, refresh it
+    const articlesSubmenu = document.getElementById('articlesSubmenu');
+    const articlesItem = articlesSubmenu ? articlesSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (articlesItem && articlesItem.classList.contains('submenu-open') && typeof loadArticlesList === 'function') {
+        loadArticlesList();
+    }
+
+    // If TOC submenu is currently open, refresh it
+    const tocSubmenu = document.getElementById('tocSubmenu');
+    const tocItem = tocSubmenu ? tocSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (tocItem && tocItem.classList.contains('submenu-open') && typeof loadTocList === 'function') {
+        loadTocList();
+    }
+
+    // If smiles submenu is currently open, refresh it
+    const smilesSubmenu = document.getElementById('smilesSubmenu');
+    const smilesItem = smilesSubmenu ? smilesSubmenu.closest('.more-menu-item.has-submenu') : null;
+    if (smilesItem && smilesItem.classList.contains('submenu-open') && typeof loadSmilesSubmenuList === 'function') {
+        loadSmilesSubmenuList();
+    }
+});
+
+

@@ -14,7 +14,9 @@ $settings = [
     'title' => $data['title']
 ];
 
-file_put_contents($settingsFile, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-
-echo json_encode(['success' => true]);
+if (safeWriteJson($settingsFile, $settings)) {
+    echo json_encode(['success' => true]);
+} else {
+    echo json_encode(['success' => false, 'error' => 'Не удалось сохранить настройки']);
+}
 ?>

@@ -54,10 +54,10 @@ function resolveAbsoluteUrl($url, $baseUrl) {
 
     $baseUrl = rtrim($baseUrl, '/');
 
-    // If starts with '../' (relative to data/blog/ directory where post is saved)
+    // If starts with '../' (relative to blog/ directory where post is saved)
     if (strpos($url, '../') === 0) {
         $cleanPath = substr($url, 3); // Remove '../'
-        return $baseUrl . '/data/' . $cleanPath;
+        return rtrim($baseUrl, '/') . '/' . ltrim(getDataUrl($cleanPath), '/');
     }
 
     // If starts with '/' (absolute path from domain root)
@@ -122,7 +122,7 @@ function generateSeoMetaTagsBlock($postId, $title, $content) {
     // Resolve absolute article URL
     $articleUrl = '';
     if (!empty($baseUrl)) {
-        $articleUrl = rtrim($baseUrl, '/') . '/data/blog/post-' . $postId . '.html';
+        $articleUrl = rtrim($baseUrl, '/') . '/' . ltrim(getDataUrl('blog/post-' . $postId . '.html'), '/');
     }
     
     // Find first image or fall back to default image

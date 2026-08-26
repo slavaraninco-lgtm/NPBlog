@@ -66,6 +66,28 @@ function deleteDir($dirPath) {
     return rmdir($dirPath);
 }
 
+if ($action === 'get_version') {
+    $currentVersion = 'Unknown';
+    $isDev = false;
+    if (file_exists('version.json')) {
+        $currData = @json_decode(file_get_contents('version.json'), true);
+        if ($currData) {
+            if (!empty($currData['dev']) && ($currData['dev'] === true || $currData['dev'] === 'true')) {
+                $currentVersion = 'dev';
+                $isDev = true;
+            } elseif (isset($currData['version'])) {
+                $currentVersion = $currData['version'];
+            }
+        }
+    }
+    echo json_encode([
+        'success' => true,
+        'version' => $currentVersion,
+        'dev' => $isDev
+    ]);
+    exit;
+}
+
 if ($action === 'preview') {
     if (!isset($_FILES['updateFile'])) {
         echo json_encode(['success' => false, 'error' => 'Файл не передан']);

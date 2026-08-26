@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/security_bootstrap.php';
+require_once __DIR__ . '/lang_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $data = json_decode(file_get_contents('php://input'), true);
@@ -16,6 +17,14 @@ if (file_exists($settingsFile)) {
 // Обновляем настройки
 if (isset($data['hideEditorModeButtons'])) {
     $existingSettings['hideEditorModeButtons'] = (bool)$data['hideEditorModeButtons'];
+}
+
+if (isset($data['language'])) {
+    $lang = strtolower(trim($data['language']));
+    if (isValidLanguageCode($lang)) {
+        $existingSettings['language'] = $lang;
+        $_SESSION['editor_language'] = $lang;
+    }
 }
 
 if (isset($data['amoledTheme'])) {
@@ -172,8 +181,8 @@ if (isset($data['password_enabled'])) {
     }
 }
 
-// Сохраняем настройки
-if (file_put_contents($settingsFile, json_encode($existingSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+// Сохраняем настройки атомарно
+if (safeWriteJson($settingsFile, $existingSettings)) {
     require_once __DIR__ . '/rss_helper.php';
     generateRssFeed();
     echo json_encode([

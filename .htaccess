@@ -1,0 +1,30 @@
+# Security Rules for NPBlog
+Options -Indexes
+
+# 1. Deny access to hidden files and directories (like .git, .vscode, .env)
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 2. Deny direct access to sensitive configuration, backup, and metadata files
+<FilesMatch "(editor_settings\.json|allowed_ips\.txt|ftp\.json|version\.json|history\.json|backup-meta\.json|includes-meta\.json|login_lockouts\.json|\.(bak|log|sql|dist|sh|bat|cmd|ini))$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 3. Deny direct access to backup folders
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(data_backup|editor_backup|sys_update_tmp|rollback_tmp)/ - [F,L]
+</IfModule>

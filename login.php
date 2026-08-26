@@ -20,8 +20,15 @@ if (empty($passwordHash)) {
     exit();
 }
 
-// Check if locked out
-$lockout_until = isset($settings['lockout_until']) ? (int)$settings['lockout_until'] : 0;
+$lockoutFile = getDataPath('login_lockouts.json');
+$clientIp = getClientIp();
+$ipKey = hash('sha256', $clientIp);
+$lockouts = [];
+if (file_exists($lockoutFile)) {
+    $lockouts = json_decode(@file_get_contents($lockoutFile), true) ?: [];
+}
+
+$lockout_until = isset($lockouts[$ipKey]['lockout_until']) ? (int)$lockouts[$ipKey]['lockout_until'] : 0;
 if ($lockout_until > time()) {
     $remaining = $lockout_until - time();
     echo json_encode([
@@ -34,10 +41,14 @@ if ($lockout_until > time()) {
 
 // Verify password
 if (password_verify($password, $passwordHash)) {
-    // Reset lockout state
-    $settings['failed_attempts'] = 0;
-    $settings['lockout_until'] = 0;
-    file_put_contents($settingsFile, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    // Reset lockout state for this IP
+    if (isset($lockouts[$ipKey])) {
+        unset($lockouts[$ipKey]);
+        safeWriteJson($lockoutFile, $lockouts);
+    }
+    
+    // Regenerate session to prevent session fixation
+    session_regenerate_id(true);
     
     // Create session
     $_SESSION['authenticated'] = true;
@@ -53,15 +64,18 @@ if (password_verify($password, $passwordHash)) {
         'csrf_token' => $_SESSION['csrf_token']
     ]);
 } else {
-    // Increment failed attempts
-    $attempts = isset($settings['failed_attempts']) ? (int)$settings['failed_attempts'] : 0;
+    // Increment failed attempts for this IP
+    $attempts = isset($lockouts[$ipKey]['attempts']) ? (int)$lockouts[$ipKey]['attempts'] : 0;
     $attempts++;
-    $settings['failed_attempts'] = $attempts;
     
     if ($attempts >= 3) {
         $lockout_until = time() + 15 * 60; // 15 minutes lockout
-        $settings['lockout_until'] = $lockout_until;
-        file_put_contents($settingsFile, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $lockouts[$ipKey] = [
+            'attempts' => $attempts,
+            'lockout_until' => $lockout_until,
+            'ip' => $clientIp
+        ];
+        safeWriteJson($lockoutFile, $lockouts);
         
         echo json_encode([
             'success' => false,
@@ -69,7 +83,12 @@ if (password_verify($password, $passwordHash)) {
             'lockoutTimeRemaining' => 15 * 60
         ]);
     } else {
-        file_put_contents($settingsFile, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $lockouts[$ipKey] = [
+            'attempts' => $attempts,
+            'lockout_until' => 0,
+            'ip' => $clientIp
+        ];
+        safeWriteJson($lockoutFile, $lockouts);
         $remainingAttempts = 3 - $attempts;
         echo json_encode([
             'success' => false,
