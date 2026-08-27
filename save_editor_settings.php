@@ -119,6 +119,33 @@ if (isset($data['active_blog_path'])) {
     $existingSettings['data_path'] = $activePath;
 }
 
+if (isset($data['backup_path'])) {
+    $backupPath = trim($data['backup_path']);
+    $existingSettings['backup_path'] = $backupPath;
+    $_SESSION['backup_path'] = $backupPath;
+    if (!empty($backupPath)) {
+        getBackupPath(); // Ensure directory exists / is created
+    }
+}
+
+if (isset($data['autosave_path'])) {
+    $autosavePath = trim($data['autosave_path']);
+    $existingSettings['autosave_path'] = $autosavePath;
+    $_SESSION['autosave_path'] = $autosavePath;
+    if (!empty($autosavePath)) {
+        getAutosavePath(); // Ensure directory exists / is created
+    }
+}
+
+if (isset($data['editor_backup_path'])) {
+    $editorBackupPath = trim($data['editor_backup_path']);
+    $existingSettings['editor_backup_path'] = $editorBackupPath;
+    $_SESSION['editor_backup_path'] = $editorBackupPath;
+    if (!empty($editorBackupPath)) {
+        getEditorBackupPath(); // Ensure directory exists / is created
+    }
+}
+
 if (isset($data['rss_enabled'])) {
     $existingSettings['rss_enabled'] = (bool)$data['rss_enabled'];
 }

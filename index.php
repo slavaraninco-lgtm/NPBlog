@@ -2358,7 +2358,7 @@ function loadAndApplyAllSettings() {
                 if (rssFeedUseFirstLineCheck) rssFeedUseFirstLineCheck.checked = rssUseFirstLine;
                 if (rssFeedContentTemplateInput) rssFeedContentTemplateInput.value = rssContentTemplate;
                 
-                // 3. Пути к блогам и Безопасность
+                // 3. Пути к блогам, бэкапам и Безопасность
                 var blogPaths = settings.blog_paths || [];
                 if (!Array.isArray(blogPaths) || blogPaths.length === 0) {
                     if (settings.data_path) {
@@ -2372,6 +2372,33 @@ function loadAndApplyAllSettings() {
                 
                 renderBlogPathsInputs(blogPaths, window.currentActiveBlogPath);
                 updateBlogSelectorUI(blogPaths, window.currentActiveBlogPath);
+                
+                const backupPathInput = document.getElementById('backupPathInput');
+                const currentResolvedBackupPath = document.getElementById('currentResolvedBackupPath');
+                if (backupPathInput) {
+                    backupPathInput.value = settings.backup_path || '';
+                }
+                if (currentResolvedBackupPath) {
+                    currentResolvedBackupPath.textContent = settings.resolved_backup_path || settings.backup_path || 'data_backup';
+                }
+
+                const autosavePathInput = document.getElementById('autosavePathInput');
+                const currentResolvedAutosavePath = document.getElementById('currentResolvedAutosavePath');
+                if (autosavePathInput) {
+                    autosavePathInput.value = settings.autosave_path || '';
+                }
+                if (currentResolvedAutosavePath) {
+                    currentResolvedAutosavePath.textContent = settings.resolved_autosave_path || settings.autosave_path || 'autosave';
+                }
+
+                const editorBackupPathInput = document.getElementById('editorBackupPathInput');
+                const currentResolvedEditorBackupPath = document.getElementById('currentResolvedEditorBackupPath');
+                if (editorBackupPathInput) {
+                    editorBackupPathInput.value = settings.editor_backup_path || '';
+                }
+                if (currentResolvedEditorBackupPath) {
+                    currentResolvedEditorBackupPath.textContent = settings.resolved_editor_backup_path || settings.editor_backup_path || 'editor_backup';
+                }
                 
                 const passwordEnabled = settings.password_set || false;
                 const ipWhitelistEnabled = settings.ip_whitelist_enabled || false;
@@ -2746,6 +2773,30 @@ function removeBlogPathRow(btn) {
     if (row) row.remove();
 }
 
+function resetBackupPathToDefault() {
+    const input = document.getElementById('backupPathInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+}
+
+function resetAutosavePathToDefault() {
+    const input = document.getElementById('autosavePathInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+}
+
+function resetEditorBackupPathToDefault() {
+    const input = document.getElementById('editorBackupPathInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+}
+
 function savePathsSettings() {
     const inputs = document.querySelectorAll('.blog-path-input');
     const paths = [];
@@ -2761,10 +2812,24 @@ function savePathsSettings() {
         return;
     }
     
+    const backupPathInput = document.getElementById('backupPathInput');
+    const backupPath = backupPathInput ? backupPathInput.value.trim() : '';
+
+    const autosavePathInput = document.getElementById('autosavePathInput');
+    const autosavePath = autosavePathInput ? autosavePathInput.value.trim() : '';
+
+    const editorBackupPathInput = document.getElementById('editorBackupPathInput');
+    const editorBackupPath = editorBackupPathInput ? editorBackupPathInput.value.trim() : '';
+    
     fetch('save_editor_settings.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blog_paths: paths })
+        body: JSON.stringify({ 
+            blog_paths: paths,
+            backup_path: backupPath,
+            autosave_path: autosavePath,
+            editor_backup_path: editorBackupPath
+        })
     })
     .then(res => res.json())
     .then(data => {

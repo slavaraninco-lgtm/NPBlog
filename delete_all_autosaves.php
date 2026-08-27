@@ -2,7 +2,8 @@
 require_once __DIR__ . '/security_bootstrap.php';
 header('Content-Type: application/json');
 
-$files = glob('autosave/autosave_*.json');
+$autosaveDir = getAutosavePath();
+$files = glob($autosaveDir . 'autosave_*.json');
 
 if (empty($files)) {
     echo json_encode(['success' => true, 'message' => 'Нет файлов для удаления']);

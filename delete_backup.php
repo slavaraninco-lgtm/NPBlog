@@ -14,7 +14,8 @@ if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $data['postId'])) {
     exit;
 }
 
-$backupPath = validateSafePath('data_backup/' . $data['postId'] . '/', $data['filename']);
+$backupDir = validateSafePath(getBackupPath(), (string)$data['postId']) . '/';
+$backupPath = validateSafePath($backupDir, $data['filename']);
 
 if (!file_exists($backupPath)) {
     echo json_encode(['success' => false, 'error' => 'Файл бэкапа не найден'], JSON_UNESCAPED_UNICODE);
@@ -28,7 +29,7 @@ if (!unlink($backupPath)) {
 }
 
 // Обновляем метаданные
-$backupMetaFile = 'data_backup/backup-meta.json';
+$backupMetaFile = validateSafePath(getBackupPath(), 'backup-meta.json');
 if (file_exists($backupMetaFile)) {
     $backupMeta = json_decode(file_get_contents($backupMetaFile), true) ?: [];
     
@@ -49,13 +50,12 @@ if (file_exists($backupMetaFile)) {
             unset($backupMeta[$data['postId']]);
             
             // Удаляем пустую папку
-            $backupDir = 'data_backup/' . $data['postId'];
             if (is_dir($backupDir) && count(scandir($backupDir)) == 2) { // только . и ..
                 rmdir($backupDir);
             }
         }
         
-        file_put_contents($backupMetaFile, json_encode($backupMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        safeWriteJson($backupMetaFile, $backupMeta);
     }
 }
 

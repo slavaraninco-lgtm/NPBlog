@@ -7,7 +7,7 @@ require_once 'background_functions.php';
 // Функция для перенумерации статей
 function renumberPosts() {
     $metaFile = getDataPath('blog/posts-meta.json');
-    $backupMetaFile = 'data_backup/backup-meta.json';
+    $backupMetaFile = validateSafePath(getBackupPath(), 'backup-meta.json');
     
     if (!file_exists($metaFile)) {
         return ['success' => false, 'error' => 'Файл метаданных не найден'];
@@ -81,8 +81,8 @@ function renumberPosts() {
             }
             
             // Переименовываем папку с бэкапами (только если статья существует)
-            $oldBackupDir = 'data_backup/' . $oldId . '/';
-            $newBackupDir = 'data_backup/' . $newId . '/';
+            $oldBackupDir = validateSafePath(getBackupPath(), (string)$oldId) . '/';
+            $newBackupDir = validateSafePath(getBackupPath(), (string)$newId) . '/';
             
             if (is_dir($oldBackupDir)) {
                 // Создаём новую папку если её нет

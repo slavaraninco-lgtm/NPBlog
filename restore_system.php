@@ -6,7 +6,7 @@ $action = $_GET['action'] ?? '';
 
 if ($action === 'list_backups') {
     $backups = [];
-    $dir = 'editor_backup/';
+    $dir = getEditorBackupPath();
     if (is_dir($dir)) {
         $files = scandir($dir);
         foreach ($files as $file) {
@@ -38,7 +38,7 @@ if ($action === 'restore') {
         exit;
     }
     
-    $backupPath = 'editor_backup/' . basename($filename);
+    $backupPath = validateSafePath(getEditorBackupPath(), basename($filename));
     
     if (!file_exists($backupPath)) {
         echo json_encode(['success' => false, 'error' => 'Файл бэкапа не найден']);

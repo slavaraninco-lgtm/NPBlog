@@ -165,6 +165,129 @@ function getDataPath($subpath = '') {
     return $dataDir . $subpath;
 }
 
+if (!function_exists('getBackupPath')) {
+    function getBackupPath($subpath = '') {
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        $settings = [];
+        if (file_exists($settingsFile)) {
+            $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+        }
+        
+        $backupPath = '';
+        if (!empty($_SESSION['backup_path'])) {
+            $backupPath = $_SESSION['backup_path'];
+        } elseif (!empty($settings['backup_path'])) {
+            $backupPath = $settings['backup_path'];
+            $_SESSION['backup_path'] = $backupPath;
+        } else {
+            $backupPath = __DIR__ . '/data_backup';
+        }
+
+        $backupDir = $backupPath;
+        
+        // Make absolute if relative
+        if (strpos($backupDir, '/') !== 0 && strpos($backupDir, ':\\') !== 1 && strpos($backupDir, ':/') !== 1) {
+            $backupDir = __DIR__ . '/' . ltrim($backupDir, '/\\');
+        }
+
+        if (!is_dir($backupDir)) {
+            if (!@mkdir($backupDir, 0777, true)) {
+                // Fallback to default directory if cannot create custom path
+                $backupDir = __DIR__ . '/data_backup/';
+                if (!is_dir($backupDir)) {
+                    @mkdir($backupDir, 0777, true);
+                }
+            }
+        }
+        
+        // Ensure trailing slash and normalize directory separators
+        $backupDir = rtrim(str_replace('\\', '/', $backupDir), '/') . '/';
+        return $backupDir . ltrim($subpath, '/\\');
+    }
+}
+
+if (!function_exists('getAutosavePath')) {
+    function getAutosavePath($subpath = '') {
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        $settings = [];
+        if (file_exists($settingsFile)) {
+            $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+        }
+        
+        $autosavePath = '';
+        if (!empty($_SESSION['autosave_path'])) {
+            $autosavePath = $_SESSION['autosave_path'];
+        } elseif (!empty($settings['autosave_path'])) {
+            $autosavePath = $settings['autosave_path'];
+            $_SESSION['autosave_path'] = $autosavePath;
+        } else {
+            $autosavePath = __DIR__ . '/autosave';
+        }
+
+        $autosaveDir = $autosavePath;
+        
+        // Make absolute if relative
+        if (strpos($autosaveDir, '/') !== 0 && strpos($autosaveDir, ':\\') !== 1 && strpos($autosaveDir, ':/') !== 1) {
+            $autosaveDir = __DIR__ . '/' . ltrim($autosaveDir, '/\\');
+        }
+
+        if (!is_dir($autosaveDir)) {
+            if (!@mkdir($autosaveDir, 0777, true)) {
+                // Fallback to default directory if cannot create custom path
+                $autosaveDir = __DIR__ . '/autosave/';
+                if (!is_dir($autosaveDir)) {
+                    @mkdir($autosaveDir, 0777, true);
+                }
+            }
+        }
+        
+        // Ensure trailing slash and normalize directory separators
+        $autosaveDir = rtrim(str_replace('\\', '/', $autosaveDir), '/') . '/';
+        return $autosaveDir . ltrim($subpath, '/\\');
+    }
+}
+
+if (!function_exists('getEditorBackupPath')) {
+    function getEditorBackupPath($subpath = '') {
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        $settings = [];
+        if (file_exists($settingsFile)) {
+            $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+        }
+        
+        $editorBackupPath = '';
+        if (!empty($_SESSION['editor_backup_path'])) {
+            $editorBackupPath = $_SESSION['editor_backup_path'];
+        } elseif (!empty($settings['editor_backup_path'])) {
+            $editorBackupPath = $settings['editor_backup_path'];
+            $_SESSION['editor_backup_path'] = $editorBackupPath;
+        } else {
+            $editorBackupPath = __DIR__ . '/editor_backup';
+        }
+
+        $editorBackupDir = $editorBackupPath;
+        
+        // Make absolute if relative
+        if (strpos($editorBackupDir, '/') !== 0 && strpos($editorBackupDir, ':\\') !== 1 && strpos($editorBackupDir, ':/') !== 1) {
+            $editorBackupDir = __DIR__ . '/' . ltrim($editorBackupDir, '/\\');
+        }
+
+        if (!is_dir($editorBackupDir)) {
+            if (!@mkdir($editorBackupDir, 0777, true)) {
+                // Fallback to default directory if cannot create custom path
+                $editorBackupDir = __DIR__ . '/editor_backup/';
+                if (!is_dir($editorBackupDir)) {
+                    @mkdir($editorBackupDir, 0777, true);
+                }
+            }
+        }
+        
+        // Ensure trailing slash and normalize directory separators
+        $editorBackupDir = rtrim(str_replace('\\', '/', $editorBackupDir), '/') . '/';
+        return $editorBackupDir . ltrim($subpath, '/\\');
+    }
+}
+
 function getDataUrl($subpath = '') {
     $dataDir = getDataPath();
     $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']) : '';

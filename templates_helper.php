@@ -558,7 +558,7 @@ $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data.php\?file=/i',
     file_put_contents($postFile, $newHtml);
     
     // Also save backup
-    $backupDir = __DIR__ . '/data_backup/' . $postId . '/';
+    $backupDir = validateSafePath(getBackupPath(), (string)$postId) . '/';
     if (is_dir($backupDir)) {
         $existingBackups = glob($backupDir . $postId . '-*.html');
         $maxBackupNumber = 0;
@@ -573,7 +573,7 @@ $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data.php\?file=/i',
         $nextBackupNumber = $maxBackupNumber + 1;
         file_put_contents($backupDir . $postId . '-' . $nextBackupNumber . '.html', $newHtml);
         
-        $backupMetaFile = __DIR__ . '/data_backup/backup-meta.json';
+        $backupMetaFile = validateSafePath(getBackupPath(), 'backup-meta.json');
         if (file_exists($backupMetaFile)) {
             $backupMeta = json_decode(file_get_contents($backupMetaFile), true) ?: [];
             if (isset($backupMeta[$postId])) {
@@ -583,7 +583,7 @@ $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data.php\?file=/i',
                     'date' => date('d.m.Y H:i'),
                     'title' => $title
                 ];
-                file_put_contents($backupMetaFile, json_encode($backupMeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                safeWriteJson($backupMetaFile, $backupMeta);
             }
         }
     }

@@ -22,6 +22,9 @@ $defaults = [
     'contentWidth' => 920,
     'blog_paths' => [],
     'active_blog_path' => '',
+    'backup_path' => '',
+    'autosave_path' => '',
+    'editor_backup_path' => '',
     'rss_enabled' => false,
     'rss_base_url' => '',
     'rss_title' => 'NPBlog Feed',
@@ -42,8 +45,14 @@ if (file_exists($settingsFile)) {
         $merged['password_set'] = false;
     }
     unset($merged['password_hash']);
+    $merged['resolved_backup_path'] = getBackupPath();
+    $merged['resolved_autosave_path'] = getAutosavePath();
+    $merged['resolved_editor_backup_path'] = getEditorBackupPath();
     echo json_encode(['success' => true, 'settings' => $merged]);
 } else {
+    $defaults['resolved_backup_path'] = getBackupPath();
+    $defaults['resolved_autosave_path'] = getAutosavePath();
+    $defaults['resolved_editor_backup_path'] = getEditorBackupPath();
     echo json_encode([
         'success' => true, 
         'settings' => $defaults

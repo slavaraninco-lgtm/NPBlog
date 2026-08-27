@@ -12,7 +12,11 @@ $protectedPaths = [
     getDataPath('audio/'),
     getDataPath('video/'),
     getDataPath('files/'),
+    getBackupPath(),
+    getAutosavePath(),
+    getEditorBackupPath(),
     'data_backup/',
+    'autosave/',
     'editor_backup/',
     getDataPath('global-settings.json'),
     'editor_settings.json',
@@ -205,7 +209,7 @@ elseif ($action === 'update') {
     }
     
     // 1. Создаем бекап всего проекта
-    $backupDir = 'editor_backup/';
+    $backupDir = getEditorBackupPath();
     if (!is_dir($backupDir)) {
         mkdir($backupDir, 0755, true);
     }
@@ -219,13 +223,25 @@ elseif ($action === 'update') {
             RecursiveIteratorIterator::LEAVES_ONLY
         );
 
+        $normEditorBackup = rtrim(str_replace('\\', '/', realpath($backupDir) ?: $backupDir), '/') . '/';
+        $normDataBackup = rtrim(str_replace('\\', '/', realpath(getBackupPath()) ?: getBackupPath()), '/') . '/';
+        $normAutosave = rtrim(str_replace('\\', '/', realpath(getAutosavePath()) ?: getAutosavePath()), '/') . '/';
+
         foreach ($files as $name => $file) {
             if (!$file->isDir()) {
                 $filePath = $file->getRealPath();
+                $normFilePath = str_replace('\\', '/', $filePath);
                 $relativePath = substr($filePath, strlen($rootPath) + 1);
                 $relativePath = str_replace('\\', '/', $relativePath);
                 
-                if (!str_starts_with($relativePath, 'sys_update_tmp/') && !str_starts_with($relativePath, 'editor_backup/') && !str_starts_with($relativePath, 'rollback_tmp/')) {
+                if (!str_starts_with($relativePath, 'sys_update_tmp/') && 
+                    !str_starts_with($relativePath, 'rollback_tmp/') && 
+                    !str_starts_with($relativePath, 'editor_backup/') &&
+                    !str_starts_with($relativePath, 'autosave/') &&
+                    !str_starts_with($relativePath, 'data_backup/') &&
+                    !str_starts_with($normFilePath, $normEditorBackup) &&
+                    !str_starts_with($normFilePath, $normDataBackup) &&
+                    !str_starts_with($normFilePath, $normAutosave)) {
                     $zip->addFile($filePath, $relativePath);
                 }
             }
