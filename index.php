@@ -257,23 +257,36 @@ if (file_exists($versionFile)) {
     <!-- Диалог проверки нумерации -->
     <?php safe_include_editor_modal('numbering_check_modal.php'); ?>
 
-    <!-- Гайд для первого запуска -->
+    <!-- Интерактивный тур-обучение -->
     <div class="tutorial-overlay" id="tutorialOverlay">
         <div class="tutorial-spotlight" id="tutorialSpotlight"></div>
         <div class="tutorial-tooltip" id="tutorialTooltip">
-            <div class="tutorial-progress" id="tutorialProgress"></div>
+            <div class="tutorial-header">
+                <span class="tutorial-step-badge" id="tutorialStepBadge">Шаг 1 из 17</span>
+                <button type="button" class="tutorial-close-btn" onclick="skipTutorial()" title="Закрыть (Esc)">×</button>
+            </div>
+            <div class="tutorial-progress-bar">
+                <div class="tutorial-progress-fill" id="tutorialProgressFill"></div>
+            </div>
             <h3 id="tutorialTitle"></h3>
             <p id="tutorialText"></p>
             <div class="tutorial-buttons">
-                <button class="tutorial-btn skip" onclick="skipTutorial()">Пропустить</button>
-                <button class="tutorial-btn next" onclick="nextTutorialStep()">Далее</button>
+                <button type="button" class="tutorial-btn skip" id="tutorialSkipBtn" onclick="skipTutorial()" data-i18n="tutorial.skip_btn">Пропустить</button>
+                <div class="tutorial-nav-buttons">
+                    <button type="button" class="tutorial-btn prev" id="tutorialPrevBtn" onclick="prevTutorialStep()" data-i18n="tutorial.prev_btn">← Назад</button>
+                    <button type="button" class="tutorial-btn next" id="tutorialNextBtn" onclick="nextTutorialStep()" data-i18n="tutorial.next_btn">Далее →</button>
+                </div>
             </div>
         </div>
         <div class="tutorial-complete-dialog" id="tutorialComplete" style="display:none;">
-            <div class="tutorial-complete-icon">🎉</div>
-            <h2>Обучение завершено!</h2>
-            <p>Теперь вы знаете основы работы с редактором NPBlog. Приятного использования!</p>
-            <button class="tutorial-complete-btn" onclick="completeTutorial()">OK</button>
+            <div class="tutorial-complete-circle">
+                <svg viewBox="0 0 52 52" style="width: 38px; height: 38px;">
+                    <path fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" d="M14 27 l8 8 l16 -17"/>
+                </svg>
+            </div>
+            <h2 id="tutorialCompleteTitle" data-i18n="tutorial.complete_title">Обучение завершено!</h2>
+            <p id="tutorialCompleteText" data-i18n="tutorial.complete_text">Теперь вы знаете все основные инструменты и возможности NPBlog. Приятного использования!</p>
+            <button type="button" class="tutorial-complete-btn modal-btn modal-btn-primary" onclick="completeTutorial()" data-i18n="tutorial.finish_btn">Начать работу</button>
         </div>
     </div>
 

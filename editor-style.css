@@ -3827,7 +3827,7 @@ button:hover {
     cursor: not-allowed;
 }
 
-/* ——— Гайд для первого запуска ——— */
+/* ——— Интерактивный тур-обучение (Modern Tour) ——— */
 .tutorial-overlay {
     display: none;
     position: fixed;
@@ -3835,162 +3835,233 @@ button:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: transparent;
     z-index: 10010;
     align-items: center;
     justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease;
+    pointer-events: auto;
 }
 
 .tutorial-overlay.show {
     display: flex;
+    opacity: 1;
 }
 
+.tutorial-overlay.dimmed {
+    background: rgba(0, 0, 0, 0.65);
+}
+
+/* Spotlight */
 .tutorial-spotlight {
     position: fixed;
-    border: 3px solid #4CAF50;
-    border-radius: 8px;
-    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+    border: 2px solid var(--text-color);
+    border-radius: 10px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 16px rgba(255, 255, 255, 0.15);
     pointer-events: none;
     z-index: 10011;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: top, left, width, height;
 }
 
+/* Tooltip card */
 .tutorial-tooltip {
     position: fixed;
-    background: var(--bg-color);
-    border: 2px solid #4CAF50;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 400px;
-    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
-    z-index: 10012;
-    animation: tutorialFadeIn 0.4s ease;
+    background: var(--modal-bg, #1a1a1a);
+    border: 1px solid var(--modal-border, rgba(255, 255, 255, 0.14));
+    border-radius: 14px;
+    padding: 18px 22px;
+    max-width: 440px;
+    width: calc(100vw - 32px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    z-index: 10015;
+    animation: tutorialTooltipIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: top 0.25s cubic-bezier(0.16, 1, 0.3, 1), left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: auto;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-sizing: border-box;
 }
 
-@keyframes tutorialFadeIn {
+@keyframes tutorialTooltipIn {
     from {
         opacity: 0;
-        transform: scale(0.9);
+        transform: translateY(10px) scale(0.97);
     }
-
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0) scale(1);
     }
+}
+
+.tutorial-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.tutorial-step-badge {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-color);
+    background: rgba(128, 128, 128, 0.16);
+    border: 1px solid var(--border-color);
+    padding: 3px 9px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+}
+
+.tutorial-close-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--text-color);
+    opacity: 0.5;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: opacity 0.15s, background 0.15s;
+}
+
+.tutorial-close-btn:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.15);
+}
+
+.tutorial-progress-bar {
+    width: 100%;
+    height: 3px;
+    background: rgba(128, 128, 128, 0.2);
+    border-radius: 2px;
+    margin: 8px 0 14px 0;
+    overflow: hidden;
+}
+
+.tutorial-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--text-color);
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tutorial-tooltip h3 {
-    margin: 0 0 12px 0;
-    font-size: 1.3em;
+    margin: 0 0 8px 0;
+    font-size: 16.5px;
+    font-weight: 700;
     color: var(--text-color);
+    line-height: 1.3;
 }
 
 .tutorial-tooltip p {
     margin: 0 0 20px 0;
-    line-height: 1.6;
+    font-size: 13.5px;
+    line-height: 1.55;
     color: var(--text-color);
-    opacity: 0.9;
-}
-
-.tutorial-progress {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 20px;
-}
-
-.tutorial-progress-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transition: all 0.3s;
-}
-
-.tutorial-progress-dot.active {
-    background: #fff;
-    width: 24px;
-    border-radius: 4px;
+    opacity: 0.85;
 }
 
 .tutorial-buttons {
     display: flex;
-    gap: 12px;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.tutorial-nav-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .tutorial-btn {
-    padding: 10px 20px;
-    border: 2px solid var(--text-color);
+    padding: 7px 16px;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
-}
-
-.tutorial-btn.skip {
-    background: var(--bg-color);
+    transition: all 0.18s ease;
+    border: 1px solid var(--border-color);
+    background: transparent;
     color: var(--text-color);
 }
 
+.tutorial-btn.skip {
+    opacity: 0.6;
+    border-color: transparent;
+    padding: 7px 10px;
+}
+
 .tutorial-btn.skip:hover {
-    opacity: 0.7;
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.1);
+}
+
+.tutorial-btn.prev {
+    background: rgba(128, 128, 128, 0.08);
+}
+
+.tutorial-btn.prev:hover {
+    background: rgba(128, 128, 128, 0.16);
 }
 
 .tutorial-btn.next {
     background: var(--text-color);
     color: var(--bg-color);
+    border: 1px solid var(--text-color);
 }
 
 .tutorial-btn.next:hover {
-    opacity: 0.85;
+    opacity: 0.88;
 }
 
+/* Диалог завершения обучения */
 .tutorial-complete-dialog {
-    background: var(--bg-color);
-    border: 2px solid #28a745;
+    background: var(--modal-bg, #1a1a1a);
+    border: 1px solid var(--modal-border, rgba(255, 255, 255, 0.15));
     border-radius: 16px;
-    padding: 32px;
-    max-width: 500px;
+    padding: 36px 32px;
+    max-width: 480px;
+    width: calc(100vw - 40px);
     text-align: center;
-    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
-    animation: tutorialFadeIn 0.4s ease;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    animation: tutorialTooltipIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-sizing: border-box;
+    z-index: 10016;
 }
 
-.tutorial-complete-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
+.tutorial-complete-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--text-color);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px auto;
+    background: transparent;
 }
 
 .tutorial-complete-dialog h2 {
-    margin: 0 0 16px 0;
-    font-size: 1.8em;
+    margin: 0 0 12px 0;
+    font-size: 22px;
+    font-weight: 700;
     color: var(--text-color);
 }
 
 .tutorial-complete-dialog p {
-    margin: 0 0 24px 0;
+    margin: 0 0 26px 0;
+    font-size: 14px;
     line-height: 1.6;
     color: var(--text-color);
-    opacity: 0.9;
-}
-
-.tutorial-complete-btn {
-    padding: 14px 32px;
-    background: #28a745;
-    color: #fff;
-    border: 2px solid #28a745;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.tutorial-complete-btn:hover {
-    background: #218838;
-    border-color: #218838;
+    opacity: 0.85;
 }
 
 /* Модальное окно уведомлений */
@@ -5478,7 +5549,7 @@ body.header-customizing .dragging {
 }
 
 /* Стилизация перенесенных кнопок форматирования в меню "Прочее" */
-.more-menu-dropdown .format-btn {
+.more-menu-dropdown > .format-btn {
     display: block !important;
     width: 100% !important;
     height: auto !important;
@@ -5495,16 +5566,114 @@ body.header-customizing .dragging {
     box-sizing: border-box !important;
 }
 
-.more-menu-dropdown .format-btn:hover {
+.more-menu-dropdown > .format-btn:hover {
     background: rgba(128, 128, 128, 0.1) !important;
 }
 
-.more-menu-dropdown .format-btn .button-icon {
+.more-menu-dropdown > .format-btn .button-icon {
     display: none !important;
 }
 
-.more-menu-dropdown .format-btn .button-text {
+.more-menu-dropdown > .format-btn .button-text {
     display: inline !important;
+}
+
+/* Стилизация переключателя режимов (Визуально / Код) в меню "Прочее" */
+.more-menu-dropdown .mode-toggle {
+    display: flex !important;
+    gap: 4px !important;
+    background: rgba(0, 0, 0, 0.06) !important;
+    border-radius: 8px !important;
+    padding: 3px !important;
+    margin: 6px 12px !important;
+    box-sizing: border-box !important;
+    width: calc(100% - 24px) !important;
+    border: none !important;
+    height: auto !important;
+}
+
+[data-theme="dark"] .more-menu-dropdown .mode-toggle {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"][data-amoled="true"] .more-menu-dropdown .mode-toggle {
+    background: #161616 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.more-menu-dropdown .mode-toggle .format-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    width: 50% !important;
+    height: 30px !important;
+    padding: 0 10px !important;
+    text-align: center !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-color) !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    transition: all 0.18s ease !important;
+    margin: 0 !important;
+}
+
+.more-menu-dropdown .mode-toggle .format-btn:hover:not(.active) {
+    background: rgba(128, 128, 128, 0.12) !important;
+}
+
+.more-menu-dropdown .mode-toggle .format-btn.active {
+    background: var(--bg-color) !important;
+    color: var(--text-color) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="dark"] .more-menu-dropdown .mode-toggle .format-btn.active {
+    background: #2a2a2a !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"][data-amoled="true"] .more-menu-dropdown .mode-toggle .format-btn.active {
+    background: #222222 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Стилизация кнопок истории (Undo/Redo) в меню "Прочее" */
+.more-menu-dropdown .editor-actions {
+    display: flex !important;
+    gap: 6px !important;
+    padding: 0 !important;
+    margin: 6px 12px !important;
+    width: calc(100% - 24px) !important;
+    box-sizing: border-box !important;
+}
+
+.more-menu-dropdown .editor-actions .format-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    width: 50% !important;
+    height: 32px !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    background: rgba(128, 128, 128, 0.08) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-color) !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    transition: all 0.18s ease !important;
+}
+
+.more-menu-dropdown .editor-actions .format-btn:hover {
+    background: rgba(128, 128, 128, 0.18) !important;
 }
 
 /* Стилизация пикеров в меню "Прочее" */

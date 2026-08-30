@@ -23,13 +23,20 @@
             e.stopPropagation();
             toggleMenu();
         });
-        document.addEventListener('click', function() {
+        document.addEventListener('click', function(e) {
+            var tutOverlay = document.getElementById('tutorialOverlay');
+            if (tutOverlay && tutOverlay.classList.contains('show')) return;
             if (wrap.classList.contains('is-open')) closeMenu();
         });
-        wrap.querySelector('.editor-menu-dropdown').addEventListener('click', function(e) {
-            e.stopPropagation();
-            closeMenu();
-        });
+        var dropdown = wrap.querySelector('.editor-menu-dropdown');
+        if (dropdown) {
+            dropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var tutOverlay = document.getElementById('tutorialOverlay');
+                if (tutOverlay && tutOverlay.classList.contains('show')) return;
+                closeMenu();
+            });
+        }
     })();
 
     const themeToggle = document.getElementById('theme-toggle');

@@ -1,12 +1,13 @@
 <?php
 /**
  * ==============================================================================
- * NPBlog Editor - Модальное окно первоначальной настройки (Onboarding Wizard)
+ * NPBlog Editor - Полноэкранный мастер первоначальной настройки (Onboarding Wizard)
  * ==============================================================================
- * Построено на едином фреймворке модальных окон (modals/modal.css, modals/modal.js).
- * Интерактивный двухшаговый мастер:
+ * Полноэкранный мастер:
+ *   Слайд 0: Экран приветствия с анимацией надписи NPBlog и описания.
  *   Слайд 1: Язык интерфейса, заголовок blog.html, автосохранение, путь к папке data.
  *   Слайд 2: Безопасность (защита паролем, ограничение по IP).
+ *   Слайд 3: Экран завершения с галочкой в кружочке и выбором ("Пройти обучение" / "Продолжить").
  * ==============================================================================
  */
 
@@ -32,50 +33,194 @@ if (file_exists($blogViewSettingsFile)) {
     }
 }
 ?>
-<div id="initialSetupModal" class="modal-overlay" data-size="lg" data-backdrop-close="false" data-esc-close="false">
-    <div class="modal-dialog modal-lg initial-setup-dialog" style="max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
-        
-        <!-- Шапка мастера настройки -->
-        <div class="modal-header" style="padding: 18px 24px 14px 24px;">
-            <div class="modal-header-start" style="gap: 14px;">
-                <div class="modal-titles">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                        <h3 class="modal-title" data-i18n="setup.title" style="font-size: 19px; font-weight: 700; letter-spacing: -0.01em;">Первоначальная настройка</h3>
-                    </div>
-                    <p class="modal-subtitle" data-i18n="setup.subtitle" style="font-size: 13px; opacity: 0.75; margin: 0;">Быстрая конфигурация основных параметров редактора NPBlog</p>
-                </div>
-            </div>
-            <div class="modal-header-actions">
-                <button type="button" id="initialSetupCloseBtn" class="modal-close-btn" onclick="closeInitialSetupModal()" data-modal-close title="Закрыть" style="display: none;">×</button>
+
+<style>
+/* ==============================================================================
+ * Полноэкранный контейнер первоначальной настройки
+ * ============================================================================== */
+#initialSetupModal.modal-overlay,
+#initialSetupModal.setup-fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    padding: 0 !important;
+    background-color: var(--bg-color, #ffffff) !important;
+    color: var(--text-color, #111827);
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: none;
+    z-index: 100000;
+}
+
+[data-theme="dark"] #initialSetupModal {
+    background-color: var(--bg-color, #121212) !important;
+}
+
+/* Экран приветствия и экран успеха */
+.setup-welcome-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 32px 20px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.setup-welcome-inner {
+    max-width: 600px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Простая чистая надпись NPBlog */
+.setup-welcome-title {
+    font-size: clamp(2.8rem, 6vw, 4rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px 0;
+    color: var(--text-color);
+    opacity: 0;
+    animation: setupFadeInUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Описание */
+.setup-welcome-subtitle {
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    font-weight: 400;
+    color: var(--text-color);
+    opacity: 0;
+    line-height: 1.5;
+    margin: 0 0 32px 0;
+    animation: setupFadeInUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.18s forwards;
+}
+
+.setup-welcome-btn-wrap {
+    opacity: 0;
+    animation: setupFadeInUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.36s forwards;
+}
+
+/* Полноэкранный мастер настройки */
+.setup-wizard-fullscreen {
+    display: none;
+    min-height: 100vh;
+    padding: 40px 20px;
+    box-sizing: border-box;
+    justify-content: center;
+    align-items: center;
+}
+
+.setup-wizard-content {
+    max-width: 720px;
+    width: 100%;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    animation: setupFadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Галочка в кружочке на экране завершения */
+.setup-success-circle {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid var(--text-color);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    animation: setupSuccessPop 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Анимации появления */
+@keyframes setupFadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes setupSuccessPop {
+    0% {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+    70% {
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+</style>
+
+<div id="initialSetupModal" class="setup-fullscreen-overlay">
+    
+    <!-- Кнопка закрытия (доступна при повторном запуске из настроек) -->
+    <button type="button" id="initialSetupCloseBtn" onclick="closeInitialSetupModal()" style="display: none; position: fixed; top: 20px; right: 24px; z-index: 100001; background: none; border: none; font-size: 26px; color: var(--text-color); cursor: pointer; opacity: 0.6; line-height: 1; padding: 4px 8px; border-radius: 6px;" title="Закрыть">×</button>
+
+    <!-- ====================================================================== -->
+    <!-- СЛАЙД 0: ЭКРАН ПРИВЕТСТВИЯ -->
+    <!-- ====================================================================== -->
+    <div id="setupSlide0" class="setup-welcome-container">
+        <div class="setup-welcome-inner">
+            <h1 class="setup-welcome-title" data-i18n="setup.welcome_title">NPBlog</h1>
+            <p class="setup-welcome-subtitle" data-i18n="setup.welcome_subtitle">Редактор блогов для статических хостингов</p>
+            <div class="setup-welcome-btn-wrap">
+                <button type="button" class="modal-btn modal-btn-primary" onclick="goToSetupStep(1)" style="min-width: 140px; padding: 10px 24px; font-size: 14px; font-weight: 600;">
+                    <span data-i18n="setup.welcome_btn">Далее →</span>
+                </button>
             </div>
         </div>
+    </div>
 
-        <!-- Индикатор шагов (Stepper) -->
-        <div class="setup-stepper-bar" style="padding: 12px 24px; background: var(--modal-header-bg, rgba(0,0,0,0.02)); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-            <div class="setup-step-item active" id="setupStepIndicator1" onclick="if(window.setupCanNavigate) goToSetupStep(1)" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
-                <div class="setup-step-num" style="width: 28px; height: 28px; border-radius: 50%; background: var(--text-color); color: var(--bg-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; transition: all 0.2s;">1</div>
-                <div>
-                    <div style="font-size: 13px; font-weight: 600; color: var(--text-color);" data-i18n="setup.step1_title">Основные параметры</div>
-                    <div style="font-size: 11px; opacity: 0.6;" data-i18n="setup.step1_subtitle">Язык, блог, автосохранение, data</div>
-                </div>
-            </div>
-
-            <div class="setup-stepper-divider" style="width: 40px; height: 2px; background: var(--border-color); margin: 0 16px; position: relative;">
-                <div id="setupStepProgressLine" style="position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: var(--primary-color, #4CAF50); transition: width 0.3s ease;"></div>
-            </div>
-
-            <div class="setup-step-item" id="setupStepIndicator2" onclick="if(window.setupCanNavigate) goToSetupStep(2)" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; opacity: 0.5;">
-                <div class="setup-step-num" style="width: 28px; height: 28px; border-radius: 50%; background: var(--modal-bg-subtle, rgba(128,128,128,0.2)); color: var(--text-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; transition: all 0.2s;">2</div>
-                <div>
-                    <div style="font-size: 13px; font-weight: 600; color: var(--text-color);" data-i18n="setup.step2_title">Безопасность и доступ</div>
-                    <div style="font-size: 11px; opacity: 0.6;" data-i18n="setup.step2_subtitle">Пароль, IP-фильтр</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Тело мастера с шагами -->
-        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 24px; position: relative;">
+    <!-- ====================================================================== -->
+    <!-- ОСНОВНОЙ МАСТЕР НАСТРОЙКИ (ПОЛНОЭКРАННЫЙ): ШАГИ 1 И 2 -->
+    <!-- ====================================================================== -->
+    <div id="setupWizardWrap" class="setup-wizard-fullscreen">
+        <div class="setup-wizard-content">
             
+            <!-- Заголовок страницы -->
+            <div style="margin-bottom: 24px;">
+                <h2 style="font-size: 24px; font-weight: 700; margin: 0 0 6px 0; color: var(--text-color);" data-i18n="setup.title">Первоначальная настройка</h2>
+                <p style="font-size: 13.5px; opacity: 0.75; margin: 0; color: var(--text-color);" data-i18n="setup.subtitle">Быстрая конфигурация основных параметров редактора NPBlog</p>
+            </div>
+
+            <!-- Индикатор шагов (Stepper) -->
+            <div class="setup-stepper-bar" style="padding: 14px 18px; background: rgba(128, 128, 128, 0.05); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+                <div class="setup-step-item active" id="setupStepIndicator1" onclick="if(window.setupCanNavigate) goToSetupStep(1)" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
+                    <div class="setup-step-num" style="width: 28px; height: 28px; border-radius: 50%; background: var(--text-color); color: var(--bg-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; transition: all 0.2s;">1</div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text-color);" data-i18n="setup.step1_title">Основные параметры</div>
+                        <div style="font-size: 11px; opacity: 0.6; color: var(--text-color);" data-i18n="setup.step1_subtitle">Язык, блог, автосохранение, data</div>
+                    </div>
+                </div>
+
+                <div class="setup-stepper-divider" style="width: 40px; height: 2px; background: var(--border-color); margin: 0 16px; position: relative;">
+                    <div id="setupStepProgressLine" style="position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: var(--primary-color, #4CAF50); transition: width 0.3s ease;"></div>
+                </div>
+
+                <div class="setup-step-item" id="setupStepIndicator2" onclick="if(window.setupCanNavigate) goToSetupStep(2)" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; opacity: 0.5;">
+                    <div class="setup-step-num" style="width: 28px; height: 28px; border-radius: 50%; background: rgba(128,128,128,0.2); color: var(--text-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; transition: all 0.2s;">2</div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text-color);" data-i18n="setup.step2_title">Безопасность и доступ</div>
+                        <div style="font-size: 11px; opacity: 0.6; color: var(--text-color);" data-i18n="setup.step2_subtitle">Пароль, IP-фильтр</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Сообщение об ошибке валидации -->
             <div id="setupValidationError" class="modal-alert modal-alert-danger" style="display: none; margin-bottom: 20px;">
                 <span class="modal-alert-icon">⚠️</span>
@@ -118,7 +263,7 @@ if (file_exists($blogViewSettingsFile)) {
                         <label class="modal-label modal-label-required" for="setupBlogTitle" style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
                             <span>🏷️</span> <span data-i18n="setup.blog_title_label">Заголовок страницы (blog.html):</span>
                         </label>
-                        <input type="text" id="setupBlogTitle" class="modal-input" value="<?= htmlspecialchars($defaultBlogTitle) ?>" placeholder="Например: Мой блог" data-i18n-placeholder="setup.blog_title_ph" required autocomplete="off">
+                        <input type="text" id="setupBlogTitle" class="modal-input" value="<?= htmlspecialchars($defaultBlogTitle) ?>" placeholder="Например: Мой блог" data-i18n-placeholder="setup.blog_title_ph" required autocomplete="off" onkeydown="if(event.key==='Enter') goToSetupStep(2)">
                         <div class="modal-help-text" style="font-size: 11.5px; opacity: 0.7; margin-top: 4px;" data-i18n="setup.blog_title_hint">Отображается в шапке каталога статей blog.html</div>
                     </div>
 
@@ -128,7 +273,7 @@ if (file_exists($blogViewSettingsFile)) {
                             <span>💾</span> <span data-i18n="setup.autosave_label">Автосохранение:</span>
                         </label>
                         
-                        <div style="padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02));">
+                        <div style="padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(128,128,128,0.04);">
                             <label class="modal-switch-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 8px;">
                                 <div class="modal-switch-control">
                                     <input type="checkbox" id="setupAutosaveEnabled" checked onchange="toggleSetupAutosaveInterval(this.checked)">
@@ -152,7 +297,7 @@ if (file_exists($blogViewSettingsFile)) {
                         <span>📁</span> <span data-i18n="setup.data_path_label">Путь к папке данных (data):</span>
                     </label>
                     <div style="display: flex; gap: 8px; align-items: stretch;">
-                        <input type="text" id="setupDataPath" class="modal-input" value="<?= htmlspecialchars($defaultDataPath) ?>" placeholder="C:\xampp\htdocs\data или data" data-i18n-placeholder="setup.data_path_ph" required autocomplete="off" style="font-family: monospace; font-size: 13px;">
+                        <input type="text" id="setupDataPath" class="modal-input" value="<?= htmlspecialchars($defaultDataPath) ?>" placeholder="C:\xampp\htdocs\data или data" data-i18n-placeholder="setup.data_path_ph" required autocomplete="off" style="font-family: monospace; font-size: 13px;" onkeydown="if(event.key==='Enter') goToSetupStep(2)">
                         <button type="button" class="modal-btn modal-btn-secondary" onclick="resetSetupDataPathToDefault()" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" title="Восстановить путь по умолчанию">По умолч.</button>
                     </div>
                     <div class="modal-help-text" style="font-size: 11.5px; opacity: 0.7; margin-top: 5px;" data-i18n="setup.data_path_hint">Директория на сервере для хранения статей, файлов и настроек</div>
@@ -175,7 +320,7 @@ if (file_exists($blogViewSettingsFile)) {
                 </div>
 
                 <!-- 1. Переключатель пароля -->
-                <div class="modal-section-card" style="padding: 16px 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02)); margin-bottom: 18px;">
+                <div class="modal-section-card" style="padding: 16px 18px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(128,128,128,0.04); margin-bottom: 18px;">
                     <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
                         <div class="modal-switch-control">
                             <input type="checkbox" id="setupPasswordEnabled" onchange="toggleSetupPasswordFields(this.checked)">
@@ -193,14 +338,14 @@ if (file_exists($blogViewSettingsFile)) {
                             <div class="modal-form-group" style="margin-bottom: 0;">
                                 <label class="modal-label modal-label-required" for="setupNewPassword" data-i18n="setup.sec_pwd_new_label" style="font-size: 12px; font-weight: 600;">Новый пароль:</label>
                                 <div style="position: relative;">
-                                    <input type="password" id="setupNewPassword" class="modal-input" placeholder="Введите пароль для входа" data-i18n-placeholder="setup.sec_pwd_new_ph" style="padding-right: 38px;">
+                                    <input type="password" id="setupNewPassword" class="modal-input" placeholder="Введите пароль для входа" data-i18n-placeholder="setup.sec_pwd_new_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
                                     <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
                                 </div>
                             </div>
                             <div class="modal-form-group" style="margin-bottom: 0;">
                                 <label class="modal-label modal-label-required" for="setupConfirmPassword" data-i18n="setup.sec_pwd_confirm_label" style="font-size: 12px; font-weight: 600;">Подтверждение пароля:</label>
                                 <div style="position: relative;">
-                                    <input type="password" id="setupConfirmPassword" class="modal-input" placeholder="Повторите пароль" data-i18n-placeholder="setup.sec_pwd_confirm_ph" style="padding-right: 38px;">
+                                    <input type="password" id="setupConfirmPassword" class="modal-input" placeholder="Повторите пароль" data-i18n-placeholder="setup.sec_pwd_confirm_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
                                     <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
                                 </div>
                             </div>
@@ -210,7 +355,7 @@ if (file_exists($blogViewSettingsFile)) {
                 </div>
 
                 <!-- 2. Ограничение по IP -->
-                <div class="modal-section-card" style="padding: 16px 18px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02));">
+                <div class="modal-section-card" style="padding: 16px 18px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(128,128,128,0.04);">
                     <label class="modal-checkbox-label" style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
                         <input type="checkbox" id="setupIpWhitelistEnabled" class="modal-checkbox" style="margin-top: 2px;">
                         <div>
@@ -222,41 +367,66 @@ if (file_exists($blogViewSettingsFile)) {
 
             </div>
 
-        </div>
+            <!-- Подвал страницы с кнопками перехода -->
+            <div style="margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div id="setupFooterLeft">
+                    <button type="button" id="setupBtnBack" class="modal-btn modal-btn-ghost" onclick="handleSetupBack()" data-i18n="setup.btn_back">← Назад</button>
+                </div>
+                
+                <div id="setupFooterRight" style="display: flex; gap: 10px;">
+                    <button type="button" id="setupBtnNext" class="modal-btn modal-btn-primary" onclick="goToSetupStep(2)" style="padding: 10px 22px; font-weight: 600;" data-i18n="setup.btn_next">
+                        Далее: Безопасность →
+                    </button>
+                    <button type="button" id="setupBtnFinish" class="modal-btn modal-btn-primary" onclick="finishInitialSetup()" style="display: none; padding: 10px 24px; font-weight: 600;" data-i18n="setup.btn_finish">
+                        Завершить настройку
+                    </button>
+                </div>
+            </div>
 
-        <!-- Подвал окна с кнопками перехода -->
-        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color);">
-            <div id="setupFooterLeft">
-                <button type="button" id="setupBtnBack" class="modal-btn modal-btn-ghost" onclick="goToSetupStep(1)" style="display: none;" data-i18n="setup.btn_back">← Назад</button>
+        </div>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- СЛАЙД 3: НАСТРОЙКА ЗАВЕРШЕНА -->
+    <!-- ====================================================================== -->
+    <div id="setupSlideSuccess" class="setup-welcome-container" style="display: none;">
+        <div class="setup-welcome-inner">
+            <!-- Галочка в кружочке -->
+            <div class="setup-success-circle">
+                <svg viewBox="0 0 52 52" style="width: 38px; height: 38px;">
+                    <path fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" d="M14 27 l8 8 l16 -17"/>
+                </svg>
             </div>
             
-            <div id="setupFooterRight" style="display: flex; gap: 10px;">
-                <button type="button" id="setupBtnNext" class="modal-btn modal-btn-primary" onclick="goToSetupStep(2)" style="padding: 10px 22px; font-weight: 600;" data-i18n="setup.btn_next">
-                    Далее: Безопасность →
+            <h2 class="setup-welcome-title" style="font-size: clamp(2rem, 4.5vw, 2.6rem); margin: 0 0 28px 0;" data-i18n="setup.completed_title">Настройка завершена</h2>
+            
+            <div class="setup-welcome-btn-wrap" style="display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="modal-btn modal-btn-secondary" onclick="launchTutorialFromSetup()" style="padding: 10px 22px; font-weight: 600; font-size: 14px;" data-i18n="setup.btn_start_tutorial">
+                    Пройти обучение
                 </button>
-                <button type="button" id="setupBtnFinish" class="modal-btn modal-btn-primary" onclick="finishInitialSetup()" style="display: none; padding: 10px 24px; font-weight: 600;" data-i18n="setup.btn_finish">
-                    Завершить настройку и войти
+                <button type="button" class="modal-btn modal-btn-primary" onclick="continueToEditorFromSetup()" style="padding: 10px 24px; font-weight: 600; font-size: 14px;" data-i18n="setup.btn_continue">
+                    Продолжить
                 </button>
             </div>
         </div>
-
     </div>
+
 </div>
 
 <script>
 /**
- * Initial Setup Wizard Controller
+ * Initial Setup Wizard Controller (Fullscreen Onboarding)
  */
-window.currentSetupStep = 1;
+window.currentSetupStep = 0;
 window.setupDefaultDataPath = <?= json_encode($defaultDataPath) ?>;
 window.setupCanNavigate = true;
 
 function openInitialSetupModal() {
-    window.currentSetupStep = 1;
-    updateSetupUIForStep(1);
+    window.currentSetupStep = 0;
+    goToSetupStep(0);
     hideSetupError();
     
-    // Подгружаем актуальные настройки если они уже были
+    // Подгружаем актуальные настройки если они уже были сохранены
     fetch('get_editor_settings.php?t=' + Date.now())
         .then(res => res.json())
         .then(data => {
@@ -264,6 +434,10 @@ function openInitialSetupModal() {
                 const s = data.settings;
                 if (s.language) {
                     selectSetupLanguage(s.language, false);
+                }
+                if (s.blog_title) {
+                    const tInput = document.getElementById('setupBlogTitle');
+                    if (tInput) tInput.value = s.blog_title;
                 }
                 if (s.autosaveEnabled !== undefined) {
                     const chk = document.getElementById('setupAutosaveEnabled');
@@ -276,34 +450,39 @@ function openInitialSetupModal() {
                     const intInput = document.getElementById('setupAutosaveInterval');
                     if (intInput) intInput.value = s.autosaveInterval;
                 }
-                if (s.active_blog_path) {
+                if (s.active_blog_path || s.data_path) {
                     const pInput = document.getElementById('setupDataPath');
-                    if (pInput) pInput.value = s.active_blog_path;
+                    if (pInput) pInput.value = s.active_blog_path || s.data_path;
+                }
+                
+                // Если настройка запускается повторно пользователем (уже была завершена ранее), показываем крестик закрытия
+                const closeBtn = document.getElementById('initialSetupCloseBtn');
+                if (closeBtn) {
+                    closeBtn.style.display = (s.initial_setup_completed === true) ? 'block' : 'none';
                 }
             }
         }).catch(() => {});
 
-    if (window.Modal) {
-        Modal.open('#initialSetupModal');
-    } else {
-        const modal = document.getElementById('initialSetupModal');
-        if (modal) modal.style.display = 'flex';
+    const modal = document.getElementById('initialSetupModal');
+    if (modal) {
+        modal.style.display = 'block';
+        document.body.classList.add('modal-open');
     }
 }
 
 function closeInitialSetupModal() {
-    if (window.Modal) {
-        Modal.close('#initialSetupModal');
-    } else {
-        const modal = document.getElementById('initialSetupModal');
-        if (modal) modal.style.display = 'none';
+    const modal = document.getElementById('initialSetupModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
     }
 }
 
 function selectSetupLanguage(langCode, applyLive = true) {
-    document.getElementById('setupSelectedLanguage').value = langCode;
+    const langHidden = document.getElementById('setupSelectedLanguage');
+    if (langHidden) langHidden.value = langCode;
     
-    // Подсвечиваем карточку
+    // Подсвечиваем выбранную карточку
     document.querySelectorAll('.setup-lang-card').forEach(card => {
         const isThis = (card.getAttribute('data-lang') === langCode);
         card.classList.toggle('selected', isThis);
@@ -332,7 +511,7 @@ function toggleSetupPasswordFields(isEnabled) {
             setTimeout(() => {
                 const pwdInput = document.getElementById('setupNewPassword');
                 if (pwdInput) pwdInput.focus();
-            }, 50);
+            }, 60);
         }
     }
 }
@@ -365,11 +544,11 @@ function showSetupError(msgKey, defaultMsg) {
     errMsg.textContent = text;
     errBox.style.display = 'flex';
     
-    const modalDialog = document.querySelector('#initialSetupModal .modal-dialog');
-    if (modalDialog) {
-        modalDialog.classList.remove('modal-shake');
-        void modalDialog.offsetWidth;
-        modalDialog.classList.add('modal-shake');
+    const content = document.querySelector('#initialSetupModal .setup-wizard-content');
+    if (content) {
+        content.classList.remove('modal-shake');
+        void content.offsetWidth;
+        content.classList.add('modal-shake');
     }
 }
 
@@ -432,9 +611,40 @@ function goToSetupStep(step) {
     if (step === 2) {
         if (!validateSetupStep1()) return;
     }
+    
     hideSetupError();
     window.currentSetupStep = step;
-    updateSetupUIForStep(step);
+    
+    const slide0 = document.getElementById('setupSlide0');
+    const wizardWrap = document.getElementById('setupWizardWrap');
+    const slideSuccess = document.getElementById('setupSlideSuccess');
+    
+    if (step === 0) {
+        if (slide0) slide0.style.display = 'flex';
+        if (wizardWrap) wizardWrap.style.display = 'none';
+        if (slideSuccess) slideSuccess.style.display = 'none';
+    } else if (step === 'success') {
+        if (slide0) slide0.style.display = 'none';
+        if (wizardWrap) wizardWrap.style.display = 'none';
+        if (slideSuccess) slideSuccess.style.display = 'flex';
+    } else {
+        if (slide0) slide0.style.display = 'none';
+        if (wizardWrap) wizardWrap.style.display = 'flex';
+        if (slideSuccess) slideSuccess.style.display = 'none';
+        updateSetupUIForStep(step);
+    }
+    
+    // Скролл наверх страницы
+    const modal = document.getElementById('initialSetupModal');
+    if (modal) modal.scrollTop = 0;
+}
+
+function handleSetupBack() {
+    if (window.currentSetupStep === 2) {
+        goToSetupStep(1);
+    } else if (window.currentSetupStep === 1) {
+        goToSetupStep(0);
+    }
 }
 
 function updateSetupUIForStep(step) {
@@ -452,7 +662,7 @@ function updateSetupUIForStep(step) {
         if (slide1) slide1.style.display = 'block';
         if (slide2) slide2.style.display = 'none';
         if (btnNext) btnNext.style.display = 'inline-flex';
-        if (btnBack) btnBack.style.display = 'none';
+        if (btnBack) btnBack.style.display = 'inline-flex';
         if (btnFinish) btnFinish.style.display = 'none';
         
         if (ind1) {
@@ -461,18 +671,20 @@ function updateSetupUIForStep(step) {
             if (num1) {
                 num1.style.background = 'var(--text-color)';
                 num1.style.color = 'var(--bg-color)';
+                num1.textContent = '1';
             }
         }
         if (ind2) {
             ind2.style.opacity = '0.5';
             const num2 = ind2.querySelector('.setup-step-num');
             if (num2) {
-                num2.style.background = 'var(--modal-bg-subtle, rgba(128,128,128,0.2))';
+                num2.style.background = 'rgba(128,128,128,0.2)';
                 num2.style.color = 'var(--text-color)';
+                num2.textContent = '2';
             }
         }
         if (progressLine) progressLine.style.width = '0%';
-    } else {
+    } else if (step === 2) {
         if (slide1) slide1.style.display = 'none';
         if (slide2) slide2.style.display = 'block';
         if (btnNext) btnNext.style.display = 'none';
@@ -552,14 +764,8 @@ async function finishInitialSetup() {
                 loadPosts();
             }
             
-            closeInitialSetupModal();
-            
-            const msg = (window.t ? window.t('setup.success_notice', 'Первоначальная настройка успешно завершена!') : 'Первоначальная настройка успешно завершена!');
-            if (typeof showNotification === 'function') {
-                showNotification(msg, 'success');
-            } else if (typeof showAlert === 'function') {
-                showAlert(msg);
-            }
+            // Переходим на экран завершения настройки
+            goToSetupStep('success');
         } else {
             showSetupError('common.error', data.error || 'Ошибка при сохранении параметров');
         }
@@ -568,5 +774,38 @@ async function finishInitialSetup() {
         if (finishBtn) finishBtn.classList.remove('is-loading');
         showSetupError('common.network_error', 'Сетевая ошибка при сохранении настроек');
     }
+}
+
+function launchTutorialFromSetup() {
+    closeInitialSetupModal();
+    
+    // Сбрасываем флаг завершения обучения и запускаем гайд
+    fetch('save_editor_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tutorialCompleted: false })
+    }).finally(() => {
+        if (typeof currentTutorialStep !== 'undefined') {
+            currentTutorialStep = 0;
+        }
+        setTimeout(() => {
+            if (typeof showTutorialStep === 'function') {
+                showTutorialStep();
+            } else if (typeof startTutorial === 'function') {
+                startTutorial();
+            }
+        }, 150);
+    });
+}
+
+function continueToEditorFromSetup() {
+    // Отмечаем обучение завершенным и закрываем мастер
+    fetch('save_editor_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tutorialCompleted: true })
+    }).finally(() => {
+        closeInitialSetupModal();
+    });
 }
 </script>
