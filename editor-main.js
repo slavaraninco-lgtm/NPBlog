@@ -7087,14 +7087,35 @@ function updateTutorialPosition() {
         
         if (targetEl) {
             overlay.classList.remove('dimmed');
+            
+            // Find scroll container or modal dialog/body to clip spotlight bounds
+            const scrollContainer = targetEl.closest('.modal-body > div, .modal-body, .manage-posts, #managePosts, .modal-dialog');
+            
             const rect = targetEl.getBoundingClientRect();
             const pad = 6;
             
+            let spotTop = rect.top - pad;
+            let spotBottom = rect.bottom + pad;
+            let spotLeft = rect.left - pad;
+            let spotRight = rect.right + pad;
+            
+            if (scrollContainer) {
+                const contRect = scrollContainer.getBoundingClientRect();
+                // Ensure spotlight does not overflow outside the container/modal boundaries
+                spotTop = Math.max(contRect.top + 2, spotTop);
+                spotBottom = Math.min(contRect.bottom - 2, spotBottom);
+                spotLeft = Math.max(contRect.left + 2, spotLeft);
+                spotRight = Math.min(contRect.right - 2, spotRight);
+            }
+            
+            const spotWidth = Math.max(0, Math.min(window.innerWidth, spotRight - spotLeft));
+            const spotHeight = Math.max(0, Math.min(window.innerHeight, spotBottom - spotTop));
+            
             spotlight.style.display = 'block';
-            spotlight.style.top = Math.max(0, rect.top - pad) + 'px';
-            spotlight.style.left = Math.max(0, rect.left - pad) + 'px';
-            spotlight.style.width = Math.min(window.innerWidth, rect.width + pad * 2) + 'px';
-            spotlight.style.height = Math.min(window.innerHeight, rect.height + pad * 2) + 'px';
+            spotlight.style.top = Math.max(0, Math.round(spotTop)) + 'px';
+            spotlight.style.left = Math.max(0, Math.round(spotLeft)) + 'px';
+            spotlight.style.width = Math.round(spotWidth) + 'px';
+            spotlight.style.height = Math.round(spotHeight) + 'px';
             
             tooltip.style.position = 'fixed';
             tooltip.style.transform = 'none';
@@ -7257,8 +7278,12 @@ function showTutorialStep() {
         for (let sel of selectors) {
             const el = document.querySelector(sel.trim());
             if (el) {
-                const scrollParent = el.closest('.manage-posts, .editor-menu-dropdown, .more-menu-dropdown, .font-family-popover-inner, .font-size-popover-inner, .modal-body');
-                if (scrollParent) {
+                const scrollContainer = el.closest('.modal-body > div, .modal-body, .manage-posts, #managePosts');
+                if (step.section || step.modal) {
+                    if (scrollContainer) {
+                        scrollContainer.scrollTop = 0;
+                    }
+                } else if (scrollContainer) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
                     el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
