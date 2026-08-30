@@ -6793,16 +6793,45 @@ function getTutorialSteps() {
             text: getTutorialText('tutorial.step_context_text', 'Правый клик мыши внутри редактора открывает контекстное меню (работа со строками и столбцами таблиц). Поддерживаются шорткаты Ctrl+S, Ctrl+B, Ctrl+I, Ctrl+K.'),
             element: '#contentVisual'
         },
-        // 57. Toolbar Customizer
+        // 57. Toolbar Customizer: Intro & Drag & Drop
         {
-            title: getTutorialText('tutorial.step_customizer_title', 'Кастомизация панели инструментов ⚙️'),
-            text: getTutorialText('tutorial.step_customizer_text', 'Вы можете перетаскивать кнопки в шапке редактора, менять их порядок, распределять по рядам или прятать ненужные элементы в меню «Прочее».'),
+            title: getTutorialText('tutorial.step_customizer_intro_title', 'Кастомизация панели: Drag & Drop 🔀'),
+            text: getTutorialText('tutorial.step_customizer_intro_text', 'Вы можете полностью настроить верхнюю панель под себя! Режим запускается из «Параметры → Внешний вид». Все кнопки становятся подвижными — просто зажмите любую кнопку левой кнопкой мыши и перетащите в нужное место.'),
+            customizer: true,
             element: '.editor-header, #toolbar-row-1'
         },
-        // 58. Finish
+        // 58. Toolbar Customizer: Two Rows
+        {
+            title: getTutorialText('tutorial.step_customizer_rows_title', 'Кастомизация: Два ряда инструментов 📑'),
+            text: getTutorialText('tutorial.step_customizer_rows_text', 'Панель поддерживает два ряда кнопок. Перетаскивайте инструменты между верхней и нижней строкой, чтобы сгруппировать часто используемые действия и освободить рабочее пространство.'),
+            customizer: true,
+            element: '#toolbar-row-1, #toolbar-row-2, .editor-header'
+        },
+        // 59. Toolbar Customizer: Context Menu (Hide / Move to More)
+        {
+            title: getTutorialText('tutorial.step_customizer_context_title', 'Кастомизация: Контекстное меню ПКМ 🖱️'),
+            text: getTutorialText('tutorial.step_customizer_context_text', 'Правый клик (ПКМ) по любой кнопке открывает меню действий: «Скрыть» (временно убрать с экрана) или «Перенести в "Прочее"» (поместить кнопку в выпадающее меню ⋯).'),
+            customizer: true,
+            element: '#moreMenuWrap, .editor-header'
+        },
+        // 60. Toolbar Customizer: Dividers & Spacers
+        {
+            title: getTutorialText('tutorial.step_customizer_dividers_title', 'Кастомизация: Разделители и Спейсеры 📏'),
+            text: getTutorialText('tutorial.step_customizer_dividers_text', 'Кнопка «+ Разделитель» добавляет тонкую линию или пустой отступ (Spacer). Ширину пустого разделителя можно менять в пикселях, просто потянув за его правый край.'),
+            customizer: true,
+            element: '#headerCustomizerBar button[onclick*="toggleDividerDropdown"], #headerCustomizerBar'
+        },
+        // 61. Toolbar Customizer: Save & Cancel
+        {
+            title: getTutorialText('tutorial.step_customizer_save_title', 'Кастомизация: Сохранение настроек 💾'),
+            text: getTutorialText('tutorial.step_customizer_save_text', 'Нажмите «Применить» на плавающей нижней панели, чтобы сохранить ваш персональный макет кнопок на сервере, или «Отмена», чтобы вернуть всё к прежнему виду.'),
+            customizer: true,
+            element: '#headerCustomizerBar button[onclick*="saveHeaderCustomization"], #headerCustomizerBar'
+        },
+        // 62. Finish
         {
             title: getTutorialText('tutorial.step_finish_title', 'Всё готово к работе! 🚀'),
-            text: getTutorialText('tutorial.step_finish_text', 'Теперь вы знаете абсолютно все инструменты, меню, настройки и панели редактора NPBlog. Приятного и продуктивного творчества!'),
+            text: getTutorialText('tutorial.step_finish_text', 'Теперь вы знаете абсолютно все инструменты, меню, настройки, панели и кастомизацию редактора NPBlog. Приятного и продуктивного творчества!'),
             element: null
         }
     ];
@@ -6951,6 +6980,29 @@ function prepareStepEnvironment(step) {
     } else if (themeModal && (themeModal.classList.contains('show') || themeModal.style.display === 'flex' || themeModal.style.display === 'block')) {
         if (typeof closeThemeManager === 'function') closeThemeManager();
     }
+
+    // 3. Handle Header Toolbar Customizer
+    if (step.customizer) {
+        if (!document.body.classList.contains('header-customizing')) {
+            if (typeof startHeaderCustomization === 'function') {
+                startHeaderCustomization();
+            } else {
+                document.body.classList.add('header-customizing');
+                const bar = document.getElementById('headerCustomizerBar');
+                if (bar) bar.style.display = 'flex';
+            }
+        }
+    } else {
+        if (document.body.classList.contains('header-customizing')) {
+            if (typeof cancelHeaderCustomization === 'function') {
+                cancelHeaderCustomization();
+            } else {
+                document.body.classList.remove('header-customizing');
+                const bar = document.getElementById('headerCustomizerBar');
+                if (bar) bar.style.display = 'none';
+            }
+        }
+    }
 }
 
 function cleanupTutorialEnvironment() {
@@ -6973,6 +7025,16 @@ function cleanupTutorialEnvironment() {
     if (colorPickerWrap) colorPickerWrap.classList.remove('is-open');
     const managePosts = document.getElementById('managePosts');
     if (managePosts) managePosts.classList.remove('active');
+
+    if (document.body.classList.contains('header-customizing')) {
+        if (typeof cancelHeaderCustomization === 'function') {
+            cancelHeaderCustomization();
+        } else {
+            document.body.classList.remove('header-customizing');
+            const bar = document.getElementById('headerCustomizerBar');
+            if (bar) bar.style.display = 'none';
+        }
+    }
 
     if (typeof closeTemplateManager === 'function') closeTemplateManager();
     if (typeof closeGlobalSettings === 'function') closeGlobalSettings();
@@ -7091,6 +7153,14 @@ function updateTutorialPosition() {
                         tooltipTop = rect.top - tooltipRect.height - 12;
                     }
                 }
+            } else if (targetEl.closest('#headerCustomizerBar')) {
+                // Floating customizer bar at bottom: place tooltip above the bar
+                tooltipTop = rect.top - tooltipRect.height - 16;
+                tooltipLeft = Math.max(padding, Math.min((window.innerWidth - tooltipRect.width) / 2, window.innerWidth - tooltipRect.width - padding));
+            } else if (step.customizer && targetEl.closest('.editor-header, #toolbar-row-1, #toolbar-row-2')) {
+                // Two-row header in customizer mode: place tooltip below the header
+                tooltipTop = rect.bottom + 16;
+                tooltipLeft = Math.max(padding, Math.min((window.innerWidth - tooltipRect.width) / 2, window.innerWidth - tooltipRect.width - padding));
             } else {
                 // Normal placement: below target, or above if overflow
                 tooltipTop = rect.bottom + 12;

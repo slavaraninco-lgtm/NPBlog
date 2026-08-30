@@ -1078,9 +1078,17 @@
     "step_panel_themes_text": "Choose interface themes (Dark / Light / AMOLED) or edit and upload custom CSS stylesheets in the built-in code editor.",
     "step_context_title": "Context Menu & Shortcuts 💡",
     "step_context_text": "Right-click inside the editor for table editing actions (rows, columns, cell colors). Key shortcuts: Ctrl+S, Ctrl+B, Ctrl+I, Ctrl+K.",
-    "step_customizer_title": "Customize Toolbar ⚙️",
-    "step_customizer_text": "Freely customize your workflow: drag and drop buttons across toolbar rows, reorder them, or hide unused tools into the More menu.",
+    "step_customizer_intro_title": "Toolbar Customization: Drag & Drop 🔀",
+    "step_customizer_intro_text": "Tailor the toolbar to your exact preferences! Opened from Settings → Appearance. All buttons become draggable — simply click and drag any button to rearrange your tools.",
+    "step_customizer_rows_title": "Customization: Two Toolbar Rows 📑",
+    "step_customizer_rows_text": "The header supports two separate rows. Drag buttons between the top and bottom rows to group related formatting actions and optimize space.",
+    "step_customizer_context_title": "Customization: Right-Click Menu 🖱️",
+    "step_customizer_context_text": "Right-click any toolbar button to open the action menu: 'Hide' (remove from screen) or 'Move to More' (relocate into the ⋯ dropdown menu).",
+    "step_customizer_dividers_title": "Customization: Dividers & Spacers 📏",
+    "step_customizer_dividers_text": "The '+ Divider' button inserts vertical separator lines or flexible spacers. Spacer width can be interactively resized by dragging its right handle.",
+    "step_customizer_save_title": "Customization: Apply & Save 💾",
+    "step_customizer_save_text": "Click 'Apply' on the floating bottom bar to save your custom toolbar layout to the server, or 'Cancel' to discard all changes.",
     "step_finish_title": "You're All Set! 🚀",
-    "step_finish_text": "You have mastered all tools, menus, settings, and panels of NPBlog. Enjoy writing and publishing!"
+    "step_finish_text": "You have mastered all tools, menus, settings, panels, and toolbar customization in NPBlog. Enjoy writing and publishing!"
   }
 }

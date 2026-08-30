@@ -1078,9 +1078,17 @@
     "step_panel_themes_text": "Krāsu tēmas izvēle (Tumšā / Gaišā / AMOLED) un iebūvēts pielāgoto CSS stilu redaktors ar iespēju augšupielādēt tēmu failus.",
     "step_context_title": "Konteksta izvēlne un Taustiņi 💡",
     "step_context_text": "Labais peles klikšķis redaktorā atver ātrās darbības (tabulu rindu/kolonnu rediģēšana). Īsinājumtaustiņi: Ctrl+S, Ctrl+B, Ctrl+I, Ctrl+K.",
-    "step_customizer_title": "Rīkjoslas pielāgošana ⚙️",
-    "step_customizer_text": "Pārvelciet pogas galvenē, mainiet to secību, sadaliet pa rindām vai paslēpiet nevajadzīgos elementus izvēlnē «Cits».",
+    "step_customizer_intro_title": "Rīkjoslas pielāgošana: Drag & Drop 🔀",
+    "step_customizer_intro_text": "Pielāgojiet augšējo rīkjoslu savām vēlmēm! Režīmu atver no Iestatījumi → Izskats. Visas pogas kļūst velkamas — vienkārši velciet un nometiet jebkuru pogu vēlamajā vietā.",
+    "step_customizer_rows_title": "Pielāgošana: Divas rīku rindas 📑",
+    "step_customizer_rows_text": "Rīkjosla atbalsta divas rindas. Pārvietojiet pogas starp augšējo un apakšējo rindu, lai sagrupētu rīkus un atbrīvotu darba vietu.",
+    "step_customizer_context_title": "Pielāgošana: Labā klikšķa izvēlne 🖱️",
+    "step_customizer_context_text": "Labais klikšķis uz jebkuras pogas atver opciju izvēlni: 'Slēpt' (noņemt no ekrāna) vai 'Pārvietot uz Vairāk' (ievietot ⋯ nolaižamajā izvēlnē).",
+    "step_customizer_dividers_title": "Pielāgošana: Atdalītāji un Atstarpes 📏",
+    "step_customizer_dividers_text": "Poga '+ Atdalītājs' pievieno vertikālu līniju vai elastīgu atstarpi (Spacer). Atstarpes platumu var pielāgot ar peli, velkot tās malu.",
+    "step_customizer_save_title": "Pielāgošana: Saglabāšana 💾",
+    "step_customizer_save_text": "Noklikšķiniet uz 'Lietot' apakšējā peldošajā joslā, lai saglabātu izkārtojumu serverī, vai 'Atcelt', lai atceltu izmaiņas.",
     "step_finish_title": "Viss ir gatavs darbam! 🚀",
-    "step_finish_text": "Tagad jūs pārzināt pilnīgi visus NPBlog redaktora rīkus, izvēlnes, iestatījumus un paneļus. Radošu un patīkamu darbu!"
+    "step_finish_text": "Tagad jūs pārzināt pilnīgi visus NPBlog redaktora rīkus, izvēlnes, iestatījumus, paneļus un rīkjoslas pielāgošanu. Radošu un patīkamu darbu!"
   }
 }
