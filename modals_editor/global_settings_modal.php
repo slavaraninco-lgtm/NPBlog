@@ -413,7 +413,7 @@ if (!isset($availableLanguages)) {
                     <!-- Подсекция 1: Директории блогов (data) -->
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <h4 style="margin: 0 0 8px 0; color: var(--text-color); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                            <span>📁</span> <span data-i18n="settings.paths_blog_dirs_title">Директории блогов (data)</span>
+                            <span data-i18n="settings.paths_blog_dirs_title">Директории блогов (data)</span>
                         </h4>
                         <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_blog_dirs_hint">
                             Укажите пути к папкам данных блогов. При наличии нескольких блогов переключение доступно в боковой панели.
@@ -429,14 +429,14 @@ if (!isset($availableLanguages)) {
                     <!-- Подсекция 2: Директория резервных копий статей (data_backup) -->
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <h4 style="margin: 0 0 8px 0; color: var(--text-color); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                            <span>💾</span> <span data-i18n="settings.paths_backup_dir_title">Директория для резервных копий статей (data_backup)</span>
+                            <span data-i18n="settings.paths_backup_dir_title">Директория для резервных копий статей (data_backup)</span>
                         </h4>
                         <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_backup_dir_hint">
                             Укажите путь к папке на сервере для хранения резервных копий статей (например: C:\xampp\htdocs\data_backup или data_backup). Если оставить пустым, бэкапы сохраняются в стандартную папку data_backup.
                         </p>
-                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <div style="display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px;">
                             <input type="text" id="backupPathInput" class="modal-input" placeholder="C:\xampp\htdocs\data_backup или data_backup" data-i18n-placeholder="settings.paths_backup_ph" style="flex: 1; font-family: monospace; font-size: 13px;">
-                            <button type="button" onclick="resetBackupPathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 14px; font-size: 12px;" data-i18n="settings.paths_backup_default_btn">
+                            <button type="button" onclick="resetBackupPathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n="settings.paths_backup_default_btn">
                                 По умолч.
                             </button>
                         </div>
@@ -448,14 +448,14 @@ if (!isset($availableLanguages)) {
                     <!-- Подсекция 3: Директория автосохранений и черновиков (autosave) -->
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <h4 style="margin: 0 0 8px 0; color: var(--text-color); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                            <span>⏱️</span> <span data-i18n="settings.paths_autosave_dir_title">Директория для автосохранений и черновиков (autosave)</span>
+                            <span data-i18n="settings.paths_autosave_dir_title">Директория для автосохранений и черновиков (autosave)</span>
                         </h4>
                         <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_autosave_dir_hint">
                             Укажите путь к папке на сервере для хранения автосохранений и черновиков статей. Если оставить пустым, данные сохраняются в стандартную папку autosave.
                         </p>
-                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <div style="display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px;">
                             <input type="text" id="autosavePathInput" class="modal-input" placeholder="C:\xampp\htdocs\autosave или autosave" data-i18n-placeholder="settings.paths_autosave_ph" style="flex: 1; font-family: monospace; font-size: 13px;">
-                            <button type="button" onclick="resetAutosavePathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 14px; font-size: 12px;" data-i18n="settings.paths_autosave_default_btn">
+                            <button type="button" onclick="resetAutosavePathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n="settings.paths_autosave_default_btn">
                                 По умолч.
                             </button>
                         </div>
@@ -467,14 +467,14 @@ if (!isset($availableLanguages)) {
                     <!-- Подсекция 4: Директория бэкапов системы (editor_backup) -->
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <h4 style="margin: 0 0 8px 0; color: var(--text-color); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                            <span>📦</span> <span data-i18n="settings.paths_editor_backup_dir_title">Директория для бэкапов системы и обновлений (editor_backup)</span>
+                            <span data-i18n="settings.paths_editor_backup_dir_title">Директория для бэкапов системы и обновлений (editor_backup)</span>
                         </h4>
                         <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_editor_backup_dir_hint">
                             Укажите путь к папке на сервере для хранения архивов бэкапов всей системы перед обновлениями. Если оставить пустым, архивы сохраняются в стандартную папку editor_backup.
                         </p>
-                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <div style="display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px;">
                             <input type="text" id="editorBackupPathInput" class="modal-input" placeholder="C:\xampp\htdocs\editor_backup или editor_backup" data-i18n-placeholder="settings.paths_editor_backup_ph" style="flex: 1; font-family: monospace; font-size: 13px;">
-                            <button type="button" onclick="resetEditorBackupPathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 14px; font-size: 12px;" data-i18n="settings.paths_editor_backup_default_btn">
+                            <button type="button" onclick="resetEditorBackupPathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n="settings.paths_editor_backup_default_btn">
                                 По умолч.
                             </button>
                         </div>
