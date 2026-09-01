@@ -53,9 +53,9 @@
                     </select>
                     
                     <div id="asciiCustomSizeContainer" style="display: none; gap: 6px; align-items: center; margin-top: 8px;">
-                        <input type="number" id="asciiCustomWidth" class="modal-input" min="5" max="120" value="40" style="width: 60px; text-align: center; padding: 6px;" title="Ширина (колонки)">
+                        <input type="number" id="asciiCustomWidth" class="modal-input" min="5" max="120" value="40" style="width: 60px; text-align: center; padding: 6px;" title="Ширина (колонки)" onkeydown="if(event.key==='Enter')applyCustomAsciiGridSize()">
                         <span style="color: var(--text-color); opacity: 0.7;">×</span>
-                        <input type="number" id="asciiCustomHeight" class="modal-input" min="5" max="60" value="15" style="width: 60px; text-align: center; padding: 6px;" title="Высота (строки)">
+                        <input type="number" id="asciiCustomHeight" class="modal-input" min="5" max="60" value="15" style="width: 60px; text-align: center; padding: 6px;" title="Высота (строки)" onkeydown="if(event.key==='Enter')applyCustomAsciiGridSize()">
                         <button type="button" onclick="applyCustomAsciiGridSize()" class="modal-btn modal-btn-primary" style="flex: 1; padding: 6px; font-size: 12px;">ОК</button>
                     </div>
                 </div>

@@ -8418,8 +8418,10 @@ async function changeAsciiGridSize(sizeStr) {
     if (sizeStr === 'custom') {
         if (customContainer) {
             customContainer.style.display = 'flex';
-            document.getElementById('asciiCustomWidth').value = asciiGridWidth;
-            document.getElementById('asciiCustomHeight').value = asciiGridHeight;
+            const widthInput = document.getElementById('asciiCustomWidth');
+            const heightInput = document.getElementById('asciiCustomHeight');
+            if (widthInput) widthInput.value = asciiGridWidth;
+            if (heightInput) heightInput.value = asciiGridHeight;
         }
         return;
     }
@@ -8429,13 +8431,17 @@ async function changeAsciiGridSize(sizeStr) {
     }
 
     const parts = sizeStr.split('x');
-    const newWidth = parseInt(parts[0]);
-    const newHeight = parseInt(parts[1]);
+    const newWidth = Math.max(5, Math.min(120, parseInt(parts[0]) || 40));
+    const newHeight = Math.max(5, Math.min(60, parseInt(parts[1]) || 15));
 
     const isConfirmed = await showConfirm('Смена размера сетки очистит текущий рисунок. Продолжить?', 'Изменение размера сетки');
     if (isConfirmed) {
         asciiGridWidth = newWidth;
         asciiGridHeight = newHeight;
+        const widthInput = document.getElementById('asciiCustomWidth');
+        const heightInput = document.getElementById('asciiCustomHeight');
+        if (widthInput) widthInput.value = newWidth;
+        if (heightInput) heightInput.value = newHeight;
         createAsciiGrid();
         clearAsciiHistory();
         saveAsciiHistory();
@@ -8457,10 +8463,12 @@ async function applyCustomAsciiGridSize() {
 
     if (isNaN(newWidth) || newWidth < 5 || newWidth > 120) {
         showNotification('Ширина должна быть от 5 до 120 символов', 'warning');
+        widthInput.value = asciiGridWidth;
         return;
     }
     if (isNaN(newHeight) || newHeight < 5 || newHeight > 60) {
         showNotification('Высота должна быть от 5 до 60 символов', 'warning');
+        heightInput.value = asciiGridHeight;
         return;
     }
 
@@ -8472,12 +8480,18 @@ async function applyCustomAsciiGridSize() {
         clearAsciiHistory();
         saveAsciiHistory();
         showNotification(`Установлен размер: ${newWidth}x${newHeight}`, 'success');
+    } else {
+        widthInput.value = asciiGridWidth;
+        heightInput.value = asciiGridHeight;
     }
 }
 
 function createAsciiGrid(initialData = null) {
     const gridContainer = document.getElementById('asciiGrid');
     if (!gridContainer) return;
+
+    asciiGridWidth = Math.max(5, Math.min(120, parseInt(asciiGridWidth) || 40));
+    asciiGridHeight = Math.max(5, Math.min(60, parseInt(asciiGridHeight) || 15));
 
     gridContainer.innerHTML = '';
     gridContainer.style.gridTemplateColumns = `repeat(${asciiGridWidth}, 9px)`;
@@ -8740,13 +8754,13 @@ function openAsciiDrawer(targetWrap = null) {
         const height = parseInt(asciiTargetWrap.getAttribute('data-ascii-height')) || 15;
         const gridData = JSON.parse(asciiTargetWrap.getAttribute('data-ascii-grid') || '[]');
 
-        asciiGridWidth = width;
-        asciiGridHeight = height;
+        asciiGridWidth = Math.max(5, Math.min(120, width));
+        asciiGridHeight = Math.max(5, Math.min(60, height));
 
         const sizeSelect = document.getElementById('asciiGridSize');
         const customContainer = document.getElementById('asciiCustomSizeContainer');
         if (sizeSelect) {
-            const val = width + 'x' + height;
+            const val = asciiGridWidth + 'x' + asciiGridHeight;
             const hasOption = Array.from(sizeSelect.options).some(opt => opt.value === val);
             if (hasOption) {
                 sizeSelect.value = val;
@@ -8755,11 +8769,13 @@ function openAsciiDrawer(targetWrap = null) {
                 sizeSelect.value = 'custom';
                 if (customContainer) {
                     customContainer.style.display = 'flex';
-                    document.getElementById('asciiCustomWidth').value = width;
-                    document.getElementById('asciiCustomHeight').value = height;
                 }
             }
         }
+        const widthInput = document.getElementById('asciiCustomWidth');
+        const heightInput = document.getElementById('asciiCustomHeight');
+        if (widthInput) widthInput.value = asciiGridWidth;
+        if (heightInput) heightInput.value = asciiGridHeight;
 
         createAsciiGrid(gridData);
     } else {
@@ -8769,14 +8785,24 @@ function openAsciiDrawer(targetWrap = null) {
         if (sizeStr === 'custom') {
             const widthInput = document.getElementById('asciiCustomWidth');
             const heightInput = document.getElementById('asciiCustomHeight');
-            asciiGridWidth = widthInput ? parseInt(widthInput.value) || 40 : 40;
-            asciiGridHeight = heightInput ? parseInt(heightInput.value) || 15 : 15;
+            let w = widthInput ? parseInt(widthInput.value) : 40;
+            let h = heightInput ? parseInt(heightInput.value) : 15;
+            if (isNaN(w) || w < 5 || w > 120) w = 40;
+            if (isNaN(h) || h < 5 || h > 60) h = 15;
+            asciiGridWidth = w;
+            asciiGridHeight = h;
+            if (widthInput) widthInput.value = w;
+            if (heightInput) heightInput.value = h;
             if (customContainer) customContainer.style.display = 'flex';
         } else {
             const parts = sizeStr.split('x');
-            asciiGridWidth = parseInt(parts[0]) || 40;
-            asciiGridHeight = parseInt(parts[1]) || 15;
+            asciiGridWidth = Math.max(5, Math.min(120, parseInt(parts[0]) || 40));
+            asciiGridHeight = Math.max(5, Math.min(60, parseInt(parts[1]) || 15));
             if (customContainer) customContainer.style.display = 'none';
+            const widthInput = document.getElementById('asciiCustomWidth');
+            const heightInput = document.getElementById('asciiCustomHeight');
+            if (widthInput) widthInput.value = asciiGridWidth;
+            if (heightInput) heightInput.value = asciiGridHeight;
         }
 
         createAsciiGrid();
@@ -8805,6 +8831,10 @@ function closeAsciiEditor() {
         }
     }
     asciiTargetWrap = null;
+    const widthInput = document.getElementById('asciiCustomWidth');
+    const heightInput = document.getElementById('asciiCustomHeight');
+    if (widthInput) widthInput.value = asciiGridWidth;
+    if (heightInput) heightInput.value = asciiGridHeight;
 }
 
 async function clearAsciiGrid() {
