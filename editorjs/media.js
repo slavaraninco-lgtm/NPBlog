@@ -2366,7 +2366,7 @@ function loadAudioFilesList() {
 }
 
 function insertAudioFile(filePath, fileName) {
-    const audioElement = `<audio controls style="width: 100%; max-width: 600px; margin: 10px 0;"><source src="${filePath}" type="audio/mpeg">Ваш браузер не поддерживает аудио элемент.</audio>`;
+    const audioElement = `<audio controls style="width: 100%; min-width: 300px; max-width: 600px; margin: 10px 0;"><source src="${filePath}" type="audio/mpeg">Ваш браузер не поддерживает аудио элемент.</audio>`;
 
     if (editorMode === 'code') {
         const ta = document.getElementById('content');
@@ -2375,14 +2375,12 @@ function insertAudioFile(filePath, fileName) {
     } else {
         // Вставляем аудио элемент
         const wrappedAudioHtml = wrapMediaWithControls(audioElement, 'audio');
+        if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
         const ve = document.getElementById('contentVisual');
-        ve.focus();
         const sel = window.getSelection();
         let range = null;
 
-        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-            range = savedRange;
-        } else if (sel && sel.rangeCount > 0) {
+        if (sel && sel.rangeCount > 0) {
             range = sel.getRangeAt(0);
         }
 
@@ -2545,7 +2543,7 @@ function loadVideoFilesList() {
 }
 
 function insertVideoFile(filePath, fileName) {
-    const videoElement = `<video controls style="width: 100%; max-width: 800px; margin: 10px 0;"><source src="${filePath}" type="video/mp4">Ваш браузер не поддерживает видео элемент.</video>`;
+    const videoElement = `<video controls style="width: 100%; min-width: 300px; max-width: 800px; margin: 10px 0;"><source src="${filePath}" type="video/mp4">Ваш браузер не поддерживает видео элемент.</video>`;
 
     if (editorMode === 'code') {
         const ta = document.getElementById('content');
@@ -2554,14 +2552,12 @@ function insertVideoFile(filePath, fileName) {
     } else {
         // Вставляем видео элемент
         const wrappedVideoHtml = wrapMediaWithControls(videoElement, 'video');
+        if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
         const ve = document.getElementById('contentVisual');
-        ve.focus();
         const sel = window.getSelection();
         let range = null;
 
-        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-            range = savedRange;
-        } else if (sel && sel.rangeCount > 0) {
+        if (sel && sel.rangeCount > 0) {
             range = sel.getRangeAt(0);
         }
 

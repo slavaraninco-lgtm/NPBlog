@@ -14,12 +14,12 @@
             }
         },
         {
-            "visual": "<span id=\"1\" data-npblog-anchor=\"true\">⚓<\/span>",
+            "visual": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\" data-image-id=\"audio-1788276373157-unfw8k8zx\"><div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\" data-media-type=\"audio\"><audio controls=\"\" style=\"width: 100%; min-width: 300px; max-width: 600px; margin: 10px 0;\"><source src=\"\/data\/files\/audio\/5opka_-_42.mp3\" type=\"audio\/mpeg\">Ваш браузер не поддерживает аудио элемент.<\/audio><\/div><\/div><div><br><\/div>",
             "code": "",
             "mode": "visual",
             "visualSelection": {
-                "start": 0,
-                "end": 0
+                "start": 42,
+                "end": 42
             },
             "codeSelection": {
                 "start": 0,
@@ -27,111 +27,7 @@
             }
         },
         {
-            "visual": "<span id=\"1\" data-npblog-anchor=\"true\">а<\/span>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 1,
-                "end": 1
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<span id=\"1\" data-npblog-anchor=\"true\">авппавпавпав<\/span>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 12,
-                "end": 12
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<p><span id=\"1\" data-npblog-anchor=\"true\">авппавпавпав<\/span><\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 12,
-                "end": 12
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<p><span id=\"1\" data-npblog-anchor=\"true\">авппавпавпав<\/span><\/p><p><br><\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 12,
-                "end": 12
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<p>авппавпавпав<\/p><p><br><\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 0,
-                "end": 12
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<p><br><\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 0,
-                "end": 0
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<p><span id=\"1\" data-npblog-anchor=\"true\">⚓<\/span><br><\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 0,
-                "end": 0
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<p><br><\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 0,
-                "end": 0
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<br>",
+            "visual": "<div><br><\/div>",
             "code": "",
             "mode": "visual",
             "visualSelection": {
@@ -144,5 +40,5 @@
             }
         }
     ],
-    "index": 10
+    "index": 2
 }
