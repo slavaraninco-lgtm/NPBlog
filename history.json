@@ -12,7 +12,33 @@
                 "start": 0,
                 "end": 0
             }
+        },
+        {
+            "visual": "<div class=\"blog-image-align-wrap\" style=\"text-align:left; display: block; margin: 14px 0; width: 100%; clear: both; position: relative;\" data-image-id=\"audio-1788249745033-lqsh1nv35\"><div class=\"blog-image-wrap\" style=\"position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;\" data-media-type=\"audio\"><audio controls=\"\" style=\"width: 100%; max-width: 600px; margin: 10px 0;\"><source src=\"\/data\/files\/audio\/5opka_-_42.mp3\" type=\"audio\/mpeg\">Ваш браузер не поддерживает аудио элемент.<\/audio><\/div><\/div><div><br><\/div>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 42,
+                "end": 42
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<div><br><\/div>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
         }
     ],
-    "index": 0
+    "index": 2
 }

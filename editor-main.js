@@ -3898,23 +3898,41 @@ function uploadVideoFileDirect(file) {
     const formData = new FormData();
     formData.append('video', file);
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const headers = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
     fetch('upload_video.php', {
         method: 'POST',
+        headers: headers,
         body: formData
     })
-        .then(response => response.json())
+        .then(async response => {
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                throw new Error(clean || `HTTP ${response.status}`);
+            }
+            return data;
+        })
         .then(data => {
             if (data.success) {
                 showNotification('Видео файл загружен', 'success');
                 loadVideoFilesList();
             } else {
-                showNotification('Ошибка: ' + data.error, 'error');
+                showNotification('Ошибка: ' + (data.error || data.message || 'Не удалось загрузить видео'), 'error');
             }
             if (filenameEl) filenameEl.style.display = 'none';
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showNotification('Ошибка загрузки файла', 'error');
+            showNotification('Ошибка загрузки видео: ' + error.message, 'error');
             if (filenameEl) filenameEl.style.display = 'none';
         });
 }
@@ -3941,23 +3959,41 @@ function uploadAudioFileDirect(file) {
     const formData = new FormData();
     formData.append('audio', file);
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const headers = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
     fetch('upload_audio.php', {
         method: 'POST',
+        headers: headers,
         body: formData
     })
-        .then(response => response.json())
+        .then(async response => {
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                throw new Error(clean || `HTTP ${response.status}`);
+            }
+            return data;
+        })
         .then(data => {
             if (data.success) {
                 showNotification('Аудио файл загружен', 'success');
                 loadAudioFilesList();
             } else {
-                showNotification('Ошибка: ' + data.error, 'error');
+                showNotification('Ошибка: ' + (data.error || data.message || 'Не удалось загрузить аудио'), 'error');
             }
             if (filenameEl) filenameEl.style.display = 'none';
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showNotification('Ошибка загрузки файла', 'error');
+            showNotification('Ошибка загрузки файла: ' + error.message, 'error');
             if (filenameEl) filenameEl.style.display = 'none';
         });
 }
@@ -4117,23 +4153,41 @@ function uploadAudioFile() {
     const formData = new FormData();
     formData.append('audio', file);
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const headers = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
     fetch('upload_audio.php', {
         method: 'POST',
+        headers: headers,
         body: formData
     })
-        .then(response => response.json())
+        .then(async response => {
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                throw new Error(clean || `HTTP ${response.status}`);
+            }
+            return data;
+        })
         .then(data => {
             if (data.success) {
                 showNotification('Аудио файл загружен', 'success');
                 fileInput.value = '';
                 loadAudioFilesList();
             } else {
-                showNotification('Ошибка: ' + data.error, 'error');
+                showNotification('Ошибка: ' + (data.error || data.message || 'Не удалось загрузить аудио'), 'error');
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showNotification('Ошибка загрузки файла', 'error');
+            showNotification('Ошибка загрузки аудио: ' + error.message, 'error');
         });
 }
 
@@ -4278,23 +4332,41 @@ function uploadVideoFile() {
     const formData = new FormData();
     formData.append('video', file);
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const headers = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
     fetch('upload_video.php', {
         method: 'POST',
+        headers: headers,
         body: formData
     })
-        .then(response => response.json())
+        .then(async response => {
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                throw new Error(clean || `HTTP ${response.status}`);
+            }
+            return data;
+        })
         .then(data => {
             if (data.success) {
                 showNotification('Видео файл загружен', 'success');
                 fileInput.value = '';
                 loadVideoFilesList();
             } else {
-                showNotification('Ошибка: ' + data.error, 'error');
+                showNotification('Ошибка: ' + (data.error || data.message || 'Не удалось загрузить видео'), 'error');
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            showNotification('Ошибка загрузки файла', 'error');
+            showNotification('Ошибка загрузки видео: ' + error.message, 'error');
         });
 }
 
@@ -4835,29 +4907,29 @@ function loadPosts() {
 }
 
 function editPost(postId) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
     fetch('get_post_content.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: JSON.stringify({ id: postId })
     })
-        .then(response => {
-            // Проверяем что ответ действительно JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Сервер вернул не JSON ответ. Проверьте настройки PHP и nginx.');
-            }
-            return response.text();
-        })
-        .then(text => {
-            // Пытаемся распарсить JSON
+        .then(async response => {
+            const text = await response.text();
+            let data;
             try {
-                return JSON.parse(text);
+                data = JSON.parse(text);
             } catch (e) {
-                console.error('Ответ сервера:', text);
-                throw new Error('Ошибка парсинга JSON. Ответ сервера: ' + text.substring(0, 200));
+                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                throw new Error(clean || `Ошибка сервера (HTTP ${response.status})`);
             }
+            return data;
         })
         .then(data => {
             if (data.success) {
@@ -4952,7 +5024,7 @@ function editPost(postId) {
                 clearHistory();
                 saveToHistory();
             } else {
-                showNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'), 'error');
+                showNotification('Ошибка: ' + (data.message || data.error || 'Неизвестная ошибка'), 'error');
             }
         })
         .catch(error => {
@@ -5109,7 +5181,24 @@ function handleSubmit(e) {
             let payload;
             try { payload = await response.json(); } catch (_) { payload = null; }
             if (!response.ok || (payload && payload.success === false)) {
-                throw new Error((payload && payload.error) || (payload && payload.message) || 'Server error');
+                let errorMsg = 'Ошибка сервера';
+                if (payload) {
+                    if (payload.message) {
+                        errorMsg = payload.message;
+                    } else if (payload.error) {
+                        const errorMap = {
+                            'filesystem_error': 'Ошибка файловой системы: проверьте путь к папке data и права доступа на запись',
+                            'permission_denied': 'Нет прав на запись к указанной папке блога',
+                            'csrf_error': 'Сессия устарела или недействителен CSRF-токен. Обновите страницу.',
+                            'security_violation': 'Ошибка безопасности: недопустимый путь к файлу',
+                            'unauthorized': 'Требуется авторизация'
+                        };
+                        errorMsg = errorMap[payload.error] || payload.error;
+                    }
+                } else {
+                    errorMsg = `Ошибка сервера (HTTP ${response.status})`;
+                }
+                throw new Error(errorMsg);
             }
             showNotification(
                 currentEditId ? 'Статья успешно обновлена!' : 'Статья успешно добавлена!',
