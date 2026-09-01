@@ -67,16 +67,7 @@ function setTextColor(color) {
             saveToHistory();
         }
     } else {
-        var ve = document.getElementById('contentVisual');
-        if (!ve) return;
-        ve.focus();
-        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-            var sel = window.getSelection();
-            if (sel) {
-                sel.removeAllRanges();
-                sel.addRange(savedRange);
-            }
-        }
+        if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
         try {
             document.execCommand('styleWithCSS', false, true);
         } catch (e) { }
@@ -391,18 +382,7 @@ function setFontFamily(font) {
         }
         saveToHistory();
     } else {
-        var ve = document.getElementById('contentVisual');
-        if (!ve) return;
-
-        ve.focus();
-
-        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-            var sel = window.getSelection();
-            if (sel) {
-                sel.removeAllRanges();
-                sel.addRange(savedRange);
-            }
-        }
+        if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
 
         try {
             document.execCommand('styleWithCSS', false, true);
@@ -442,6 +422,7 @@ function addAnchor() {
         return;
     }
 
+    if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) {
         showNotification('Пожалуйста, выделите текст для якоря', 'warning');

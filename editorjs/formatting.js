@@ -46,17 +46,34 @@ function saveSelection() {
     });
 })();
 
-function insertHtmlAtCursor(html) {
-    var ve = document.getElementById('contentVisual');
-    if (ve) ve.focus();
-
-    // Restore selection if we have one
+window.restoreEditorFocus = function() {
+    const ve = document.getElementById('contentVisual');
+    if (!ve) return false;
+    ve.focus();
+    const sel = window.getSelection();
+    if (!sel) return false;
     if (savedRange) {
-        const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(savedRange);
+        return true;
     }
+    if (sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        if (ve.contains(range.commonAncestorContainer) || range.commonAncestorContainer === ve) {
+            return true;
+        }
+    }
+    const range = document.createRange();
+    range.selectNodeContents(ve);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    saveSelection();
+    return true;
+};
 
+function insertHtmlAtCursor(html) {
+    if (!window.restoreEditorFocus()) return;
     let sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
         let range = sel.getRangeAt(0);
@@ -426,6 +443,7 @@ function isFormatApplied(node, tag) {
 }
 
 function toggleInlineFormat(tag) {
+    if (!window.restoreEditorFocus()) return;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
 
@@ -464,6 +482,7 @@ function toggleInlineFormat(tag) {
 }
 
 function toggleBlockFormat(tag) {
+    if (!window.restoreEditorFocus()) return;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const range = sel.getRangeAt(0);
@@ -607,9 +626,7 @@ function alignText(side) {
         const html = `<div style="text-align: ${side};">${selectedText || '&nbsp;'}</div>`;
         ta.value = before + html + after;
     } else {
-        const ve = document.getElementById('contentVisual');
-        if (ve) ve.focus();
-
+        if (!window.restoreEditorFocus()) return;
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0) return;
         const range = sel.getRangeAt(0);
@@ -846,17 +863,15 @@ function setSelectionOffsets(container, start, end) {
 
 // Функции для работы с историей изменений
 function insertHtmlAtCaret(html) {
-    const ve = document.getElementById('contentVisual');
-    ve.focus();
+    if (!window.restoreEditorFocus()) return;
     const sel = window.getSelection();
     let range = null;
-    if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-        range = savedRange;
-    } else if (sel && sel.rangeCount > 0) {
+    if (sel && sel.rangeCount > 0) {
         range = sel.getRangeAt(0);
     }
     if (!range) {
-        ve.insertAdjacentHTML('beforeend', html);
+        const ve = document.getElementById('contentVisual');
+        if (ve) ve.insertAdjacentHTML('beforeend', html);
         return;
     }
     range.deleteContents();
@@ -882,19 +897,17 @@ function insertHtmlAtCaret(html) {
 
 /** Вставка блока с изображением(ями) и пустой строки после; курсор ставится в пустой блок, чтобы текст не привязывался к картинке */
 function insertImageBlockAtCaret(html) {
+    if (!window.restoreEditorFocus()) return;
     const ve = document.getElementById('contentVisual');
-    ve.focus();
     const sel = window.getSelection();
     let range = null;
-    if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-        range = savedRange;
-    } else if (sel && sel.rangeCount > 0) {
+    if (sel && sel.rangeCount > 0) {
         range = sel.getRangeAt(0);
     }
     var emptyDiv = document.createElement('div');
     emptyDiv.innerHTML = '<br>';
     if (!range) {
-        ve.insertAdjacentHTML('beforeend', html);
+        if (ve) ve.insertAdjacentHTML('beforeend', html);
         ve.appendChild(emptyDiv);
         range = document.createRange();
         range.setStart(emptyDiv, 0);

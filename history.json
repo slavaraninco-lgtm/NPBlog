@@ -12,7 +12,137 @@
                 "start": 0,
                 "end": 0
             }
+        },
+        {
+            "visual": "<span id=\"1\" data-npblog-anchor=\"true\">⚓<\/span>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<span id=\"1\" data-npblog-anchor=\"true\">а<\/span>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<span id=\"1\" data-npblog-anchor=\"true\">авппавпавпав<\/span>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 12,
+                "end": 12
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<p><span id=\"1\" data-npblog-anchor=\"true\">авппавпавпав<\/span><\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 12,
+                "end": 12
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<p><span id=\"1\" data-npblog-anchor=\"true\">авппавпавпав<\/span><\/p><p><br><\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 12,
+                "end": 12
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<p>авппавпавпав<\/p><p><br><\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 12
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<p><br><\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<p><span id=\"1\" data-npblog-anchor=\"true\">⚓<\/span><br><\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<p><br><\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<br>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
         }
     ],
-    "index": 0
+    "index": 10
 }
