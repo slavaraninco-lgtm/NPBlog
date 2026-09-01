@@ -580,7 +580,34 @@ if (file_exists($versionFile)) {
 <?php safe_include_editor_modal('smile_sets_modal.php'); ?>
 
 <script src="modals/modal.js?v=<?php echo file_exists(__DIR__ . '/modals/modal.js') ? filemtime(__DIR__ . '/modals/modal.js') : time(); ?>"></script>
-<script src="editor-main.js?v=<?php echo file_exists(__DIR__ . '/editor-main.js') ? filemtime(__DIR__ . '/editor-main.js') : time(); ?>"></script>
+<?php
+$editorJsFiles = [
+    'core.js',
+    'notifications.js',
+    'drafts.js',
+    'history.js',
+    'formatting.js',
+    'tables.js',
+    'media.js',
+    'network.js',
+    'ui.js',
+    'integrity.js',
+    'backups.js',
+    'includes.js',
+    'tour.js',
+    'file-upload.js',
+    'ascii-drawer.js',
+    'smooth-typing.js',
+    'markdown.js',
+    'templates.js',
+    'smiles.js',
+    'custom-button.js'
+];
+foreach ($editorJsFiles as $jsFile) {
+    $v = file_exists(__DIR__ . '/editorjs/' . $jsFile) ? filemtime(__DIR__ . '/editorjs/' . $jsFile) : time();
+    echo '<script src="editorjs/' . $jsFile . '?v=' . $v . '"></script>' . "\n";
+}
+?>
 
 <script src="editor-img.js?v=<?php echo file_exists(__DIR__ . '/editor-img.js') ? filemtime(__DIR__ . '/editor-img.js') : time(); ?>"></script>
 

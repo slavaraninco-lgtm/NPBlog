@@ -1,0 +1,310 @@
+1: // ——— Вспомогательные функции экранирования ———
+2: function escapeHtml(str) {
+12: function escapeHtmlJS(str) {
+17: // ——— Система уведомлений ———
+18: function showNotification(message, type = 'info', title = '') {
+69: function closeNotification(btn) {
+81: let currentEditId = null;
+82: let editorMode = 'visual'; // 'visual' | 'code'
+83: let savedRange = null;
+86: let isEditorDirty = false;
+87: let localDraftSaveTimeout = null;
+88: let isSavingArticle = false;
+91: const MAX_HISTORY_STATES = 50;
+92: let historyStack = [];
+93: let historyIndex = -1;
+94: let isRestoringHistory = false;
+95: let historySaveTimeout = null;
+96: let lastActionType = null;
+97: let lastActionTime = 0;
+98: let cursorMoved = false;
+100: function getLocalDraftStorageKey() {
+104: function markEditorDirty() {
+109: function scheduleLocalDraftSave() {
+116: function saveLocalDraftNow() {
+145: function clearLocalDraft() {
+153: function checkLocalDraftOnStartup() {
+177: function showDraftRestoreToast(draft, timeFormatted) {
+243: function loadEditorCustomFonts() {
+291: let linkInsertStart = 0;
+292: let linkInsertEnd = 0;
+293: let colorInsertStart = 0;
+294: let colorInsertEnd = 0;
+296: function saveSelection() {
+339: function insertHtmlAtCursor(html) {
+375: function formatHTML(html) {
+469: function cleanContentForSave(html) {
+518: function setMode(mode) {
+561: const toggleState = { b: false, i: false, u: false, s: false };
+563: function setBtnActive(id, active) {
+569: function updateActiveButtons() {
+641: var FORMAT_TAGS = {
+656: function escapeFormatNode(cmd, ve) {
+706: function isFormatApplied(node, tag) {
+718: function toggleInlineFormat(tag) {
+756: function toggleBlockFormat(tag) {
+827: function formatText(tag) {
+889: function alignText(side) {
+1046: function getSelectionOffsets(container) {
+1087: function setSelectionOffsets(container, start, end) {
+1138: function saveToHistory(force = true) {
+1177: function saveHistoryToFile() {
+1192: function loadHistoryFromFile() {
+1207: function undoEdit() {
+1216: function redoEdit() {
+1225: function restoreHistoryState(state) {
+1253: function updateUndoRedoButtons() {
+1270: function clearHistory() {
+1283: function insertHtmlAtCaret(html) {
+1319: function insertImageBlockAtCaret(html) {
+1366: function insertList() {
+1379: function openTableDialog() {
+1390: function closeTableDialog() {
+1403: function addTableRow() {
+1437: function deleteTableRow() {
+1462: function addTableColumn() {
+1516: function deleteTableColumn() {
+1564: function deleteTable() {
+1579: function openCellColorDialog() {
+1589: function closeCellColorDialog() {
+1598: function setCellColor(color) {
+1620: function insertTable() {
+1687: function insertTableAtCaret(tableHtml) {
+1749: function addColumnResizers() {
+1835: function initTableResizers() {
+1860: function addLink() {
+1889: function closeLinkDialog() {
+1900: function insertLinkFromDialog() {
+1936: let selectedImageFiles = [];
+1937: let isImageDragDropInitialized = false;
+1939: function initImageDragDrop() {
+1980: function renderImagePreviews() {
+2027: function handleImageFileSelect(input) {
+2050: function showImageUpload() {
+2061: let gridTileFiles = {};
+2250: function renderGridPreview() {
+2370: function checkInsertGalleryVisibility() {
+2386: function processImage() {
+2499: function insertImagesInGrid(urls, layout, caption = '', width = '', widthUnit = 
+2533: function insertImagesAsGallery(urls, caption = '', width = '', widthUnit = 'px',
+2571: function uploadImage(file, width, height, widthUnit, heightUnit, caption) {
+2597: function wrapImageWithHint(imgHtml, caption = '') {
+2604: function wrapMediaWithControls(mediaHtml, type = 'video') {
+2610: function wrapExistingEditorImages() {
+2739: var activeTarget = null; // Текущий активный медиа-блок .blog-image-wrap
+2740: var isResizingMedia = false;
+2742: var currentHandle = null;
+2744: function showGlobalMediaOverlay(mediaWrap) {
+2794: function hideGlobalMediaOverlay() {
+2802: function updateOverlayPosition() {
+2886: function initGlobalMediaOverlayDOM() {
+3044: function initImageAlignmentHandlers() {
+3532: function insertImage(url, width, height, widthUnit, heightUnit, caption = '', no
+3559: function closeImageDialog() {
+3609: function setFontSize(size) {
+3794: function closeFontSizeDialog() {
+3799: function setCustomFontSize() {
+3810: let isMediaDragDropInitialized = false;
+3812: function initMediaDragDrop() {
+3879: function uploadVideoFileDirect(file) {
+3940: function uploadAudioFileDirect(file) {
+4012: function showMediaDialog() {
+4047: function closeMediaDialog() {
+4081: function insertMedia() {
+4138: function uploadAudioFile() {
+4194: function loadAudioFilesList() {
+4227: function insertAudioFile(filePath, fileName) {
+4289: function deleteAudioFile(fileName) {
+4317: function uploadVideoFile() {
+4373: function loadVideoFilesList() {
+4406: function insertVideoFile(filePath, fileName) {
+4468: function deleteVideoFile(fileName) {
+4495: function deleteAudioFile(fileName) {
+4523: function extractYoutubeId(url) {
+4529: function extractVimeoId(url) {
+4537: let savedSpoilerText = '';
+4538: let savedSpoilerRange = null;
+4540: function openSpoilerDialog() {
+4573: function closeSpoilerDialog() {
+4584: function insertSpoiler() {
+4614: let savedMarkerText = '';
+4615: let savedMarkerRange = null;
+4616: let selectedMarkerStyle = 'straight';
+4618: function openMarkerDialog() {
+4668: function closeMarkerDialog() {
+4679: function insertMarker(color, style) {
+4749: var editingCodeBlockTarget = null;
+4751: function insertCode() {
+4770: function openEditCodeBlockDialog(codeBlock) {
+4791: function closeCodeDialog() {
+4803: function insertCodeBlock() {
+4847: function toggleManagePosts() {
+4865: function loadPosts() {
+4909: function editPost(postId) {
+5036: let deletePostId = null;
+5038: function filterPosts() {
+5073: function deletePost(postId) {
+5083: function closeDeleteConfirm() {
+5093: function confirmDelete() {
+5127: function handleSubmit(e) {
+5300: function setTextColor(color) {
+5450: function applyCustomFontSize(wrapId) {
+5470: function applyCustomFontFamily(wrapId) {
+5620: function setFontFamily(font) {
+5674: function closeFontFamilyDialog() {
+5679: function setCustomFontFamily() {
+5689: function insertImageGrid(layout) {
+5747: // ——— Проверка целостности файлов при загрузке ———
+5794: // ——— Менеджер бэкапов ———
+5828: function closeBackupManager() {
+5837: function renderBackups(backups) {
+5890: function toggleBackupGroup(postId) {
+5924: function restoreBackup(postId, filename, backupNumber, backupDate) {
+5963: function escapeHtml(text) {
+5970: function deleteBackup(postId, filename, backupNumber, backupDate) {
+6040: // ——— Система includes ———
+6041: function openSaveInclude() {
+6059: function closeSaveInclude() {
+6130: let includesListLoaded = false;
+6131: let articlesListLoaded = false;
+6132: let draftsListLoaded = false;
+6135: function saveDraft() {
+6183: function toggleDraftsSubmenu(event) {
+6358: function toggleIncludesSubmenu(event) {
+6479: function toggleArticlesSubmenu(event) {
+6522: function insertArticleLink(filename, title) {
+6545: // ——— Проверка нумерации статей ———
+6697: function closeNumberingCheck() {
+6706: // ——— Интерактивный тур-обучение ———
+6707: function getTutorialText(key, fallback, params) {
+6714: function getTutorialSteps() {
+7143: let currentTutorialStep = 0;
+7144: let tutorialKeyDownHandler = null;
+7145: let tutorialResizeHandler = null;
+7147: function prepareStepEnvironment(step) {
+7311: function cleanupTutorialEnvironment() {
+7349: function startTutorial(force = false) {
+7368: function updateTutorialPosition() {
+7522: function showTutorialStep() {
+7641: function prevTutorialStep() {
+7648: function nextTutorialStep() {
+7658: function skipTutorial() {
+7673: function showTutorialComplete() {
+7687: function completeTutorial() {
+7709: function resetTutorial() {
+7743: // ——— Функции для загрузки файлов ———
+7745: function openFileUploadDialog() {
+7766: let isDragDropInitialized = false;
+7768: function initDragDrop() {
+7813: function handleFileSelect(input) {
+7825: function closeFileUploadDialog() {
+7834: function closeMoreMenu() {
+7841: function formatFileSize(bytes) {
+7849: function loadDocumentsList() {
+7971: function uploadDocument(fileToUpload = null) {
+8023: function deleteDocument(filePath) {
+8050: function insertFileButton(fileName, filePath, fileSize) {
+8184: // ——— Работа с якорями и содержанием ———
+8185: function addAnchor() {
+8274: function toggleTocSubmenu(event) {
+8295: function loadTocList() {
+8340: function removeAnchorById(id, event) {
+8439: function updateAmoledState() {
+8449: // --- ASCII Drawing Tool Implementation ---
+8450: let asciiGridWidth = 40;
+8451: let asciiGridHeight = 15;
+8452: let asciiCurrentChar = '█';
+8453: let asciiCurrentTool = 'draw'; // 'draw', 'erase', 'fill'
+8454: let asciiIsDrawing = false;
+8455: let asciiHistory = [];
+8456: let asciiHistoryIndex = -1;
+8457: let asciiTargetWrap = null;
+8459: function wrapAsciiWithControls(asciiHtml) {
+8465: function drawCell(cell) {
+8477: function floodFill(startX, startY, targetChar, replacementChar) {
+8578: function createAsciiGrid(initialData = null) {
+8633: function fitAsciiGridToContainer() {
+8683: function clearAsciiHistory() {
+8689: function saveAsciiHistory() {
+8701: function undoAsciiState() {
+8709: function restoreAsciiHistoryState(state) {
+8718: function updateAsciiUndoBtn() {
+8726: function setAsciiTool(tool) {
+8735: const asciiPresetCategories = [
+8758: let asciiCurrentCategoryIndex = 0;
+8760: function renderAsciiPresets() {
+8791: function nextAsciiPage() {
+8796: function prevAsciiPage() {
+8801: function setAsciiChar(char, presetBtn = null) {
+8812: function applyCustomAsciiChar() {
+8823: function openAsciiDrawer(targetWrap = null) {
+8912: function closeAsciiEditor() {
+8940: function saveAsciiArt() {
+8995: // --- Плавная печать (мягкий курсор) ---
+8996: let caretTimeout = null;
+8997: let caretScrollListener = null;
+8999: function applySmoothTypingState() {
+9049: function handleCaretBlur() {
+9059: function handleCaretUpdate() {
+9063: function getCaretCoordinates() {
+9130: function updateCustomCaret() {
+9175: // --- Markdown to HTML Dynamic Compiler ---
+9176: function parseMarkdownToHtml(md) {
+9344: function parseInlineMarkdown(text) {
+9358: function convertHtmlToMarkdown(html) {
+9365: function nodeToMarkdown(node) {
+9489: // --- Менеджер шаблонов ---
+9490: let templatesList = [];
+9491: let postsList = [];
+9492: let currentTemplateName = null;
+9493: let postTemplatesMeta = {};
+9494: let defaultTemplateName = 'main';
+9496: function openTemplateManager() {
+9520: function closeTemplateManager() {
+9528: function renderTemplatesGrid() {
+9568: function getTemplatePreviewHtml(templateCode) {
+9605: function escapeHtml(str) {
+9614: function triggerTemplateUpload() {
+9664: function openTemplateDetails(name) {
+9691: let previewDebounce = null;
+9692: function updateTemplateLivePreview() {
+9702: function closeTemplateDetails() {
+9712: function toggleSaveTemplateDropdown() {
+9727: function saveTemplateData() {
+9762: function saveAndApplyTemplateToAll() {
+9789: function showApplyToSpecificPostList() {
+9805: function closeApplyToPostModal() {
+9813: function renderTemplatePostList() {
+9843: function filterTemplatePosts() {
+9857: function applyTemplateToPost(postId) {
+9883: function deleteCurrentTemplate() {
+9910: function showTemplatePlaceholdersInfo(e) {
+9925: function showTemplateInstructions() {
+9933: function closeTemplateInstructions() {
+9960: // --- Наборы смайлов ---
+9961: let smileFilesToUpload = [];
+9962: let smileSetNameTarget = '';
+9964: function openSmileSetsDialog() {
+9975: function closeSmileSetsDialog() {
+9985: function handleSmileDragOver(e) {
+9995: function handleSmileDragLeave(e) {
+10052: function handleSmileFileSelect(e) {
+10059: function processSelectedSmiles(files) {
+10100: function resetSmileUploadState() {
+10228: function toggleSmilesSubmenu(event) {
+10289: function insertSmile(url) {
+10301: function escapeHtmlJS(str) {
+10312: // --- Вставка и редактирование кастомной кнопки со ссылкой ---
+10313: let isUpdatingBtnFromRaw = false;
+10314: let editingCustomBtnTarget = null;
+10316: function openInsertButtonDialog() {
+10346: function openEditCustomButtonDialog(customBtn) {
+10424: function closeCustomButtonDialog() {
+10437: function switchBtnTab(tab) {
+10458: function setBtnBgPreview(mode) {
+10470: function applyBtnPreset(preset) {
+10530: function updateCustomBtnPreview() {
+10605: function syncFromRawCode() {
+10619: function insertCustomButtonToEditor() {
+10706: function checkDevWarning() {
+10720: function confirmDevWarning() {
