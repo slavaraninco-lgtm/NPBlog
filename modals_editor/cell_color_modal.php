@@ -12,7 +12,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-primary">🎨</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.cell_color_title">Перекрасить ячейку</h3>
                     <p class="modal-subtitle" data-i18n="modals.cell_color_subtitle">Цвет фона ячейки таблицы</p>

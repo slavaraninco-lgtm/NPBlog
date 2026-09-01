@@ -30,7 +30,7 @@ if (!isset($availableLanguages)) {
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-info">⚙️</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="settings.title">Параметры</h3>
                     <p class="modal-subtitle" data-i18n="settings.subtitle">Глобальные настройки блога, интерфейса, безопасности и интеграций</p>

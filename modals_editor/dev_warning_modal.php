@@ -12,7 +12,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-warning">⚠️</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" style="color: #f59e0b;" data-i18n="modals.dev_warning_title">DEV-версия системы</h3>
                     <p class="modal-subtitle" data-i18n="modals.dev_warning_subtitle">Предупреждение о тестовой сборке</p>

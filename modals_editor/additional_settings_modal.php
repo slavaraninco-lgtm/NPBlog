@@ -12,7 +12,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-primary">🎨</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.extra_settings_title">Дополнительные настройки статьи</h3>
                     <p class="modal-subtitle" id="additionalSettingsPostTitle" data-i18n="modals.extra_settings_subtitle">Настройки фона и подложки</p>

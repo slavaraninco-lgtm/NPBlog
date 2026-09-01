@@ -14,7 +14,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-info">💾</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.backup_manager_title">Менеджер бэкапов</h3>
                     <p class="modal-subtitle" data-i18n="modals.backup_manager_subtitle">История версий и резервные копии статей блога</p>

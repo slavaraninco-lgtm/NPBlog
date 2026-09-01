@@ -13,7 +13,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-primary">🚀</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.sys_title">Обновление NPBlog</h3>
                     <p class="modal-subtitle" data-i18n="modals.sys_subtitle">Обновление компонентов и ядра системы</p>

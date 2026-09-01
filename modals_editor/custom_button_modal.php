@@ -14,7 +14,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-info">🔗</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" id="customButtonDialogTitle" data-i18n="modals.btn_title">Вставить кнопку со ссылкой</h3>
                     <p class="modal-subtitle" data-i18n="modals.btn_subtitle">Конструктор интерактивных кнопок-ссылок</p>
