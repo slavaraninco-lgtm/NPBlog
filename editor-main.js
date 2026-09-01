@@ -295,11 +295,11 @@ let colorInsertEnd = 0;
 
 function saveSelection() {
     const ve = document.getElementById('contentVisual');
-    if (!ve || (document.activeElement !== ve && !ve.contains(document.activeElement))) return;
+    if (!ve) return;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const range = sel.getRangeAt(0);
-    if (ve.contains(range.commonAncestorContainer)) {
+    if (ve.contains(range.commonAncestorContainer) || range.commonAncestorContainer === ve) {
         savedRange = range.cloneRange();
     }
 }
@@ -3607,25 +3607,188 @@ function closeImageDialog() {
 
 // Функции для работы с размером шрифта
 function setFontSize(size) {
+    if (!size) return;
+    var sizeNum = parseInt(size, 10);
+    if (isNaN(sizeNum) || sizeNum <= 0) return;
+    var sizePx = sizeNum + 'px';
+
     if (editorMode === 'code') {
         var ta = document.getElementById('content');
-        var start = colorInsertStart;
-        var end = colorInsertEnd;
+        if (!ta) return;
+        var start = (ta.selectionStart !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionStart : colorInsertStart;
+        var end = (ta.selectionEnd !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionEnd : colorInsertEnd;
         var selectedText = ta.value.substring(start, end);
         if (selectedText) {
-            var fontSpan = '<span style="font-size: ' + size + 'px;">' + selectedText + '</span>';
+            var fontSpan = '<span style="font-size: ' + sizePx + ';">' + selectedText + '</span>';
             ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(end);
-            ta.focus();
-            saveToHistory();
+            ta.selectionStart = start;
+            ta.selectionEnd = start + fontSpan.length;
+        } else {
+            var fontSpan = '<span style="font-size: ' + sizePx + ';"></span>';
+            ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(start);
+            ta.selectionStart = ta.selectionEnd = start + fontSpan.length - 7;
         }
-    } else {
-        var text = (savedRange && savedRange.toString()) || document.getSelection().toString();
-        if (text) {
-            var html = '<span style="font-size: ' + size + 'px;">' + text + '</span>';
-            insertHtmlAtCaret(html);
-            saveToHistory();
+        ta.focus();
+        saveToHistory();
+        return;
+    }
+
+    var ve = document.getElementById('contentVisual');
+    if (!ve) return;
+    ve.focus();
+
+    var sel = window.getSelection();
+    var range = null;
+
+    // Приоритет выбора активного непустого выделения
+    if (sel && sel.rangeCount > 0 && ve.contains(sel.getRangeAt(0).commonAncestorContainer) && !sel.getRangeAt(0).collapsed) {
+        range = sel.getRangeAt(0);
+        savedRange = range.cloneRange();
+    } else if (savedRange && ve.contains(savedRange.commonAncestorContainer) && !savedRange.collapsed) {
+        range = savedRange;
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(savedRange);
+        }
+    } else if (sel && sel.rangeCount > 0 && ve.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+        range = sel.getRangeAt(0);
+    } else if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+        range = savedRange;
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(savedRange);
         }
     }
+
+    if (!range) {
+        var newRange = document.createRange();
+        newRange.selectNodeContents(ve);
+        newRange.collapse(false);
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        }
+        range = newRange;
+    }
+
+    if (range.collapsed) {
+        var span = document.createElement('span');
+        span.style.fontSize = sizePx;
+        span.appendChild(document.createTextNode('\u200B'));
+        range.insertNode(span);
+
+        var newRange = document.createRange();
+        newRange.setStart(span.firstChild, 1);
+        newRange.collapse(true);
+        if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+        }
+        savedRange = newRange.cloneRange();
+    } else {
+        var applied = false;
+        try {
+            // Если всё выделение находится внутри одного span с font-size
+            var parentSpan = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+            if (parentSpan && parentSpan !== ve && parentSpan.tagName === 'SPAN' && parentSpan.style.fontSize && range.toString() === parentSpan.textContent) {
+                parentSpan.style.fontSize = sizePx;
+                var newRange = document.createRange();
+                newRange.selectNodeContents(parentSpan);
+                if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                }
+                savedRange = newRange.cloneRange();
+                applied = true;
+            }
+        } catch (e) { }
+
+        if (!applied) {
+            try {
+                document.execCommand('styleWithCSS', false, false);
+                document.execCommand('fontSize', false, '7');
+
+                var fontElements = Array.from(ve.querySelectorAll('font[size="7"], font[size="xxx-large"]'));
+                if (fontElements.length > 0) {
+                    var firstSpan = null;
+                    var lastSpan = null;
+
+                    fontElements.forEach(function (fontEl) {
+                        var span = document.createElement('span');
+                        span.style.fontSize = sizePx;
+
+                        while (fontEl.firstChild) {
+                            span.appendChild(fontEl.firstChild);
+                        }
+
+                        span.querySelectorAll('[style*="font-size"]').forEach(function (child) {
+                            child.style.fontSize = '';
+                            if (!child.getAttribute('style') || child.getAttribute('style').trim() === '') {
+                                child.removeAttribute('style');
+                            }
+                        });
+
+                        if (!firstSpan) firstSpan = span;
+                        lastSpan = span;
+
+                        if (fontEl.parentNode) {
+                            fontEl.parentNode.replaceChild(span, fontEl);
+                        }
+                    });
+
+                    if (firstSpan && lastSpan) {
+                        var newRange = document.createRange();
+                        newRange.setStartBefore(firstSpan);
+                        newRange.setEndAfter(lastSpan);
+                        sel = window.getSelection();
+                        if (sel) {
+                            sel.removeAllRanges();
+                            sel.addRange(newRange);
+                        }
+                        savedRange = newRange.cloneRange();
+                        applied = true;
+                    }
+                }
+            } catch (e) { }
+        }
+
+        if (!applied) {
+            try {
+                var contents = range.extractContents();
+                var span = document.createElement('span');
+                span.style.fontSize = sizePx;
+                span.appendChild(contents);
+                span.querySelectorAll('[style*="font-size"]').forEach(function (child) {
+                    child.style.fontSize = '';
+                    if (!child.getAttribute('style') || child.getAttribute('style').trim() === '') {
+                        child.removeAttribute('style');
+                    }
+                });
+                range.insertNode(span);
+
+                var newRange = document.createRange();
+                newRange.selectNodeContents(span);
+                sel = window.getSelection();
+                if (sel) {
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                }
+                savedRange = newRange.cloneRange();
+            } catch (e) {
+                console.error('Ошибка применения размера шрифта:', e);
+            }
+        }
+    }
+
+    var sizeBtn = document.getElementById('fontSizeBtn');
+    if (sizeBtn) {
+        sizeBtn.textContent = sizePx;
+    }
+
+    if (typeof updateActiveButtons === 'function') {
+        updateActiveButtons();
+    }
+    saveToHistory();
 }
 
 function closeFontSizeDialog() {
@@ -5028,11 +5191,23 @@ document.getElementById('imageSize').addEventListener('change', function (e) {
     }
 });
 
-document.getElementById('customFontSize').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        setCustomFontSize();
-    }
-});
+const customFontSizeInput = document.getElementById('customFontSize');
+if (customFontSizeInput) {
+    customFontSizeInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            setCustomFontSize();
+        }
+    });
+}
+const fontSizeCustomMainInput = document.getElementById('fontSizeCustomMain');
+if (fontSizeCustomMainInput) {
+    fontSizeCustomMainInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyCustomFontSize('fontSizeWrapMain');
+        }
+    });
+}
 function setTextColor(color) {
     if (editorMode === 'code') {
         var ta = document.getElementById('content');
@@ -5271,6 +5446,8 @@ function applyCustomFontFamily(wrapId) {
                     var ta = document.getElementById('content');
                     colorInsertStart = ta.selectionStart;
                     colorInsertEnd = ta.selectionEnd;
+                } else {
+                    saveSelection();
                 }
             });
             btn.addEventListener('click', function (e) {
@@ -5279,6 +5456,11 @@ function applyCustomFontFamily(wrapId) {
             });
         }
         if (popover) {
+            popover.addEventListener('mousedown', function (e) {
+                if (e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                }
+            });
             popover.addEventListener('click', function (e) {
                 e.stopPropagation();
                 var item = e.target.closest('.font-size-item[data-size]');
@@ -5308,6 +5490,8 @@ function applyCustomFontFamily(wrapId) {
                     var ta = document.getElementById('content');
                     colorInsertStart = ta.selectionStart;
                     colorInsertEnd = ta.selectionEnd;
+                } else {
+                    saveSelection();
                 }
             });
             btn.addEventListener('click', function (e) {
@@ -5316,6 +5500,11 @@ function applyCustomFontFamily(wrapId) {
             });
         }
         if (popover) {
+            popover.addEventListener('mousedown', function (e) {
+                if (e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                }
+            });
             popover.addEventListener('click', function (e) {
                 e.stopPropagation();
                 var item = e.target.closest('.font-family-item[data-font]');
@@ -5340,10 +5529,12 @@ function applyCustomFontFamily(wrapId) {
 
 // Функции для работы со шрифтом
 function setFontFamily(font) {
+    if (!font) return;
     if (editorMode === 'code') {
         var ta = document.getElementById('content');
-        var start = colorInsertStart;
-        var end = colorInsertEnd;
+        if (!ta) return;
+        var start = (ta.selectionStart !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionStart : colorInsertStart;
+        var end = (ta.selectionEnd !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionEnd : colorInsertEnd;
         var selectedText = ta.value.substring(start, end);
         if (selectedText) {
             // Применяем к выделенному тексту
@@ -5354,20 +5545,40 @@ function setFontFamily(font) {
             ta.focus();
         } else {
             // Вставляем span для последующего текста
-            var fontSpan = '<span style="font-family: \'' + font.replace(/'/g, "\\'") + '\';">​</span>';
+            var fontSpan = '<span style="font-family: \'' + font.replace(/'/g, "\\'") + '\';"></span>';
             ta.value = ta.value.substring(0, start) + fontSpan + ta.value.substring(start);
             // Ставим курсор перед закрывающим тегом
-            ta.selectionStart = ta.selectionEnd = start + fontSpan.length - 8;
+            ta.selectionStart = ta.selectionEnd = start + fontSpan.length - 7;
             ta.focus();
         }
+        saveToHistory();
     } else {
         var ve = document.getElementById('contentVisual');
         if (!ve) return;
 
         ve.focus();
 
+        if (savedRange && ve.contains(savedRange.commonAncestorContainer)) {
+            var sel = window.getSelection();
+            if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(savedRange);
+            }
+        }
+
+        try {
+            document.execCommand('styleWithCSS', false, true);
+        } catch (e) { }
+
         // Применяем шрифт через execCommand
         document.execCommand('fontName', false, font);
+
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedRange = sel.getRangeAt(0).cloneRange();
+        }
+        if (typeof updateActiveButtons === 'function') updateActiveButtons();
+        saveToHistory();
     }
 }
 
@@ -5438,6 +5649,9 @@ function insertImageGrid(layout) {
 
 // Подсветка активных кнопок при изменении выделения
 document.addEventListener('selectionchange', function () {
+    if (editorMode === 'visual') {
+        saveSelection();
+    }
     updateActiveButtons();
 });
 
