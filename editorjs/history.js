@@ -86,24 +86,31 @@ function redoEdit() {
 }
 
 function restoreHistoryState(state) {
+    if (!state) return;
     isRestoringHistory = true;
 
     const ve = document.getElementById('contentVisual');
     const ta = document.getElementById('content');
 
-    ve.innerHTML = state.visual;
-    ta.value = state.code;
+    if (ve && state.visual !== undefined) ve.innerHTML = state.visual;
+    if (ta && state.code !== undefined) ta.value = state.code;
 
-    // Восстанавливаем обработчики для изображений и других элементов
-    addColumnResizers();
+    // Восстанавливаем обработчики для изображений, таблиц и медиа
+    if (typeof wrapExistingEditorImages === 'function') wrapExistingEditorImages();
+    if (typeof addColumnResizers === 'function') addColumnResizers();
+    if (window.VisualEngine) window.VisualEngine.normalizeDOM(ve);
 
     // Восстанавливаем выделение
-    if (state.mode === 'visual') {
+    if (state.mode === 'visual' && ve) {
         ve.focus();
         if (state.visualSelection) {
             setSelectionOffsets(ve, state.visualSelection.start, state.visualSelection.end);
         }
-    } else {
+        if (window.VisualEngine) {
+            window.VisualEngine.saveSelection();
+            window.VisualEngine.updateActiveButtons();
+        }
+    } else if (ta) {
         ta.focus();
         if (state.codeSelection) {
             ta.setSelectionRange(state.codeSelection.start, state.codeSelection.end);

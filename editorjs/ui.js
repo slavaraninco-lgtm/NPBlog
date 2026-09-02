@@ -67,16 +67,9 @@ function setTextColor(color) {
             saveToHistory();
         }
     } else {
-        if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
-        try {
-            document.execCommand('styleWithCSS', false, true);
-        } catch (e) { }
-        document.execCommand('foreColor', false, color);
-        var sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-            savedRange = sel.getRangeAt(0).cloneRange();
+        if (window.VisualEngine) {
+            window.VisualEngine.applyInlineStyle('color', color);
         }
-        saveToHistory();
     }
 }
 
@@ -382,21 +375,9 @@ function setFontFamily(font) {
         }
         saveToHistory();
     } else {
-        if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
-
-        try {
-            document.execCommand('styleWithCSS', false, true);
-        } catch (e) { }
-
-        // Применяем шрифт через execCommand
-        document.execCommand('fontName', false, font);
-
-        var sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-            savedRange = sel.getRangeAt(0).cloneRange();
+        if (window.VisualEngine) {
+            window.VisualEngine.applyInlineStyle('fontFamily', font);
         }
-        if (typeof updateActiveButtons === 'function') updateActiveButtons();
-        saveToHistory();
     }
 }
 

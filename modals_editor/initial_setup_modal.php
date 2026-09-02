@@ -46,7 +46,9 @@ if (file_exists($blogViewSettingsFile)) {
     width: 100vw;
     height: 100vh;
     padding: 0 !important;
-    background-color: var(--bg-color, #ffffff) !important;
+    background-color: rgba(255, 255, 255, 0.78) !important;
+    backdrop-filter: blur(14px) saturate(180%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
     color: var(--text-color, #111827);
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -55,7 +57,11 @@ if (file_exists($blogViewSettingsFile)) {
 }
 
 [data-theme="dark"] #initialSetupModal {
-    background-color: var(--bg-color, #121212) !important;
+    background-color: rgba(18, 18, 22, 0.78) !important;
+}
+
+[data-theme="dark"][data-amoled="true"] #initialSetupModal {
+    background-color: rgba(0, 0, 0, 0.82) !important;
 }
 
 /* Экран приветствия и экран успеха */
