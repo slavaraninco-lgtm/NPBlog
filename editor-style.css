@@ -9,6 +9,15 @@
     --text-color: #333333;
     --primary-color: rgb(255, 255, 255);
     --border-color: rgba(128, 128, 128, 0.25);
+
+    /* Motion Tokens - Unified Animation System */
+    --anim-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --anim-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --anim-ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+    --anim-dur-fast: 0.15s;
+    --anim-dur-normal: 0.22s;
+    --anim-dur-medium: 0.28s;
+    --anim-dur-drawer: 0.34s;
 }
 
 [data-theme="dark"] {
@@ -58,7 +67,7 @@
     border-left: 1px solid #222222 !important;
 }
 
-/* Анимации редактора */
+/* Анимации редактора (Unified Motion System) */
 @keyframes dialogOverlayIn {
     from {
         opacity: 0;
@@ -72,7 +81,7 @@
 @keyframes dialogContentIn {
     from {
         opacity: 0;
-        transform: translate(-50%, -50%) scale(0.94);
+        transform: translate(-50%, -48%) scale(0.97);
     }
 
     to {
@@ -84,36 +93,36 @@
 @keyframes popoverIn {
     from {
         opacity: 0;
-        transform: translateY(-6px);
+        transform: translateY(-8px) scale(0.98);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
 @keyframes contextMenuIn {
     from {
         opacity: 0;
-        transform: scale(0.92);
+        transform: translateY(-6px) scale(0.97);
     }
 
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0) scale(1);
     }
 }
 
 @keyframes dialogScaleIn {
     from {
         opacity: 0;
-        transform: scale(0.94);
+        transform: translateY(-6px) scale(0.97);
     }
 
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0) scale(1);
     }
 }
 
@@ -168,7 +177,7 @@ textarea {
     padding: 0;
     overflow-y: auto;
     transform: translateX(100%);
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--anim-dur-drawer) var(--anim-ease-out), box-shadow var(--anim-dur-drawer) ease;
     box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
     z-index: 1005;
 }
@@ -219,12 +228,17 @@ textarea {
     cursor: pointer;
     color: var(--text-color);
     opacity: 0.7;
-    transition: opacity 0.2s ease, background 0.2s ease;
+    transition: opacity var(--anim-dur-fast) ease, background-color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
 }
 
 .manage-posts .close-manage:hover {
     opacity: 1;
     background: rgba(0, 0, 0, 0.06);
+    transform: scale(1.06);
+}
+
+.manage-posts .close-manage:active {
+    transform: scale(0.94);
 }
 
 [data-theme="dark"] .manage-posts .close-manage:hover {
@@ -245,7 +259,9 @@ textarea {
     border-radius: 12px;
     border: 1px solid #ffffff;
     background: var(--bg-color);
-    transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .post-item {
@@ -299,8 +315,18 @@ textarea {
     border-radius: 8px;
     cursor: pointer;
     border: 1px solid #ffffff;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-fast) ease,
+        color var(--anim-dur-fast) ease,
+        border-color var(--anim-dur-fast) ease,
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        opacity var(--anim-dur-fast) ease;
     white-space: nowrap;
+}
+
+.post-item .edit-btn:active,
+.post-item .additional-btn:active,
+.post-item .delete-btn:active {
+    transform: scale(0.95);
 }
 
 .post-item .edit-btn {
@@ -524,13 +550,17 @@ textarea {
     color: #fff;
     font-size: 14px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-fast) ease, border-color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     padding: 0;
 }
 
 .image-toolbar-btn:hover {
     background: rgba(255, 255, 255, 0.25);
     transform: scale(1.05);
+}
+
+.image-toolbar-btn:active {
+    transform: scale(0.95);
 }
 
 .image-toolbar-btn.active {
@@ -570,12 +600,13 @@ textarea {
     color: #fff;
     font-size: 13px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, border-color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     text-align: left;
 }
 
 .image-align-option:hover {
     background: rgba(255, 255, 255, 0.15);
+    transform: translateX(2px);
 }
 
 .image-align-option.active {
@@ -675,7 +706,7 @@ textarea {
 
 .editor-context-menu.is-open {
     display: block;
-    animation: contextMenuIn 0.18s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation: contextMenuIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 .editor-context-item {
@@ -688,7 +719,7 @@ textarea {
     font-size: 14px;
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease;
     box-sizing: border-box;
 }
 
@@ -796,12 +827,12 @@ textarea {
 
 .dialog[style*="display: block"],
 .dialog[style*="display: flex"] {
-    animation: dialogOverlayIn 0.22s ease-out forwards;
+    animation: dialogOverlayIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 .dialog[style*="display: block"] .dialog-content,
 .dialog[style*="display: flex"] .dialog-content {
-    animation: dialogContentIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation: dialogContentIn var(--anim-dur-medium) var(--anim-ease-out) forwards;
 }
 
 .dialog-content {
@@ -811,7 +842,7 @@ textarea {
     transform: translate(-50%, -50%);
     background-color: var(--bg-color);
     color: var(--text-color);
-    transition: background-color 0.3s, color 0.3s;
+    transition: background-color var(--anim-dur-normal) ease, color var(--anim-dur-normal) ease;
     padding: 28px 28px 24px;
     border-radius: 16px;
     min-width: 320px;
@@ -858,7 +889,7 @@ textarea {
     color: var(--text-color);
     font-size: 14px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out), box-shadow var(--anim-dur-normal) var(--anim-ease-out);
     outline: none;
     width: 100%;
     box-sizing: border-box;
@@ -888,7 +919,10 @@ textarea {
     font-weight: 500;
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
     border: 1px solid var(--border-color);
     background: var(--bg-color);
     color: var(--text-color);
@@ -898,6 +932,11 @@ textarea {
     background: var(--text-color);
     color: var(--bg-color);
     border-color: var(--text-color);
+    transform: translateY(-1px);
+}
+
+.dialog-buttons button:active {
+    transform: scale(0.96);
 }
 
 .dialog-buttons button:first-child {
@@ -1367,11 +1406,11 @@ mark[data-marker-color="purple"] {
 
 #fontFamilyDialog[style*="display: block"] {
     display: flex !important;
-    animation: dialogOverlayIn 0.22s ease-out forwards;
+    animation: dialogOverlayIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 #fontFamilyDialog[style*="display: block"] .dialog-content {
-    animation: dialogScaleIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out) forwards;
 }
 
 #fontFamilyDialog .dialog-content {
@@ -1566,7 +1605,10 @@ mark[data-marker-color="purple"] {
     border: 1.5px solid var(--border-color, rgba(255, 255, 255, 0.15));
     background: var(--glass-bg, rgba(255, 255, 255, 0.03));
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out),
+        background-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        opacity var(--anim-dur-fast) ease;
     color: var(--text-color);
     opacity: 0.8;
     text-align: center;
@@ -1761,8 +1803,20 @@ button:hover {
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.editor-menu-btn:hover {
+    transform: translateY(-1px);
+}
+
+.editor-menu-btn:active {
+    transform: scale(0.97);
 }
 
 [data-theme="dark"] .editor-menu-btn {
@@ -1785,7 +1839,7 @@ button:hover {
     border-top: 5px solid currentColor;
     margin-left: 2px;
     opacity: 0.8;
-    transition: transform 0.2s ease;
+    transition: transform var(--anim-dur-normal) var(--anim-ease-out);
 }
 
 .editor-menu-dropdown {
@@ -1800,10 +1854,10 @@ button:hover {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-12px) scale(0.95);
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-        visibility 0.3s;
+    transform: translateY(-8px) scale(0.98);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-normal) var(--anim-ease-out),
+        visibility var(--anim-dur-normal);
 }
 
 [data-theme="dark"] .editor-menu-dropdown {
@@ -1820,7 +1874,7 @@ button:hover {
 .editor-menu-wrap.is-closing .editor-menu-dropdown {
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-12px) scale(0.95);
+    transform: translateY(-8px) scale(0.98);
 }
 
 .editor-menu-wrap.is-open .editor-menu-btn::after {
@@ -1837,13 +1891,14 @@ button:hover {
     color: var(--text-color);
     font-size: 14px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     text-decoration: none;
     box-sizing: border-box;
 }
 
 .editor-menu-item:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
 
 [data-theme="dark"] .editor-menu-item:hover {
@@ -1930,8 +1985,17 @@ button:hover {
 }
 
 /* Параметры */
+.global-nav-btn {
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
+}
+
 .global-nav-btn:hover {
     background: rgba(0, 0, 0, 0.08) !important;
+    transform: translateX(2px);
+}
+
+.global-nav-btn:active {
+    transform: scale(0.98);
 }
 
 .global-nav-btn.active {
@@ -1950,7 +2014,7 @@ button:hover {
 @keyframes globalSectionIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(6px);
     }
 
     to {
@@ -1960,7 +2024,7 @@ button:hover {
 }
 
 .global-section {
-    animation: globalSectionIn 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: globalSectionIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 /* Анимации модальных окон */
@@ -2028,7 +2092,11 @@ button:hover {
     border: 1px solid #000000;
     background: var(--bg-color);
     color: var(--text-color);
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2041,6 +2109,11 @@ button:hover {
 
 .editor-actions .format-btn:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.editor-actions .format-btn:active {
+    transform: scale(0.96);
 }
 
 [data-theme="dark"] .editor-actions .format-btn:hover {
@@ -2116,7 +2189,11 @@ button:hover {
     border: 1px solid #000000;
     background: var(--bg-color);
     color: var(--text-color);
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .mode-toggle .format-btn {
@@ -2126,6 +2203,11 @@ button:hover {
 
 .mode-toggle .format-btn:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.mode-toggle .format-btn:active {
+    transform: scale(0.96);
 }
 
 [data-theme="dark"] .mode-toggle .format-btn:hover {
@@ -2136,12 +2218,14 @@ button:hover {
     background: #000000;
     color: #ffffff;
     border-color: #000000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 [data-theme="dark"] .mode-toggle .format-btn.active {
     background: #2a2a2a;
     color: #ffffff;
     border-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .formatting-buttons {
@@ -2337,8 +2421,8 @@ button:hover {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
     min-width: 200px;
     opacity: 0;
-    transform: translateY(-6px);
-    transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
+    transform: translateY(-8px) scale(0.98);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out), transform var(--anim-dur-normal) var(--anim-ease-out);
     overflow: hidden;
 }
 
@@ -2349,7 +2433,7 @@ button:hover {
 .color-picker-wrap.is-open .color-palette-popover {
     display: block;
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .color-palette-grid {
@@ -2365,11 +2449,16 @@ button:hover {
     border-radius: 6px;
     border: 1px solid rgba(0, 0, 0, 0.15);
     cursor: pointer;
-    transition: transform 0.1s ease;
+    transition: transform var(--anim-dur-fast) var(--anim-ease-out), box-shadow var(--anim-dur-fast) ease;
 }
 
 .color-swatch:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-swatch:active {
+    transform: scale(0.95);
 }
 
 .color-palette-custom {
@@ -2462,8 +2551,8 @@ button:hover {
     min-width: 160px;
     max-height: 280px;
     opacity: 0;
-    transform: translateY(-6px);
-    transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
+    transform: translateY(-8px) scale(0.98);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out), transform var(--anim-dur-normal) var(--anim-ease-out);
     overflow: hidden;
     padding: 0;
 }
@@ -2516,7 +2605,7 @@ button:hover {
 .font-family-picker-wrap.is-open .font-family-popover {
     display: block;
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .font-size-item,
@@ -2531,13 +2620,14 @@ button:hover {
     background: none;
     color: var(--text-color);
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     box-sizing: border-box;
 }
 
 .font-size-item:hover,
 .font-family-item:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
 
 [data-theme="dark"] .font-size-item:hover,
@@ -2761,7 +2851,11 @@ button:hover {
     border: 1px solid #000000;
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     flex-shrink: 0;
     pointer-events: auto;
@@ -2778,6 +2872,12 @@ button:hover {
     background: var(--text-color);
     color: var(--bg-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+#submitButton:active,
+#floatingSaveBtn:active {
+    transform: scale(0.96);
 }
 
 #submitButton.editing,
@@ -2791,6 +2891,7 @@ button:hover {
 #floatingSaveBtn.editing:hover {
     background: #bf360c;
     color: #fff;
+    transform: translateY(-1px);
 }
 
 #blogForm {
@@ -2827,8 +2928,10 @@ button:hover {
     align-items: flex-start;
     gap: 12px;
     opacity: 0;
-    transform: translateX(-100%);
-    transition: all 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    transform: translateX(-24px);
+    transition: transform var(--anim-dur-medium) var(--anim-ease-out),
+        opacity var(--anim-dur-medium) var(--anim-ease-out),
+        box-shadow var(--anim-dur-medium) ease;
     pointer-events: auto;
     min-width: 300px;
 }
@@ -2844,7 +2947,7 @@ button:hover {
 
 .notification.hide {
     opacity: 0;
-    transform: translateX(-100%);
+    transform: translateX(-24px);
 }
 
 .notification-icon {
@@ -2939,7 +3042,7 @@ button:hover {
     max-width: 500px;
     width: 90%;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 .integrity-error-header {
@@ -2991,7 +3094,7 @@ button:hover {
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out), transform var(--anim-dur-fast) var(--anim-ease-out), box-shadow var(--anim-dur-normal) var(--anim-ease-out);
 }
 
 .integrity-error-button:hover {
@@ -3001,7 +3104,7 @@ button:hover {
 }
 
 .integrity-error-button:active {
-    transform: translateY(0);
+    transform: scale(0.97);
 }
 
 /* ——— Диалог подтверждения удаления ——— */
@@ -3031,7 +3134,7 @@ button:hover {
     max-width: 450px;
     width: 90%;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .delete-confirm-dialog {
@@ -3091,7 +3194,15 @@ button:hover {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out);
+}
+
+.delete-confirm-btn:active {
+    transform: scale(0.96);
 }
 
 .delete-confirm-btn.cancel {
@@ -3102,6 +3213,7 @@ button:hover {
 .delete-confirm-btn.cancel:hover {
     background: var(--text-color);
     color: var(--bg-color);
+    transform: translateY(-1px);
 }
 
 .delete-confirm-btn.delete {
@@ -3112,6 +3224,7 @@ button:hover {
 .delete-confirm-btn.delete:hover {
     background: var(--bg-color);
     color: var(--text-color);
+    transform: translateY(-1px);
 }
 
 /* ——— Меню "Прочее" ——— */
@@ -3134,8 +3247,10 @@ button:hover {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     opacity: 0;
-    transform: translateY(-8px);
-    transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.2, 0.64, 1), visibility 0.25s;
+    transform: translateY(-8px) scale(0.98);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-normal) var(--anim-ease-out),
+        visibility var(--anim-dur-normal);
 }
 
 [data-theme="dark"] .more-menu-dropdown {
@@ -3146,7 +3261,7 @@ button:hover {
     visibility: visible;
     pointer-events: auto;
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .more-menu-item {
@@ -3159,12 +3274,13 @@ button:hover {
     color: var(--text-color);
     font-size: 14px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     box-sizing: border-box;
 }
 
 .more-menu-item:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
 
 [data-theme="dark"] .more-menu-item:hover {
@@ -3200,8 +3316,10 @@ button:hover {
     padding: 8px 0;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
     opacity: 0;
-    transform: translateX(-8px);
-    transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.2, 0.64, 1), visibility 0.25s;
+    transform: translateX(-8px) scale(0.98);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-normal) var(--anim-ease-out),
+        visibility var(--anim-dur-normal);
 }
 
 [data-theme="dark"] .more-submenu {
@@ -3225,7 +3343,7 @@ button:hover {
     color: var(--text-color);
     font-size: 13px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     box-sizing: border-box;
     white-space: nowrap;
     overflow: hidden;
@@ -3234,6 +3352,7 @@ button:hover {
 
 .more-submenu-item:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
 
 [data-theme="dark"] .more-submenu-item:hover {
@@ -3331,7 +3450,7 @@ button:hover {
     max-width: 450px;
     width: 90%;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .save-include-dialog {
@@ -3382,7 +3501,14 @@ button:hover {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.save-include-btn:active {
+    transform: scale(0.96);
 }
 
 .save-include-btn.cancel {
@@ -3393,6 +3519,7 @@ button:hover {
 .save-include-btn.cancel:hover {
     background: var(--text-color);
     color: var(--bg-color);
+    transform: translateY(-1px);
 }
 
 .save-include-btn.save {
@@ -3402,6 +3529,7 @@ button:hover {
 
 .save-include-btn.save:hover {
     opacity: 0.85;
+    transform: translateY(-1px);
 }
 
 /* ——— Менеджер бэкапов ——— */
@@ -3434,7 +3562,7 @@ button:hover {
     display: flex;
     flex-direction: column;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.16), 0 8px 24px rgba(0, 0, 0, 0.08);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .backup-manager-dialog {
@@ -3639,18 +3767,6 @@ button:hover {
     font-size: 13px;
 }
 
-@keyframes dialogScaleIn {
-    0% {
-        transform: scale(0.95);
-        opacity: 0;
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
 @media (max-width: 768px) {
     .notification-container {
         left: 10px;
@@ -3695,7 +3811,7 @@ button:hover {
     display: flex;
     flex-direction: column;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 .numbering-check-header {
@@ -4097,11 +4213,11 @@ button:hover {
 }
 
 .file-upload-dialog[style*="display: block"] {
-    animation: dialogOverlayIn 0.22s ease-out forwards;
+    animation: dialogOverlayIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 .file-upload-dialog[style*="display: block"] .dialog-content {
-    animation: dialogContentIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation: dialogContentIn var(--anim-dur-medium) var(--anim-ease-out) forwards;
     width: 600px;
     max-width: 95vw;
 }
@@ -4113,7 +4229,9 @@ button:hover {
     padding: 24px 20px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out),
+        background-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -4407,7 +4525,11 @@ button:hover {
     border-radius: 12px;
     text-decoration: none;
     color: var(--text-color);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out);
     max-width: 450px;
     width: 100%;
     box-sizing: border-box;
@@ -4433,6 +4555,10 @@ button:hover {
     background: var(--text-color);
     color: var(--bg-color);
     border-color: var(--text-color);
+}
+
+.blog-file-button:active {
+    transform: scale(0.98);
 }
 
 [data-theme="dark"] .blog-file-button:hover {
@@ -4518,7 +4644,9 @@ button:hover {
     cursor: pointer;
     overflow: hidden;
     background: rgba(0, 0, 0, 0.01);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out),
+        background-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .grid-preview-tile {
@@ -4726,17 +4854,27 @@ body {
     background: transparent;
     color: var(--text-color);
     box-shadow: none;
+    cursor: pointer;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.editor-header .mode-toggle .format-btn:active {
+    transform: scale(0.96);
 }
 
 .editor-header .mode-toggle .format-btn.active {
     background: var(--bg-color);
     color: var(--text-color);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 [data-theme="dark"] .editor-header .mode-toggle .format-btn.active {
     background: #2a2a2a;
     color: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .editor-header .editor-actions {
@@ -4833,7 +4971,10 @@ body {
     justify-content: center;
     font-size: 16px;
     font-family: inherit;
-    transition: all 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease,
+        border-color var(--anim-dur-fast) ease,
+        color var(--anim-dur-fast) ease,
+        transform var(--anim-dur-fast) var(--anim-ease-out);
     padding: 0;
     box-shadow: none;
 }
@@ -4841,6 +4982,11 @@ body {
 .editor-header .editor-actions .format-btn:hover {
     background: rgba(0, 0, 0, 0.06);
     border-color: rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.editor-header .editor-actions .format-btn:active:not(:disabled) {
+    transform: scale(0.94);
 }
 
 [data-theme="dark"] .editor-header .editor-actions .format-btn:hover {
@@ -6205,7 +6351,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     width: 14px;
     height: 14px;
     opacity: 0.65;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s;
+    transition: transform var(--anim-dur-normal) var(--anim-ease-out), opacity var(--anim-dur-fast) ease;
     color: var(--text-color);
 }
 
@@ -6239,9 +6385,11 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-4px);
+    transform: translateY(-8px) scale(0.98);
     pointer-events: none;
-    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-normal) var(--anim-ease-out),
+        visibility var(--anim-dur-normal);
     overflow: hidden;
     padding: 4px;
 }
@@ -6249,18 +6397,18 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 .custom-select-wrapper.is-open .custom-select-popover {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     pointer-events: auto;
 }
 
 .custom-select-popover.drop-up {
     top: auto;
     bottom: calc(100% + 4px);
-    transform: translateY(4px);
+    transform: translateY(8px) scale(0.98);
 }
 
 .custom-select-wrapper.is-open .custom-select-popover.drop-up {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .custom-select-popover-inner {
@@ -6307,7 +6455,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     font-family: inherit;
     text-align: left;
     cursor: pointer;
-    transition: background 0.12s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     box-sizing: border-box;
     outline: none;
     user-select: none;
@@ -6317,6 +6465,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 .custom-select-option.is-highlighted {
     background: rgba(0, 0, 0, 0.06);
     color: var(--text-color);
+    transform: translateX(2px);
 }
 
 .custom-select-option .custom-option-text {

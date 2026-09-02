@@ -15,8 +15,9 @@
     --modal-z-index-base: 10000;
     --modal-radius: 14px;
     --modal-radius-inner: 10px;
-    --modal-transition-speed: 0.24s;
+    --modal-transition-speed: 0.26s;
     --modal-transition-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --modal-transition-fast: 0.15s;
     
     /* Colors fallback if not defined in editor */
     --modal-bg: var(--bg-color, #ffffff);
@@ -111,7 +112,7 @@ body.modal-open {
 @keyframes modalZoomIn {
     from {
         opacity: 0;
-        transform: scale(0.93) translateY(8px);
+        transform: scale(0.97) translateY(6px);
     }
     to {
         opacity: 1;
@@ -126,7 +127,7 @@ body.modal-open {
     }
     to {
         opacity: 0;
-        transform: scale(0.95) translateY(4px);
+        transform: scale(0.97) translateY(6px);
     }
 }
 
@@ -438,7 +439,9 @@ body.modal-is-dragging * {
     font-size: 18px;
     line-height: 1;
     padding: 0;
-    transition: all 0.18s ease;
+    transition: background-color var(--modal-transition-fast) ease,
+        opacity var(--modal-transition-fast) ease,
+        transform var(--modal-transition-fast) var(--modal-transition-ease);
     box-sizing: border-box;
 }
 
@@ -922,7 +925,11 @@ body.modal-is-dragging * {
     outline: none;
     text-decoration: none;
     box-sizing: border-box;
-    transition: all 0.18s ease;
+    transition: background-color var(--modal-transition-speed) var(--modal-transition-ease),
+        border-color var(--modal-transition-speed) var(--modal-transition-ease),
+        color var(--modal-transition-speed) var(--modal-transition-ease),
+        box-shadow var(--modal-transition-speed) var(--modal-transition-ease),
+        transform var(--modal-transition-fast) var(--modal-transition-ease);
     user-select: none;
     position: relative;
     line-height: 1.3;
@@ -931,10 +938,11 @@ body.modal-is-dragging * {
 .modal-btn:hover {
     background: rgba(128, 128, 128, 0.12);
     border-color: rgba(128, 128, 128, 0.35);
+    transform: translateY(-1px);
 }
 
 .modal-btn:active {
-    transform: scale(0.98);
+    transform: scale(0.96);
 }
 
 .modal-btn:disabled,
