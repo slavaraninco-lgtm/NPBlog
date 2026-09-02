@@ -15,9 +15,9 @@
     --modal-z-index-base: 10000;
     --modal-radius: 14px;
     --modal-radius-inner: 10px;
-    --modal-transition-speed: 0.26s;
-    --modal-transition-ease: cubic-bezier(0.16, 1, 0.3, 1);
-    --modal-transition-fast: 0.15s;
+    --modal-transition-speed: 0.36s;
+    --modal-transition-ease: cubic-bezier(0.2, 0.9, 0.3, 1);
+    --modal-transition-fast: 0.2s;
     
     /* Colors fallback if not defined in editor */
     --modal-bg: var(--bg-color, #ffffff);
@@ -112,7 +112,7 @@ body.modal-open {
 @keyframes modalZoomIn {
     from {
         opacity: 0;
-        transform: scale(0.97) translateY(6px);
+        transform: scale(0.975) translateY(5px);
     }
     to {
         opacity: 1;
@@ -127,7 +127,7 @@ body.modal-open {
     }
     to {
         opacity: 0;
-        transform: scale(0.97) translateY(6px);
+        transform: scale(0.975) translateY(5px);
     }
 }
 

@@ -10,14 +10,15 @@
     --primary-color: rgb(255, 255, 255);
     --border-color: rgba(128, 128, 128, 0.25);
 
-    /* Motion Tokens - Unified Animation System */
-    --anim-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-    --anim-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-    --anim-ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1);
-    --anim-dur-fast: 0.15s;
-    --anim-dur-normal: 0.22s;
-    --anim-dur-medium: 0.28s;
-    --anim-dur-drawer: 0.34s;
+    /* Motion Tokens - Luxury Fluid Animation System */
+    --anim-ease-out: cubic-bezier(0.2, 0.9, 0.3, 1);
+    --anim-ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+    --anim-ease-in-out: cubic-bezier(0.32, 0.72, 0, 1);
+    --anim-ease-spring: cubic-bezier(0.25, 1, 0.35, 1);
+    --anim-dur-fast: 0.2s;
+    --anim-dur-normal: 0.3s;
+    --anim-dur-medium: 0.38s;
+    --anim-dur-drawer: 0.42s;
 }
 
 [data-theme="dark"] {
@@ -81,7 +82,7 @@
 @keyframes dialogContentIn {
     from {
         opacity: 0;
-        transform: translate(-50%, -48%) scale(0.97);
+        transform: translate(-50%, -49%) scale(0.975);
     }
 
     to {
@@ -93,7 +94,7 @@
 @keyframes popoverIn {
     from {
         opacity: 0;
-        transform: translateY(-8px) scale(0.98);
+        transform: translateY(-5px) scale(0.985);
     }
 
     to {
@@ -105,7 +106,7 @@
 @keyframes contextMenuIn {
     from {
         opacity: 0;
-        transform: translateY(-6px) scale(0.97);
+        transform: translateY(-4px) scale(0.98);
     }
 
     to {
@@ -117,7 +118,7 @@
 @keyframes dialogScaleIn {
     from {
         opacity: 0;
-        transform: translateY(-6px) scale(0.97);
+        transform: translateY(-5px) scale(0.975);
     }
 
     to {
@@ -177,7 +178,7 @@ textarea {
     padding: 0;
     overflow-y: auto;
     transform: translateX(100%);
-    transition: transform var(--anim-dur-drawer) var(--anim-ease-out), box-shadow var(--anim-dur-drawer) ease;
+    transition: transform var(--anim-dur-drawer) var(--anim-ease-in-out), box-shadow var(--anim-dur-drawer) ease;
     box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
     z-index: 1005;
 }
@@ -1854,7 +1855,7 @@ button:hover {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-8px) scale(0.98);
+    transform: translateY(-5px) scale(0.985);
     transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
         transform var(--anim-dur-normal) var(--anim-ease-out),
         visibility var(--anim-dur-normal);
@@ -1874,7 +1875,7 @@ button:hover {
 .editor-menu-wrap.is-closing .editor-menu-dropdown {
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-8px) scale(0.98);
+    transform: translateY(-5px) scale(0.985);
 }
 
 .editor-menu-wrap.is-open .editor-menu-btn::after {
@@ -2014,7 +2015,7 @@ button:hover {
 @keyframes globalSectionIn {
     from {
         opacity: 0;
-        transform: translateY(6px);
+        transform: translateY(4px);
     }
 
     to {
@@ -2421,7 +2422,7 @@ button:hover {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
     min-width: 200px;
     opacity: 0;
-    transform: translateY(-8px) scale(0.98);
+    transform: translateY(-5px) scale(0.985);
     transition: opacity var(--anim-dur-normal) var(--anim-ease-out), transform var(--anim-dur-normal) var(--anim-ease-out);
     overflow: hidden;
 }
@@ -2551,7 +2552,7 @@ button:hover {
     min-width: 160px;
     max-height: 280px;
     opacity: 0;
-    transform: translateY(-8px) scale(0.98);
+    transform: translateY(-5px) scale(0.985);
     transition: opacity var(--anim-dur-normal) var(--anim-ease-out), transform var(--anim-dur-normal) var(--anim-ease-out);
     overflow: hidden;
     padding: 0;
@@ -2928,7 +2929,7 @@ button:hover {
     align-items: flex-start;
     gap: 12px;
     opacity: 0;
-    transform: translateX(-24px);
+    transform: translateX(-16px) scale(0.98);
     transition: transform var(--anim-dur-medium) var(--anim-ease-out),
         opacity var(--anim-dur-medium) var(--anim-ease-out),
         box-shadow var(--anim-dur-medium) ease;
@@ -2942,12 +2943,12 @@ button:hover {
 
 .notification.show {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
 }
 
 .notification.hide {
     opacity: 0;
-    transform: translateX(-24px);
+    transform: translateX(-16px) scale(0.98);
 }
 
 .notification-icon {
@@ -3247,7 +3248,7 @@ button:hover {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     opacity: 0;
-    transform: translateY(-8px) scale(0.98);
+    transform: translateY(-5px) scale(0.985);
     transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
         transform var(--anim-dur-normal) var(--anim-ease-out),
         visibility var(--anim-dur-normal);
@@ -3316,7 +3317,7 @@ button:hover {
     padding: 8px 0;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
     opacity: 0;
-    transform: translateX(-8px) scale(0.98);
+    transform: translateX(-5px) scale(0.985);
     transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
         transform var(--anim-dur-normal) var(--anim-ease-out),
         visibility var(--anim-dur-normal);
@@ -6385,7 +6386,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-8px) scale(0.98);
+    transform: translateY(-5px) scale(0.985);
     pointer-events: none;
     transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
         transform var(--anim-dur-normal) var(--anim-ease-out),
@@ -6404,7 +6405,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 .custom-select-popover.drop-up {
     top: auto;
     bottom: calc(100% + 4px);
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(5px) scale(0.985);
 }
 
 .custom-select-wrapper.is-open .custom-select-popover.drop-up {
