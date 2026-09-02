@@ -24,7 +24,10 @@ function saveLocalDraftNow() {
         const title = titleInput.value.trim();
         const content = editorMode === 'visual' ? (ve ? ve.innerHTML : '') : (ta ? ta.value : '');
 
-        const hasText = title.length > 0 || (content.length > 0 && content !== '<br>' && content !== '<div><br></div>');
+        const isContentNonEmpty = (typeof isEditorContentEmpty === 'function') 
+            ? !isEditorContentEmpty(content) 
+            : (content.trim().length > 0 && content !== '<br>' && content !== '<p><br></p>' && content !== '<div><br></div>');
+        const hasText = title.length > 0 || isContentNonEmpty;
         if (!hasText) {
             localStorage.removeItem(getLocalDraftStorageKey());
             return;
@@ -57,14 +60,25 @@ function checkLocalDraftOnStartup() {
         const raw = localStorage.getItem('npblog_draft_new_post');
         if (!raw) return;
         const draft = JSON.parse(raw);
-        if (!draft || (!draft.title && !draft.content)) return;
+
+        const isDraftContentEmpty = (typeof isEditorContentEmpty === 'function')
+            ? isEditorContentEmpty(draft.content)
+            : (!draft.content || draft.content === '<br>' || draft.content === '<p><br></p>');
+
+        if (!draft || (!draft.title && isDraftContentEmpty)) {
+            localStorage.removeItem('npblog_draft_new_post');
+            return;
+        }
 
         const title = document.getElementById('title')?.value?.trim();
         const ve = document.getElementById('contentVisual');
         const ta = document.getElementById('content');
         const currentContent = editorMode === 'visual' ? (ve?.innerHTML?.trim() || '') : (ta?.value?.trim() || '');
+        const isCurrentEmpty = (typeof isEditorContentEmpty === 'function')
+            ? isEditorContentEmpty(currentContent)
+            : (!currentContent || currentContent === '<br>' || currentContent === '<p><br></p>');
 
-        if (!title && (!currentContent || currentContent === '<br>' || currentContent === '<div><br></div>')) {
+        if (!title && isCurrentEmpty) {
             const dateObj = new Date(draft.timestamp);
             const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const dateStr = dateObj.toLocaleDateString();

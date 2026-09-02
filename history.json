@@ -12,7 +12,46 @@
                 "start": 0,
                 "end": 0
             }
+        },
+        {
+            "visual": "<p>п<\/p>",
+            "code": "<p><br>\n<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 12,
+                "end": 12
+            }
+        },
+        {
+            "visual": "<p>привет<\/p>",
+            "code": "<p><br>\n<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 6,
+                "end": 6
+            },
+            "codeSelection": {
+                "start": 12,
+                "end": 12
+            }
+        },
+        {
+            "visual": "<br>",
+            "code": "<p><br>\n<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 12,
+                "end": 12
+            }
         }
     ],
-    "index": 0
+    "index": 3
 }

@@ -1,4 +1,4 @@
-function saveToHistory(force = true) {
+function saveToHistory(force = true, markDirty = true) {
     if (isRestoringHistory) return;
 
     const ve = document.getElementById('contentVisual');
@@ -25,7 +25,9 @@ function saveToHistory(force = true) {
             historyStack.shift();
             historyIndex = Math.max(0, historyIndex - 1);
         }
-        markEditorDirty();
+        if (markDirty && typeof markEditorDirty === 'function') {
+            markEditorDirty();
+        }
     }
 
     updateUndoRedoButtons();

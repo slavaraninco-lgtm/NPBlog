@@ -227,7 +227,7 @@
     ],
     "headerHeight": 64,
     "headerTwoRows": false,
-    "autosaveEnabled": false,
+    "autosaveEnabled": true,
     "autosaveInterval": 60,
     "data_path": "C:\\xampp\\htdocs\\data",
     "backup_path": "",

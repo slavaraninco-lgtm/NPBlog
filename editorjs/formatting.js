@@ -51,6 +51,45 @@
             return typeof editorMode !== 'undefined' && editorMode === 'visual';
         },
 
+        /**
+         * Check if editor content (HTML string, DOM element, or current editor) is effectively empty
+         */
+        isEmpty(target) {
+            let html = '';
+            if (!target) {
+                const editor = this.getEditor();
+                if (!editor) return true;
+                html = editor.innerHTML;
+            } else if (typeof target === 'string') {
+                html = target;
+            } else if (target instanceof HTMLElement) {
+                html = target.innerHTML;
+            } else {
+                return true;
+            }
+
+            const trimmed = html.trim();
+            if (!trimmed || trimmed === '<br>' || trimmed === '<br/>' || 
+                trimmed === '<p><br></p>' || trimmed === '<p><br/></p>' || 
+                trimmed === '<div><br></div>' || trimmed === '<div><br/></div>' || 
+                trimmed === '<p></p>' || trimmed === '<div></div>') {
+                return true;
+            }
+
+            // Embedded media or interactive blocks count as real content
+            if (/<(img|video|audio|iframe|table|hr|object|embed|canvas|svg|blockquote)\b/i.test(trimmed)) {
+                return false;
+            }
+
+            // Strip HTML tags and whitespace/non-breaking/zero-width chars
+            const textOnly = trimmed
+                .replace(/<[^>]*>/g, '')
+                .replace(/&(nbsp|#160|#xa0|#8203|#x200b|#65279|#xfeff|zwnj|zwj);/gi, ' ')
+                .replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
+
+            return textOnly.length === 0;
+        },
+
         isInsideEditor(node) {
             const editor = this.getEditor();
             if (!editor || !node) return false;
@@ -153,9 +192,11 @@
             const editor = root || this.getEditor();
             if (!editor) return;
 
-            // 1. If editor is completely empty or only contains whitespace
-            if (!editor.hasChildNodes() || editor.innerHTML.trim() === '' || editor.innerHTML === '<br>') {
-                editor.innerHTML = '<p><br></p>';
+            // 1. If editor is completely empty or only contains whitespace/empty tags
+            if (!editor.hasChildNodes() || this.isEmpty(editor)) {
+                if (editor.innerHTML !== '<p><br></p>') {
+                    editor.innerHTML = '<p><br></p>';
+                }
                 return;
             }
 
@@ -443,13 +484,21 @@
 
                         block.parentNode.removeChild(block);
 
-                        // Position cursor at merge point
+                        // Position cursor at merge point safely
+                        const nextNode = marker.nextSibling;
+                        const parent = marker.parentNode;
+                        parent.removeChild(marker);
+
                         const newRange = document.createRange();
-                        newRange.selectNode(marker);
+                        if (nextNode) {
+                            newRange.setStartBefore(nextNode);
+                        } else {
+                            newRange.selectNodeContents(parent);
+                            newRange.collapse(false);
+                        }
                         newRange.collapse(true);
                         sel.removeAllRanges();
                         sel.addRange(newRange);
-                        marker.parentNode.removeChild(marker);
                     }
 
                     this.saveSelection();
@@ -1084,6 +1133,7 @@
 
     // Expose engine to window
     window.VisualEngine = VisualEngine;
+    window.isEditorContentEmpty = function (htmlOrText) { return VisualEngine.isEmpty(htmlOrText); };
 
     // --- Backward Compatible Global Functions ---
     window.saveSelection = function () { VisualEngine.saveSelection(); };
@@ -1177,7 +1227,7 @@
             if (window.enableMarkdown) {
                 ve.innerHTML = (typeof parseMarkdownToHtml === 'function') ? parseMarkdownToHtml(ta.value) : ta.value;
             } else {
-                if (ta.style.display !== 'none') {
+                if (ta.style.display !== 'none' || ve.innerHTML === '') {
                     ve.innerHTML = ta.value;
                     if (typeof wrapExistingEditorImages === 'function') wrapExistingEditorImages();
                     if (typeof addColumnResizers === 'function') addColumnResizers();
@@ -1205,6 +1255,9 @@
             if (codeBtn) codeBtn.classList.add('active');
             if (visualBtn) visualBtn.classList.remove('active');
         }
+        if (typeof updateAutosaveBadge === 'function') {
+            updateAutosaveBadge();
+        }
     };
 
     // --- Keyboard & Selection Event Listeners ---
@@ -1225,13 +1278,32 @@
         }
 
         // Selection tracking inside editor
-        ['mouseup', 'keyup', 'input', 'click', 'touchend'].forEach(evt => {
+        ['mouseup', 'keyup', 'click', 'touchend'].forEach(evt => {
             editor.addEventListener(evt, function () {
                 if (VisualEngine.isEditorActive()) {
                     VisualEngine.saveSelection();
                     VisualEngine.updateActiveButtons();
                 }
             }, true);
+        });
+
+        // Input handler: DOM normalization and dirty marking
+        editor.addEventListener('input', function () {
+            if (VisualEngine.isEditorActive()) {
+                if (!editor.hasChildNodes() || editor.innerHTML.trim() === '' || editor.innerHTML === '<br>') {
+                    editor.innerHTML = '<p><br></p>';
+                    VisualEngine.setCursorToStart(editor.firstElementChild);
+                    VisualEngine.saveSelection();
+                }
+                VisualEngine.saveSelection();
+                VisualEngine.updateActiveButtons();
+                if (typeof markEditorDirty === 'function') {
+                    markEditorDirty();
+                }
+                if (typeof updateAutosaveBadge === 'function') {
+                    updateAutosaveBadge();
+                }
+            }
         });
 
         // Keydown handlers

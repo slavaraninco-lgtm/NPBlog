@@ -1771,6 +1771,69 @@ function saveAutosaveSettings() {
     });
 }
 
+function isEditorContentEmpty(htmlOrText) {
+    if (!htmlOrText) return true;
+    if (typeof htmlOrText !== 'string') {
+        if (htmlOrText instanceof HTMLElement) {
+            htmlOrText = htmlOrText.innerHTML;
+        } else {
+            return true;
+        }
+    }
+    const trimmed = htmlOrText.trim();
+    if (!trimmed || trimmed === '<br>' || trimmed === '<br/>' || 
+        trimmed === '<p><br></p>' || trimmed === '<p><br/></p>' || 
+        trimmed === '<div><br></div>' || trimmed === '<div><br/></div>' || 
+        trimmed === '<p></p>' || trimmed === '<div></div>') {
+        return true;
+    }
+    if (/<(img|video|audio|iframe|table|hr|object|embed|canvas|svg|blockquote)\b/i.test(trimmed)) {
+        return false;
+    }
+    const textOnly = trimmed
+        .replace(/<[^>]*>/g, '')
+        .replace(/&(nbsp|#160|#xa0|#8203|#x200b|#65279|#xfeff|zwnj|zwj);/gi, ' ')
+        .replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
+    return textOnly.length === 0;
+}
+window.isEditorContentEmpty = isEditorContentEmpty;
+
+function hasEditorContent() {
+    const title = document.getElementById('title')?.value?.trim() || '';
+    const ve = document.getElementById('contentVisual');
+    const ta = document.getElementById('content');
+    const content = (typeof editorMode !== 'undefined' && editorMode === 'visual')
+        ? (ve ? ve.innerHTML : '')
+        : (ta ? ta.value : '');
+
+    const hasTitle = title.length > 0;
+    const hasContent = !isEditorContentEmpty(content);
+
+    return hasTitle || hasContent;
+}
+
+function updateAutosaveBadge(statusText = null) {
+    const badge = document.getElementById('autosaveBadgeText');
+    if (!badge) return;
+
+    if (statusText) {
+        badge.textContent = statusText;
+        return;
+    }
+
+    if (!hasEditorContent()) {
+        badge.textContent = window.t ? window.t('header.autosave_badge_waiting', 'Ожидание контента...') : 'Ожидание контента...';
+        return;
+    }
+
+    if (typeof isEditorDirty !== 'undefined' && !isEditorDirty) {
+        badge.textContent = '✓ Сохранено';
+        return;
+    }
+
+    badge.textContent = window.t ? window.t('header.autosave_badge_timer', `Автосохранение через ${autosaveCountdown}с`, { sec: autosaveCountdown }) : `Автосохранение через ${autosaveCountdown}с`;
+}
+
 function startAutosave() {
     stopAutosave(); // Останавливаем предыдущий таймер если есть
     
@@ -1779,14 +1842,21 @@ function startAutosave() {
     
     // Единый таймер обратного отсчета
     autosaveCountdownTimer = setInterval(() => {
-        // Проверяем наличие контента
+        // 1. Проверяем наличие контента
         if (!hasEditorContent()) {
-            // Если контента нет, сбрасываем таймер
+            autosaveCountdown = autosaveInterval;
+            updateAutosaveBadge();
+            return;
+        }
+
+        // 2. Если контент есть, но изменений не было (isEditorDirty === false) - таймер на паузе
+        if (typeof isEditorDirty !== 'undefined' && !isEditorDirty) {
             autosaveCountdown = autosaveInterval;
             updateAutosaveBadge();
             return;
         }
         
+        // 3. Отсчитываем секунды только при наличии реальных несохраненных изменений
         autosaveCountdown--;
         updateAutosaveBadge();
         
@@ -1795,24 +1865,17 @@ function startAutosave() {
             performAutosave();
             // Сбрасываем счетчик
             autosaveCountdown = autosaveInterval;
-            updateAutosaveBadge();
+            updateAutosaveBadge('✓ Автосохранено');
+            setTimeout(() => {
+                updateAutosaveBadge();
+            }, 3000);
         }
     }, 1000);
     
-    document.getElementById('autosaveBadge').style.display = 'block';
-}
-
-function hasEditorContent() {
-    const title = document.getElementById('title').value.trim();
-    const content = editorMode === 'visual' 
-        ? document.getElementById('contentVisual').innerHTML.trim()
-        : document.getElementById('content').value.trim();
-    
-    // Проверяем, есть ли заголовок или контент (не считая пустые теги)
-    const hasTitle = title.length > 0;
-    const hasContent = content.length > 0 && content !== '<br>' && content !== '<div><br></div>';
-    
-    return hasTitle || hasContent;
+    const badgeContainer = document.getElementById('autosaveBadge');
+    if (badgeContainer) {
+        badgeContainer.style.display = 'block';
+    }
 }
 
 function stopAutosave() {
@@ -1821,36 +1884,34 @@ function stopAutosave() {
         autosaveCountdownTimer = null;
     }
     
-    document.getElementById('autosaveBadge').style.display = 'none';
-}
-
-function updateAutosaveBadge() {
-    const badge = document.getElementById('autosaveBadgeText');
-    if (badge) {
-        if (hasEditorContent()) {
-            badge.textContent = window.t ? window.t('header.autosave_badge_timer', `Автосохранение через ${autosaveCountdown}с`, { sec: autosaveCountdown }) : `Автосохранение через ${autosaveCountdown}с`;
-        } else {
-            badge.textContent = window.t ? window.t('header.autosave_badge_waiting', 'Ожидание контента...') : 'Ожидание контента...';
-        }
+    const badgeContainer = document.getElementById('autosaveBadge');
+    if (badgeContainer) {
+        badgeContainer.style.display = 'none';
     }
 }
 
 function performAutosave() {
-    const title = document.getElementById('title').value.trim();
-    let content = editorMode === 'visual' 
-        ? document.getElementById('contentVisual').innerHTML 
-        : document.getElementById('content').value;
+    const title = document.getElementById('title')?.value?.trim() || '';
+    const ve = document.getElementById('contentVisual');
+    const ta = document.getElementById('content');
+    
+    let content = '';
+    if (typeof editorMode !== 'undefined' && editorMode === 'visual' && ve) {
+        content = typeof cleanContentForSave === 'function' ? cleanContentForSave(ve.innerHTML) : ve.innerHTML;
+    } else if (ta) {
+        content = ta.value;
+    }
     
     if (window.enableMarkdown) {
-        if (editorMode === 'visual') {
-            document.getElementById('content').value = convertHtmlToMarkdown(document.getElementById('contentVisual').innerHTML);
+        if (editorMode === 'visual' && ve) {
+            document.getElementById('content').value = convertHtmlToMarkdown(ve.innerHTML);
         }
-        const rawMarkdown = document.getElementById('content').value;
+        const rawMarkdown = document.getElementById('content')?.value || '';
         const base64Markdown = btoa(unescape(encodeURIComponent(rawMarkdown)));
         content = parseMarkdownToHtml(rawMarkdown) + '\n<script type="text/markdown" id="markdown-source" data-base64="' + base64Markdown + '"></' + 'script>';
     }
     
-    if (!title && !content) {
+    if (!title && isEditorContentEmpty(content)) {
         return; // Нечего сохранять
     }
     
@@ -1864,7 +1925,7 @@ function performAutosave() {
     })
     .then(async response => {
         const text = await response.text();
-        if (!text) throw new Error('Сервер вернул пустой ответ (0 байт). Возможно, ошибка PHP (без вывода ошибок) или блокировка Nginx.');
+        if (!text) throw new Error('Сервер вернул пустой ответ (0 байт).');
         try {
             return JSON.parse(text);
         } catch (e) {
@@ -1875,7 +1936,13 @@ function performAutosave() {
     .then(data => {
         if (data.success) {
             console.log('Автосохранение выполнено');
-            // Можно показать небольшое уведомление
+            if (typeof isEditorDirty !== 'undefined') {
+                isEditorDirty = false;
+            }
+            updateAutosaveBadge('✓ Автосохранено');
+            setTimeout(() => {
+                updateAutosaveBadge();
+            }, 3000);
             showNotification(window.t ? window.t('notifications.autosave_completed', 'Автосохранение выполнено') : 'Автосохранение выполнено', 'success');
         }
     })
@@ -1883,6 +1950,24 @@ function performAutosave() {
         console.error('Ошибка автосохранения:', error);
     });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const titleEl = document.getElementById('title');
+    if (titleEl) {
+        titleEl.addEventListener('input', () => {
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            updateAutosaveBadge();
+        });
+    }
+
+    const contentEl = document.getElementById('content');
+    if (contentEl) {
+        contentEl.addEventListener('input', () => {
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            updateAutosaveBadge();
+        });
+    }
+});
 
 function checkAutosaveExists() {
     // Эта функция сохранена для совместимости,

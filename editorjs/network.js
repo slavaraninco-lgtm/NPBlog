@@ -174,9 +174,15 @@ function editPost(postId) {
                 toggleManagePosts();
                 document.getElementById('blogForm').scrollIntoView();
 
-                // Инициализируем историю с текущим состоянием
+                // Инициализируем историю с текущим состоянием без пометки dirty
                 clearHistory();
-                saveToHistory();
+                if (typeof saveToHistory === 'function') {
+                    saveToHistory(true, false);
+                }
+                isEditorDirty = false;
+                if (typeof updateAutosaveBadge === 'function') {
+                    updateAutosaveBadge('✓ Сохранено');
+                }
             } else {
                 showNotification('Ошибка: ' + (data.message || data.error || 'Неизвестная ошибка'), 'error');
             }
@@ -361,6 +367,7 @@ function handleSubmit(e) {
 
             // Очищаем локальный черновик и сбрасываем признак несохраненных изменений
             clearLocalDraft();
+            isEditorDirty = false;
 
             // Очищаем форму
             document.getElementById('blogForm').reset();
@@ -368,13 +375,17 @@ function handleSubmit(e) {
             // Очищаем визуальный редактор
             const ve = document.getElementById('contentVisual');
             if (ve) {
-                ve.innerHTML = '';
+                ve.innerHTML = '<p><br></p>';
             }
 
             // Очищаем текстовое поле
             const ta = document.getElementById('content');
             if (ta) {
                 ta.value = '';
+            }
+
+            if (typeof updateAutosaveBadge === 'function') {
+                updateAutosaveBadge('Ожидание контента...');
             }
 
             // Обновляем список статей
