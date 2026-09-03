@@ -93,6 +93,9 @@ function showDraftRestoreToast(draft, timeFormatted) {
     const container = document.getElementById('notificationContainer');
     if (!container) return;
 
+    // Гарантируем, что контейнер уведомлений всегда поверх любых модальных окон
+    container.style.zIndex = '100000';
+
     // Убираем старый тост восстановления, если он уже есть в DOM
     const oldToast = container.querySelector('.draft-restore-toast');
     if (oldToast) oldToast.remove();

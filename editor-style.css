@@ -2871,7 +2871,7 @@ button:hover {
     position: fixed;
     bottom: 38px;
     left: 20px;
-    z-index: 10000;
+    z-index: 100000 !important;
     display: flex;
     flex-direction: column-reverse;
     gap: 12px;

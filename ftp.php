@@ -475,7 +475,7 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             position: fixed;
             top: 20px;
             left: 20px;
-            z-index: 10000;
+            z-index: 100000 !important;
             max-width: 400px;
         }
 

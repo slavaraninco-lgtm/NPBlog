@@ -3,6 +3,9 @@ function showNotification(message, type = 'info', title = '') {
     const container = document.getElementById('notificationContainer');
     if (!container) return;
 
+    // Гарантируем, что контейнер уведомлений всегда поверх любых модальных окон
+    container.style.zIndex = '100000';
+
     // Auto-translate message and title through i18n engine
     if (window.NPBlogI18n && typeof window.NPBlogI18n.translateMessage === 'function') {
         message = window.NPBlogI18n.translateMessage(message);

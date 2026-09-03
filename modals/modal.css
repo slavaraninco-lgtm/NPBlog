@@ -1126,3 +1126,10 @@ body.modal-is-dragging * {
         width: 100%;
     }
 }
+
+/* Гарантируем, что системные toast-уведомления всегда отображаются поверх любых модальных окон и оверлеев */
+.notification-container,
+#notificationContainer {
+    z-index: 100000 !important;
+}
+
