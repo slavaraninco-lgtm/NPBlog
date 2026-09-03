@@ -816,6 +816,43 @@
 
             const range = sel.getRangeAt(0);
 
+            // Clean existing style property from an element and unwrap useless empty spans
+            const cleanElementStyle = (el, prop) => {
+                if (el.style && el.style[prop]) {
+                    el.style[prop] = '';
+                    const remainingStyle = el.getAttribute('style');
+                    if (!remainingStyle || remainingStyle.trim() === '' || remainingStyle.trim() === ';') {
+                        el.removeAttribute('style');
+                    }
+                }
+                if (prop === 'color' && el.hasAttribute('color')) {
+                    el.removeAttribute('color');
+                }
+                if (prop === 'fontSize' && el.hasAttribute('size')) {
+                    el.removeAttribute('size');
+                }
+                if (prop === 'fontFamily' && el.hasAttribute('face')) {
+                    el.removeAttribute('face');
+                }
+            };
+
+            const cleanDescendantStyles = (root, prop) => {
+                if (!root) return;
+                const elements = Array.from(root.querySelectorAll('*'));
+                elements.forEach(el => {
+                    cleanElementStyle(el, prop);
+                    if (el.tagName === 'SPAN' && el.attributes.length === 0 && !el.id && !el.className) {
+                        const parent = el.parentNode;
+                        if (parent) {
+                            while (el.firstChild) {
+                                parent.insertBefore(el.firstChild, el);
+                            }
+                            parent.removeChild(el);
+                        }
+                    }
+                });
+            };
+
             if (range.collapsed) {
                 let container = range.startContainer;
                 let emptySpan = null;
@@ -841,16 +878,127 @@
                 }
             } else {
                 try {
-                    const contents = range.extractContents();
-                    const span = document.createElement('span');
-                    span.style[styleProp] = value;
-                    span.appendChild(contents);
-                    range.insertNode(span);
+                    const editor = this.getEditor();
 
-                    const newRange = document.createRange();
-                    newRange.selectNodeContents(span);
-                    sel.removeAllRanges();
-                    sel.addRange(newRange);
+                    // Check if range is completely inside an existing SPAN that has this styleProp
+                    let ancestorSpan = range.commonAncestorContainer;
+                    if (ancestorSpan.nodeType === Node.TEXT_NODE) {
+                        ancestorSpan = ancestorSpan.parentNode;
+                    }
+                    while (ancestorSpan && ancestorSpan !== editor && !BLOCK_TAGS.includes(ancestorSpan.tagName.toUpperCase())) {
+                        if (ancestorSpan.tagName === 'SPAN' && ancestorSpan.style && ancestorSpan.style[styleProp]) {
+                            break;
+                        }
+                        ancestorSpan = ancestorSpan.parentNode;
+                    }
+                    if (ancestorSpan && (ancestorSpan === editor || BLOCK_TAGS.includes(ancestorSpan.tagName.toUpperCase()) || ancestorSpan.tagName !== 'SPAN')) {
+                        ancestorSpan = null;
+                    }
+
+                    const selectedText = range.toString();
+
+                    // Scenario 1: Selection covers the entire text of an existing styled span
+                    if (ancestorSpan && ancestorSpan.textContent.trim() === selectedText.trim() && selectedText.trim().length > 0) {
+                        ancestorSpan.style[styleProp] = value;
+                        cleanDescendantStyles(ancestorSpan, styleProp);
+                        const newRange = document.createRange();
+                        newRange.selectNodeContents(ancestorSpan);
+                        sel.removeAllRanges();
+                        sel.addRange(newRange);
+                    } else {
+                        // Scenario 2: General selection
+                        const contents = range.extractContents();
+
+                        // Clean any previous occurrences of this styleProp in the extracted content
+                        cleanDescendantStyles(contents, styleProp);
+
+                        // Check if contents contains block elements (multi-paragraph selection)
+                        const blockElements = contents.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, div, blockquote');
+                        if (blockElements.length > 0) {
+                            blockElements.forEach(blk => {
+                                if (blk.textContent.trim().length > 0) {
+                                    cleanDescendantStyles(blk, styleProp);
+                                    const blkSpan = document.createElement('span');
+                                    blkSpan.style[styleProp] = value;
+                                    while (blk.firstChild) {
+                                        blkSpan.appendChild(blk.firstChild);
+                                    }
+                                    blk.appendChild(blkSpan);
+                                }
+                            });
+                            range.insertNode(contents);
+                        } else {
+                            const span = document.createElement('span');
+                            span.style[styleProp] = value;
+                            span.appendChild(contents);
+                            range.insertNode(span);
+
+                            // Clean up parent nesting: ensure span is not trapped inside an ancestor with the same styleProp
+                            let parent = span.parentNode;
+                            while (parent && parent !== editor && !BLOCK_TAGS.includes(parent.tagName.toUpperCase())) {
+                                if (parent.tagName === 'SPAN' && parent.style && parent.style[styleProp]) {
+                                    const grandparent = parent.parentNode;
+                                    if (!grandparent) break;
+
+                                    const hasOtherContent = Array.from(parent.childNodes).some(child => {
+                                        if (child === span) return false;
+                                        return child.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length > 0 ||
+                                            (child.nodeType === Node.ELEMENT_NODE && child.querySelector && child.querySelector('img, video, audio, iframe'));
+                                    });
+
+                                    if (!hasOtherContent) {
+                                        grandparent.replaceChild(span, parent);
+                                        parent = grandparent;
+                                        continue;
+                                    } else {
+                                        const beforeNodes = [];
+                                        let curr = parent.firstChild;
+                                        while (curr && curr !== span) {
+                                            const next = curr.nextSibling;
+                                            beforeNodes.push(curr);
+                                            curr = next;
+                                        }
+
+                                        const afterNodes = [];
+                                        curr = span.nextSibling;
+                                        while (curr) {
+                                            const next = curr.nextSibling;
+                                            afterNodes.push(curr);
+                                            curr = next;
+                                        }
+
+                                        if (beforeNodes.length > 0) {
+                                            const beforeParent = parent.cloneNode(false);
+                                            beforeNodes.forEach(node => beforeParent.appendChild(node));
+                                            if (beforeParent.textContent.length > 0) {
+                                                grandparent.insertBefore(beforeParent, parent);
+                                            }
+                                        }
+
+                                        grandparent.insertBefore(span, parent);
+
+                                        if (afterNodes.length > 0) {
+                                            const afterParent = parent.cloneNode(false);
+                                            afterNodes.forEach(node => afterParent.appendChild(node));
+                                            if (afterParent.textContent.length > 0) {
+                                                grandparent.insertBefore(afterParent, parent);
+                                            }
+                                        }
+
+                                        grandparent.removeChild(parent);
+                                        parent = grandparent;
+                                        continue;
+                                    }
+                                }
+                                parent = parent.parentNode;
+                            }
+
+                            const newRange = document.createRange();
+                            newRange.selectNodeContents(span);
+                            sel.removeAllRanges();
+                            sel.addRange(newRange);
+                        }
+                    }
                 } catch (e) {
                     console.error('Style application error:', e);
                 }
@@ -1186,9 +1334,10 @@
                 const block = this.getClosestBlock(node);
                 setBtn('btn-h2', block && block.tagName === 'H2');
 
-                // Inspect current applied font and size
+                // Inspect current applied font, size, and color
                 let fontName = 'Arial';
                 let fontSize = '14px';
+                let currentColor = '';
                 let check = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
 
                 while (check && check !== editor) {
@@ -1198,6 +1347,9 @@
                         }
                         if (check.style && check.style.fontSize && fontSize === '14px') {
                             fontSize = check.style.fontSize;
+                        }
+                        if (check.style && check.style.color && !currentColor) {
+                            currentColor = check.style.color;
                         }
                     }
                     check = check.parentNode;
@@ -1212,6 +1364,11 @@
                 const sizeBtn = document.getElementById('fontSizeBtn');
                 if (sizeBtn) {
                     sizeBtn.textContent = fontSize;
+                }
+
+                if (currentColor) {
+                    const preview = document.querySelector('#colorPickerWrapMain .color-preview');
+                    if (preview) preview.style.background = currentColor;
                 }
             } catch (e) { }
         },

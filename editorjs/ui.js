@@ -53,7 +53,22 @@ function setTextColor(color) {
         var end = (ta.selectionEnd !== undefined && ta.selectionEnd > ta.selectionStart) ? ta.selectionEnd : colorInsertEnd;
         var selectedText = ta.value.substring(start, end);
         if (selectedText) {
-            var colorSpan = '<span style="color: ' + color + ';">' + selectedText + '</span>';
+            var cleanedText = selectedText;
+            var fullMatch = cleanedText.match(/^<span\s+style="([^"]*?color:\s*[^;"]+;?[^"]*?)"\s*>([\s\S]*?)<\/span>$/i);
+            if (fullMatch) {
+                var innerStyle = fullMatch[1].replace(/color:\s*[^;"]+;?/gi, '').trim();
+                var innerContent = fullMatch[2];
+                if (innerStyle) {
+                    cleanedText = '<span style="' + innerStyle + '">' + innerContent + '</span>';
+                } else {
+                    cleanedText = innerContent;
+                }
+            } else {
+                cleanedText = cleanedText.replace(/color:\s*[^;"]+;?/gi, '');
+                cleanedText = cleanedText.replace(/\s*style="\s*"/gi, '');
+                cleanedText = cleanedText.replace(/<span>([\s\S]*?)<\/span>/gi, '$1');
+            }
+            var colorSpan = '<span style="color: ' + color + ';">' + cleanedText + '</span>';
             ta.value = ta.value.substring(0, start) + colorSpan + ta.value.substring(end);
             ta.selectionStart = start;
             ta.selectionEnd = start + colorSpan.length;
