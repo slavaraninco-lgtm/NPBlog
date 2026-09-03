@@ -787,6 +787,7 @@
     "ftp_dir_title": "Katalogs:",
     "ftp_confirm_close": "FTP augšupielādes process joprojām turpinās. Vai tiešām vēlaties aizvērt logu?",
     "ftp_uploaded_count": "Augšupielādēts: {current} / {total}",
+    "ftp_completed": "Pabeigts",
     "ftp_status_errors": "Pabeigts ar kļūdām",
     "ftp_status_error": "Pārsūtīšanas kļūda",
     "ftp_error_prefix": "Kļūda: ",

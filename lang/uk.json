@@ -760,6 +760,7 @@
     "ftp_dir_title": "Каталог:",
     "ftp_confirm_close": "Процес завантаження на FTP ще триває. Ви впевнені, що хочете закрити вікно?",
     "ftp_uploaded_count": "Завантажено: {current} / {total}",
+    "ftp_completed": "Завершено",
     "ftp_status_errors": "Завершено з помилками",
     "ftp_status_error": "Помилка передачі",
     "ftp_error_prefix": "Помилка: ",

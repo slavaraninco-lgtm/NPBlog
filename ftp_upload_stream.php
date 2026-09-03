@@ -1,23 +1,46 @@
 <?php
 require_once __DIR__ . '/security_bootstrap.php';
-// Повышаем стабильность: увеличиваем лимиты времени и памяти
-set_time_limit(1800); // 30 минут
-ini_set('memory_limit', '512M');
 
-// Отключаем буферизацию для бесперебойного потокового вывода
-ob_implicit_flush(true);
-if (ob_get_level() > 0) {
-    ob_end_flush();
+// Немедленно закрываем запись в сессию, чтобы другие запросы и вкладки не блокировались
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
 }
 
-header('Content-Type: text/event-stream');
-header('Cache-Control: no-cache');
+// Повышаем стабильность: увеличиваем лимиты времени и памяти
+set_time_limit(1800); // 30 минут
+@ini_set('memory_limit', '512M');
+
+// Отключаем буферизацию Apache/PHP для непрерывного потокового вывода в реальном времени
+if (function_exists('apache_setenv')) {
+    @apache_setenv('no-gzip', '1');
+}
+@ini_set('zlib.output_compression', 'Off');
+@ini_set('output_buffering', 'Off');
+@ini_set('implicit_flush', '1');
+ob_implicit_flush(true);
+while (ob_get_level() > 0) {
+    @ob_end_clean();
+}
+
+header('Content-Type: text/event-stream; charset=UTF-8');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
 header('Connection: keep-alive');
-header('X-Accel-Buffering: no'); // Отключает буферизацию в Nginx (крайне важно для реалтайм логов)
+header('X-Accel-Buffering: no'); // Отключает буферизацию в Nginx
+
+// 4KB комментарий для немедленного проталкивания буферов веб-сервера (Apache/Nginx/прокси)
+echo ":" . str_repeat(" ", 4096) . "\n\n";
+if (ob_get_level() > 0) {
+    @ob_flush();
+}
+@flush();
 
 function sendEvent($type, $data) {
-    echo "data: " . json_encode(['type' => $type, 'data' => $data]) . "\n\n";
-    flush();
+    echo "data: " . json_encode(['type' => $type, 'data' => $data], JSON_UNESCAPED_UNICODE) . "\n\n";
+    if (ob_get_level() > 0) {
+        @ob_flush();
+    }
+    @flush();
 }
 
 function formatBytes($bytes, $precision = 1) {
@@ -32,7 +55,7 @@ function formatBytes($bytes, $precision = 1) {
 // Функция для создания и настройки FTP подключения (как в FileZilla)
 function getFtpConnection($ftpServer, $ftpUsername, $ftpPassword, $ftpSsl) {
     $port = 21;
-    $timeout = 15; // Таймаут подключения 15 секунд вместо бесконечного зависания
+    $timeout = 15; // Таймаут подключения 15 секунд
     
     if ($ftpSsl && function_exists('ftp_ssl_connect')) {
         $connId = @ftp_ssl_connect($ftpServer, $port, $timeout);
@@ -109,7 +132,7 @@ if (!is_dir($localDataDir)) {
 }
 $remoteFolderName = basename($localDataDir);
 
-sendEvent('log', ['message' => 'Подключение к FTP серверу...', 'level' => 'info']);
+sendEvent('log', ['message' => "Подключение к FTP серверу $ftpServer...", 'level' => 'info']);
 
 $connId = getFtpConnection($ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
 if (!$connId) {
@@ -121,39 +144,55 @@ sendEvent('log', ['message' => 'Успешное подключение и ав�
 
 $ftpDirectory = '/' . trim($ftpDirectory, '/');
 
-// Подсчитываем общее количество файлов
-function countFiles($dir) {
+// Подсчитываем общее количество файлов и их общий объём
+function countFilesAndSize($dir) {
     $count = 0;
-    $items = scandir($dir);
+    $totalSize = 0;
+    $items = @scandir($dir);
+    if (!$items) return ['count' => 0, 'size' => 0];
     foreach ($items as $item) {
         if ($item === '.' || $item === '..') continue;
-        
-        // Пропускаем мусорные файлы
         if (in_array(strtolower($item), ['.ds_store', 'thumbs.db', '.git', '.gitignore'])) {
             continue;
         }
-        
         $path = $dir . '/' . $item;
         if (is_dir($path)) {
-            $count += countFiles($path);
+            $sub = countFilesAndSize($path);
+            $count += $sub['count'];
+            $totalSize += $sub['size'];
         } else {
             $count++;
+            $totalSize += @filesize($path) ?: 0;
         }
     }
-    return $count;
+    return ['count' => $count, 'size' => $totalSize];
 }
 
-$totalFiles = countFiles($localDataDir);
-sendEvent('progress', ['total' => $totalFiles, 'current' => 0, 'percent' => 0]);
-sendEvent('log', ['message' => "Найдено файлов для анализа/загрузки: $totalFiles", 'level' => 'info']);
-
+$dirStats = countFilesAndSize($localDataDir);
+$totalFiles = max(1, $dirStats['count']);
+$totalBytes = $dirStats['size'];
 $uploadedCount = 0;
 $failedCount = 0;
+$uploadedBytes = 0;
 
-// Рекурсивная функция загрузки с умной синхронизацией, авто-переподключением по ссылке (&$connId)
-function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$failedCount, $totalFiles, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl) {
+sendEvent('progress', [
+    'total' => $totalFiles,
+    'current' => 0,
+    'percent' => 0,
+    'currentFile' => 'Подготовка к передаче...',
+    'uploadedBytes' => 0,
+    'totalBytes' => $totalBytes
+]);
+sendEvent('log', [
+    'message' => "Найдено файлов для анализа/загрузки: $totalFiles (" . formatBytes($totalBytes) . ")",
+    'level' => 'info'
+]);
+
+// Рекурсивная функция загрузки с умной синхронизацией и авто-переподключением
+function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$failedCount, &$uploadedBytes, $totalFiles, $totalBytes, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl) {
     global $localDataDir, $remoteFolderName;
-    // Проверяем, живое ли соединение. Если нет, пробуем переподключить
+    
+    // Проверяем соединение
     if (!$connId) {
         $connId = getFtpConnection($ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
         if (!$connId) {
@@ -165,10 +204,9 @@ function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$fai
     // Создаём удалённую директорию если её нет
     if (!@ftp_chdir($connId, $remoteDir)) {
         if (!@ftp_mkdir($connId, $remoteDir)) {
-            // Если команда упала из-за таймаута соединения, пробуем переподключиться и повторить
             $connId = getFtpConnection($ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
             if ($connId && @ftp_mkdir($connId, $remoteDir)) {
-                sendEvent('log', ['message' => "Создана директория (после авто-переподключения): $remoteDir", 'level' => 'info']);
+                sendEvent('log', ['message' => "Создана директория: $remoteDir", 'level' => 'info']);
             } else {
                 sendEvent('log', ['message' => "Ошибка создания директории: $remoteDir", 'level' => 'error']);
                 return false;
@@ -178,12 +216,11 @@ function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$fai
         }
     }
     
-    $items = scandir($localDir);
+    $items = @scandir($localDir);
+    if (!$items) return true;
     
     foreach ($items as $item) {
         if ($item === '.' || $item === '..') continue;
-        
-        // Пропускаем мусорные файлы ОС и Git
         if (in_array(strtolower($item), ['.ds_store', 'thumbs.db', '.git', '.gitignore'])) {
             continue;
         }
@@ -192,18 +229,28 @@ function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$fai
         $remotePath = $remoteDir . '/' . $item;
         
         if (is_dir($localPath)) {
-            if (!uploadDirectory($connId, $localPath, $remotePath, $uploadedCount, $failedCount, $totalFiles, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl)) {
+            if (!uploadDirectory($connId, $localPath, $remotePath, $uploadedCount, $failedCount, $uploadedBytes, $totalFiles, $totalBytes, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl)) {
                 return false;
             }
         } else {
             $relativePath = $remoteFolderName . '/' . ltrim(substr($localPath, strlen($localDataDir)), '/\\');
-            $localSize = filesize($localPath);
+            $localSize = (int)@filesize($localPath);
+            
+            // Уведомляем интерфейс о начале обработки данного файла
+            $currentPercent = round(($uploadedCount / $totalFiles) * 100);
+            sendEvent('file_start', [
+                'total' => $totalFiles,
+                'current' => $uploadedCount + 1,
+                'percent' => $currentPercent,
+                'file' => $relativePath,
+                'size' => $localSize,
+                'sizeFormatted' => formatBytes($localSize)
+            ]);
             
             // Умная синхронизация: пропускаем файлы, если размер на сервере совпадает
             if ($ftpSkipExisting) {
                 $remoteSize = @ftp_size($connId, $remotePath);
                 
-                // Если соединение отвалилось во время SIZE, восстанавливаем его
                 if ($remoteSize === -1 && !$connId) {
                     $connId = getFtpConnection($ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
                     if ($connId) {
@@ -213,16 +260,34 @@ function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$fai
 
                 if ($remoteSize !== -1 && $remoteSize === $localSize) {
                     $uploadedCount++;
+                    $uploadedBytes += $localSize;
                     $percent = round(($uploadedCount / $totalFiles) * 100);
-                    sendEvent('progress', ['total' => $totalFiles, 'current' => $uploadedCount, 'percent' => $percent]);
-                    sendEvent('log', ['message' => "⚡ Пропущен (размер совпадает): $relativePath", 'level' => 'info']);
+                    sendEvent('progress', [
+                        'total' => $totalFiles,
+                        'current' => $uploadedCount,
+                        'percent' => $percent,
+                        'currentFile' => $relativePath,
+                        'action' => 'skip',
+                        'uploadedBytes' => $uploadedBytes,
+                        'totalBytes' => $totalBytes
+                    ]);
+                    sendEvent('log', [
+                        'message' => "⚡ Пропущен (размер совпадает): $relativePath",
+                        'level' => 'info',
+                        'file' => $relativePath
+                    ]);
+                    usleep(15000); // 15мс задержка для плавной отрисовки прогресса в UI
                     continue;
                 }
             }
             
-            sendEvent('log', ['message' => "Загрузка: $relativePath (" . formatBytes($localSize) . ")", 'level' => 'info']);
+            sendEvent('log', [
+                'message' => "Загрузка: $relativePath (" . formatBytes($localSize) . ")",
+                'level' => 'info',
+                'file' => $relativePath
+            ]);
             
-            // Попытка загрузки с механизмом авто-повтора и горячего авто-переподключения (2 попытки)
+            // Загрузка файла с авто-повтором
             $success = false;
             for ($attempt = 1; $attempt <= 2; $attempt++) {
                 if ($connId && @ftp_put($connId, $remotePath, $localPath, FTP_BINARY)) {
@@ -231,7 +296,10 @@ function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$fai
                 }
                 
                 if ($attempt < 2) {
-                    sendEvent('log', ['message' => "⚠️ Ошибка или таймаут загрузки $relativePath. Выполняем авто-переподключение...", 'level' => 'warning']);
+                    sendEvent('log', [
+                        'message' => "⚠️ Ошибка или таймаут загрузки $relativePath. Выполняем авто-переподключение...",
+                        'level' => 'warning'
+                    ]);
                     if ($connId) {
                         @ftp_close($connId);
                     }
@@ -240,29 +308,56 @@ function uploadDirectory(&$connId, $localDir, $remoteDir, &$uploadedCount, &$fai
                         sendEvent('log', ['message' => "✗ Не удалось восстановить подключение к FTP", 'level' => 'error']);
                         break; 
                     }
-                    usleep(300000); // Ожидаем 0.3 сек перед повтором на чистом соединении
+                    usleep(300000);
                 }
             }
             
             if ($success) {
                 $uploadedCount++;
+                $uploadedBytes += $localSize;
                 $percent = round(($uploadedCount / $totalFiles) * 100);
-                sendEvent('progress', ['total' => $totalFiles, 'current' => $uploadedCount, 'percent' => $percent]);
-                sendEvent('log', ['message' => "✓ Загружен: $relativePath", 'level' => 'success']);
+                sendEvent('progress', [
+                    'total' => $totalFiles,
+                    'current' => $uploadedCount,
+                    'percent' => $percent,
+                    'currentFile' => $relativePath,
+                    'action' => 'upload',
+                    'uploadedBytes' => $uploadedBytes,
+                    'totalBytes' => $totalBytes
+                ]);
+                sendEvent('log', [
+                    'message' => "✓ Загружен: $relativePath",
+                    'level' => 'success',
+                    'file' => $relativePath
+                ]);
             } else {
                 $failedCount++;
-                sendEvent('log', ['message' => "✗ Ошибка загрузки после переподключения: $relativePath", 'level' => 'error']);
+                $percent = round(($uploadedCount / $totalFiles) * 100);
+                sendEvent('progress', [
+                    'total' => $totalFiles,
+                    'current' => $uploadedCount,
+                    'percent' => $percent,
+                    'currentFile' => $relativePath,
+                    'action' => 'error',
+                    'uploadedBytes' => $uploadedBytes,
+                    'totalBytes' => $totalBytes
+                ]);
+                sendEvent('log', [
+                    'message' => "✗ Ошибка загрузки: $relativePath",
+                    'level' => 'error',
+                    'file' => $relativePath
+                ]);
             }
             
-            usleep(20000); // Небольшая задержка для плавности SSE потока
+            usleep(20000); // 20мс задержка для плавности SSE потока
         }
     }
     
     return true;
 }
 
-// Начинаем загрузку выбранной папки
-$success = uploadDirectory($connId, $localDataDir, $ftpDirectory . '/' . $remoteFolderName, $uploadedCount, $failedCount, $totalFiles, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
+// Запуск процесса загрузки
+$success = uploadDirectory($connId, $localDataDir, $ftpDirectory . '/' . $remoteFolderName, $uploadedCount, $failedCount, $uploadedBytes, $totalFiles, $totalBytes, $ftpSkipExisting, $ftpServer, $ftpUsername, $ftpPassword, $ftpSsl);
 
 if ($connId) {
     @ftp_close($connId);
@@ -272,12 +367,14 @@ if ($success && $failedCount === 0) {
     sendEvent('complete', [
         'uploaded' => $uploadedCount,
         'failed' => $failedCount,
+        'total' => $totalFiles,
         'message' => "🎉 Загрузка успешно завершена! Обработано файлов: $uploadedCount"
     ]);
 } else {
     sendEvent('complete', [
         'uploaded' => $uploadedCount,
         'failed' => $failedCount,
+        'total' => $totalFiles,
         'message' => "Завершено. Загружено/пропущено: $uploadedCount, ошибок: $failedCount"
     ]);
 }

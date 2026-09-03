@@ -760,6 +760,7 @@
     "ftp_dir_title": "Directory:",
     "ftp_confirm_close": "FTP upload is still in progress. Are you sure you want to close this window?",
     "ftp_uploaded_count": "Uploaded: {current} / {total}",
+    "ftp_completed": "Completed",
     "ftp_status_errors": "Completed with errors",
     "ftp_status_error": "Transfer error",
     "ftp_error_prefix": "Error: ",

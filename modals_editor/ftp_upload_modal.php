@@ -495,6 +495,7 @@ function startFtpModalUpload() {
         }
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let streamBuffer = '';
 
         function readStream() {
             reader.read().then(({ done, value }) => {
@@ -503,54 +504,71 @@ function startFtpModalUpload() {
                     return;
                 }
 
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                streamBuffer += decoder.decode(value, { stream: true });
+                const lines = streamBuffer.split('\n');
+                streamBuffer = lines.pop() || '';
 
                 lines.forEach(line => {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const event = JSON.parse(line.substring(6));
+                    const trimmed = line.trim();
+                    if (!trimmed || !trimmed.startsWith('data: ')) return;
+                    try {
+                        const event = JSON.parse(trimmed.substring(6));
 
-                            if (event.type === 'log') {
-                                addFtpModalLog(event.data.message, event.data.level);
-                                if (event.data.message.includes('→')) {
-                                    currentFileSpan.textContent = event.data.message.replace(/^[^\s]+\s*/, '');
-                                }
-                            } else if (event.type === 'progress') {
-                                const percent = event.data.percent;
-                                progressBar.style.width = percent + '%';
-                                progressPercent.textContent = percent + '%';
-                                const statsFormat = window.t ? window.t('modals.ftp_uploaded_count', 'Загружено: {current} / {total}') : 'Загружено: {current} / {total}';
-                                progressStats.textContent = statsFormat.replace('{current}', event.data.current).replace('{total}', event.data.total);
-                                statusTitle.textContent = (window.t ? window.t('modals.ftp_status_uploading', 'Передача файлов...') : 'Передача файлов...') + ` (${percent}%)`;
-                            } else if (event.type === 'complete') {
-                                if (event.data.failed === 0) {
-                                    statusBanner.className = 'modal-alert modal-alert-success';
-                                    statusIcon.textContent = '✅';
-                                    statusTitle.textContent = window.t ? window.t('modals.ftp_status_complete', 'Загрузка успешно завершена!') : 'Загрузка успешно завершена!';
-                                    statusSubtext.textContent = event.data.message;
-                                    if (window.showNotification) showNotification(event.data.message, 'success');
-                                } else {
-                                    statusBanner.className = 'modal-alert modal-alert-danger';
-                                    statusIcon.textContent = '⚠️';
-                                    statusTitle.textContent = window.t ? window.t('modals.ftp_status_errors', 'Завершено с ошибками') : 'Завершено с ошибками';
-                                    statusSubtext.textContent = event.data.message;
-                                    if (window.showNotification) showNotification(event.data.message, 'error');
-                                }
-                                finishUploadUI(false);
-                            } else if (event.type === 'error') {
-                                statusBanner.className = 'modal-alert modal-alert-danger';
-                                statusIcon.textContent = '🛑';
-                                statusTitle.textContent = window.t ? window.t('modals.ftp_status_error', 'Ошибка передачи') : 'Ошибка передачи';
-                                statusSubtext.textContent = event.data.message;
-                                const errPrefix = window.t ? window.t('modals.ftp_error_prefix', 'Ошибка: ') : 'Ошибка: ';
-                                addFtpModalLog(errPrefix + event.data.message, 'error');
-                                if (window.showNotification) showNotification('Ошибка FTP: ' + event.data.message, 'error');
-                                finishUploadUI(false);
+                        if (event.type === 'log') {
+                            addFtpModalLog(event.data.message, event.data.level);
+                            if (event.data.file && currentFileSpan) {
+                                currentFileSpan.textContent = event.data.file;
                             }
-                        } catch (e) {
-                            console.error('SSE JSON parse error:', e);
+                        } else if (event.type === 'file_start') {
+                            if (currentFileSpan) {
+                                currentFileSpan.textContent = (window.t ? window.t('modals.ftp_status_uploading', 'Передача...') : 'Передача...') + ' ' + event.data.file + (event.data.sizeFormatted ? ` (${event.data.sizeFormatted})` : '');
+                            }
+                            if (statusSubtext) {
+                                statusSubtext.textContent = (window.t ? window.t('modals.ftp_status_uploading', 'Передача файлов...') : 'Передача файлов...') + ': ' + event.data.file;
+                            }
+                        } else if (event.type === 'progress') {
+                            const percent = Math.min(100, Math.max(0, event.data.percent));
+                            progressBar.style.width = percent + '%';
+                            progressPercent.textContent = percent + '%';
+                            const statsFormat = window.t ? window.t('modals.ftp_uploaded_count', 'Загружено: {current} / {total}') : 'Загружено: {current} / {total}';
+                            progressStats.textContent = statsFormat.replace('{current}', event.data.current).replace('{total}', event.data.total);
+                            statusTitle.textContent = (window.t ? window.t('modals.ftp_status_uploading', 'Передача файлов...') : 'Передача файлов...') + ` (${percent}%)`;
+                            if (event.data.currentFile && currentFileSpan) {
+                                currentFileSpan.textContent = event.data.currentFile;
+                            }
+                            if (statusSubtext && event.data.currentFile) {
+                                statusSubtext.textContent = (event.data.action === 'skip' ? '⚡ ' : '✓ ') + event.data.currentFile;
+                            }
+                        } else if (event.type === 'complete') {
+                            progressBar.style.width = '100%';
+                            progressPercent.textContent = '100%';
+                            if (event.data.failed === 0) {
+                                statusBanner.className = 'modal-alert modal-alert-success';
+                                statusIcon.textContent = '✅';
+                                statusTitle.textContent = window.t ? window.t('modals.ftp_status_complete', 'Загрузка успешно завершена!') : 'Загрузка успешно завершена!';
+                                statusSubtext.textContent = event.data.message;
+                                if (currentFileSpan) currentFileSpan.textContent = '✓ ' + (window.t ? window.t('modals.ftp_completed', 'Завершено') : 'Завершено');
+                                if (window.showNotification) showNotification(event.data.message, 'success');
+                            } else {
+                                statusBanner.className = 'modal-alert modal-alert-danger';
+                                statusIcon.textContent = '⚠️';
+                                statusTitle.textContent = window.t ? window.t('modals.ftp_status_errors', 'Завершено с ошибками') : 'Завершено с ошибками';
+                                statusSubtext.textContent = event.data.message;
+                                if (window.showNotification) showNotification(event.data.message, 'error');
+                            }
+                            finishUploadUI(false);
+                        } else if (event.type === 'error') {
+                            statusBanner.className = 'modal-alert modal-alert-danger';
+                            statusIcon.textContent = '🛑';
+                            statusTitle.textContent = window.t ? window.t('modals.ftp_status_error', 'Ошибка передачи') : 'Ошибка передачи';
+                            statusSubtext.textContent = event.data.message;
+                            const errPrefix = window.t ? window.t('modals.ftp_error_prefix', 'Ошибка: ') : 'Ошибка: ';
+                            addFtpModalLog(errPrefix + event.data.message, 'error');
+                            if (window.showNotification) showNotification('Ошибка FTP: ' + event.data.message, 'error');
+                            finishUploadUI(false);
                         }
+                    } catch (e) {
+                        console.error('SSE JSON parse error:', e, trimmed);
                     }
                 });
 

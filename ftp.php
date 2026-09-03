@@ -1066,6 +1066,8 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 
+                let streamBuffer = '';
+                
                 function readStream() {
                     reader.read().then(({ done, value }) => {
                         if (done) {
@@ -1075,41 +1077,49 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                             return;
                         }
                         
-                        const chunk = decoder.decode(value, { stream: true });
-                        const lines = chunk.split('\n');
+                        streamBuffer += decoder.decode(value, { stream: true });
+                        const lines = streamBuffer.split('\n');
+                        streamBuffer = lines.pop() || '';
                         
                         lines.forEach(line => {
-                            if (line.startsWith('data: ')) {
-                                try {
-                                    const event = JSON.parse(line.substring(6));
-                                    
-                                    if (event.type === 'log') {
-                                        addLog(event.data.message, event.data.level);
-                                    } else if (event.type === 'progress') {
-                                        const percent = event.data.percent;
-                                        progressBar.style.width = percent + '%';
-                                        progressBar.textContent = percent + '%';
-                                        progressStats.textContent = `Загружено: ${event.data.current} / ${event.data.total}`;
-                                        progressPercent.textContent = percent + '%';
-                                    } else if (event.type === 'complete') {
-                                        if (event.data.failed === 0) {
-                                            showNotification(event.data.message, 'success');
-                                        } else {
-                                            showNotification(event.data.message, 'error');
-                                        }
-                                        uploadBtn.disabled = false;
-                                        resetBtn.disabled = false;
-                                        uploadBtn.textContent = '📤 Загрузить папку data';
-                                    } else if (event.type === 'error') {
-                                        showNotification('Ошибка: ' + event.data.message, 'error');
-                                        addLog('Ошибка: ' + event.data.message, 'error');
-                                        uploadBtn.disabled = false;
-                                        resetBtn.disabled = false;
-                                        uploadBtn.textContent = '📤 Загрузить папку data';
+                            const trimmed = line.trim();
+                            if (!trimmed || !trimmed.startsWith('data: ')) return;
+                            try {
+                                const event = JSON.parse(trimmed.substring(6));
+                                
+                                if (event.type === 'log') {
+                                    addLog(event.data.message, event.data.level);
+                                } else if (event.type === 'file_start') {
+                                    if (event.data.file) {
+                                        progressStats.textContent = `Загрузка: ${event.data.file}` + (event.data.sizeFormatted ? ` (${event.data.sizeFormatted})` : '');
                                     }
-                                } catch (e) {
-                                    console.error('Parse error:', e);
+                                } else if (event.type === 'progress') {
+                                    const percent = Math.min(100, Math.max(0, event.data.percent));
+                                    progressBar.style.width = percent + '%';
+                                    progressBar.textContent = percent + '%';
+                                    progressStats.textContent = `Загружено: ${event.data.current} / ${event.data.total}`;
+                                    progressPercent.textContent = percent + '%';
+                                } else if (event.type === 'complete') {
+                                    progressBar.style.width = '100%';
+                                    progressBar.textContent = '100%';
+                                    progressPercent.textContent = '100%';
+                                    if (event.data.failed === 0) {
+                                        showNotification(event.data.message, 'success');
+                                    } else {
+                                        showNotification(event.data.message, 'error');
+                                    }
+                                    uploadBtn.disabled = false;
+                                    resetBtn.disabled = false;
+                                    uploadBtn.textContent = '📤 Загрузить выбранный блог';
+                                } else if (event.type === 'error') {
+                                    showNotification('Ошибка: ' + event.data.message, 'error');
+                                    addLog('Ошибка: ' + event.data.message, 'error');
+                                    uploadBtn.disabled = false;
+                                    resetBtn.disabled = false;
+                                    uploadBtn.textContent = '📤 Загрузить выбранный блог';
                                 }
+                            } catch (e) {
+                                console.error('Parse error:', e, trimmed);
                             }
                         });
                         
