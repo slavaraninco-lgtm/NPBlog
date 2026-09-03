@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Архив статей (Legacy)</title>
+</head>
+<body>
+    <div id="posts-list"></div>
+
+    <script>
+        // Настройки отображения списка статей
+        const config = {
+            showNumber: true,      // Отображать номер статьи (#ID)
+            showDate: true,        // Отображать дату публикации
+            sortDescending: true   // Сортировка: новые первыми (true) или старые первыми (false)
+        };
+
+        // Загрузка списка статей из posts-meta.json
+        async function loadPosts() {
+            const container = document.getElementById('posts-list');
+            try {
+                // Добавляем timestamp для предотвращения кэширования
+                const response = await fetch('blog/posts-meta.json?t=' + Date.now());
+                if (!response.ok) {
+                    throw new Error('Failed to load posts');
+                }
+                const posts = await response.json();
+                
+                if (!posts || posts.length === 0) {
+                    container.innerHTML = 'Нет доступных статей.';
+                    return;
+                }
+
+                // Сортировка
+                if (config.sortDescending) {
+                    posts.sort((a, b) => b.id - a.id);
+                } else {
+                    posts.sort((a, b) => a.id - b.id);
+                }
+
+                // Отрисовка гиперссылок друг под другом
+                container.innerHTML = posts.map(post => {
+                    let labelParts = [];
+                    
+                    if (config.showNumber) {
+                        labelParts.push(`#${post.id}`);
+                    }
+                    
+                    labelParts.push(escapeHtml(post.title));
+                    
+                    if (config.showDate) {
+                        labelParts.push(`(${escapeHtml(post.date)})`);
+                    }
+
+                    const displayText = labelParts.join(' ');
+                    
+                    return `<a href="blog/${post.filename}" style="display: block; margin-bottom: 10px;">${displayText}</a>`;
+                }).join('');
+
+            } catch (error) {
+                console.error('Ошибка при загрузке статей:', error);
+                container.innerHTML = 'Ошибка загрузки списка статей.';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadPosts();
+    </script>
+</body>
+</html>

@@ -491,7 +491,13 @@ if (file_exists($versionFile)) {
 
     <!-- Нижняя полоса редактора (Статус-бар) -->
     <footer class="editor-bottom-bar" id="editorBottomBar">
-        <div class="editor-bottom-bar-left"></div>
+        <div class="editor-bottom-bar-left">
+            <div id="blogSelectorContainer" class="bottom-bar-blog-selector" style="display: none;">
+                <label for="blogSelector" class="bottom-bar-blog-label" data-i18n="header.manage_posts_blog_label">Блог:</label>
+                <select id="blogSelector" class="bottom-bar-blog-select" onchange="selectActiveBlog(this.value)">
+                </select>
+            </div>
+        </div>
         <div class="editor-bottom-bar-right">
             <!-- Таймер автосохранения (чисто текст, кликабельный для открытия менеджера) -->
             <div id="autosaveBadge" onclick="openAutosaveManager()" onmousedown="event.preventDefault()" style="display: none;" title="Менеджер автосохранений" data-i18n-title="header.menu_autosave_manager">
@@ -525,11 +531,6 @@ if (file_exists($versionFile)) {
         <div class="manage-posts-header">
             <h2 data-i18n="header.manage_posts_title">Все статьи</h2>
             <button type="button" class="close-manage" onclick="toggleManagePosts()" aria-label="Закрыть">×</button>
-        </div>
-        <div id="blogSelectorContainer" style="display: none; padding: 12px 16px 0;">
-            <label style="display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; opacity: 0.8; color: var(--text-color);" data-i18n="header.manage_posts_blog_label">Блог:</label>
-            <select id="blogSelector" onchange="selectActiveBlog(this.value)">
-            </select>
         </div>
         <div style="padding: 16px 16px 0;">
             <input type="text" id="postsSearchInput" class="posts-search-input" placeholder="🔍 Поиск по статьям..." data-i18n-placeholder="header.manage_posts_search" oninput="filterPosts()">
@@ -3006,7 +3007,7 @@ function updateBlogSelectorUI(paths, activePath) {
         return;
     }
     
-    container.style.display = 'block';
+    container.style.display = 'inline-flex';
     selector.innerHTML = '';
     
     paths.forEach(p => {
@@ -3019,6 +3020,12 @@ function updateBlogSelectorUI(paths, activePath) {
         }
         selector.appendChild(option);
     });
+
+    if (window.syncCustomSelect) {
+        window.syncCustomSelect(selector);
+    } else if (window.initCustomSelect && !selector.dataset.customSelectInitialized) {
+        window.initCustomSelect(selector);
+    }
 }
 
 function selectActiveBlog(selectedPath) {

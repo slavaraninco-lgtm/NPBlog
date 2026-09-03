@@ -3,7 +3,8 @@
     "tutorialCompleted": true,
     "initial_setup_completed": true,
     "blog_paths": [
-        "C:\\xampp\\htdocs\\data"
+        "C:\\xampp\\htdocs\\data",
+        "C:\\xampp\\htdocs\\data2"
     ],
     "active_blog_path": "C:\\xampp\\htdocs\\data",
     "headerLayout": [

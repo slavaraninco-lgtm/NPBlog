@@ -1,0 +1,12 @@
+{
+    "default": "main",
+    "post_templates": [],
+    "templates": {
+        "main": {
+            "title": "Стандартный шаблон",
+            "description": "Стандартный шаблон блога с поддержкой темной темы, адаптивным дизайном и подложкой.",
+            "is_system": true,
+            "path": "NPBlog\/main.html"
+        }
+    }
+}

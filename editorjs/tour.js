@@ -254,7 +254,7 @@ function getTutorialSteps() {
             title: getTutorialText('tutorial.step_panel_posts_search_title', 'Панель статей: Поиск и Блоги 🔍'),
             text: getTutorialText('tutorial.step_panel_posts_search_text', 'Мгновенный живой поиск по заголовкам статей и переключение между папками блогов в мультиблоговом режиме.'),
             menu: 'managePosts',
-            element: '#postsSearchInput, #blogSelectorContainer, #managePosts'
+            element: '#postsSearchInput, #managePosts'
         },
         // 39. Sidebar Posts: List & Actions
         {
