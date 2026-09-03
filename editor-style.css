@@ -2771,10 +2771,12 @@ button:hover {
     padding: 12px;
     text-align: left;
     border: 1px solid var(--text-color);
-    min-width: 50px;
+    min-width: 40px;
     position: relative;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    box-sizing: border-box;
 }
 
 #contentVisual table th {
@@ -2795,20 +2797,18 @@ button:hover {
 .column-resizer {
     position: absolute;
     top: 0;
-    right: -3px;
+    right: 0;
     width: 6px;
     height: 100%;
     cursor: col-resize;
     z-index: 10;
     background: transparent;
+    user-select: none;
 }
 
-.column-resizer:hover {
-    background: rgba(76, 175, 80, 0.3);
-}
-
+.column-resizer:hover,
 .column-resizer.resizing {
-    background: rgba(76, 175, 80, 0.5);
+    background: rgba(76, 175, 80, 0.6);
 }
 
 #submitButton,

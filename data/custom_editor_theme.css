@@ -600,12 +600,20 @@ button:active,
     font-weight: 600;
     padding: 14px;
     border-bottom: 2px solid var(--glass-border);
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    box-sizing: border-box;
 }
 
 #contentVisual table td {
     padding: 12px;
     border: 1px solid var(--glass-border);
     background: rgba(255, 255, 255, 0.03);
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    box-sizing: border-box;
 }
 
 /* Badges */

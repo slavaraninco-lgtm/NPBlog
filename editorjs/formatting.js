@@ -250,6 +250,46 @@
         },
 
         /**
+         * Handle Tab Key (Tab between table cells or indent)
+         */
+        handleTabKey(e) {
+            if (!this.isEditorActive()) return false;
+            const sel = window.getSelection();
+            if (!sel || !sel.rangeCount) return false;
+
+            const range = sel.getRangeAt(0);
+            const container = range.startContainer;
+            const cell = (container.nodeType === Node.ELEMENT_NODE ? container : container.parentNode).closest('td, th');
+            if (!cell || !this.isInsideEditor(cell)) return false;
+
+            e.preventDefault();
+            const table = cell.closest('table');
+            if (!table) return false;
+
+            const allCells = Array.from(table.querySelectorAll('thead th, thead td, tbody td, tbody th, tr td, tr th'));
+            const uniqueCells = Array.from(new Set(allCells));
+            const currentIndex = uniqueCells.indexOf(cell);
+
+            if (e.shiftKey) {
+                if (currentIndex > 0) {
+                    this.setCursorToStart(uniqueCells[currentIndex - 1]);
+                    this.saveSelection();
+                }
+            } else {
+                if (currentIndex < uniqueCells.length - 1) {
+                    this.setCursorToStart(uniqueCells[currentIndex + 1]);
+                    this.saveSelection();
+                } else {
+                    if (typeof addTableRow === 'function') {
+                        window.contextMenuTableRow = cell.closest('tr');
+                        addTableRow();
+                    }
+                }
+            }
+            return true;
+        },
+
+        /**
          * Handle Enter Key (Deterministic paragraph and block division)
          */
         handleEnterKey(e) {
@@ -258,10 +298,33 @@
             const sel = window.getSelection();
             if (!sel || !sel.rangeCount) return;
 
+            const range = sel.getRangeAt(0);
+
+            // Inside table cell: Enter inserts <br> inside cell instead of splitting table
+            const tableCell = (range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentNode).closest('td, th');
+            if (tableCell && this.isInsideEditor(tableCell)) {
+                e.preventDefault();
+                range.deleteContents();
+                const br = document.createElement('br');
+                range.insertNode(br);
+
+                if (!br.nextSibling) {
+                    const extraBr = document.createElement('br');
+                    tableCell.appendChild(extraBr);
+                }
+
+                range.setStartAfter(br);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+                this.saveSelection();
+                if (typeof saveToHistory === 'function') saveToHistory();
+                return;
+            }
+
             // Shift+Enter: Insert standard <br>
             if (e.shiftKey) {
                 e.preventDefault();
-                const range = sel.getRangeAt(0);
                 range.deleteContents();
                 const br = document.createElement('br');
                 range.insertNode(br);
@@ -274,7 +337,6 @@
                 return;
             }
 
-            const range = sel.getRangeAt(0);
             const editor = this.getEditor();
             let block = this.getClosestBlock(range.startContainer);
 
@@ -443,6 +505,20 @@
 
             if (!block || block === editor) return;
 
+            // 0. Protect table cells from structural damage
+            const tableCell = (range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentNode).closest('td, th');
+            if (tableCell && this.isInsideEditor(tableCell)) {
+                if (isBackspace && this.isCaretAtStartOfBlock(tableCell, range)) {
+                    e.preventDefault();
+                    return;
+                }
+                if (tableCell.innerHTML === '<br>' || tableCell.innerHTML.trim() === '') {
+                    e.preventDefault();
+                    return;
+                }
+                return;
+            }
+
             // 1. Backspace at start of block
             if (isBackspace && this.isCaretAtStartOfBlock(block, range)) {
                 const prevSibling = block.previousElementSibling;
@@ -450,8 +526,22 @@
                 if (prevSibling) {
                     e.preventDefault();
 
-                    // If previous sibling is an atomic media wrapper or table
-                    if (prevSibling.classList.contains('blog-image-align-wrap') || prevSibling.tagName === 'TABLE' || prevSibling.tagName === 'HR') {
+                    // If previous sibling is a table: do NOT delete table on backspace from below
+                    if (prevSibling.tagName === 'TABLE') {
+                        if (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
+                            block.parentNode.removeChild(block);
+                            const lastCell = prevSibling.querySelector('tbody tr:last-child td:last-child, tr:last-child td:last-child, th:last-child');
+                            if (lastCell) {
+                                this.setCursorToEnd(lastCell);
+                            }
+                            this.saveSelection();
+                            if (typeof saveToHistory === 'function') saveToHistory();
+                        }
+                        return;
+                    }
+
+                    // If previous sibling is an atomic media wrapper or HR
+                    if (prevSibling.classList.contains('blog-image-align-wrap') || prevSibling.tagName === 'HR') {
                         if (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
                             block.parentNode.removeChild(block);
                         }
@@ -1626,6 +1716,9 @@
 
         // Keydown handlers
         editor.addEventListener('keydown', function (e) {
+            if (e.key === 'Tab') {
+                if (VisualEngine.handleTabKey(e)) return;
+            }
             if (e.key === 'Enter') {
                 VisualEngine.handleEnterKey(e);
             } else if (e.key === 'Backspace' || e.key === 'Delete') {

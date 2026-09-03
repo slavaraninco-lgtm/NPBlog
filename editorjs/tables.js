@@ -1,3 +1,41 @@
+/**
+ * NPBlog - Tables Engine
+ * Provides table insertion, row/column management, cell coloring, and column resizing.
+ */
+
+// Helper: Get active table cell from context menu target or current selection
+function getActiveTableCell() {
+    if (window.contextMenuTableCell && document.contains(window.contextMenuTableCell)) {
+        return window.contextMenuTableCell;
+    }
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+        const node = sel.getRangeAt(0).startContainer;
+        const cell = (node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode).closest('td, th');
+        if (cell) {
+            const ve = document.getElementById('contentVisual');
+            if (ve && ve.contains(cell)) {
+                window.contextMenuTableCell = cell;
+                window.contextMenuTableRow = cell.closest('tr');
+                return cell;
+            }
+        }
+    }
+    return null;
+}
+
+// Helper: Get active table row from context menu target or current selection
+function getActiveTableRow() {
+    if (window.contextMenuTableRow && document.contains(window.contextMenuTableRow)) {
+        return window.contextMenuTableRow;
+    }
+    const cell = getActiveTableCell();
+    if (cell) {
+        return cell.closest('tr');
+    }
+    return null;
+}
+
 function openTableDialog() {
     if (window.Modal) {
         Modal.open('#tableDialog');
@@ -23,15 +61,20 @@ function closeTableDialog() {
 }
 
 function addTableRow() {
-    if (!window.contextMenuTableRow) return;
+    const row = getActiveTableRow();
+    if (!row) {
+        showNotification(window.t ? window.t('notifications.select_table_cell', 'Выберите ячейку таблицы') : 'Выберите ячейку таблицы', 'warning');
+        return;
+    }
 
-    const row = window.contextMenuTableRow;
     const table = row.closest('table');
     if (!table) return;
 
-    const colCount = row.querySelectorAll('td, th').length;
-    const newRow = document.createElement('tr');
+    // Count columns from header or current row
+    const headerCells = table.querySelectorAll('thead th, thead td, tr:first-child th, tr:first-child td');
+    const colCount = headerCells.length || row.querySelectorAll('td, th').length || 3;
 
+    const newRow = document.createElement('tr');
     for (let i = 0; i < colCount; i++) {
         const cell = document.createElement('td');
         cell.innerHTML = '<br>';
@@ -39,17 +82,25 @@ function addTableRow() {
         newRow.appendChild(cell);
     }
 
-    // Вставляем новую строку после текущей
-    if (row.parentNode.tagName === 'THEAD') {
-        // Если это строка заголовка, добавляем в tbody
-        const tbody = table.querySelector('tbody');
-        if (tbody && tbody.firstChild) {
+    // Insert new row
+    if (row.parentNode && row.parentNode.tagName === 'THEAD') {
+        let tbody = table.querySelector('tbody');
+        if (!tbody) {
+            tbody = document.createElement('tbody');
+            table.appendChild(tbody);
+        }
+        if (tbody.firstChild) {
             tbody.insertBefore(newRow, tbody.firstChild);
-        } else if (tbody) {
+        } else {
             tbody.appendChild(newRow);
         }
     } else {
         row.parentNode.insertBefore(newRow, row.nextSibling);
+    }
+
+    // Position caret in first cell of newly added row
+    if (newRow.firstElementChild && window.VisualEngine) {
+        window.VisualEngine.setCursorToStart(newRow.firstElementChild);
     }
 
     saveToHistory();
@@ -57,22 +108,24 @@ function addTableRow() {
 }
 
 function deleteTableRow() {
-    if (!window.contextMenuTableRow) return;
-
-    const row = window.contextMenuTableRow;
-    const table = row.closest('table');
-    if (!table) return;
-
-    // Проверяем, не является ли это единственной строкой в tbody
-    const tbody = table.querySelector('tbody');
-    if (tbody && tbody.querySelectorAll('tr').length === 1 && row.parentNode === tbody) {
-        showNotification('Нельзя удалить последнюю строку таблицы', 'warning');
+    const row = getActiveTableRow();
+    if (!row) {
+        showNotification(window.t ? window.t('notifications.select_table_cell', 'Выберите ячейку таблицы') : 'Выберите ячейку таблицы', 'warning');
         return;
     }
 
-    // Не даем удалить строку заголовка, если она единственная в thead
-    if (row.parentNode.tagName === 'THEAD') {
+    const table = row.closest('table');
+    if (!table) return;
+
+    if (row.parentNode && row.parentNode.tagName === 'THEAD') {
         showNotification('Нельзя удалить строку заголовка', 'warning');
+        return;
+    }
+
+    const tbody = table.querySelector('tbody');
+    const bodyRows = tbody ? tbody.querySelectorAll('tr') : table.querySelectorAll('tr');
+    if (bodyRows.length <= 1) {
+        showNotification('Нельзя удалить последнюю строку таблицы', 'warning');
         return;
     }
 
@@ -82,124 +135,202 @@ function deleteTableRow() {
 }
 
 function addTableColumn() {
-    if (!window.contextMenuTableCell) return;
+    const cell = getActiveTableCell();
+    if (!cell) {
+        showNotification(window.t ? window.t('notifications.select_table_cell', 'Выберите ячейку таблицы') : 'Выберите ячейку таблицы', 'warning');
+        return;
+    }
 
-    const cell = window.contextMenuTableCell;
     const table = cell.closest('table');
     if (!table) return;
 
-    // Определяем индекс текущего столбца
+    // Determine column index of the active cell
     const row = cell.closest('tr');
-    const cells = Array.from(row.querySelectorAll('td, th'));
-    const colIndex = cells.indexOf(cell);
+    const cellsInRow = Array.from(row.querySelectorAll('td, th'));
+    const colIndex = cellsInRow.indexOf(cell);
+    if (colIndex === -1) return;
 
-    // Добавляем ячейку в заголовок
-    const thead = table.querySelector('thead');
-    if (thead) {
-        const headerRow = thead.querySelector('tr');
-        if (headerRow) {
-            const headerCells = headerRow.querySelectorAll('th');
-            const newHeader = document.createElement('th');
-            newHeader.innerHTML = '<br>';
-            newHeader.contentEditable = 'true';
+    // 1. Locate or create thead and headerRow
+    let thead = table.querySelector('thead');
+    let headerRow = thead ? thead.querySelector('tr') : null;
 
-            if (colIndex + 1 < headerCells.length) {
-                headerRow.insertBefore(newHeader, headerCells[colIndex + 1]);
-            } else {
-                headerRow.appendChild(newHeader);
-            }
+    if (!headerRow) {
+        const firstRow = table.querySelector('tr');
+        if (firstRow) {
+            headerRow = firstRow;
         }
     }
 
-    // Добавляем ячейки во все строки tbody
-    const tbody = table.querySelector('tbody');
-    if (tbody) {
-        const rows = tbody.querySelectorAll('tr');
-        rows.forEach(function (bodyRow) {
-            const bodyCells = bodyRow.querySelectorAll('td');
-            const newCell = document.createElement('td');
-            newCell.innerHTML = '<br>';
-            newCell.contentEditable = 'true';
+    let newHeader = null;
+    if (headerRow) {
+        const headerCells = Array.from(headerRow.querySelectorAll('th, td'));
+        if (headerCells.length >= 12) {
+            showNotification('Достигнуто максимальное количество столбцов (12)', 'warning');
+            return;
+        }
 
-            if (colIndex + 1 < bodyCells.length) {
-                bodyRow.insertBefore(newCell, bodyCells[colIndex + 1]);
-            } else {
-                bodyRow.appendChild(newCell);
-            }
+        const isTh = headerCells.length > 0 && headerCells[0].tagName === 'TH';
+        newHeader = document.createElement(isTh ? 'th' : 'td');
+        newHeader.innerHTML = 'Заголовок ' + (headerCells.length + 1);
+        newHeader.contentEditable = 'true';
+
+        if (colIndex + 1 < headerCells.length) {
+            headerRow.insertBefore(newHeader, headerCells[colIndex + 1]);
+        } else {
+            headerRow.appendChild(newHeader);
+        }
+    }
+
+    // 2. Add cell to all body rows
+    const tbody = table.querySelector('tbody');
+    const allRows = Array.from(table.querySelectorAll('tr'));
+    const bodyRows = tbody ? Array.from(tbody.querySelectorAll('tr')) : allRows.filter(r => r !== headerRow);
+
+    let newBodyCellToFocus = null;
+    bodyRows.forEach(function (bodyRow) {
+        const bodyCells = Array.from(bodyRow.querySelectorAll('td, th'));
+        const newCell = document.createElement('td');
+        newCell.innerHTML = '<br>';
+        newCell.contentEditable = 'true';
+
+        if (colIndex + 1 < bodyCells.length) {
+            bodyRow.insertBefore(newCell, bodyCells[colIndex + 1]);
+        } else {
+            bodyRow.appendChild(newCell);
+        }
+
+        if (bodyRow === row) {
+            newBodyCellToFocus = newCell;
+        }
+    });
+
+    // 3. Redistribute column widths evenly across headers
+    if (headerRow) {
+        const updatedHeaderCells = Array.from(headerRow.querySelectorAll('th, td'));
+        const newColWidth = (100 / updatedHeaderCells.length).toFixed(4) + '%';
+        updatedHeaderCells.forEach(th => {
+            th.style.width = newColWidth;
+        });
+
+        // Clear redundant inline widths from body cells so table-layout: fixed respects headers
+        table.querySelectorAll('tbody td, tbody th').forEach(td => {
+            td.style.width = '';
         });
     }
 
-    // Обновляем ресайзеры
+    // 4. Force recreation of resizers
+    table.querySelectorAll('.column-resizer').forEach(r => r.remove());
+    delete table.dataset.resizersAdded;
     addColumnResizers();
+
+    // 5. Position cursor in newly added cell
+    const targetFocus = (cell.tagName === 'TH' && newHeader) ? newHeader : (newBodyCellToFocus || newHeader);
+    if (targetFocus && window.VisualEngine) {
+        window.VisualEngine.setCursorToStart(targetFocus);
+    }
+
     saveToHistory();
     showNotification('Столбец добавлен', 'success');
 }
 
 function deleteTableColumn() {
-    if (!window.contextMenuTableCell) return;
+    const cell = getActiveTableCell();
+    if (!cell) {
+        showNotification(window.t ? window.t('notifications.select_table_cell', 'Выберите ячейку таблицы') : 'Выберите ячейку таблицы', 'warning');
+        return;
+    }
 
-    const cell = window.contextMenuTableCell;
     const table = cell.closest('table');
     if (!table) return;
 
-    // Определяем индекс текущего столбца
     const row = cell.closest('tr');
-    const cells = Array.from(row.querySelectorAll('td, th'));
-    const colIndex = cells.indexOf(cell);
+    const cellsInRow = Array.from(row.querySelectorAll('td, th'));
+    const colIndex = cellsInRow.indexOf(cell);
+    if (colIndex === -1) return;
 
-    // Проверяем, не единственный ли это столбец
-    if (cells.length === 1) {
+    // Check minimum columns
+    const thead = table.querySelector('thead');
+    const headerRow = thead ? thead.querySelector('tr') : table.querySelector('tr');
+    const headerCells = headerRow ? Array.from(headerRow.querySelectorAll('th, td')) : cellsInRow;
+
+    if (headerCells.length <= 1) {
         showNotification('Нельзя удалить единственный столбец', 'warning');
         return;
     }
 
-    // Удаляем ячейку из заголовка
-    const thead = table.querySelector('thead');
-    if (thead) {
-        const headerRow = thead.querySelector('tr');
-        if (headerRow) {
-            const headerCells = headerRow.querySelectorAll('th');
-            if (headerCells[colIndex]) {
-                headerCells[colIndex].parentNode.removeChild(headerCells[colIndex]);
-            }
+    // Remove from header
+    if (headerRow) {
+        const hCells = Array.from(headerRow.querySelectorAll('th, td'));
+        if (hCells[colIndex]) {
+            hCells[colIndex].parentNode.removeChild(hCells[colIndex]);
         }
     }
 
-    // Удаляем ячейки из всех строк tbody
+    // Remove from body rows
     const tbody = table.querySelector('tbody');
-    if (tbody) {
-        const rows = tbody.querySelectorAll('tr');
-        rows.forEach(function (bodyRow) {
-            const bodyCells = bodyRow.querySelectorAll('td');
-            if (bodyCells[colIndex]) {
-                bodyCells[colIndex].parentNode.removeChild(bodyCells[colIndex]);
-            }
+    const allRows = Array.from(table.querySelectorAll('tr'));
+    const bodyRows = tbody ? Array.from(tbody.querySelectorAll('tr')) : allRows.filter(r => r !== headerRow);
+
+    bodyRows.forEach(function (bodyRow) {
+        const bodyCells = Array.from(bodyRow.querySelectorAll('td, th'));
+        if (bodyCells[colIndex]) {
+            bodyCells[colIndex].parentNode.removeChild(bodyCells[colIndex]);
+        }
+    });
+
+    // Redistribute remaining widths
+    if (headerRow) {
+        const remainingHeaders = Array.from(headerRow.querySelectorAll('th, td'));
+        const newColWidth = (100 / remainingHeaders.length).toFixed(4) + '%';
+        remainingHeaders.forEach(th => {
+            th.style.width = newColWidth;
+        });
+
+        table.querySelectorAll('tbody td, tbody th').forEach(td => {
+            td.style.width = '';
         });
     }
 
-    // Обновляем ресайзеры
+    // Refresh resizers
+    table.querySelectorAll('.column-resizer').forEach(r => r.remove());
+    delete table.dataset.resizersAdded;
     addColumnResizers();
+
     saveToHistory();
     showNotification('Столбец удален', 'success');
 }
 
 function deleteTable() {
-    if (!window.contextMenuTableCell && !window.contextMenuTableRow) return;
+    const cell = getActiveTableCell();
+    const row = getActiveTableRow();
+    const target = cell || row;
+    if (!target) return;
 
-    const cell = window.contextMenuTableCell || window.contextMenuTableRow.querySelector('td, th');
-    if (!cell) return;
-
-    const table = cell.closest('table');
+    const table = target.closest('table');
     if (!table) return;
 
-    // Удаляем таблицу
-    table.parentNode.removeChild(table);
+    const parent = table.parentNode;
+    parent.removeChild(table);
+
+    // Ensure visual editor has at least one paragraph
+    const ve = document.getElementById('contentVisual');
+    if (ve && (!ve.hasChildNodes() || ve.innerHTML.trim() === '')) {
+        ve.innerHTML = '<p><br></p>';
+        if (window.VisualEngine) {
+            window.VisualEngine.setCursorToStart(ve.firstElementChild);
+        }
+    }
+
     saveToHistory();
     showNotification('Таблица удалена', 'success');
 }
 
 function openCellColorDialog() {
-    if (!window.contextMenuTableCell) return;
+    const cell = getActiveTableCell();
+    if (!cell) {
+        showNotification(window.t ? window.t('notifications.select_table_cell', 'Выберите ячейку таблицы') : 'Выберите ячейку таблицы', 'warning');
+        return;
+    }
     if (window.Modal) {
         Modal.open('#cellColorDialog');
     } else {
@@ -218,16 +349,26 @@ function closeCellColorDialog() {
 }
 
 function setCellColor(color) {
-    if (!window.contextMenuTableCell) return;
+    const cell = getActiveTableCell();
+    if (!cell) return;
 
-    const cell = window.contextMenuTableCell;
+    function getContrastTextColor(hex) {
+        if (!hex) return '#000000';
+        let cleanHex = hex.replace('#', '');
+        if (cleanHex.length === 3) cleanHex = cleanHex.split('').map(c => c + c).join('');
+        const r = parseInt(cleanHex.substring(0, 2), 16) || 0;
+        const g = parseInt(cleanHex.substring(2, 4), 16) || 0;
+        const b = parseInt(cleanHex.substring(4, 6), 16) || 0;
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return (brightness >= 128) ? '#000000' : '#ffffff';
+    }
 
     if (color) {
         cell.style.backgroundColor = color;
-        cell.style.color = '#000000'; // Устанавливаем черный цвет текста
+        cell.style.color = getContrastTextColor(color);
     } else {
         cell.style.backgroundColor = '';
-        cell.style.color = ''; // Сбрасываем цвет текста
+        cell.style.color = '';
     }
 
     saveToHistory();
@@ -235,21 +376,17 @@ function setCellColor(color) {
     showNotification(window.t ? window.t('notifications.cell_color_changed', 'Цвет ячейки изменен') : 'Цвет ячейки изменен', 'success');
 }
 
-window.openCellColorDialog = openCellColorDialog;
-window.closeCellColorDialog = closeCellColorDialog;
-window.setCellColor = setCellColor;
-
 function insertTable() {
-    const rows = parseInt(document.getElementById('tableRows').value);
-    const cols = parseInt(document.getElementById('tableCols').value);
+    const rows = parseInt(document.getElementById('tableRows').value, 10);
+    const cols = parseInt(document.getElementById('tableCols').value, 10);
 
     if (!rows || rows < 1 || rows > 20) {
         showNotification('Введите количество строк от 1 до 20', 'warning');
         return;
     }
 
-    if (!cols || cols < 1 || cols > 7) {
-        showNotification('Введите количество столбцов от 1 до 7', 'warning');
+    if (!cols || cols < 1 || cols > 10) {
+        showNotification('Введите количество столбцов от 1 до 10', 'warning');
         return;
     }
 
@@ -272,15 +409,14 @@ function insertTable() {
         return;
     }
 
+    const colWidth = (100 / cols).toFixed(4);
     let tableHtml = '<table><thead><tr>';
 
-    // Создаем заголовки
     for (let i = 0; i < cols; i++) {
-        tableHtml += `<th>Заголовок ${i + 1}</th>`;
+        tableHtml += `<th style="width: ${colWidth}%;">Заголовок ${i + 1}</th>`;
     }
     tableHtml += '</tr></thead><tbody>';
 
-    // Создаем строки с пустыми ячейками
     for (let i = 0; i < rows; i++) {
         tableHtml += '<tr>';
         for (let j = 0; j < cols; j++) {
@@ -305,7 +441,6 @@ function insertTable() {
     showNotification('Таблица добавлена', 'success');
 }
 
-// Функция для вставки таблицы в визуальном редакторе
 function insertTableAtCaret(tableHtml) {
     const ve = document.getElementById('contentVisual');
     ve.focus();
@@ -318,8 +453,7 @@ function insertTableAtCaret(tableHtml) {
         range = sel.getRangeAt(0);
     }
 
-    // Создаем пустой блок для курсора после таблицы
-    const emptyDiv = document.createElement('div');
+    const emptyDiv = document.createElement('p');
     emptyDiv.innerHTML = '<br>';
 
     if (!range) {
@@ -336,7 +470,6 @@ function insertTableAtCaret(tableHtml) {
     } else {
         range.deleteContents();
 
-        // Создаем временный контейнер для парсинга HTML
         const temp = document.createElement('div');
         temp.innerHTML = tableHtml;
 
@@ -361,33 +494,45 @@ function insertTableAtCaret(tableHtml) {
         }
     }
 
-    // Добавляем ручки изменения размера после небольшой задержки
     setTimeout(() => {
         addColumnResizers();
-    }, 100);
+    }, 50);
 }
 
-// Функция для добавления ручек изменения размера столбцов
 function addColumnResizers() {
     const ve = document.getElementById('contentVisual');
     if (!ve) return;
 
     const tables = ve.querySelectorAll('table');
     tables.forEach(table => {
-        // Проверяем, не добавлены ли уже ручки
-        if (table.dataset.resizersAdded) return;
+        const headerCells = Array.from(table.querySelectorAll('thead th, tr:first-child th'));
+        if (headerCells.length === 0) return;
+
+        const existingResizers = table.querySelectorAll('.column-resizer');
+        if (table.dataset.resizersAdded === 'true' && existingResizers.length === headerCells.length - 1) {
+            return;
+        }
+
+        // Clean any existing resizers
+        existingResizers.forEach(r => r.remove());
         table.dataset.resizersAdded = 'true';
 
-        const headerCells = table.querySelectorAll('thead th');
-
-        // Устанавливаем начальную ширину в процентах
-        const colWidth = 100 / headerCells.length;
+        // Check if headers have widths assigned
+        let hasCustomWidths = true;
         headerCells.forEach(th => {
-            th.style.width = colWidth + '%';
+            if (!th.style.width || !th.style.width.includes('%')) {
+                hasCustomWidths = false;
+            }
         });
 
+        if (!hasCustomWidths) {
+            const colWidth = (100 / headerCells.length).toFixed(4) + '%';
+            headerCells.forEach(th => {
+                th.style.width = colWidth;
+            });
+        }
+
         headerCells.forEach((th, index) => {
-            // Не добавляем ручку к последнему столбцу
             if (index === headerCells.length - 1) return;
 
             const resizer = document.createElement('div');
@@ -402,68 +547,60 @@ function addColumnResizers() {
                 e.stopPropagation();
 
                 resizer.classList.add('resizing');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+
                 startX = e.pageX;
                 tableWidth = table.offsetWidth;
 
-                // Получаем текущую ширину в процентах
                 startWidthPercent = (th.offsetWidth / tableWidth) * 100;
-
                 const nextTh = headerCells[index + 1];
                 nextStartWidthPercent = nextTh ? (nextTh.offsetWidth / tableWidth) * 100 : 0;
+
+                function onMouseMove(ev) {
+                    const diff = ev.pageX - startX;
+                    const diffPercent = (diff / tableWidth) * 100;
+
+                    const newWidthPercent = startWidthPercent + diffPercent;
+                    const newNextWidthPercent = nextStartWidthPercent - diffPercent;
+
+                    if (newWidthPercent > 4 && newNextWidthPercent > 4) {
+                        th.style.width = newWidthPercent.toFixed(4) + '%';
+                        if (nextTh) {
+                            nextTh.style.width = newNextWidthPercent.toFixed(4) + '%';
+                        }
+                    }
+                }
+
+                function onMouseUp() {
+                    resizer.classList.remove('resizing');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+
+                    saveToHistory();
+                }
 
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
             });
-
-            function onMouseMove(e) {
-                const diff = e.pageX - startX;
-                const diffPercent = (diff / tableWidth) * 100;
-
-                const newWidthPercent = startWidthPercent + diffPercent;
-                const newNextWidthPercent = nextStartWidthPercent - diffPercent;
-
-                // Минимальная ширина 5%
-                if (newWidthPercent > 5 && newNextWidthPercent > 5) {
-                    th.style.width = newWidthPercent + '%';
-                    const nextTh = headerCells[index + 1];
-                    if (nextTh) {
-                        nextTh.style.width = newNextWidthPercent + '%';
-                    }
-
-                    // Применяем ширину ко всем ячейкам в столбце
-                    const rows = table.querySelectorAll('tbody tr');
-                    rows.forEach(row => {
-                        const cells = row.querySelectorAll('td');
-                        if (cells[index]) {
-                            cells[index].style.width = newWidthPercent + '%';
-                        }
-                        if (cells[index + 1]) {
-                            cells[index + 1].style.width = newNextWidthPercent + '%';
-                        }
-                    });
-                }
-            }
-
-            function onMouseUp() {
-                resizer.classList.remove('resizing');
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-            }
         });
     });
 }
 
-// Вызываем функцию при загрузке контента в визуальный редактор
 function initTableResizers() {
     const ve = document.getElementById('contentVisual');
     if (!ve) return;
 
-    // Добавляем ручки к существующим таблицам
     addColumnResizers();
 
-    // Наблюдаем за изменениями в редакторе
+    let debounceTimer = null;
     const observer = new MutationObserver(() => {
-        addColumnResizers();
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            addColumnResizers();
+        }, 150);
     });
 
     observer.observe(ve, {
@@ -472,10 +609,22 @@ function initTableResizers() {
     });
 }
 
-// Инициализируем при загрузке страницы
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initTableResizers);
 } else {
     initTableResizers();
 }
-
+
+window.openTableDialog = openTableDialog;
+window.closeTableDialog = closeTableDialog;
+window.addTableRow = addTableRow;
+window.deleteTableRow = deleteTableRow;
+window.addTableColumn = addTableColumn;
+window.deleteTableColumn = deleteTableColumn;
+window.deleteTable = deleteTable;
+window.openCellColorDialog = openCellColorDialog;
+window.closeCellColorDialog = closeCellColorDialog;
+window.setCellColor = setCellColor;
+window.insertTable = insertTable;
+window.addColumnResizers = addColumnResizers;
+window.initTableResizers = initTableResizers;
