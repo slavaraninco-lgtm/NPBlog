@@ -420,30 +420,7 @@ if (file_exists($blogViewSettingsFile)) {
     animation: setupSuccessPop 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* Мягкая расходящаяся волна в цвет текста */
-.setup-success-circle::before {
-    content: '';
-    position: absolute;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
-    border-radius: 50%;
-    border: 2px solid var(--text-color, #ffffff);
-    opacity: 0.45;
-    animation: setupSuccessRipple 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-}
 
-@keyframes setupSuccessRipple {
-    0% {
-        transform: scale(1);
-        opacity: 0.45;
-    }
-    100% {
-        transform: scale(1.48);
-        opacity: 0;
-    }
-}
 
 .setup-check-svg {
     width: 38px;

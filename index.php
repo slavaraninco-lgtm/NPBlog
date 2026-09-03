@@ -446,11 +446,6 @@ if (file_exists($versionFile)) {
         </div>
         
         <div class="header-right">
-            <!-- Таймер автосохранения -->
-            <div id="autosaveBadge" onmousedown="event.preventDefault()" style="display: none;">
-                <span id="autosaveBadgeText">Автосохранение через 60с</span>
-            </div>
-            
             <!-- Кнопка сохранения -->
             <button type="submit" id="submitButton" form="blogForm" data-i18n="header.btn_save">Сохранить</button>
             
@@ -493,6 +488,17 @@ if (file_exists($versionFile)) {
         <textarea class="content228 editor-field" id="content" placeholder="Содержание статьи" data-i18n-placeholder="header.placeholder_content" style="display:none;"></textarea>
         <div id="contentVisual" class="content228 editor-field" contenteditable="true"></div>
     </form>
+
+    <!-- Нижняя полоса редактора (Статус-бар) -->
+    <footer class="editor-bottom-bar" id="editorBottomBar">
+        <div class="editor-bottom-bar-left"></div>
+        <div class="editor-bottom-bar-right">
+            <!-- Таймер автосохранения (чисто текст) -->
+            <div id="autosaveBadge" onmousedown="event.preventDefault()" style="display: none;">
+                <span id="autosaveBadgeText">Автосохранение через 60с</span>
+            </div>
+        </div>
+    </footer>
 
     <div id="editorContextMenu" class="editor-context-menu" role="menu">
         <button type="button" class="editor-context-item" data-cmd="paste" role="menuitem" data-i18n="context_menu.paste">Вставить</button>
@@ -1874,7 +1880,7 @@ function startAutosave() {
     
     const badgeContainer = document.getElementById('autosaveBadge');
     if (badgeContainer) {
-        badgeContainer.style.display = 'block';
+        badgeContainer.style.display = 'inline-flex';
     }
 }
 
