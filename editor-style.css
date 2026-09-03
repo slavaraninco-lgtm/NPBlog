@@ -1149,118 +1149,128 @@ textarea {
 }
 
 /* Стили для маркера (выделение текста) */
+/* Стили для маркера (выделение текста) */
 mark {
-    padding: 2px 6px;
+    padding: 2px 5px;
     background: var(--marker-color, rgba(255, 235, 59, 0.5));
     color: inherit;
     font-weight: inherit;
     position: relative;
     display: inline;
-    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-}
-
-/* Ровное выделение */
-mark[data-marker-style="straight"] {
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
     border-radius: 3px;
-    padding: 3px 6px;
 }
 
-/* Кривое выделение (рука дрожала) */
-mark[data-marker-style="rough"] {
-    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-    padding: 3px 8px;
-    transform: rotate(-0.5deg);
+/* 1. Ровное выделение (аккуратный классический маркер) */
+mark[data-marker-style="straight"],
+.marker-preview-straight {
+    background-color: var(--marker-color, rgba(255, 235, 59, 0.65));
+    border-radius: 3px;
+    padding: 2px 8px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    display: inline-block;
+    line-height: 1.35;
 }
 
-/* Зигзагом */
-mark[data-marker-style="zigzag"] {
-    border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
-    padding: 3px 7px;
-    transform: rotate(0.3deg);
-    background: linear-gradient(to right,
-            var(--marker-color) 0%,
-            transparent 0%) 0 0,
-        linear-gradient(to right,
-            var(--marker-color) 0%,
-            transparent 0%) 0 100%;
-    background-size: 8px 3px;
-    background-repeat: repeat-x;
-    background-color: var(--marker-color);
+/* 2. Кривое / От руки (живой органичный мазок маркера) */
+mark[data-marker-style="rough"],
+mark[data-marker-style="zigzag"],
+mark[data-marker-style="wavy"],
+.marker-preview-rough {
+    background: linear-gradient(104deg, rgba(255, 255, 255, 0.15) 0%, var(--marker-color, rgba(255, 235, 59, 0.65)) 10%, var(--marker-color, rgba(255, 235, 59, 0.65)) 90%, rgba(0, 0, 0, 0.08) 100%), var(--marker-color, rgba(255, 235, 59, 0.65));
+    border-radius: 4px 18px 3px 22px / 20px 4px 22px 5px;
+    transform: rotate(-0.8deg);
+    padding: 3px 12px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    display: inline-block;
+    box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.06);
+    line-height: 1.35;
 }
 
-/* Волнистое */
-mark[data-marker-style="wavy"] {
-    border-radius: 225px 255px 15px 225px/255px 15px 225px 15px;
-    padding: 3px 7px;
-    transform: rotate(-0.3deg);
-    position: relative;
+/* Цвета маркера */
+mark[data-marker-color="yellow"],
+#markerDialog.marker-color-yellow {
+    --marker-color: rgba(255, 235, 59, 0.65);
 }
 
-mark[data-marker-style="wavy"]::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: inherit;
-    border-radius: inherit;
-    transform: scaleY(0.95) translateY(1px);
-    z-index: -1;
+mark[data-marker-color="green"],
+#markerDialog.marker-color-green {
+    --marker-color: rgba(76, 175, 80, 0.6);
 }
 
-mark[data-marker-color="yellow"] {
-    --marker-color: rgba(255, 235, 59, 0.5);
+mark[data-marker-color="blue"],
+#markerDialog.marker-color-blue {
+    --marker-color: rgba(33, 150, 243, 0.6);
 }
 
-mark[data-marker-color="green"] {
-    --marker-color: rgba(76, 175, 80, 0.45);
+mark[data-marker-color="orange"],
+#markerDialog.marker-color-orange {
+    --marker-color: rgba(255, 152, 0, 0.65);
 }
 
-mark[data-marker-color="blue"] {
-    --marker-color: rgba(33, 150, 243, 0.45);
+mark[data-marker-color="pink"],
+#markerDialog.marker-color-pink {
+    --marker-color: rgba(233, 30, 99, 0.6);
 }
 
-mark[data-marker-color="orange"] {
-    --marker-color: rgba(255, 152, 0, 0.5);
-}
-
-mark[data-marker-color="pink"] {
-    --marker-color: rgba(233, 30, 99, 0.45);
-}
-
-mark[data-marker-color="purple"] {
-    --marker-color: rgba(156, 39, 176, 0.45);
+mark[data-marker-color="purple"],
+#markerDialog.marker-color-purple {
+    --marker-color: rgba(156, 39, 176, 0.6);
 }
 
 /* Диалог выбора стиля и цвета маркера */
 .marker-styles {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin: 16px 0;
+    gap: 10px;
+    margin: 12px 0 16px 0;
 }
 
 .marker-style-btn {
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    background: var(--bg-color);
-    cursor: pointer;
-    transition: all 0.2s ease;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 8px;
+    padding: 12px 10px;
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    text-align: center;
 }
 
 .marker-style-btn:hover {
-    border-color: #999;
-    transform: scale(1.05);
+    border-color: rgba(76, 175, 80, 0.6);
+    background: rgba(76, 175, 80, 0.06);
+    transform: translateY(-2px);
 }
 
 .marker-style-btn.active {
     border-color: #4caf50;
-    background: rgba(76, 175, 80, 0.1);
+    background: rgba(76, 175, 80, 0.12);
+    box-shadow: 0 0 0 1px #4caf50, 0 4px 14px rgba(76, 175, 80, 0.25);
+}
+
+.marker-preview-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    width: 100%;
+}
+
+.marker-style-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.85;
+    letter-spacing: 0.2px;
 }
 
 .marker-style-preview {
@@ -1269,58 +1279,36 @@ mark[data-marker-color="purple"] {
     color: var(--text-color);
 }
 
-.marker-preview-straight {
-    background: rgba(255, 235, 59, 0.5);
-    padding: 3px 8px;
-    border-radius: 3px;
-}
-
-.marker-preview-rough {
-    background: rgba(255, 235, 59, 0.5);
-    padding: 3px 10px;
-    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-    transform: rotate(-0.5deg);
-}
-
-.marker-preview-zigzag {
-    background: rgba(255, 235, 59, 0.5);
-    padding: 3px 9px;
-    border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
-    transform: rotate(0.3deg);
-}
-
-.marker-preview-wavy {
-    background: rgba(255, 235, 59, 0.5);
-    padding: 3px 9px;
-    border-radius: 225px 255px 15px 225px/255px 15px 225px 15px;
-    transform: rotate(-0.3deg);
-}
-
 /* Диалог выбора цвета маркера */
 .marker-colors {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
-    margin: 20px 0;
+    gap: 10px;
+    margin: 8px 0;
+    justify-items: center;
 }
 
 .marker-color-btn {
-    width: 48px;
-    height: 48px;
-    border: 3px solid transparent;
-    border-radius: 8px;
+    width: 44px;
+    height: 44px;
+    border: 2px solid transparent;
+    border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    outline: none;
 }
 
 .marker-color-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transform: scale(1.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-.marker-color-btn:active {
-    transform: scale(0.95);
+.marker-color-btn.active,
+.marker-color-btn:focus-visible {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px #4caf50, 0 4px 12px rgba(0, 0, 0, 0.4);
+    transform: scale(1.08);
 }
 
 .dialog.code-dialog .dialog-content {

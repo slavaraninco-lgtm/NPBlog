@@ -2603,6 +2603,7 @@ function insertSpoiler() {
 let savedMarkerText = '';
 let savedMarkerRange = null;
 let selectedMarkerStyle = 'straight';
+let selectedMarkerColor = '#ffeb3b';
 
 function openMarkerDialog() {
     savedMarkerText = '';
@@ -2623,20 +2624,41 @@ function openMarkerDialog() {
     }
 
     if (!savedMarkerText) {
-        showNotification('Выделите текст для применения маркера', 'warning');
+        showNotification(window.t ? window.t('notifications.marker_select_text', 'Выделите текст для применения маркера') : 'Выделите текст для применения маркера', 'warning');
         return;
     }
 
+    const dlg = document.getElementById('markerDialog');
     if (window.Modal) {
         Modal.open('#markerDialog');
     } else {
-        const dlg = document.getElementById('markerDialog');
         if (dlg) dlg.style.display = 'block';
     }
+
+    const colorNames = {
+        '#ffeb3b': 'yellow',
+        '#4caf50': 'green',
+        '#2196f3': 'blue',
+        '#ff9800': 'orange',
+        '#e91e63': 'pink',
+        '#9c27b0': 'purple'
+    };
+
+    const updateDialogColor = (hex) => {
+        if (!dlg) return;
+        ['yellow', 'green', 'blue', 'orange', 'pink', 'purple'].forEach(c => {
+            dlg.classList.remove('marker-color-' + c);
+        });
+        const name = colorNames[hex] || 'yellow';
+        dlg.classList.add('marker-color-' + name);
+    };
+
+    updateDialogColor(selectedMarkerColor);
 
     // Добавляем обработчики на кнопки стилей
     const styleBtns = document.querySelectorAll('.marker-style-btn');
     styleBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-style') === selectedMarkerStyle);
         btn.onclick = function () {
             styleBtns.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
@@ -2647,9 +2669,20 @@ function openMarkerDialog() {
     // Добавляем обработчики на кнопки цветов
     const colorBtns = document.querySelectorAll('.marker-color-btn');
     colorBtns.forEach(btn => {
+        const c = btn.getAttribute('data-color');
+        btn.classList.toggle('active', c === selectedMarkerColor);
+        btn.onmouseenter = function () {
+            updateDialogColor(c);
+        };
+        btn.onmouseleave = function () {
+            updateDialogColor(selectedMarkerColor);
+        };
         btn.onclick = function () {
-            const color = this.getAttribute('data-color');
-            insertMarker(color, selectedMarkerStyle);
+            selectedMarkerColor = c;
+            colorBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            updateDialogColor(c);
+            insertMarker(c, selectedMarkerStyle);
         };
     });
 }
