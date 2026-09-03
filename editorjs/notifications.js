@@ -50,15 +50,20 @@ function showNotification(message, type = 'info', title = '') {
     }, 5000);
 }
 
-function closeNotification(btn) {
-    const notification = btn.closest('.notification');
+function closeNotification(btnOrEl) {
+    if (!btnOrEl) return;
+    const notification = (btnOrEl.classList && btnOrEl.classList.contains('notification'))
+        ? btnOrEl
+        : (btnOrEl.closest ? btnOrEl.closest('.notification') : null);
     if (!notification) return;
 
     notification.classList.remove('show');
     notification.classList.add('hide');
 
     setTimeout(() => {
-        notification.remove();
+        if (notification.parentNode) {
+            notification.remove();
+        }
     }, 400);
 }
 

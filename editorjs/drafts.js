@@ -93,24 +93,35 @@ function showDraftRestoreToast(draft, timeFormatted) {
     const container = document.getElementById('notificationContainer');
     if (!container) return;
 
+    // Убираем старый тост восстановления, если он уже есть в DOM
+    const oldToast = container.querySelector('.draft-restore-toast');
+    if (oldToast) oldToast.remove();
+
     const toast = document.createElement('div');
     toast.className = 'notification info draft-restore-toast';
-    toast.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-left: 4px solid #2196F3; max-width: 480px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);';
 
-    const textSpan = document.createElement('span');
-    textSpan.style.flex = '1';
-    const displayTitle = draft.title ? (draft.title.length > 30 ? draft.title.substring(0, 30) + '...' : draft.title) : 'Без названия';
-    textSpan.innerHTML = `📝 Несохранённый черновик (${timeFormatted}): <b>${escapeHtml(displayTitle)}</b>`;
+    const displayTitle = draft.title ? (draft.title.length > 35 ? draft.title.substring(0, 35) + '...' : draft.title) : (window.t ? window.t('drafts.untitled', 'Без названия') : 'Без названия');
+    const toastTitle = window.t ? window.t('drafts.restore_title', 'Несохранённый черновик') : 'Несохранённый черновик';
+    const restoreBtnText = window.t ? window.t('drafts.restore_btn', 'Восстановить') : 'Восстановить';
+    const closeBtnTitle = window.t ? window.t('common.close', 'Закрыть') : 'Закрыть';
 
-    const actionsDiv = document.createElement('div');
-    actionsDiv.style.display = 'flex';
-    actionsDiv.style.gap = '8px';
-    actionsDiv.style.alignItems = 'center';
+    toast.innerHTML = `
+        <div class="notification-icon">📝</div>
+        <div class="notification-content">
+            <div class="notification-title">${toastTitle}</div>
+            <div class="draft-toast-meta">
+                <span class="draft-toast-name" title="${escapeHtml(draft.title || '')}">${escapeHtml(displayTitle)}</span>
+                <span class="draft-toast-bullet">•</span>
+                <span class="draft-toast-time">${timeFormatted}</span>
+            </div>
+        </div>
+        <div class="draft-actions">
+            <button type="button" class="draft-btn-restore">${restoreBtnText}</button>
+            <button type="button" class="notification-close" title="${closeBtnTitle}">×</button>
+        </div>
+    `;
 
-    const restoreBtn = document.createElement('button');
-    restoreBtn.type = 'button';
-    restoreBtn.textContent = 'Восстановить';
-    restoreBtn.style.cssText = 'background: #2196F3; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;';
+    const restoreBtn = toast.querySelector('.draft-btn-restore');
     restoreBtn.onclick = () => {
         if (draft.title) document.getElementById('title').value = draft.title;
         const ve = document.getElementById('contentVisual');
@@ -126,24 +137,30 @@ function showDraftRestoreToast(draft, timeFormatted) {
             }
         }
         markEditorDirty();
-        showNotification('Локальный черновик успешно восстановлен!', 'success');
-        toast.remove();
+        showNotification(window.t ? window.t('drafts.restored_success', 'Локальный черновик успешно восстановлен!') : 'Локальный черновик успешно восстановлен!', 'success');
+        if (typeof closeNotification === 'function') {
+            closeNotification(toast);
+        } else {
+            toast.remove();
+        }
     };
 
-    const dismissBtn = document.createElement('button');
-    dismissBtn.type = 'button';
-    dismissBtn.textContent = '×';
-    dismissBtn.style.cssText = 'background: transparent; border: none; color: inherit; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px;';
-    dismissBtn.onclick = () => {
+    const closeBtn = toast.querySelector('.notification-close');
+    closeBtn.onclick = () => {
         localStorage.removeItem('npblog_draft_new_post');
-        toast.remove();
+        if (typeof closeNotification === 'function') {
+            closeNotification(toast);
+        } else {
+            toast.remove();
+        }
     };
 
-    actionsDiv.appendChild(restoreBtn);
-    actionsDiv.appendChild(dismissBtn);
-    toast.appendChild(textSpan);
-    toast.appendChild(actionsDiv);
     container.appendChild(toast);
+
+    // Анимация появления
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
 }
 
 window.addEventListener('beforeunload', function (e) {
