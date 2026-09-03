@@ -590,6 +590,7 @@ button:active,
     overflow: hidden;
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
+    table-layout: fixed;
 }
 
 #contentVisual table th {

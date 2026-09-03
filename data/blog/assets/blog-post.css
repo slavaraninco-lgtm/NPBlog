@@ -158,9 +158,12 @@ h1 {
 
 .content table {
     width: 100%;
+    max-width: 100%;
     border-collapse: collapse;
     margin: 20px 0;
     border: 2px solid var(--border-color);
+    table-layout: fixed;
+    box-sizing: border-box;
 }
 
 .content table th,
@@ -168,6 +171,13 @@ h1 {
     padding: 12px;
     text-align: left;
     border: 1px solid var(--border-color);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
 }
 
 .content table th {
@@ -659,6 +669,12 @@ mark[data-marker-color="purple"] {
     
     .overlay-wrapper {
         padding: 20px;
+    }
+
+    .content table th,
+    .content table td {
+        padding: 8px 6px;
+        font-size: 0.9em;
     }
 }
 
