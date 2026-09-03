@@ -244,6 +244,9 @@
                     block.innerHTML = '<br>';
                 }
             });
+
+            // 4. Clean stray empty inline artifacts (without touching active caret)
+            this.cleanDOMArtifacts(editor, true);
         },
 
         /**
@@ -399,7 +402,7 @@
                 }
 
                 const newP = document.createElement('p');
-                if (!afterContent.hasChildNodes() || (afterContent.childNodes.length === 1 && afterContent.textContent === '')) {
+                if (!afterContent.hasChildNodes() || this.isEmpty(afterContent)) {
                     newP.innerHTML = '<br>';
                 } else {
                     newP.appendChild(afterContent);
@@ -407,7 +410,7 @@
 
                 block.parentNode.insertBefore(newP, block.nextSibling);
 
-                if (block.innerHTML.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
+                if (this.isEmpty(block) && !block.querySelector('img, video, audio, iframe')) {
                     block.innerHTML = '<br>';
                 }
 
@@ -585,31 +588,65 @@
                 // If collapsed, check if we are inside the tag to unwrap/escape
                 const existing = this.findAncestorTag(range.startContainer, targetTag);
                 if (existing) {
-                    // Escape formatting tag cleanly
+                    const existingText = existing.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '');
+                    if (existingText.length === 0 && !existing.querySelector('img, video, audio, iframe')) {
+                        // User toggled off an empty format tag -> remove it completely
+                        existing.parentNode.removeChild(existing);
+                        this.saveSelection();
+                        this.updateActiveButtons();
+                        if (typeof saveToHistory === 'function') saveToHistory();
+                        return;
+                    }
+
+                    // Escape formatting tag cleanly into normal text
                     const afterRange = document.createRange();
                     afterRange.setStart(range.startContainer, range.startOffset);
                     afterRange.setEndAfter(existing.lastChild || existing);
                     const afterContent = afterRange.extractContents();
 
-                    const newSpan = document.createElement('span');
-                    newSpan.innerHTML = '&#8203;'; // temporary zero-width space for cursor hold
-                    existing.parentNode.insertBefore(newSpan, existing.nextSibling);
+                    const textNode = document.createTextNode('\u200B');
+                    existing.parentNode.insertBefore(textNode, existing.nextSibling);
 
-                    if (afterContent.hasChildNodes()) {
+                    if (afterContent.hasChildNodes() && !this.isEmpty(afterContent)) {
                         const cloned = existing.cloneNode(false);
                         cloned.appendChild(afterContent);
-                        newSpan.parentNode.insertBefore(cloned, newSpan.nextSibling);
+                        existing.parentNode.insertBefore(cloned, textNode.nextSibling);
                     }
 
-                    this.setCursorToStart(newSpan);
+                    const newRange = document.createRange();
+                    newRange.setStart(textNode, 1);
+                    newRange.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
                     this.saveSelection();
                 } else {
-                    // Create inline empty tag
-                    const el = document.createElement(targetTag);
-                    el.innerHTML = '&#8203;';
-                    range.insertNode(el);
-                    this.setCursorToStart(el);
-                    this.saveSelection();
+                    // Check if current container is already an empty inline tag
+                    let container = range.startContainer;
+                    let emptyInline = null;
+                    if (container.nodeType === Node.TEXT_NODE && container.nodeValue.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length === 0) {
+                        const parent = container.parentNode;
+                        if (parent && parent.id !== 'contentVisual' && !BLOCK_TAGS.includes(parent.tagName.toUpperCase())) {
+                            emptyInline = parent;
+                        }
+                    } else if (container.nodeType === Node.ELEMENT_NODE && !BLOCK_TAGS.includes(container.tagName.toUpperCase()) && container.id !== 'contentVisual') {
+                        if (container.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length === 0) {
+                            emptyInline = container;
+                        }
+                    }
+
+                    if (emptyInline) {
+                        const el = document.createElement(targetTag);
+                        el.appendChild(document.createTextNode('\u200B'));
+                        emptyInline.parentNode.replaceChild(el, emptyInline);
+                        this.setCursorToStart(el);
+                        this.saveSelection();
+                    } else {
+                        const el = document.createElement(targetTag);
+                        el.appendChild(document.createTextNode('\u200B'));
+                        range.insertNode(el);
+                        this.setCursorToStart(el);
+                        this.saveSelection();
+                    }
                 }
                 this.updateActiveButtons();
                 if (typeof saveToHistory === 'function') saveToHistory();
@@ -780,11 +817,28 @@
             const range = sel.getRangeAt(0);
 
             if (range.collapsed) {
-                const span = document.createElement('span');
-                span.style[styleProp] = value;
-                span.innerHTML = '&#8203;';
-                range.insertNode(span);
-                this.setCursorToStart(span);
+                let container = range.startContainer;
+                let emptySpan = null;
+                if (container.nodeType === Node.TEXT_NODE && container.nodeValue.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length === 0) {
+                    if (container.parentNode && container.parentNode.tagName === 'SPAN') {
+                        emptySpan = container.parentNode;
+                    }
+                } else if (container.nodeType === Node.ELEMENT_NODE && container.tagName === 'SPAN') {
+                    if (container.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length === 0) {
+                        emptySpan = container;
+                    }
+                }
+
+                if (emptySpan) {
+                    emptySpan.style[styleProp] = value;
+                    this.setCursorToStart(emptySpan);
+                } else {
+                    const span = document.createElement('span');
+                    span.style[styleProp] = value;
+                    span.appendChild(document.createTextNode('\u200B'));
+                    range.insertNode(span);
+                    this.setCursorToStart(span);
+                }
             } else {
                 try {
                     const contents = range.extractContents();
@@ -880,6 +934,75 @@
         },
 
         /**
+         * Clean up empty inline tags, unwrap plain spans, and remove stray zero-width chars
+         */
+        cleanDOMArtifacts(root, skipSelection = false) {
+            const container = root || this.getEditor();
+            if (!container) return;
+
+            const sel = window.getSelection();
+            const activeNode = (skipSelection && sel && sel.rangeCount > 0) ? sel.getRangeAt(0).startContainer : null;
+
+            // 1. Remove zero-width spaces from text nodes where not needed
+            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+            let textNode;
+            const toRemove = [];
+            while ((textNode = walker.nextNode())) {
+                if (activeNode && textNode === activeNode) continue;
+                const val = textNode.nodeValue;
+                if (/[\u200B\u200C\u200D\uFEFF]/.test(val)) {
+                    const cleaned = val.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+                    if (cleaned.length === 0) {
+                        toRemove.push(textNode);
+                    } else {
+                        textNode.nodeValue = cleaned;
+                    }
+                }
+            }
+            toRemove.forEach(node => {
+                if (node.parentNode) node.parentNode.removeChild(node);
+            });
+
+            // 2. Unwrap useless spans without styling, class, or id
+            container.querySelectorAll('span').forEach(span => {
+                if (span.id === 'customCaret' || span.dataset.npblogAnchor) return;
+                const hasStyle = span.getAttribute('style') && span.getAttribute('style').trim().length > 0;
+                const hasClass = span.getAttribute('class') && span.getAttribute('class').trim().length > 0;
+                const hasId = span.getAttribute('id') && span.getAttribute('id').trim().length > 0;
+                if (!hasStyle && !hasClass && !hasId && span.attributes.length === 0) {
+                    const parent = span.parentNode;
+                    if (parent) {
+                        while (span.firstChild) {
+                            parent.insertBefore(span.firstChild, span);
+                        }
+                        parent.removeChild(span);
+                    }
+                }
+            });
+
+            // 3. Recursively remove empty inline formatting tags
+            const inlineSelectors = 'span, strong, b, em, i, u, s, strike, del, sup, sub, code, mark, a:not([href])';
+            let changed = true;
+            let passes = 0;
+            while (changed && passes < 6) {
+                changed = false;
+                passes++;
+                container.querySelectorAll(inlineSelectors).forEach(el => {
+                    if (activeNode && el.contains(activeNode)) return;
+                    if (el.id === 'customCaret' || el.dataset.npblogAnchor) return;
+                    if (el.querySelector('img, video, audio, iframe, table, svg, canvas, [data-npblog-anchor]')) return;
+                    const text = el.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '');
+                    if (text.length === 0) {
+                        if (el.parentNode) {
+                            el.parentNode.removeChild(el);
+                            changed = true;
+                        }
+                    }
+                });
+            }
+        },
+
+        /**
          * Clean HTML for saving (removes runtime widgets, overlays, resizers, temporary attributes)
          */
         cleanContentForSave(html) {
@@ -909,9 +1032,47 @@
             // Remove selection markers
             temp.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
 
-            // Remove zero-width helper spaces
-            let cleaned = temp.innerHTML.replace(/[\u200B\uFEFF]/g, '');
-            cleaned = cleaned.replace(/(?:[?&]|&amp;)t=\d+/g, '');
+            // Clean DOM artifacts: zero-width spaces, empty inline elements, useless spans
+            this.cleanDOMArtifacts(temp, false);
+
+            // Trim trailing empty paragraphs and blocks at the end of the document
+            while (temp.lastElementChild) {
+                const last = temp.lastElementChild;
+                const tag = last.tagName.toUpperCase();
+                if (tag === 'P' || tag === 'DIV') {
+                    if (this.isEmpty(last)) {
+                        temp.removeChild(last);
+                        continue;
+                    }
+                }
+                break;
+            }
+
+            // Ensure remaining empty paragraphs in the middle contain at least a <br>
+            temp.querySelectorAll('p, div').forEach(block => {
+                if (block.innerHTML.trim() === '') {
+                    block.innerHTML = '<br>';
+                }
+            });
+
+            if (temp.children.length === 0 && temp.textContent.trim() === '') {
+                return '';
+            }
+
+            let cleaned = temp.innerHTML.replace(/(?:[?&]|&amp;)t=\d+/g, '');
+
+            // Second-pass regex safety cleanup for any leftover empty inline tags
+            let prevCleaned;
+            do {
+                prevCleaned = cleaned;
+                cleaned = cleaned.replace(/<(strong|b|em|i|u|s|strike|del|sup|sub|code|span)(?:\s+[^>]*)?>\s*(?:&nbsp;|\u200B|\uFEFF)?\s*<\/\1>/gi, '');
+            } while (cleaned !== prevCleaned);
+
+            // Remove empty paragraphs that only contained empty tags
+            cleaned = cleaned.replace(/<p(?:\s+[^>]*)?>\s*<\/p>/gi, '');
+
+            // Trim trailing empty paragraphs
+            cleaned = cleaned.replace(/(?:<p(?:\s+[^>]*)?>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>\s*)+$/gi, '');
 
             return this.formatHTML(cleaned);
         },
