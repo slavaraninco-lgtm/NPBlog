@@ -493,8 +493,8 @@ if (file_exists($versionFile)) {
     <footer class="editor-bottom-bar" id="editorBottomBar">
         <div class="editor-bottom-bar-left"></div>
         <div class="editor-bottom-bar-right">
-            <!-- Таймер автосохранения (чисто текст) -->
-            <div id="autosaveBadge" onmousedown="event.preventDefault()" style="display: none;">
+            <!-- Таймер автосохранения (чисто текст, кликабельный для открытия менеджера) -->
+            <div id="autosaveBadge" onclick="openAutosaveManager()" onmousedown="event.preventDefault()" style="display: none;" title="Менеджер автосохранений" data-i18n-title="header.menu_autosave_manager">
                 <span id="autosaveBadgeText">Автосохранение через 60с</span>
             </div>
         </div>

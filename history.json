@@ -12,59 +12,7 @@
                 "start": 0,
                 "end": 0
             }
-        },
-        {
-            "visual": "<p>в<\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 1,
-                "end": 1
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<p>всем<\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 4,
-                "end": 4
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<p>всем привет<\/p>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 11,
-                "end": 11
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
-        },
-        {
-            "visual": "<br>",
-            "code": "",
-            "mode": "visual",
-            "visualSelection": {
-                "start": 0,
-                "end": 0
-            },
-            "codeSelection": {
-                "start": 0,
-                "end": 0
-            }
         }
     ],
-    "index": 4
+    "index": 0
 }
