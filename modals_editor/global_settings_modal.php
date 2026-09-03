@@ -416,7 +416,7 @@ if (!isset($availableLanguages)) {
                             <span data-i18n="settings.paths_blog_dirs_title">Директории блогов (data)</span>
                         </h4>
                         <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_blog_dirs_hint">
-                            Укажите пути к папкам данных блогов. При наличии нескольких блогов переключение доступно в боковой панели.
+                            Укажите пути к папкам данных блогов. При наличии нескольких блогов переключение доступно в нижней панели редактора.
                         </p>
                         <div id="blogPathsListContainer" style="margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;">
                             <!-- Динамически заполняется через JS -->

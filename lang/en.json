@@ -243,7 +243,7 @@
     "paths_section_title": "Paths",
     "paths_desc": "Configure paths to blog, backup, and autosave directories on the server.",
     "paths_blog_dirs_title": "Blog Directories (data)",
-    "paths_blog_dirs_hint": "Specify paths to blog data folders. When multiple blogs are configured, switching is available in the side panel.",
+    "paths_blog_dirs_hint": "Specify paths to blog data folders. When multiple blogs are configured, switching is available in the bottom bar.",
     "paths_add_btn": "Add Blog Path",
     "paths_backup_dir_title": "Article Backup Directory (data_backup)",
     "paths_backup_dir_hint": "Specify the server path to store article backups (e.g.: C:\\xampp\\htdocs\\data_backup or data_backup). If left empty, backups are stored in the default data_backup folder.",

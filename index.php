@@ -2880,7 +2880,8 @@ function addBlogPathRow(value = '') {
     deleteBtn.type = 'button';
     deleteBtn.className = 'global-action-btn';
     deleteBtn.style.cssText = 'background: #ef4444; color: #ffffff; border-color: #ef4444; padding: 8px 14px; font-size: 13px; cursor: pointer; border-radius: 8px;';
-    deleteBtn.textContent = 'Удалить';
+    deleteBtn.setAttribute('data-i18n', 'common.delete');
+    deleteBtn.textContent = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
     deleteBtn.onclick = function() {
         removeBlogPathRow(this);
     };
