@@ -15,15 +15,15 @@
             "row": 1
         },
         {
-            "id": "modeActionsDivider",
-            "name": "modeActionsDivider",
+            "id": "headerEditorActions",
+            "name": "headerEditorActions",
             "visible": true,
             "inDropdown": false,
             "row": 1
         },
         {
-            "id": "headerEditorActions",
-            "name": "\n                \n                    \n                        \n                        \n                    \n                \n                \n                    \n                        \n                        \n                    \n                \n            ",
+            "id": "modeActionsDivider",
+            "name": "modeActionsDivider",
             "visible": true,
             "inDropdown": false,
             "row": 1
