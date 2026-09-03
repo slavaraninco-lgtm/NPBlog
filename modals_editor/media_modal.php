@@ -52,7 +52,7 @@
                 <div class="modal-form-group">
                     <label class="modal-label modal-label-required" for="mediaUrl" data-i18n="modals.media_video_url_label">Ссылка на видео:</label>
                     <input type="text" id="mediaUrl" class="modal-input" placeholder="Вставьте ссылку на YouTube или Vimeo" data-i18n-placeholder="modals.media_video_url_ph" onkeydown="if(event.key==='Enter') insertMedia()">
-                    <div class="modal-help-text">Поддерживаются ссылки на YouTube, Vimeo или прямые URL на видеофайлы.</div>
+                    <div class="modal-help-text" data-i18n="modals.media_video_url_hint">Поддерживаются ссылки на YouTube, Vimeo или прямые URL на видеофайлы.</div>
                 </div>
             </div>
 
@@ -105,7 +105,7 @@
                 <div class="modal-form-group">
                     <label class="modal-label modal-label-required" for="audioStreamUrl" data-i18n="modals.media_stream_url_label">URL аудиопотока (радио / прямой поток):</label>
                     <input type="text" id="audioStreamUrl" class="modal-input" placeholder="Вставьте ссылку на аудиопоток (например, радио или прямой URL)" data-i18n-placeholder="modals.media_stream_url_ph" onkeydown="if(event.key==='Enter') insertMedia()">
-                    <div class="modal-help-text">Прямой URL потокового радио или трансляции.</div>
+                    <div class="modal-help-text" data-i18n="modals.media_stream_url_hint">Прямой URL потокового радио или трансляции.</div>
                 </div>
             </div>
         </div>

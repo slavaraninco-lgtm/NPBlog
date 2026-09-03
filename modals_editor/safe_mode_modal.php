@@ -152,7 +152,7 @@ body.safe-mode-active {
                 <span style="font-size: 20px; line-height: 1; flex-shrink: 0;">⚠️</span>
                 <div style="flex: 1; min-width: 0;">
                     <div style="font-weight: 700; font-size: 14px; color: #f87171; margin-bottom: 4px;" data-i18n="safemode.error_detected_title">Обнаружена ошибка / отсутствуют файлы:</div>
-                    <div id="safeModeErrorSummary" style="color: #fca5a5; font-family: monospace; font-size: 12.5px; word-break: break-word; white-space: pre-wrap;">Неизвестная ошибка выполнения</div>
+                    <div id="safeModeErrorSummary" style="color: #fca5a5; font-family: monospace; font-size: 12.5px; word-break: break-word; white-space: pre-wrap;" data-i18n="safemode.unknown_runtime_error">Неизвестная ошибка выполнения</div>
                     
                     <details id="safeModeErrorDetailsWrap" style="margin-top: 10px; border-top: 1px dashed rgba(239, 68, 68, 0.3); padding-top: 8px;">
                         <summary style="cursor: pointer; font-size: 12px; color: #9ca3af; user-select: none;" data-i18n="safemode.error_details_toggle">Технические подробности (стек ошибки)</summary>
@@ -197,12 +197,12 @@ body.safe-mode-active {
                     </div>
 
                     <div style="margin-bottom: 14px;">
-                        <div id="safeModeFilesCountLabel" style="font-size: 12px; font-weight: 600; color: #d1d5db; margin-bottom: 6px;">Файлы для восстановления:</div>
+                        <div id="safeModeFilesCountLabel" style="font-size: 12px; font-weight: 600; color: #d1d5db; margin-bottom: 6px;" data-i18n="safemode.files_to_restore_label">Файлы для восстановления:</div>
                         <div id="safeModeFilesList" style="max-height: 130px; overflow-y: auto; background: rgba(0,0,0,0.35); border: 1px solid #374151; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-family: monospace; line-height: 1.6; color: #9ca3af;"></div>
                     </div>
 
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                        <button type="button" onclick="resetSafeModeUploadState()" class="safe-mode-btn safe-mode-btn-ghost">Отмена</button>
+                        <button type="button" onclick="resetSafeModeUploadState()" class="safe-mode-btn safe-mode-btn-ghost" data-i18n="common.cancel">Отмена</button>
                         <button type="button" id="safeModeStartRestoreBtn" onclick="startSafeModeRestoreProcess()" class="safe-mode-btn safe-mode-btn-primary" data-i18n="safemode.start_restore_btn">
                             🚀 Начать восстановление системы
                         </button>
@@ -421,7 +421,8 @@ async function processSafeModeZipFile(file) {
                 if (data.files && data.files.length > 0) {
                     filesList.innerHTML = data.files.map(f => `<div>📄 ${escapeHtmlSafeMode(f)}</div>`).join('');
                 } else {
-                    filesList.innerHTML = '<div>Нет файлов для замены</div>';
+                    const noFilesMsg = window.t ? window.t('safemode.no_files_to_replace', 'Нет файлов для замены') : 'Нет файлов для замены';
+                    filesList.innerHTML = '<div>' + noFilesMsg + '</div>';
                 }
             }
 

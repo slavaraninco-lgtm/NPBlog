@@ -32,14 +32,14 @@
                 <div class="modal-form-group">
                     <label class="modal-label modal-label-required" for="tableRows" data-i18n="modals.table_rows">Количество строк:</label>
                     <input type="number" id="tableRows" class="modal-input" min="1" max="20" value="3" placeholder="Введите количество строк" data-i18n-placeholder="modals.table_rows_ph" autofocus onkeydown="if(event.key==='Enter') insertTable()">
-                    <div class="modal-help-text">От 1 до 20 строк</div>
+                    <div class="modal-help-text" data-i18n="modals.table_rows_hint">От 1 до 20 строк</div>
                 </div>
 
                 <!-- Количество столбцов -->
                 <div class="modal-form-group">
                     <label class="modal-label modal-label-required" for="tableCols" data-i18n="modals.table_cols">Количество столбцов:</label>
                     <input type="number" id="tableCols" class="modal-input" min="1" max="7" value="3" placeholder="Введите количество столбцов" data-i18n-placeholder="modals.table_cols_ph" onkeydown="if(event.key==='Enter') insertTable()">
-                    <div class="modal-help-text">От 1 до 7 столбцов</div>
+                    <div class="modal-help-text" data-i18n="modals.table_cols_hint">От 1 до 7 столбцов</div>
                 </div>
             </div>
         </div>

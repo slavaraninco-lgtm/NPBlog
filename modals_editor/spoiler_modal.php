@@ -30,7 +30,7 @@
             <div class="modal-form-group">
                 <label class="modal-label modal-label-required" for="spoilerTitle" data-i18n="modals.spoiler_block_title">Заголовок блока:</label>
                 <input type="text" id="spoilerTitle" class="modal-input" placeholder="Например: Подробности" data-i18n-placeholder="modals.spoiler_ph" autofocus onkeydown="if(event.key==='Enter') insertSpoiler()">
-                <div class="modal-help-text">Если текст в статье был предварительно выделен, он станет содержимым спойлера.</div>
+                <div class="modal-help-text" data-i18n="modals.spoiler_hint">Если текст в статье был предварительно выделен, он станет содержимым спойлера.</div>
             </div>
         </div>
 

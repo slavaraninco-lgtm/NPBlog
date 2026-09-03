@@ -603,7 +603,7 @@ if (!isset($availableLanguages)) {
 
                     <div style="margin-bottom: 18px;">
                         <label class="modal-label" for="seoDefaultDescription" data-i18n="settings.seo_default_desc_label">Описание по умолчанию (Default Description):</label>
-                        <textarea id="seoDefaultDescription" placeholder="Интересные статьи о программировании и технологиях." class="modal-textarea" style="height: 80px;"></textarea>
+                        <textarea id="seoDefaultDescription" placeholder="Интересные статьи о программировании и технологиях." data-i18n-placeholder="settings.seo_default_desc_ph" class="modal-textarea" style="height: 80px;"></textarea>
                         <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin-top: 4px;" data-i18n-html="settings.seo_default_desc_hint">
                             Описание, которое будет использоваться, если статья слишком короткая или не содержит текста.
                         </p>

@@ -24,8 +24,8 @@
                 <button type="button" onclick="applyBtnPreset('editor')" class="modal-btn modal-btn-ghost" style="padding: 6px 14px; font-size: 13px; display: flex; align-items: center; gap: 6px;" title="Сбросить к стандарту" data-i18n-title="modals.btn_reset_title">
                     <span data-i18n="modals.btn_reset">Сбросить</span>
                 </button>
-                <button type="button" id="customButtonSubmitBtn" onclick="insertCustomButtonToEditor()" class="modal-btn modal-btn-primary" style="padding: 6px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px;" data-i18n="modals.btn_submit">
-                    <span>💾</span> <span>Вставить кнопку</span>
+                <button type="button" id="customButtonSubmitBtn" onclick="insertCustomButtonToEditor()" class="modal-btn modal-btn-primary" style="padding: 6px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                    <span>💾</span> <span data-i18n="modals.btn_submit">Вставить кнопку</span>
                 </button>
                 <button type="button" class="modal-close-btn" onclick="closeCustomButtonDialog()" data-modal-close title="Закрыть">×</button>
             </div>

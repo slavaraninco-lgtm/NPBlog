@@ -33,7 +33,7 @@
         <!-- Подвал -->
         <div class="modal-footer">
             <button type="button" class="modal-btn modal-btn-ghost" onclick="closeNumberingCheck()" data-modal-close data-i18n="common.close">Закрыть</button>
-            <button type="button" class="modal-btn modal-btn-primary" id="fixNumberingBtn" style="display:none;" onclick="fixNumbering()">Исправить</button>
+            <button type="button" class="modal-btn modal-btn-primary" id="fixNumberingBtn" style="display:none;" onclick="fixNumbering()" data-i18n="modals.numbering_fix_btn">Исправить</button>
         </div>
     </div>
 </div>

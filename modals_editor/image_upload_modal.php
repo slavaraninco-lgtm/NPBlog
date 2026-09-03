@@ -61,7 +61,7 @@
                 <div class="modal-form-group">
                     <label class="modal-label" for="imageUrl" data-i18n="modals.image_url_label">URL изображения</label>
                     <textarea id="imageUrl" class="modal-textarea" style="min-height: 75px;" placeholder="Введите URL изображения (несколько — каждое с новой строки или через запятую)" data-i18n-placeholder="modals.image_url_ph"></textarea>
-                    <div class="modal-help-text">Можно указать прямые ссылки на картинки в интернете.</div>
+                    <div class="modal-help-text" data-i18n="modals.image_url_hint">Можно указать прямые ссылки на картинки в интернете.</div>
                 </div>
             </div>
             
@@ -99,9 +99,9 @@
             <div id="customSizeInputs" style="display: none; margin-top: 10px;">
                 <div class="modal-grid-2">
                     <div class="modal-form-group">
-                        <label class="modal-label">Ширина</label>
+                        <label class="modal-label" data-i18n="common.width">Ширина</label>
                         <div style="display: flex; gap: 6px;">
-                            <input type="number" id="customWidth" class="modal-input" placeholder="Ширина">
+                            <input type="number" id="customWidth" class="modal-input" placeholder="Ширина" data-i18n-placeholder="common.width">
                             <select id="widthUnit" class="modal-select" style="width: 70px; flex-shrink: 0;">
                                 <option value="px">px</option>
                                 <option value="%">%</option>
@@ -109,9 +109,9 @@
                         </div>
                     </div>
                     <div class="modal-form-group">
-                        <label class="modal-label">Высота</label>
+                        <label class="modal-label" data-i18n="common.height">Высота</label>
                         <div style="display: flex; gap: 6px;">
-                            <input type="number" id="customHeight" class="modal-input" placeholder="Высота">
+                            <input type="number" id="customHeight" class="modal-input" placeholder="Высота" data-i18n-placeholder="common.height">
                             <select id="heightUnit" class="modal-select" style="width: 70px; flex-shrink: 0;">
                                 <option value="px">px</option>
                                 <option value="%">%</option>
@@ -133,7 +133,7 @@
                     <span style="display: inline-flex; align-items: center; gap: 6px;">
                         
                         <span data-i18n="modals.image_gallery_scroll">Вставить как карусель (галерею с пролистыванием)</span>
-                        <span style="font-size: 11px; opacity: 0.65; font-weight: normal;">(для 2+ изображений)</span>
+                        <span style="font-size: 11px; opacity: 0.65; font-weight: normal;" data-i18n="modals.image_gallery_min">(для 2+ изображений)</span>
                     </span>
                 </label>
             </div>

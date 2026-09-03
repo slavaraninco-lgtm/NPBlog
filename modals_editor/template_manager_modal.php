@@ -76,47 +76,47 @@
                 <tbody>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{TITLE}}</td>
-                        <td style="padding: 8px;">Вставляет заголовок вашей статьи (встречается в &lt;title&gt; и &lt;h1&gt;)</td>
+                        <td style="padding: 8px;" data-i18n-html="modals.tpl_ph_title_desc">Вставляет заголовок вашей статьи (встречается в &lt;title&gt; и &lt;h1&gt;)</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{DATE}}</td>
-                        <td style="padding: 8px;">Дата публикации и последнего редактирования статьи</td>
+                        <td style="padding: 8px;" data-i18n="modals.tpl_ph_date_desc">Дата публикации и последнего редактирования статьи</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{POST_ID}}</td>
-                        <td style="padding: 8px;">Идентификатор статьи (записывается в метатег post-id)</td>
+                        <td style="padding: 8px;" data-i18n="modals.tpl_ph_post_id_desc">Идентификатор статьи (записывается в метатег post-id)</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{CONTENT}}</td>
-                        <td style="padding: 8px;">Содержимое статьи (HTML-код, сформированный визуальным редактором)</td>
+                        <td style="padding: 8px;" data-i18n="modals.tpl_ph_content_desc">Содержимое статьи (HTML-код, сформированный визуальным редактором)</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{META_TAGS}}</td>
-                        <td style="padding: 8px;">SEO-метатеги (description, OpenGraph для репостов, Twitter Cards)</td>
+                        <td style="padding: 8px;" data-i18n="modals.tpl_ph_meta_desc">SEO-метатеги (description, OpenGraph для репостов, Twitter Cards)</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{CUSTOM_FONTS}}</td>
-                        <td style="padding: 8px;">Кастомные шрифты (правила @font-face, загруженные через панель)</td>
+                        <td style="padding: 8px;" data-i18n="modals.tpl_ph_fonts_desc">Кастомные шрифты (правила @font-face, загруженные через панель)</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{BODY_STYLE}}</td>
-                        <td style="padding: 8px;">Индивидуальный стиль страницы/фона для тега &lt;body&gt;</td>
+                        <td style="padding: 8px;" data-i18n-html="modals.tpl_ph_body_style_desc">Индивидуальный стиль страницы/фона для тега &lt;body&gt;</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{CONTENT_WRAPPER_START}}</td>
-                        <td style="padding: 8px;">Начало блоков подложки и фонового оверлея</td>
+                        <td style="padding: 8px;" data-i18n="modals.tpl_ph_wrapper_start_desc">Начало блоков подложки и фонового оверлея</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #d63384;">{{CONTENT_WRAPPER_END}}</td>
-                        <td style="padding: 8px;">Конец блоков подложки и фонового оверлея</td>
+                        <td style="padding: 8px;" data-i18n="modals.tpl_ph_wrapper_end_desc">Конец блоков подложки и фонового оверлея</td>
                     </tr>
                 </tbody>
             </table>
 
             <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 15px; font-weight: 600; color: var(--accent-color, #4CAF50);" data-i18n="modals.tpl_css_req_title">2. CSS-требования (Стилизация элементов)</h4>
-            <p style="margin-bottom: 10px;">Для корректного отображения всех функций редактора в шаблон рекомендуется подключить стандартный файл стилей:</p>
+            <p style="margin-bottom: 10px;" data-i18n="modals.tpl_css_req_intro">Для корректного отображения всех функций редактора в шаблон рекомендуется подключить стандартный файл стилей:</p>
             <pre style="background: #272822; color: #f8f8f2; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; margin-bottom: 15px; overflow-x: auto;">&lt;link rel="stylesheet" href="assets/blog-post.css?v=1.0.6"&gt;</pre>
-            <p style="margin-bottom: 10px;">Если вы пишете свои стили с нуля, убедитесь, что реализовали оформление для следующих классов:</p>
+            <p style="margin-bottom: 10px;" data-i18n="modals.tpl_css_req_custom">Если вы пишете свои стили с нуля, убедитесь, что реализовали оформление для следующих классов:</p>
             <ul style="padding-left: 20px; margin-bottom: 25px; display: flex; flex-direction: column; gap: 8px;">
                 <li><strong>Таблицы</strong> (классы `.content table`, `th`, `td`): границы, отступы, выравнивание текста влево.</li>
                 <li><strong>Спойлеры / Сворачиваемые списки</strong>: стилизация тегов `.spoiler-block`, `.spoiler-title` (курсор `pointer`, треугольный маркер) и `.spoiler-content` (анимация появления).</li>
@@ -127,9 +127,9 @@
             </ul>
 
             <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 15px; font-weight: 600; color: var(--accent-color, #4CAF50);" data-i18n="modals.tpl_js_req_title">3. JS-требования (Интерактив)</h4>
-            <p style="margin-bottom: 10px;">Для работы интерактивных элементов (смена темы оформления, просмотр картинок в полноэкранном модальном окне с зумом) подключите скрипт:</p>
+            <p style="margin-bottom: 10px;" data-i18n="modals.tpl_js_req_intro">Для работы интерактивных элементов (смена темы оформления, просмотр картинок в полноэкранном модальном окне с зумом) подключите скрипт:</p>
             <pre style="background: #272822; color: #f8f8f2; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; margin-bottom: 15px; overflow-x: auto;">&lt;script src="assets/blog-post.js" defer&gt;&lt;/script&gt;</pre>
-            <p style="margin-bottom: 10px;">А также скопируйте из стандартного шаблона структуру полноэкранного модального окна для просмотра картинок:</p>
+            <p style="margin-bottom: 10px;" data-i18n="modals.tpl_js_req_modal_desc">А также скопируйте из стандартного шаблона структуру полноэкранного модального окна для просмотра картинок:</p>
             <pre style="background: #272822; color: #f8f8f2; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 11px; margin-bottom: 15px; overflow-x: auto; max-height: 200px; overflow-y: auto;">&lt;div class="image-modal" id="imageModal"&gt;
     &lt;button class="image-modal-close" onclick="closeImageModal()"&gt;×&lt;/button&gt;
     &lt;div class="image-modal-container" id="imageContainer"&gt;

@@ -1283,7 +1283,8 @@ function loadRssSection() {
         })
         .catch(err => {
             console.error(err);
-            previewContainer.innerHTML = '<div style="font-size: 14px; color: #f44336; font-weight: 500;">Ошибка загрузки превью виджета</div>';
+            const errMsg = window.t ? window.t('settings.rss_preview_error', 'Ошибка загрузки превью виджета') : 'Ошибка загрузки превью виджета';
+            previewContainer.innerHTML = '<div style="font-size: 14px; color: #f44336; font-weight: 500;">' + errMsg + '</div>';
         });
 }
 

@@ -600,7 +600,7 @@ if (file_exists($blogViewSettingsFile)) {
                             <div id="setupAutosaveIntervalWrap" style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
                                 <span style="font-size: 12px; opacity: 0.8;" data-i18n="setup.autosave_interval_label">Интервал:</span>
                                 <input type="number" id="setupAutosaveInterval" class="modal-input" value="60" min="10" max="600" style="width: 80px; padding: 4px 8px; font-size: 13px; height: 30px;">
-                                <span style="font-size: 12px; opacity: 0.6;">сек.</span>
+                                <span style="font-size: 12px; opacity: 0.6;" data-i18n="setup.seconds_short">сек.</span>
                             </div>
                         </div>
                     </div>
@@ -613,7 +613,7 @@ if (file_exists($blogViewSettingsFile)) {
                     </label>
                     <div style="display: flex; gap: 8px; align-items: stretch;">
                         <input type="text" id="setupDataPath" class="modal-input" value="<?= htmlspecialchars($defaultDataPath) ?>" placeholder="C:\xampp\htdocs\data или data" data-i18n-placeholder="setup.data_path_ph" required autocomplete="off" style="font-family: monospace; font-size: 13px;" onkeydown="if(event.key==='Enter') goToSetupStep(2)">
-                        <button type="button" class="modal-btn modal-btn-secondary" onclick="resetSetupDataPathToDefault()" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" title="Восстановить путь по умолчанию">По умолч.</button>
+                        <button type="button" class="modal-btn modal-btn-secondary" onclick="resetSetupDataPathToDefault()" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" title="Восстановить путь по умолчанию" data-i18n="setup.default_btn_short">По умолч.</button>
                     </div>
                     <div class="modal-help-text" style="font-size: 11.5px; opacity: 0.7; margin-top: 5px;" data-i18n="setup.data_path_hint">Директория на сервере для хранения статей, файлов и настроек</div>
                 </div>
@@ -643,7 +643,7 @@ if (file_exists($blogViewSettingsFile)) {
                         </div>
                         <div>
                             <span style="font-size: 14px; font-weight: 600; color: var(--text-color);" data-i18n="setup.sec_pwd_toggle">Включить защиту паролем</span>
-                            <div style="font-size: 11.5px; opacity: 0.6; margin-top: 2px;">Запрашивать пароль при каждом открытии редактора</div>
+                            <div style="font-size: 11.5px; opacity: 0.6; margin-top: 2px;" data-i18n="setup.sec_pwd_subtext">Запрашивать пароль при каждом открытии редактора</div>
                         </div>
                     </label>
 

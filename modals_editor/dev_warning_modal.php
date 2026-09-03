@@ -25,10 +25,10 @@
 
         <!-- Тело -->
         <div class="modal-body">
-            <p class="modal-text" style="font-weight: 500; margin-bottom: 10px;">
+            <p class="modal-text" style="font-weight: 500; margin-bottom: 10px;" data-i18n-html="modals.dev_warning_text1">
                 Вы используете <strong>Development (разрабатываемую)</strong> сборку NPBlog.
             </p>
-            <p class="modal-text" style="font-size: 13px; opacity: 0.85;">
+            <p class="modal-text" style="font-size: 13px; opacity: 0.85;" data-i18n-html="modals.dev_warning_text2">
                 Эта версия может быть <strong>нестабильной</strong>, содержать недоработки и незавершенные функции. Настоятельно рекомендуется периодически делать бэкапы ваших статей и файлов.
             </p>
         </div>

@@ -46,7 +46,7 @@
                 </div>
 
                 <div class="modal-form-group" style="margin-bottom: 12px;">
-                    <label class="modal-label" for="customCellColorInput">Произвольный цвет:</label>
+                    <label class="modal-label" for="customCellColorInput" data-i18n="common.custom_color">Произвольный цвет:</label>
                     <input type="color" id="customCellColorInput" value="#ffffff" onchange="setCellColor(this.value)" class="modal-input" style="height: 38px; padding: 2px 4px; cursor: pointer; width: 100%;">
                 </div>
 

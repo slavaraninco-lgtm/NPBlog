@@ -49,14 +49,19 @@ function renderTemplatesGrid() {
         // Build badges
         let badges = '';
         if (tpl.name === 'main') {
-            badges += `<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">Главный</span>`;
+            const badgeMainText = window.t ? window.t('modals.tpl_badge_main', 'Главный') : 'Главный';
+            badges += `<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">${badgeMainText}</span>`;
         }
         if (tpl.name === defaultTemplateName) {
-            badges += `<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">По умолчанию</span>`;
+            const badgeDefText = window.t ? window.t('modals.tpl_badge_default', 'По умолчанию') : 'По умолчанию';
+            badges += `<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">${badgeDefText}</span>`;
         }
 
         // Generate miniature preview HTML
         const previewHtml = getTemplatePreviewHtml(tpl.code);
+
+        const cardTitle = (tpl.name === 'main' && window.t) ? window.t('modals.tpl_default_name', tpl.title) : tpl.title;
+        const cardDesc = (tpl.name === 'main' && window.t) ? window.t('settings.tpl_default_desc', tpl.description) : (tpl.description || (window.t ? window.t('common.no_description', 'Нет описания') : 'Нет описания'));
 
         card.innerHTML = `
                 <div class="template-preview-card-wrap">
@@ -65,11 +70,11 @@ function renderTemplatesGrid() {
                 </div>
                 <div style="padding: 12px; flex: 1; display: flex; flex-direction: column; gap: 6px;">
                     <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                        <span style="color: var(--text-color);">${tpl.title}</span>
+                        <span style="color: var(--text-color);">${cardTitle}</span>
                         <div style="display: flex; gap: 2px;">${badges}</div>
                     </div>
                     <div style="font-size: 12px; opacity: 0.7; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 34px; color: var(--text-color);">
-                        ${tpl.description || 'Нет описания'}
+                        ${cardDesc}
                     </div>
                 </div>
             `;
@@ -178,7 +183,9 @@ function openTemplateDetails(name) {
     const tpl = templatesList.find(t => t.name === name);
     if (!tpl) return;
 
-    document.getElementById('detailsTemplateTitle').textContent = `Детали шаблона: ${tpl.title}`;
+    const prefix = window.t ? window.t('modals.tpl_details_title_prefix', 'Детали шаблона: ') : 'Детали шаблона: ';
+    const title = (tpl.name === 'main' && window.t) ? window.t('modals.tpl_default_name', tpl.title) : tpl.title;
+    document.getElementById('detailsTemplateTitle').textContent = `${prefix}${title}`;
     document.getElementById('detailsTemplateNameInput').value = tpl.title;
     document.getElementById('detailsTemplateNameInput').disabled = tpl.is_system;
     document.getElementById('detailsTemplateDescriptionInput').value = tpl.description || '';

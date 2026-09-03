@@ -59,9 +59,9 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
                     </div>
                     <div style="font-size: 12px; line-height: 1.6; opacity: 0.9;">
                         <span id="ftpSavedSummary">
-                            <strong>Сервер:</strong> <?= htmlspecialchars($savedFtpCredentials['ftpServer'] ?? '') ?> | 
-                            <strong>Пользователь:</strong> <?= htmlspecialchars($savedFtpCredentials['ftpUsername'] ?? '') ?> | 
-                            <strong>Каталог:</strong> <?= htmlspecialchars($savedFtpCredentials['ftpDirectory'] ?? '') ?>
+                            <strong><span data-i18n="modals.ftp_server_title">Сервер:</span></strong> <span id="ftpSavedServerText"><?= htmlspecialchars($savedFtpCredentials['ftpServer'] ?? '') ?></span> | 
+                            <strong><span data-i18n="modals.ftp_user_title">Пользователь:</span></strong> <span id="ftpSavedUserText"><?= htmlspecialchars($savedFtpCredentials['ftpUsername'] ?? '') ?></span> | 
+                            <strong><span data-i18n="modals.ftp_dir_title">Каталог:</span></strong> <span id="ftpSavedDirText"><?= htmlspecialchars($savedFtpCredentials['ftpDirectory'] ?? '') ?></span>
                         </span>
                     </div>
                 </div>
@@ -105,7 +105,7 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
                         <div style="position: relative; display: flex; align-items: center;">
                             <input type="password" id="ftpModalPassword" class="modal-input" style="padding-right: 40px;"
                                    placeholder="••••••••" data-i18n-placeholder="modals.ftp_password_ph" required autocomplete="current-password">
-                            <button type="button" onclick="toggleFtpModalPassword()" style="position: absolute; right: 8px; background: transparent; border: none; font-size: 16px; cursor: pointer; opacity: 0.6; padding: 4px;" title="Показать/скрыть пароль">👁️</button>
+                            <button type="button" onclick="toggleFtpModalPassword()" style="position: absolute; right: 8px; background: transparent; border: none; font-size: 16px; cursor: pointer; opacity: 0.6; padding: 4px;" title="Показать/скрыть пароль" data-i18n-title="modals.ftp_toggle_pw">👁️</button>
                         </div>
                     </div>
                     <div class="modal-form-group" style="margin-bottom: 0;">
@@ -146,7 +146,7 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
                     <span class="modal-alert-icon" id="ftpModalStatusIcon">ℹ️</span>
                     <div class="modal-alert-content">
                         <div class="modal-alert-title" id="ftpModalStatusTitle" data-i18n="modals.ftp_status_ready">Готов к передаче файлов</div>
-                        <div id="ftpModalStatusSubtext" style="font-size: 12px; opacity: 0.85;">Нажмите кнопку «Начать загрузку» для запуска процесса.</div>
+                        <div id="ftpModalStatusSubtext" style="font-size: 12px; opacity: 0.85;" data-i18n="modals.ftp_status_ready_sub">Нажмите кнопку «Начать загрузку» для запуска процесса.</div>
                     </div>
                 </div>
 
@@ -157,7 +157,7 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
                         <span id="ftpModalProgressPercent" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--text-color);">0%</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-top: 6px; opacity: 0.85;">
-                        <span id="ftpModalProgressStats">Загружено: 0 / 0</span>
+                        <span id="ftpModalProgressStats" data-i18n="modals.ftp_progress_initial">Загружено: 0 / 0</span>
                         <span id="ftpModalCurrentFile" style="max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace;">-</span>
                     </div>
                 </div>
@@ -165,11 +165,11 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
                 <!-- Логи -->
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <label class="modal-label" style="margin-bottom: 0;">Терминал процесса:</label>
-                        <button type="button" onclick="clearFtpModalLogs()" class="modal-btn modal-btn-ghost" style="padding: 2px 8px; font-size: 11px;">Очистить логи</button>
+                        <label class="modal-label" style="margin-bottom: 0;" data-i18n="modals.ftp_terminal_label">Терминал процесса:</label>
+                        <button type="button" onclick="clearFtpModalLogs()" class="modal-btn modal-btn-ghost" style="padding: 2px 8px; font-size: 11px;" data-i18n="modals.ftp_clear_logs">Очистить логи</button>
                     </div>
                     <div id="ftpModalLogsContainer" style="max-height: 280px; min-height: 180px; overflow-y: auto; background: var(--bg-card, rgba(0,0,0,0.06)); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
-                        <div style="opacity: 0.5; text-align: center; padding: 20px;">Логи появятся здесь после запуска передачи...</div>
+                        <div style="opacity: 0.5; text-align: center; padding: 20px;" data-i18n="modals.ftp_logs_placeholder">Логи появятся здесь после запуска передачи...</div>
                     </div>
                 </div>
             </div>
@@ -203,7 +203,8 @@ function openFtpModal() {
 
 function closeFtpModal() {
     if (ftpUploadActive) {
-        if (!confirm('Процесс загрузки на FTP еще продолжается. Вы уверены, что хотите закрыть окно?')) {
+        const confirmMsg = window.t ? window.t('modals.ftp_confirm_close', 'Процесс загрузки на FTP еще продолжается. Вы уверены, что хотите закрыть окно?') : 'Процесс загрузки на FTP еще продолжается. Вы уверены, что хотите закрыть окно?';
+        if (!confirm(confirmMsg)) {
             return;
         }
     }
@@ -224,7 +225,8 @@ function toggleFtpModalPassword() {
 
 function clearFtpModalLogs() {
     const logs = document.getElementById('ftpModalLogsContainer');
-    if (logs) logs.innerHTML = '<div style="opacity: 0.5; text-align: center; padding: 20px;">Логи очищены</div>';
+    const clearedMsg = window.t ? window.t('modals.ftp_logs_cleared', 'Логи очищены') : 'Логи очищены';
+    if (logs) logs.innerHTML = '<div style="opacity: 0.5; text-align: center; padding: 20px;">' + clearedMsg + '</div>';
 }
 
 function addFtpModalLog(message, level = 'info') {
@@ -331,8 +333,10 @@ function saveFtpModalSettingsOnly() {
             const box = document.getElementById('ftpSavedInfoBox');
             if (box) {
                 box.style.display = 'block';
-                const summary = document.getElementById('ftpSavedSummary');
-                if (summary) summary.innerHTML = `<strong>Сервер:</strong> ${ftpServer} | <strong>Пользователь:</strong> ${ftpUsername} | <strong>Каталог:</strong> ${ftpDirectory}`;
+                const srvLabel = window.t ? window.t('modals.ftp_server_title', 'Сервер:') : 'Сервер:';
+                const usrLabel = window.t ? window.t('modals.ftp_user_title', 'Пользователь:') : 'Пользователь:';
+                const dirLabel = window.t ? window.t('modals.ftp_dir_title', 'Каталог:') : 'Каталог:';
+                if (summary) summary.innerHTML = `<strong>${srvLabel}</strong> ${ftpServer} | <strong>${usrLabel}</strong> ${ftpUsername} | <strong>${dirLabel}</strong> ${ftpDirectory}`;
             }
             const resetBtn = document.getElementById('ftpModalResetBtn');
             if (resetBtn) resetBtn.style.display = 'inline-flex';
@@ -516,7 +520,8 @@ function startFtpModalUpload() {
                                 const percent = event.data.percent;
                                 progressBar.style.width = percent + '%';
                                 progressPercent.textContent = percent + '%';
-                                progressStats.textContent = `Загружено: ${event.data.current} / ${event.data.total}`;
+                                const statsFormat = window.t ? window.t('modals.ftp_uploaded_count', 'Загружено: {current} / {total}') : 'Загружено: {current} / {total}';
+                                progressStats.textContent = statsFormat.replace('{current}', event.data.current).replace('{total}', event.data.total);
                                 statusTitle.textContent = (window.t ? window.t('modals.ftp_status_uploading', 'Передача файлов...') : 'Передача файлов...') + ` (${percent}%)`;
                             } else if (event.type === 'complete') {
                                 if (event.data.failed === 0) {
@@ -528,7 +533,7 @@ function startFtpModalUpload() {
                                 } else {
                                     statusBanner.className = 'modal-alert modal-alert-danger';
                                     statusIcon.textContent = '⚠️';
-                                    statusTitle.textContent = 'Завершено с ошибками';
+                                    statusTitle.textContent = window.t ? window.t('modals.ftp_status_errors', 'Завершено с ошибками') : 'Завершено с ошибками';
                                     statusSubtext.textContent = event.data.message;
                                     if (window.showNotification) showNotification(event.data.message, 'error');
                                 }
@@ -536,9 +541,10 @@ function startFtpModalUpload() {
                             } else if (event.type === 'error') {
                                 statusBanner.className = 'modal-alert modal-alert-danger';
                                 statusIcon.textContent = '🛑';
-                                statusTitle.textContent = 'Ошибка передачи';
+                                statusTitle.textContent = window.t ? window.t('modals.ftp_status_error', 'Ошибка передачи') : 'Ошибка передачи';
                                 statusSubtext.textContent = event.data.message;
-                                addFtpModalLog('Ошибка: ' + event.data.message, 'error');
+                                const errPrefix = window.t ? window.t('modals.ftp_error_prefix', 'Ошибка: ') : 'Ошибка: ';
+                                addFtpModalLog(errPrefix + event.data.message, 'error');
                                 if (window.showNotification) showNotification('Ошибка FTP: ' + event.data.message, 'error');
                                 finishUploadUI(false);
                             }
