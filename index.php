@@ -297,13 +297,6 @@ if (file_exists($versionFile)) {
                 <span class="header-logo">NPBlog</span>
             <span class="toolbar-divider" id="logoDivider"></span>
             
-            <div class="mode-toggle" id="headerModeToggle" onmousedown="if(!document.body.classList.contains('header-customizing')) event.preventDefault()">
-                <button type="button" id="modeVisualBtn" class="format-btn" title="Визуальный режим" data-i18n="tabs.visual" data-i18n-title="tabs.visual">Визуально</button>
-                <button type="button" id="modeCodeBtn" class="format-btn" title="Режим кода" data-i18n="tabs.code" data-i18n-title="tabs.code">Код</button>
-            </div>
-            
-            <span class="toolbar-divider" id="modeActionsDivider"></span>
-            
             <div class="editor-actions" id="headerEditorActions" onmousedown="if(!document.body.classList.contains('header-customizing')) event.preventDefault()">
                 <button type="button" id="undoBtn" class="format-btn" onclick="undoEdit()" title="Отменить (Ctrl+Z)" data-i18n-title="toolbar.undo">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
@@ -492,6 +485,10 @@ if (file_exists($versionFile)) {
     <!-- Нижняя полоса редактора (Статус-бар) -->
     <footer class="editor-bottom-bar" id="editorBottomBar">
         <div class="editor-bottom-bar-left">
+            <div class="mode-toggle bottom-bar-mode-toggle" id="bottomModeToggle" onmousedown="event.preventDefault()">
+                <button type="button" id="modeVisualBtn" class="format-btn" title="Визуальный режим" data-i18n="tabs.visual" data-i18n-title="tabs.visual">Визуально</button>
+                <button type="button" id="modeCodeBtn" class="format-btn" title="Режим кода" data-i18n="tabs.code" data-i18n-title="tabs.code">Код</button>
+            </div>
             <div id="blogSelectorContainer" class="bottom-bar-blog-selector" style="display: none;">
                 <label for="blogSelector" class="bottom-bar-blog-label" data-i18n="header.manage_posts_blog_label">Блог:</label>
                 <select id="blogSelector" class="bottom-bar-blog-select" onchange="selectActiveBlog(this.value)">
@@ -2422,48 +2419,37 @@ function loadAndApplyAllSettings() {
                     updateAmoledState();
                 }
                 
-                // Переключение отображения переключателя режимов и разделителей
-                const modeToggle = document.getElementById('headerModeToggle');
-                const logoDivider = document.getElementById('logoDivider');
+                // Переключение отображения переключателя режимов
+                const modeToggle = document.getElementById('bottomModeToggle') || document.getElementById('headerModeToggle');
                 if (modeToggle) {
                     if (hideModeButtons) {
                         modeToggle.style.display = 'none';
-                        if (logoDivider) logoDivider.style.display = 'none';
                         if (typeof setMode === 'function') {
                             setMode('visual');
                         }
                     } else {
-                        modeToggle.style.display = 'flex';
-                        if (logoDivider) logoDivider.style.display = '';
+                        modeToggle.style.display = 'inline-flex';
                     }
                 }
                 
-                // Переключение отображения кнопок истории (undo/redo) и разделителя
+                // Переключение отображения кнопок истории (undo/redo)
                 const editorActions = document.getElementById('headerEditorActions');
-                const modeActionsDivider = document.getElementById('modeActionsDivider');
                 if (editorActions) {
                     if (enableUndoRedo) {
                         editorActions.style.display = 'flex';
-                        if (modeActionsDivider) modeActionsDivider.style.display = '';
-                        
                         const undoBtn = document.getElementById('undoBtn');
                         const redoBtn = document.getElementById('redoBtn');
                         if (undoBtn) undoBtn.style.display = '';
                         if (redoBtn) redoBtn.style.display = '';
                     } else {
                         editorActions.style.display = 'none';
-                        if (modeActionsDivider) modeActionsDivider.style.display = 'none';
                     }
                 }
                 
                 // Управление разделителем перед панелью форматирования
                 const actionsFormattingDivider = document.getElementById('actionsFormattingDivider');
                 if (actionsFormattingDivider) {
-                    if (!hideModeButtons || enableUndoRedo) {
-                        actionsFormattingDivider.style.display = '';
-                    } else {
-                        actionsFormattingDivider.style.display = 'none';
-                    }
+                    actionsFormattingDivider.style.display = enableUndoRedo ? '' : 'none';
                 }
                 
                 // RSS Лента
@@ -4311,8 +4297,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const defaultIds = [
             'logoDivider',
-            'headerModeToggle',
-            'modeActionsDivider',
             'headerEditorActions',
             'actionsFormattingDivider',
             'btn-bold',
@@ -4345,6 +4329,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (layout && Array.isArray(layout) && layout.length > 0) {
             layout.forEach(item => {
+                if (item.id === 'headerModeToggle' || item.id === 'bottomModeToggle' || item.id === 'modeActionsDivider') {
+                    return;
+                }
                 let el = document.getElementById(item.id);
                 if (!el && item.id && item.id.startsWith('divider-')) {
                     el = document.createElement('span');

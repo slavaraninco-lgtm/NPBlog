@@ -23,20 +23,6 @@
             "row": 1
         },
         {
-            "id": "modeActionsDivider",
-            "name": "modeActionsDivider",
-            "visible": true,
-            "inDropdown": false,
-            "row": 1
-        },
-        {
-            "id": "headerModeToggle",
-            "name": "Визуально\nКод",
-            "visible": true,
-            "inDropdown": false,
-            "row": 1
-        },
-        {
             "id": "actionsFormattingDivider",
             "name": "actionsFormattingDivider",
             "visible": true,
@@ -239,5 +225,10 @@
     "ip_whitelist_enabled": false,
     "password_hash": "",
     "failed_attempts": 0,
-    "lockout_until": 0
+    "lockout_until": 0,
+    "hideEditorModeButtons": false,
+    "amoledTheme": false,
+    "smoothTyping": false,
+    "headerBottomPosition": false,
+    "contentWidth": 920
 }

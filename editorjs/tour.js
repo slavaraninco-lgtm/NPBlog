@@ -24,7 +24,7 @@ function getTutorialSteps() {
         {
             title: getTutorialText('tutorial.step_modes_title', 'Режимы: Визуально и Код 👁️'),
             text: getTutorialText('tutorial.step_modes_text', 'Вы можете в один клик переключаться между удобным визуальным редактором (WYSIWYG) и прямым редактированием чистого HTML-кода.'),
-            element: '#headerModeToggle, .mode-toggle'
+            element: '#bottomModeToggle, .mode-toggle'
         },
         // 4. Editor Canvas
         {
