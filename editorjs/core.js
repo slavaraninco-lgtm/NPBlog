@@ -60,6 +60,29 @@ function confirmDevWarning() {
 window.checkDevWarning = checkDevWarning;
 window.confirmDevWarning = confirmDevWarning;
 
+// Безопасные функции-заглушки для настроек на случай рассинхронизации или разного порядка загрузки
+if (typeof window.loadAutosaveSettings !== 'function') {
+    window.loadAutosaveSettings = function () {
+        if (typeof window.loadAndApplyAllSettings === 'function') {
+            window.loadAndApplyAllSettings();
+        }
+    };
+}
+if (typeof window.applyAppearanceSettings !== 'function') {
+    window.applyAppearanceSettings = function () {
+        if (typeof window.loadAndApplyAllSettings === 'function') {
+            window.loadAndApplyAllSettings();
+        }
+    };
+}
+if (typeof window.applyExperimentalSettings !== 'function') {
+    window.applyExperimentalSettings = function () {
+        if (typeof window.loadAndApplyAllSettings === 'function') {
+            window.loadAndApplyAllSettings();
+        }
+    };
+}
+
 
 // Глобальная функция навигации по галерее
 window.navigateGallery = function (galleryId, direction) {

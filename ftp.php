@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/security_bootstrap.php';
+require_once __DIR__ . '/sftp_helper.php';
 
 define('CREDENTIALS_FILE', 'ftp.json');
 
@@ -51,10 +52,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     
     $ftpServer = $_POST['ftpServer'] ?? '';
+    $ftpProtocol = $_POST['ftpProtocol'] ?? 'ftp';
+    if (!in_array($ftpProtocol, ['ftp', 'ftps', 'sftp'])) {
+        $ftpProtocol = 'ftp';
+    }
+    $ftpPort = isset($_POST['ftpPort']) ? intval($_POST['ftpPort']) : 0;
+    if ($ftpPort <= 0 || $ftpPort > 65535) {
+        $ftpPort = ($ftpProtocol === 'sftp') ? 22 : 21;
+    }
     $ftpUsername = $_POST['ftpUsername'] ?? '';
     $ftpPassword = $_POST['ftpPassword'] ?? '';
     $ftpDirectory = $_POST['ftpDirectory'] ?? '';
-    $ftpSsl = isset($_POST['ftpSsl']) ? intval($_POST['ftpSsl']) : 0;
+    $ftpSsl = (isset($_POST['ftpSsl']) && intval($_POST['ftpSsl']) === 1) || ($ftpProtocol === 'ftps') ? 1 : 0;
     $ftpSkipExisting = isset($_POST['ftpSkipExisting']) ? intval($_POST['ftpSkipExisting']) : 0;
 
     if (empty($ftpServer) || empty($ftpUsername) || empty($ftpDirectory)) {
@@ -65,6 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['remember'])) {
         saveCredentials([
             'ftpServer' => $ftpServer,
+            'ftpPort' => $ftpPort,
+            'ftpProtocol' => $ftpProtocol,
             'ftpUsername' => $ftpUsername,
             'ftpDirectory' => $ftpDirectory,
             'ftpSsl' => $ftpSsl,
@@ -102,8 +113,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $ftpDirectory = '/' . trim($ftpDirectory, '/');
+    $remoteFolderName = basename($localDataDir);
 
-    $connId = @ftp_connect($ftpServer);
+    if ($ftpProtocol === 'sftp') {
+        $sftp = new SftpUploader($ftpServer, $ftpPort, $ftpUsername, $ftpPassword, 15);
+        if (!$sftp->connect()) {
+            echo json_encode(['success' => false, 'message' => 'Ошибка подключения к SFTP: ' . $sftp->getLastError()]);
+            exit;
+        }
+
+        function uploadDirectorySftpDirect($sftp, $localDir, $remoteDir) {
+            $uploaded = 0;
+            $failed = 0;
+            $sftp->createRemoteDir($remoteDir);
+            $items = scandir($localDir);
+            foreach ($items as $item) {
+                if ($item === '.' || $item === '..') continue;
+                $localPath = $localDir . '/' . $item;
+                $remotePath = $remoteDir . '/' . $item;
+                if (is_dir($localPath)) {
+                    $res = uploadDirectorySftpDirect($sftp, $localPath, $remotePath);
+                    $uploaded += $res['uploaded'];
+                    $failed += $res['failed'];
+                } else {
+                    if ($sftp->uploadFile($localPath, $remotePath)) {
+                        $uploaded++;
+                    } else {
+                        $failed++;
+                    }
+                }
+            }
+            return ['uploaded' => $uploaded, 'failed' => $failed];
+        }
+
+        $result = uploadDirectorySftpDirect($sftp, $localDataDir, $ftpDirectory . '/' . $remoteFolderName);
+        $sftp->close();
+
+        if ($result['failed'] > 0) {
+            echo json_encode([
+                'success' => false, 
+                'message' => "Загружено файлов: {$result['uploaded']}, ошибок: {$result['failed']}"
+            ]);
+        } else {
+            echo json_encode([
+                'success' => true, 
+                'message' => "Папка $remoteFolderName успешно загружена по SFTP! Загружено файлов: {$result['uploaded']}"
+            ]);
+        }
+        exit;
+    }
+
+    $connId = ($ftpSsl && function_exists('ftp_ssl_connect')) ? @ftp_ssl_connect($ftpServer, $ftpPort, 15) : @ftp_connect($ftpServer, $ftpPort, 15);
     if (!$connId) {
         echo json_encode(['success' => false, 'message' => 'Не удалось подключиться к FTP серверу']);
         exit;
@@ -162,7 +222,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Загружаем выбранную папку блога
-    $remoteFolderName = basename($localDataDir);
     $result = uploadDirectory($connId, $localDataDir, $ftpDirectory . '/' . $remoteFolderName);
     
     ftp_close($connId);
@@ -833,7 +892,7 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
     <div class="notification-container" id="notificationContainer"></div>
 
     <div class="header">
-        <h1>FTP Загрузчик</h1>
+        <h1>FTP / SFTP Загрузчик</h1>
         <button class="theme-toggle" id="themeToggle">🌓 Тема</button>
     </div>
 
@@ -842,15 +901,18 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
     <?php if ($savedCredentials): ?>
     <div class="saved-info" id="savedInfo">
         <div class="saved-info-header" onclick="toggleSavedInfo()">
-            <h3>📁 Сохранённые настройки FTP</h3>
+            <h3>📁 Сохранённые настройки подключения</h3>
             <span class="saved-info-toggle">▼</span>
         </div>
         <div class="saved-info-content">
             <p><strong>Последнее сохранение:</strong> <?= htmlspecialchars($savedCredentials['saved_at'] ?? 'неизвестно') ?></p>
-            <p><strong>Сервер:</strong> <?= htmlspecialchars($savedCredentials['ftpServer'] ?? '') ?></p>
+            <p><strong>Протокол:</strong> <?= htmlspecialchars(strtoupper($savedCredentials['ftpProtocol'] ?? 'FTP')) ?></p>
+            <p><strong>Сервер:</strong> <?= htmlspecialchars($savedCredentials['ftpServer'] ?? '') ?>:<?= htmlspecialchars($savedCredentials['ftpPort'] ?? (($savedCredentials['ftpProtocol'] ?? '') === 'sftp' ? '22' : '21')) ?></p>
             <p><strong>Пользователь:</strong> <?= htmlspecialchars($savedCredentials['ftpUsername'] ?? '') ?></p>
             <p><strong>Корневая директория:</strong> <?= htmlspecialchars($savedCredentials['ftpDirectory'] ?? '') ?></p>
+            <?php if (($savedCredentials['ftpProtocol'] ?? '') !== 'sftp'): ?>
             <p><strong>SSL/TLS (Безопасное):</strong> <?= !empty($savedCredentials['ftpSsl']) ? 'Да' : 'Нет' ?></p>
+            <?php endif; ?>
             <p><strong>Умная синхронизация:</strong> <?= (!isset($savedCredentials['ftpSkipExisting']) || !empty($savedCredentials['ftpSkipExisting'])) ? 'Включена' : 'Выключена' ?></p>
         </div>
     </div>
@@ -873,11 +935,27 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             </div>
             <?php endif; ?>
 
-            <div class="form-group">
-                <label for="ftpServer">FTP Сервер *</label>
-                <input type="text" id="ftpServer" name="ftpServer" 
-                       value="<?= htmlspecialchars($savedCredentials['ftpServer'] ?? '') ?>" 
-                       placeholder="ftp.example.com" required>
+            <div style="display: grid; grid-template-columns: 160px 1fr 110px; gap: 12px; margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="ftpProtocol">Протокол</label>
+                    <select id="ftpProtocol" name="ftpProtocol" onchange="onFtpPageProtocolChange()">
+                        <option value="ftp" <?= ($savedCredentials['ftpProtocol'] ?? 'ftp') === 'ftp' ? 'selected' : '' ?>>FTP</option>
+                        <option value="ftps" <?= ($savedCredentials['ftpProtocol'] ?? '') === 'ftps' || (!empty($savedCredentials['ftpSsl']) && ($savedCredentials['ftpProtocol'] ?? '') !== 'sftp') ? 'selected' : '' ?>>FTPS (SSL/TLS)</option>
+                        <option value="sftp" <?= ($savedCredentials['ftpProtocol'] ?? '') === 'sftp' ? 'selected' : '' ?>>SFTP (SSH)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="ftpServer">Сервер / Хост *</label>
+                    <input type="text" id="ftpServer" name="ftpServer" 
+                           value="<?= htmlspecialchars($savedCredentials['ftpServer'] ?? '') ?>" 
+                           placeholder="ftp.example.com" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="ftpPort">Порт *</label>
+                    <input type="number" id="ftpPort" name="ftpPort" min="1" max="65535"
+                           value="<?= htmlspecialchars($savedCredentials['ftpPort'] ?? (($savedCredentials['ftpProtocol'] ?? '') === 'sftp' ? '22' : '21')) ?>" 
+                           placeholder="21" required>
+                </div>
             </div>
             
             <div class="form-group">
@@ -898,11 +976,11 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                 <input type="text" id="ftpDirectory" name="ftpDirectory" 
                        value="<?= htmlspecialchars($savedCredentials['ftpDirectory'] ?? '') ?>" 
                        placeholder="/public_html или /" required>
-                <p class="filename-note">Папка data будет загружена в эту директорию. Например, если указать "/public_html", то файлы будут в /public_html/data/</p>
+                <p class="filename-note">Папка блога будет загружена в эту директорию. Например, если указать "/public_html", то файлы будут в /public_html/data/</p>
             </div>
             
             <div class="remember-group" style="display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px;">
-                <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                <div id="ftpSslGroup" style="display: <?= ($savedCredentials['ftpProtocol'] ?? '') === 'sftp' ? 'none' : 'flex' ?>; align-items: center; gap: 10px; width: 100%;">
                     <input type="checkbox" id="ftpSsl" name="ftpSsl" <?= !empty($savedCredentials['ftpSsl']) ? 'checked' : '' ?>>
                     <label for="ftpSsl" style="margin: 0; cursor: pointer; font-weight: 500;">Использовать SSL/TLS (безопасное соединение FTPS)</label>
                 </div>
@@ -912,7 +990,7 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
                     <input type="checkbox" id="remember" name="remember" checked>
-                    <label for="remember" style="margin: 0; cursor: pointer; font-weight: 500;">Запомнить настройки FTP (пароль не сохраняется)</label>
+                    <label for="remember" style="margin: 0; cursor: pointer; font-weight: 500;">Запомнить настройки (пароль не сохраняется)</label>
                 </div>
             </div>
             
@@ -977,13 +1055,45 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             localStorage.setItem('theme', newTheme);
         });
 
+        // Protocol change handler
+        function onFtpPageProtocolChange() {
+            const protocol = document.getElementById('ftpProtocol').value;
+            const portInput = document.getElementById('ftpPort');
+            const sslGroup = document.getElementById('ftpSslGroup');
+            const sslCheckbox = document.getElementById('ftpSsl');
+
+            if (protocol === 'sftp') {
+                if (!portInput.value || portInput.value === '21') {
+                    portInput.value = '22';
+                }
+                if (sslGroup) sslGroup.style.display = 'none';
+            } else if (protocol === 'ftps') {
+                if (!portInput.value || portInput.value === '22') {
+                    portInput.value = '21';
+                }
+                if (sslGroup) sslGroup.style.display = 'flex';
+                if (sslCheckbox) sslCheckbox.checked = true;
+            } else {
+                if (!portInput.value || portInput.value === '22') {
+                    portInput.value = '21';
+                }
+                if (sslGroup) sslGroup.style.display = 'flex';
+                if (sslCheckbox) sslCheckbox.checked = false;
+            }
+        }
+
         // Upload handler
         document.getElementById('uploadBtn').addEventListener('click', function() {
             const ftpServer = document.getElementById('ftpServer').value.trim();
+            const ftpProtocol = document.getElementById('ftpProtocol').value;
+            let ftpPort = parseInt(document.getElementById('ftpPort').value, 10);
+            if (isNaN(ftpPort) || ftpPort <= 0 || ftpPort > 65535) {
+                ftpPort = (ftpProtocol === 'sftp') ? 22 : 21;
+            }
             const ftpUsername = document.getElementById('ftpUsername').value.trim();
             const ftpPassword = document.getElementById('ftpPassword').value;
             const ftpDirectory = document.getElementById('ftpDirectory').value.trim();
-            const ftpSsl = document.getElementById('ftpSsl').checked ? '1' : '0';
+            const ftpSsl = (document.getElementById('ftpSsl').checked || ftpProtocol === 'ftps') ? '1' : '0';
             const ftpSkipExisting = document.getElementById('ftpSkipExisting').checked ? '1' : '0';
             const remember = document.getElementById('remember').checked;
             
@@ -1018,6 +1128,8 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                     },
                     body: new URLSearchParams({
                         ftpServer: ftpServer,
+                        ftpProtocol: ftpProtocol,
+                        ftpPort: ftpPort,
                         ftpUsername: ftpUsername,
                         ftpPassword: 'dummy',
                         ftpDirectory: ftpDirectory,
@@ -1048,6 +1160,8 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
             // Используем EventSource для потоковой загрузки
             const formData = new URLSearchParams();
             formData.append('ftpServer', ftpServer);
+            formData.append('ftpProtocol', ftpProtocol);
+            formData.append('ftpPort', ftpPort);
             formData.append('ftpUsername', ftpUsername);
             formData.append('ftpPassword', ftpPassword);
             formData.append('ftpDirectory', ftpDirectory);
@@ -1134,7 +1248,7 @@ $currentActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_bl
                 addLog('Ошибка: ' + error.message, 'error');
                 uploadBtn.disabled = false;
                 resetBtn.disabled = false;
-                uploadBtn.textContent = '📤 Загрузить папку data';
+                uploadBtn.textContent = '📤 Загрузить выбранный блог';
             });
         });
 

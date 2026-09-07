@@ -221,25 +221,43 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Загружаем настройки автосохранения при загрузке страницы
-    loadAutosaveSettings();
+    if (typeof loadAutosaveSettings === 'function') {
+        loadAutosaveSettings();
+    } else if (typeof window.loadAndApplyAllSettings === 'function') {
+        window.loadAndApplyAllSettings();
+    }
 
     // Применяем настройки внешнего вида
-    applyAppearanceSettings();
+    if (typeof applyAppearanceSettings === 'function') {
+        applyAppearanceSettings();
+    } else if (typeof window.loadAndApplyAllSettings === 'function') {
+        window.loadAndApplyAllSettings();
+    }
 
     // Применяем экспериментальные настройки
-    applyExperimentalSettings();
+    if (typeof applyExperimentalSettings === 'function') {
+        applyExperimentalSettings();
+    } else if (typeof window.loadAndApplyAllSettings === 'function') {
+        window.loadAndApplyAllSettings();
+    }
 
     // Проверяем предупреждение о DEV сборке
-    checkDevWarning();
+    if (typeof checkDevWarning === 'function') {
+        checkDevWarning();
+    }
 
     // Проверяем наличие несохраненного локального черновика
-    setTimeout(checkLocalDraftOnStartup, 500);
+    if (typeof checkLocalDraftOnStartup === 'function') {
+        setTimeout(checkLocalDraftOnStartup, 500);
+    }
 
     // Отслеживаем ввод в поле заголовка для локального сохранения
     const titleInputEl = document.getElementById('title');
     if (titleInputEl) {
         titleInputEl.addEventListener('input', function () {
-            markEditorDirty();
+            if (typeof markEditorDirty === 'function') {
+                markEditorDirty();
+            }
         });
     }
 });

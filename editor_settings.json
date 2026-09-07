@@ -17,7 +17,7 @@
         },
         {
             "id": "headerEditorActions",
-            "name": "headerEditorActions",
+            "name": "\n                \n                    \n                        \n                        \n                    \n                \n                \n                    \n                        \n                        \n                    \n                \n            ",
             "visible": true,
             "inDropdown": false,
             "row": 1
@@ -44,15 +44,15 @@
             "row": 1
         },
         {
-            "id": "btn-underline",
-            "name": "Подчёркнутый (Ctrl+U)",
+            "id": "btn-strike",
+            "name": "Зачёркнутый",
             "visible": true,
             "inDropdown": false,
             "row": 1
         },
         {
-            "id": "btn-strike",
-            "name": "Зачёркнутый",
+            "id": "btn-underline",
+            "name": "Подчёркнутый (Ctrl+U)",
             "visible": true,
             "inDropdown": false,
             "row": 1

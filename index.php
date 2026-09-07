@@ -1744,6 +1744,7 @@ let autosaveCountdown = 0;
 function loadAutosaveSettings() {
     loadAndApplyAllSettings();
 }
+window.loadAutosaveSettings = loadAutosaveSettings;
 
 function saveAutosaveSettings() {
     const enabled = document.getElementById('autosaveEnabled').checked;
@@ -2625,11 +2626,13 @@ function saveAppearanceSettings() {
 function applyAppearanceSettings() {
     loadAndApplyAllSettings();
 }
+window.applyAppearanceSettings = applyAppearanceSettings;
 
 // Функции для экспериментальных настроек
 function loadExperimentalSettings() {
     loadAndApplyAllSettings();
 }
+window.loadExperimentalSettings = loadExperimentalSettings;
 
 function saveExperimentalSettings() {
     const enableUndoRedo = document.getElementById('enableUndoRedo').checked;
@@ -2692,6 +2695,7 @@ function deleteAllCustomTemplates() {
 function applyExperimentalSettings() {
     loadAndApplyAllSettings();
 }
+window.applyExperimentalSettings = applyExperimentalSettings;
 
 function loadSecuritySettings() {
     loadAndApplyAllSettings();
