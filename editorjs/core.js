@@ -17,6 +17,14 @@ function escapeHtmlJS(str) {
 let currentEditId = null;
 let editorMode = 'visual'; // 'visual' | 'code'
 let savedRange = null;
+window.savedRange = null;
+window.setGlobalSavedRange = function (r) {
+    savedRange = r;
+    window.savedRange = r;
+};
+window.getSavedRange = function () {
+    return window.savedRange || savedRange;
+};
 
 // Флаги состояния и защита от потери данных
 let isEditorDirty = false;

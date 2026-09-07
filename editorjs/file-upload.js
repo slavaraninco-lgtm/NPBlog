@@ -1,6 +1,23 @@
 // ——— Функции для загрузки файлов ———
 
+let fileInsertStart = null;
+let fileInsertEnd = null;
+
 function openFileUploadDialog() {
+    if (typeof editorMode !== 'undefined' && editorMode === 'code') {
+        const ta = document.getElementById('content');
+        if (ta) {
+            fileInsertStart = ta.selectionStart;
+            fileInsertEnd = ta.selectionEnd;
+        }
+    } else {
+        if (window.VisualEngine && typeof window.VisualEngine.saveSelection === 'function') {
+            window.VisualEngine.saveSelection();
+        } else if (typeof saveSelection === 'function') {
+            saveSelection();
+        }
+    }
+
     if (window.Modal) {
         Modal.open('#fileUploadDialog');
     } else {
@@ -14,7 +31,8 @@ function openFileUploadDialog() {
     // Загружаем сохраненное состояние галочки из localStorage
     const savedState = localStorage.getItem('insertAsHyperlink');
     if (savedState !== null) {
-        document.getElementById('insertAsHyperlink').checked = savedState === 'true';
+        const chk = document.getElementById('insertAsHyperlink');
+        if (chk) chk.checked = savedState === 'true';
     }
 
     loadDocumentsList();
@@ -306,136 +324,149 @@ function deleteDocument(filePath) {
 }
 
 function insertFileButton(fileName, filePath, fileSize) {
-    const ve = document.getElementById('contentVisual');
-    ve.focus();
-
     // Преобразуем путь к файлу, добавляя / в начало если его нет
     if (!filePath.startsWith('/')) {
         filePath = '/' + filePath;
     }
 
     // Проверяем, нужно ли вставить как гиперссылку
-    const insertAsHyperlink = document.getElementById('insertAsHyperlink').checked;
+    const chk = document.getElementById('insertAsHyperlink');
+    const insertAsHyperlink = chk ? chk.checked : false;
 
-    let elementToInsert;
+    // Создаем стандартную структуру медиа-обертки для кнопки скачивания файла
+    const alignWrap = document.createElement('div');
+    alignWrap.className = 'blog-image-align-wrap';
+    alignWrap.style.textAlign = 'left';
+
+    const mediaWrap = document.createElement('div');
+    mediaWrap.className = 'blog-image-wrap';
+    mediaWrap.style.display = 'inline-block';
+
+    const fileButton = document.createElement('a');
+    fileButton.href = filePath;
+    fileButton.className = 'blog-file-button';
+    fileButton.target = '_blank';
+    fileButton.setAttribute('download', fileName);
+    fileButton.contentEditable = 'false';
+    fileButton.style.setProperty('font-family', 'Arial, sans-serif', 'important');
+    fileButton.style.setProperty('-webkit-font-smoothing', 'antialiased', 'important');
+    fileButton.style.setProperty('-moz-osx-font-smoothing', 'grayscale', 'important');
+    fileButton.style.setProperty('text-rendering', 'optimizeLegibility', 'important');
+
+    const icon = document.createElement('div');
+    icon.className = 'blog-file-icon';
+    icon.textContent = '📥';
+
+    const info = document.createElement('div');
+    info.className = 'blog-file-info';
+
+    const name = document.createElement('div');
+    name.className = 'blog-file-name';
+    name.textContent = fileName;
+
+    const size = document.createElement('div');
+    size.className = 'blog-file-size';
+    size.textContent = formatFileSize(fileSize);
+
+    info.appendChild(name);
+    info.appendChild(size);
+    fileButton.appendChild(icon);
+    fileButton.appendChild(info);
+
+    mediaWrap.appendChild(fileButton);
+    alignWrap.appendChild(mediaWrap);
+
+    // Поддержка режима кода
+    if (typeof editorMode !== 'undefined' && editorMode === 'code') {
+        const ta = document.getElementById('content');
+        if (ta) {
+            const start = (fileInsertStart !== null && fileInsertStart !== undefined) ? fileInsertStart : ((typeof ta.selectionStart === 'number') ? ta.selectionStart : ta.value.length);
+            const end = (fileInsertEnd !== null && fileInsertEnd !== undefined) ? fileInsertEnd : ((typeof ta.selectionEnd === 'number') ? ta.selectionEnd : start);
+
+            let insertText = '';
+            if (insertAsHyperlink) {
+                if (window.enableMarkdown) {
+                    insertText = `[${fileName}](${filePath})`;
+                } else {
+                    insertText = `<a href="${filePath}" download="${fileName}" target="_blank">${fileName}</a>`;
+                }
+            } else {
+                insertText = '\n' + alignWrap.outerHTML + '\n';
+            }
+
+            ta.focus();
+            ta.value = ta.value.substring(0, start) + insertText + ta.value.substring(end);
+            ta.selectionStart = ta.selectionEnd = start + insertText.length;
+            if (typeof triggerInputEvent === 'function') triggerInputEvent(ta);
+        }
+        if (typeof saveToHistory === 'function') saveToHistory();
+        closeFileUploadDialog();
+        showNotification(window.t ? window.t('notifications.file_added', 'Файл добавлен в статью') : 'Файл добавлен в статью', 'success');
+        return;
+    }
+
+    const ve = document.getElementById('contentVisual');
 
     if (insertAsHyperlink) {
-        // Вставляем как простую гиперссылку
+        // Вставляем как простую гиперссылку в текущую позицию каретки
+        if (window.VisualEngine && typeof window.VisualEngine.restoreFocus === 'function') {
+            window.VisualEngine.restoreFocus();
+        } else if (ve) {
+            ve.focus();
+        }
+
         const link = document.createElement('a');
         link.href = filePath;
         link.textContent = fileName;
         link.target = '_blank';
         link.setAttribute('download', fileName);
-        elementToInsert = link;
-    } else {
-        // Создаем стандартную структуру медиа-обертки для поддержки оверлея
-        const alignWrap = document.createElement('div');
-        alignWrap.className = 'blog-image-align-wrap';
-        alignWrap.style.textAlign = 'left'; // По умолчанию слева
 
-        const mediaWrap = document.createElement('div');
-        mediaWrap.className = 'blog-image-wrap';
-        mediaWrap.style.display = 'inline-block';
+        const sel = window.getSelection();
+        const saved = (window.VisualEngine && window.VisualEngine.savedRange) || window.savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null) || (typeof savedRange !== 'undefined' ? savedRange : null);
+        let range = (saved && ve && ve.contains(saved.commonAncestorContainer)) ? saved : ((sel && sel.rangeCount > 0 && ve && ve.contains(sel.getRangeAt(0).commonAncestorContainer)) ? sel.getRangeAt(0) : null);
 
-        const fileButton = document.createElement('a');
-        fileButton.href = filePath;
-        fileButton.className = 'blog-file-button';
-        fileButton.target = '_blank';
-        fileButton.setAttribute('download', fileName);
-        fileButton.contentEditable = 'false';
-        fileButton.style.setProperty('font-family', 'Arial, sans-serif', 'important');
-        fileButton.style.setProperty('-webkit-font-smoothing', 'antialiased', 'important');
-        fileButton.style.setProperty('-moz-osx-font-smoothing', 'grayscale', 'important');
-        fileButton.style.setProperty('text-rendering', 'optimizeLegibility', 'important');
-
-        const icon = document.createElement('div');
-        icon.className = 'blog-file-icon';
-        icon.textContent = '📥';
-
-        const info = document.createElement('div');
-        info.className = 'blog-file-info';
-
-        const name = document.createElement('div');
-        name.className = 'blog-file-name';
-        name.textContent = fileName;
-
-        const size = document.createElement('div');
-        size.className = 'blog-file-size';
-        size.textContent = formatFileSize(fileSize);
-
-        info.appendChild(name);
-        info.appendChild(size);
-        fileButton.appendChild(icon);
-        fileButton.appendChild(info);
-
-        mediaWrap.appendChild(fileButton);
-        alignWrap.appendChild(mediaWrap);
-
-        elementToInsert = alignWrap;
-    }
-
-    // Создаем пустой блок для курсора после элемента
-    const emptyDiv = document.createElement('div');
-    emptyDiv.innerHTML = '<br>';
-
-    // Вставляем в редактор
-    const sel = window.getSelection();
-    let range = null;
-
-    // Используем savedRange если он есть
-    if (typeof savedRange !== 'undefined' && savedRange && ve.contains(savedRange.commonAncestorContainer)) {
-        range = savedRange;
-    } else if (sel && sel.rangeCount > 0) {
-        range = sel.getRangeAt(0);
-    }
-
-    if (!range) {
-        // Если нет range, добавляем в конец
-        ve.appendChild(elementToInsert);
-        if (!insertAsHyperlink) {
-            ve.appendChild(emptyDiv);
-        }
-        range = document.createRange();
-        range.setStart(insertAsHyperlink ? elementToInsert : emptyDiv, 0);
-        range.collapse(true);
-        if (sel) {
-            sel.removeAllRanges();
-            sel.addRange(range);
-        }
-        if (typeof savedRange !== 'undefined') {
-            savedRange = range.cloneRange();
-        }
-    } else {
-        // Удаляем выделенный контент
-        range.deleteContents();
-
-        // Вставляем элемент
-        range.insertNode(elementToInsert);
-
-        if (!insertAsHyperlink) {
-            // Вставляем пустой блок после кнопки
-            const parent = elementToInsert.parentNode;
-            parent.insertBefore(emptyDiv, elementToInsert.nextSibling);
-
-            // Устанавливаем курсор в пустой блок
-            range.setStart(emptyDiv, 0);
+        if (!range || !ve || !ve.contains(range.commonAncestorContainer)) {
+            if (ve) {
+                ve.appendChild(link);
+                const space = document.createTextNode('\u00A0');
+                ve.appendChild(space);
+                range = document.createRange();
+                range.setStartAfter(space);
+                range.collapse(true);
+            }
         } else {
-            // Для гиперссылки ставим курсор после неё
-            range.setStartAfter(elementToInsert);
+            range.deleteContents();
+            range.insertNode(link);
+            const space = document.createTextNode('\u00A0');
+            if (link.nextSibling) {
+                link.parentNode.insertBefore(space, link.nextSibling);
+            } else {
+                link.parentNode.appendChild(space);
+            }
+            range.setStartAfter(space);
+            range.collapse(true);
         }
 
-        range.collapse(true);
-        if (sel) {
+        if (sel && range) {
             sel.removeAllRanges();
             sel.addRange(range);
         }
-        if (typeof savedRange !== 'undefined') {
-            savedRange = range.cloneRange();
+        if (window.VisualEngine && typeof window.VisualEngine.saveSelection === 'function') {
+            window.VisualEngine.saveSelection();
+        }
+    } else {
+        // Вставляем блок файла точно по текущей позиции каретки через VisualEngine
+        if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+            window.VisualEngine.insertBlockMedia(alignWrap.outerHTML);
+        } else if (typeof insertImageBlockAtCaret === 'function') {
+            insertImageBlockAtCaret(alignWrap.outerHTML);
+        } else if (ve) {
+            ve.appendChild(alignWrap);
         }
     }
 
-    saveToHistory();
+    if (typeof saveToHistory === 'function') saveToHistory();
     closeFileUploadDialog();
-    showNotification('Файл добавлен в статью', 'success');
+    showNotification(window.t ? window.t('notifications.file_added', 'Файл добавлен в статью') : 'Файл добавлен в статью', 'success');
 }
 

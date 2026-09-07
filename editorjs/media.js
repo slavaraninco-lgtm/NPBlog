@@ -2224,51 +2224,15 @@ function insertAudioFile(filePath, fileName) {
         const ta = document.getElementById('content');
         const cursorPos = ta.selectionStart;
         ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
-    } else {
-        // Вставляем аудио элемент
+        // Вставляем аудио элемент через стандартный движок вставки блоков по каретке
         const wrappedAudioHtml = wrapMediaWithControls(audioElement, 'audio');
-        if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
-        const ve = document.getElementById('contentVisual');
-        const sel = window.getSelection();
-        let range = null;
-
-        if (sel && sel.rangeCount > 0) {
-            range = sel.getRangeAt(0);
-        }
-
-        if (!range) {
-            ve.insertAdjacentHTML('beforeend', wrappedAudioHtml);
-            const emptyDiv = document.createElement('div');
-            emptyDiv.innerHTML = '<br>';
-            ve.appendChild(emptyDiv);
+        if (typeof insertImageBlockAtCaret === 'function') {
+            insertImageBlockAtCaret(wrappedAudioHtml);
+        } else if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+            window.VisualEngine.insertBlockMedia(wrappedAudioHtml);
         } else {
-            range.deleteContents();
-
-            // Создаем аудио элемент
-            const temp = document.createElement('div');
-            temp.innerHTML = wrappedAudioHtml;
-            const audioNode = temp.firstChild;
-
-            // Создаем пустой блок для курсора
-            const emptyDiv = document.createElement('div');
-            emptyDiv.innerHTML = '<br>';
-
-            // Вставляем аудио
-            range.insertNode(audioNode);
-
-            // Вставляем пустой блок после аудио
-            if (audioNode.nextSibling) {
-                audioNode.parentNode.insertBefore(emptyDiv, audioNode.nextSibling);
-            } else {
-                audioNode.parentNode.appendChild(emptyDiv);
-            }
-
-            // Устанавливаем курсор в пустой блок
-            const newRange = document.createRange();
-            newRange.setStart(emptyDiv, 0);
-            newRange.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(newRange);
+            const ve = document.getElementById('contentVisual');
+            if (ve) ve.insertAdjacentHTML('beforeend', wrappedAudioHtml);
         }
     }
 
@@ -2401,51 +2365,15 @@ function insertVideoFile(filePath, fileName) {
         const ta = document.getElementById('content');
         const cursorPos = ta.selectionStart;
         ta.value = ta.value.substring(0, cursorPos) + videoElement + '\n' + ta.value.substring(cursorPos);
-    } else {
-        // Вставляем видео элемент
+        // Вставляем видео элемент через стандартный движок вставки блоков по каретке
         const wrappedVideoHtml = wrapMediaWithControls(videoElement, 'video');
-        if (typeof window.restoreEditorFocus === 'function' && !window.restoreEditorFocus()) return;
-        const ve = document.getElementById('contentVisual');
-        const sel = window.getSelection();
-        let range = null;
-
-        if (sel && sel.rangeCount > 0) {
-            range = sel.getRangeAt(0);
-        }
-
-        if (!range) {
-            ve.insertAdjacentHTML('beforeend', wrappedVideoHtml);
-            const emptyDiv = document.createElement('div');
-            emptyDiv.innerHTML = '<br>';
-            ve.appendChild(emptyDiv);
+        if (typeof insertImageBlockAtCaret === 'function') {
+            insertImageBlockAtCaret(wrappedVideoHtml);
+        } else if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+            window.VisualEngine.insertBlockMedia(wrappedVideoHtml);
         } else {
-            range.deleteContents();
-
-            // Создаем видео элемент
-            const temp = document.createElement('div');
-            temp.innerHTML = wrappedVideoHtml;
-            const videoNode = temp.firstChild;
-
-            // Создаем пустой блок для курсора
-            const emptyDiv = document.createElement('div');
-            emptyDiv.innerHTML = '<br>';
-
-            // Вставляем видео
-            range.insertNode(videoNode);
-
-            // Вставляем пустой блок после видео
-            if (videoNode.nextSibling) {
-                videoNode.parentNode.insertBefore(emptyDiv, videoNode.nextSibling);
-            } else {
-                videoNode.parentNode.appendChild(emptyDiv);
-            }
-
-            // Устанавливаем курсор в пустой блок
-            const newRange = document.createRange();
-            newRange.setStart(emptyDiv, 0);
-            newRange.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(newRange);
+            const ve = document.getElementById('contentVisual');
+            if (ve) ve.insertAdjacentHTML('beforeend', wrappedVideoHtml);
         }
     }
 
@@ -2919,8 +2847,15 @@ function insertImageGrid(layout) {
 // Подсветка активных кнопок при изменении выделения
 document.addEventListener('selectionchange', function () {
     if (editorMode === 'visual') {
-        saveSelection();
+        const editor = document.getElementById('contentVisual');
+        if (editor && (document.activeElement === editor || editor.contains(document.activeElement))) {
+            if (typeof saveSelection === 'function') {
+                saveSelection();
+            }
+        }
     }
-    updateActiveButtons();
+    if (typeof updateActiveButtons === 'function') {
+        updateActiveButtons();
+    }
 });
 

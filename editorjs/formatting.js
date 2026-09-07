@@ -117,42 +117,66 @@
             return this.isInsideEditor(range.commonAncestorContainer);
         },
 
-        restoreFocus() {
+        restoreFocus(range) {
             const editor = this.getEditor();
             if (!editor) return false;
 
-            editor.focus();
+            const targetRange = range || window.savedRange || savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null);
             const sel = window.getSelection();
-            if (!sel) return false;
 
-            if (savedRange && this.isInsideEditor(savedRange.commonAncestorContainer)) {
+            if (targetRange && this.isInsideEditor(targetRange.commonAncestorContainer)) {
                 try {
-                    sel.removeAllRanges();
-                    sel.addRange(savedRange);
+                    editor.focus({ preventScroll: true });
+                    if (sel) {
+                        sel.removeAllRanges();
+                        sel.addRange(targetRange);
+                    }
+                    savedRange = targetRange;
+                    window.savedRange = targetRange;
+                    if (typeof window.setGlobalSavedRange === 'function') {
+                        window.setGlobalSavedRange(targetRange);
+                    }
                     return true;
                 } catch (e) { }
             }
 
-            if (this.isSelectionInEditor()) {
-                return true;
-            }
-
-            // Fallback to end of editor
+            editor.focus({ preventScroll: true });
+            // Fallback to end of editor instead of offset 0
             this.setCursorToEnd(editor);
             this.saveSelection();
             return true;
         },
 
-        saveSelection() {
+        saveSelection(customRange) {
             const editor = this.getEditor();
             if (!editor) return;
+
+            if (customRange && this.isInsideEditor(customRange.commonAncestorContainer)) {
+                const cloned = customRange.cloneRange();
+                savedRange = cloned;
+                window.savedRange = cloned;
+                if (typeof window.setGlobalSavedRange === 'function') {
+                    window.setGlobalSavedRange(cloned);
+                }
+                return;
+            }
+
+            // If focus is currently in another element (modal, dropdown, text input), do not overwrite editor's selection
+            if (document.activeElement && document.activeElement !== editor && !editor.contains(document.activeElement)) {
+                return;
+            }
+
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return;
 
             const range = sel.getRangeAt(0);
             if (this.isInsideEditor(range.commonAncestorContainer)) {
-                savedRange = range.cloneRange();
-                window.savedRange = savedRange;
+                const cloned = range.cloneRange();
+                savedRange = cloned;
+                window.savedRange = cloned;
+                if (typeof window.setGlobalSavedRange === 'function') {
+                    window.setGlobalSavedRange(cloned);
+                }
             }
         },
 
@@ -1181,11 +1205,15 @@
         /**
          * Insert Block Media / Table / Embed with Auto-Continuation Paragraph
          */
-        insertBlockMedia(html) {
-            if (!this.restoreFocus()) return;
+        insertBlockMedia(html, targetRange) {
             const editor = this.getEditor();
+            if (!editor) return;
+
+            const r = targetRange || window.savedRange || savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null);
+            this.restoreFocus(r);
+
             const sel = window.getSelection();
-            let range = (sel && sel.rangeCount > 0) ? sel.getRangeAt(0) : null;
+            let range = (r && this.isInsideEditor(r.commonAncestorContainer)) ? r : ((sel && sel.rangeCount > 0 && this.isInsideEditor(sel.getRangeAt(0).commonAncestorContainer)) ? sel.getRangeAt(0) : null);
 
             const temp = document.createElement('div');
             temp.innerHTML = html;
@@ -1202,17 +1230,63 @@
             if (!range || !this.isInsideEditor(range.commonAncestorContainer)) {
                 editor.appendChild(frag);
                 editor.appendChild(emptyP);
+                this.setCursorToStart(emptyP);
             } else {
                 range.deleteContents();
-                range.insertNode(frag);
-                if (lastNode && lastNode.parentNode) {
-                    lastNode.parentNode.insertBefore(emptyP, lastNode.nextSibling);
+                let block = this.getClosestBlock(range.startContainer);
+
+                if (!block || block === editor) {
+                    range.insertNode(frag);
+                    if (lastNode && lastNode.parentNode) {
+                        lastNode.parentNode.insertBefore(emptyP, lastNode.nextSibling);
+                    } else {
+                        editor.appendChild(emptyP);
+                    }
+                    this.setCursorToStart(emptyP);
+                } else if (this.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr')) {
+                    // Current block is empty paragraph -> replace with block media
+                    const parent = block.parentNode;
+                    parent.insertBefore(frag, block);
+                    parent.insertBefore(emptyP, block);
+                    parent.removeChild(block);
+                    this.setCursorToStart(emptyP);
+                } else if (this.isCaretAtStartOfBlock(block, range)) {
+                    // At start of block -> insert media before block
+                    block.parentNode.insertBefore(frag, block);
+                    this.setCursorToStart(block);
+                } else if (this.isCaretAtEndOfBlock(block, range)) {
+                    // At end of block -> insert media after block, then empty paragraph
+                    const parent = block.parentNode;
+                    const next = block.nextSibling;
+                    if (next) {
+                        parent.insertBefore(frag, next);
+                        parent.insertBefore(emptyP, next);
+                    } else {
+                        parent.appendChild(frag);
+                        parent.appendChild(emptyP);
+                    }
+                    this.setCursorToStart(emptyP);
                 } else {
-                    editor.appendChild(emptyP);
+                    // In the middle of block -> split block, insert media between halves
+                    const afterRange = document.createRange();
+                    afterRange.setStart(range.endContainer, range.endOffset);
+                    afterRange.setEndAfter(block.lastChild || block);
+                    const afterContent = afterRange.extractContents();
+
+                    const newBlock = document.createElement(block.tagName === 'DIV' ? 'div' : 'p');
+                    if (block.className) newBlock.className = block.className;
+                    if (block.style.cssText) newBlock.style.cssText = block.style.cssText;
+                    newBlock.appendChild(afterContent);
+
+                    const parent = block.parentNode;
+                    const next = block.nextSibling;
+
+                    parent.insertBefore(frag, next);
+                    parent.insertBefore(newBlock, next);
+                    this.setCursorToStart(newBlock);
                 }
             }
 
-            this.setCursorToStart(emptyP);
             this.saveSelection();
             if (typeof saveToHistory === 'function') saveToHistory();
         },
