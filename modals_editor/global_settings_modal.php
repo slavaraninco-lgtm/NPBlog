@@ -634,7 +634,8 @@ if (!isset($availableLanguages)) {
                             $isSel = ($l['code'] === $currentLanguage);
                             $borderStyle = $isSel ? 'var(--primary-color, #4CAF50)' : 'var(--border-color)';
                             $bgStyle = $isSel ? 'rgba(76, 175, 80, 0.08)' : 'var(--modal-bg-subtle, rgba(0,0,0,0.02))';
-                            $langNameLower = htmlspecialchars(mb_strtolower($l['name']));
+                            $nameStr = (string)$l['name'];
+                            $langNameLower = htmlspecialchars(function_exists('mb_strtolower') ? mb_strtolower($nameStr, 'UTF-8') : strtolower($nameStr));
                         ?>
                         <div id="langCard-<?php echo htmlspecialchars($l['code']); ?>" data-lang-code="<?php echo htmlspecialchars($l['code']); ?>" data-lang-name="<?php echo $langNameLower; ?>" class="lang-selection-card" onclick="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" style="border: 1px solid <?php echo $borderStyle; ?>; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: <?php echo $bgStyle; ?>; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 10px;">

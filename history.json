@@ -14,7 +14,7 @@
             }
         },
         {
-            "visual": "<p>п<\/p>",
+            "visual": "<p>о<\/p>",
             "code": "",
             "mode": "visual",
             "visualSelection": {
@@ -27,7 +27,20 @@
             }
         },
         {
-            "visual": "<p><br><\/p>",
+            "visual": "<p>опррпопроропропроп<\/p>",
+            "code": "",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 18,
+                "end": 18
+            },
+            "codeSelection": {
+                "start": 0,
+                "end": 0
+            }
+        },
+        {
+            "visual": "<p><br><\/p><p>опррпопроропропроп<\/p>",
             "code": "",
             "mode": "visual",
             "visualSelection": {
@@ -38,7 +51,176 @@
                 "start": 0,
                 "end": 0
             }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p><br><\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p><br><\/p><p><br><\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p><br><\/p><p><br><\/p><p><br><\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p><br><\/p><p><br><\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p><br><\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p><br><\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\n<\/p><p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 1,
+                "end": 1
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br>\nопррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p>опррпопроропропроп<\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
+        },
+        {
+            "visual": "<p><br><\/p>",
+            "code": "<p><br>\n<\/p>\n<p>опррпопроропропроп<\/p>",
+            "mode": "visual",
+            "visualSelection": {
+                "start": 0,
+                "end": 0
+            },
+            "codeSelection": {
+                "start": 38,
+                "end": 38
+            }
         }
     ],
-    "index": 2
+    "index": 16
 }

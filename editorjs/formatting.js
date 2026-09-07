@@ -64,6 +64,20 @@
                 html = target;
             } else if (target instanceof HTMLElement) {
                 html = target.innerHTML;
+            } else if (target instanceof DocumentFragment || (target && target.nodeType === Node.DOCUMENT_FRAGMENT_NODE)) {
+                const div = document.createElement('div');
+                div.appendChild(target.cloneNode(true));
+                html = div.innerHTML;
+            } else if (target && typeof target.nodeType === 'number') {
+                if (target.nodeType === Node.TEXT_NODE) {
+                    const text = (target.textContent || '')
+                        .replace(/&(nbsp|#160|#xa0|#8203|#x200b|#65279|#xfeff|zwnj|zwj);/gi, ' ')
+                        .replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
+                    return text.length === 0;
+                }
+                const div = document.createElement('div');
+                div.appendChild(target.cloneNode(true));
+                html = div.innerHTML;
             } else {
                 return true;
             }
@@ -407,6 +421,7 @@
                     const newP = document.createElement('p');
                     newP.innerHTML = '<br>';
                     block.parentNode.insertBefore(newP, block);
+                    this.setCursorToStart(block);
                 } else {
                     // Split heading into two headings
                     const afterRange = document.createRange();
@@ -452,31 +467,58 @@
             if (block && block !== editor) {
                 range.deleteContents();
 
-                const afterRange = document.createRange();
-                afterRange.setStart(range.endContainer, range.endOffset);
-                afterRange.setEndAfter(block.lastChild || block);
+                const isAtStart = this.isCaretAtStartOfBlock(block, range);
+                const isAtEnd = this.isCaretAtEndOfBlock(block, range);
+                const isBlockEmpty = this.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr');
 
-                let afterContent;
-                try {
-                    afterContent = afterRange.extractContents();
-                } catch (err) {
-                    afterContent = document.createDocumentFragment();
-                }
-
-                const newP = document.createElement('p');
-                if (!afterContent.hasChildNodes() || this.isEmpty(afterContent)) {
-                    newP.innerHTML = '<br>';
-                } else {
-                    newP.appendChild(afterContent);
-                }
-
-                block.parentNode.insertBefore(newP, block.nextSibling);
-
-                if (this.isEmpty(block) && !block.querySelector('img, video, audio, iframe')) {
+                if (isBlockEmpty) {
                     block.innerHTML = '<br>';
-                }
+                    const newP = document.createElement('p');
+                    newP.innerHTML = '<br>';
+                    block.parentNode.insertBefore(newP, block.nextSibling);
+                    this.setCursorToStart(newP);
+                } else if (isAtStart) {
+                    // Enter at the start of block -> insert empty paragraph above, leave block untouched
+                    const newP = document.createElement('p');
+                    newP.innerHTML = '<br>';
+                    block.parentNode.insertBefore(newP, block);
+                    this.setCursorToStart(block);
+                } else if (isAtEnd) {
+                    // Enter at the end of block -> insert empty paragraph below
+                    const newP = document.createElement('p');
+                    newP.innerHTML = '<br>';
+                    block.parentNode.insertBefore(newP, block.nextSibling);
+                    this.setCursorToStart(newP);
+                } else {
+                    // Enter in the middle of block -> split into two blocks
+                    const afterRange = document.createRange();
+                    afterRange.setStart(range.endContainer, range.endOffset);
+                    afterRange.setEndAfter(block.lastChild || block);
 
-                this.setCursorToStart(newP);
+                    let afterContent;
+                    try {
+                        afterContent = afterRange.extractContents();
+                    } catch (err) {
+                        afterContent = document.createDocumentFragment();
+                    }
+
+                    const newBlock = document.createElement(block.tagName === 'DIV' ? 'div' : 'p');
+                    if (block.className) newBlock.className = block.className;
+                    if (block.style.cssText) newBlock.style.cssText = block.style.cssText;
+
+                    newBlock.appendChild(afterContent);
+                    if (this.isEmpty(newBlock) && !newBlock.querySelector('img, video, audio, iframe, table, hr')) {
+                        newBlock.innerHTML = '<br>';
+                    }
+
+                    block.parentNode.insertBefore(newBlock, block.nextSibling);
+
+                    if (this.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr')) {
+                        block.innerHTML = '<br>';
+                    }
+
+                    this.setCursorToStart(newBlock);
+                }
             } else {
                 const newP = document.createElement('p');
                 newP.innerHTML = '<br>';
@@ -640,24 +682,28 @@
         },
 
         isCaretAtStartOfBlock(block, range) {
-            if (!block) return false;
+            if (!block || !range) return false;
             try {
                 const checkRange = document.createRange();
                 checkRange.setStart(block, 0);
                 checkRange.setEnd(range.startContainer, range.startOffset);
-                return checkRange.toString().length === 0;
+                const frag = checkRange.cloneContents();
+                if (frag.querySelector('img, video, audio, iframe, hr, table')) return false;
+                return checkRange.toString().replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '').length === 0;
             } catch (e) {
                 return false;
             }
         },
 
         isCaretAtEndOfBlock(block, range) {
-            if (!block) return false;
+            if (!block || !range) return false;
             try {
                 const checkRange = document.createRange();
                 checkRange.setStart(range.endContainer, range.endOffset);
                 checkRange.setEndAfter(block.lastChild || block);
-                return checkRange.toString().length === 0;
+                const frag = checkRange.cloneContents();
+                if (frag.querySelector('img, video, audio, iframe, hr, table')) return false;
+                return checkRange.toString().replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '').length === 0;
             } catch (e) {
                 return false;
             }

@@ -370,7 +370,20 @@
     "rerun_setup_btn": "Пройти первоначальную настройку заново",
     "seconds_short": "сек.",
     "default_btn_short": "По умолч.",
-    "sec_pwd_subtext": "Запрашивать пароль при каждом открытии редактора"
+    "sec_pwd_subtext": "Запрашивать пароль при каждом открытии редактора",
+    "sec_pwd_already_set_title": "Пароль уже установлен",
+    "sec_pwd_already_set_desc": "Защита паролем активна. Текущий пароль будет сохранён.",
+    "sec_pwd_badge_active": "Активен",
+    "sec_pwd_status_changing": "Смена пароля: укажите текущий и новый пароль.",
+    "sec_pwd_status_disabling": "Отключение защиты: подтвердите текущим паролем.",
+    "sec_pwd_old_label": "Текущий (старый) пароль:",
+    "sec_pwd_old_ph": "Введите текущий пароль",
+    "sec_change_pwd_btn": "Сменить пароль",
+    "sec_disable_pwd_btn": "Отключить защиту",
+    "sec_cancel_action_btn": "Отмена",
+    "sec_disable_warning": "Внимание: редактор станет доступен без пароля!",
+    "sec_pwd_current_to_disable": "Введите текущий пароль для подтверждения:",
+    "validation_pwd_current_empty": "Пожалуйста, введите текущий пароль"
   },
   "safemode": {
     "title": "Safe Mode — Режим восстановления",

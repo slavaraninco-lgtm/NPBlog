@@ -25,6 +25,38 @@ if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && $curre
     }
 }
 
+// Mbstring fallback polyfills for environments without php-mbstring
+if (!function_exists('mb_strtolower')) {
+    function mb_strtolower($string, $encoding = 'UTF-8') {
+        return strtolower($string);
+    }
+}
+if (!function_exists('mb_strtoupper')) {
+    function mb_strtoupper($string, $encoding = 'UTF-8') {
+        return strtoupper($string);
+    }
+}
+if (!function_exists('mb_strlen')) {
+    function mb_strlen($string, $encoding = 'UTF-8') {
+        return strlen($string);
+    }
+}
+if (!function_exists('mb_substr')) {
+    function mb_substr($string, $start, $length = null, $encoding = 'UTF-8') {
+        return $length === null ? substr($string, $start) : substr($string, $start, $length);
+    }
+}
+if (!function_exists('mb_strpos')) {
+    function mb_strpos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        return strpos($haystack, $needle, $offset);
+    }
+}
+if (!function_exists('mb_strcasecmp')) {
+    function mb_strcasecmp($str1, $str2, $encoding = 'UTF-8') {
+        return strcasecmp($str1, $str2);
+    }
+}
+
 if (!function_exists('validateSafePath')) {
     function validateSafePath($baseDir, $filename) {
         $realBase = realpath($baseDir);

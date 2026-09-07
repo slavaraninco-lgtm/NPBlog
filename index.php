@@ -35,7 +35,17 @@ if (!function_exists('safe_include_editor_modal')) {
     function safe_include_editor_modal($filename) {
         $path = __DIR__ . '/modals_editor/' . $filename;
         if (file_exists($path)) {
-            include_once $path;
+            try {
+                include_once $path;
+            } catch (Throwable $e) {
+                error_log("NPBlog Modal Error [$filename]: " . $e->getMessage());
+                echo "\n<script>if(typeof window.triggerSafeModeEarly === 'function') window.triggerSafeModeEarly(" . json_encode([
+                    'message' => 'Критическая ошибка PHP в компоненте ' . $filename . ': ' . $e->getMessage(),
+                    'filename' => 'modals_editor/' . $filename,
+                    'lineno' => $e->getLine(),
+                    'stack' => $e->getTraceAsString()
+                ], JSON_UNESCAPED_UNICODE) . ");</script>\n";
+            }
         } else {
             echo "\n<script>if(typeof window.recordMissingComponent === 'function') window.recordMissingComponent(" . json_encode('modals_editor/' . $filename) . ");</script>\n";
         }
@@ -4236,13 +4246,30 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const height = header.offsetHeight;
         const gap = 15; // Небольшой отступ между хедером и рабочей областью
+        const bottomBar = document.getElementById('editorBottomBar') || document.querySelector('.editor-bottom-bar');
+        const bottomBarHeight = (bottomBar && bottomBar.offsetHeight > 0) ? bottomBar.offsetHeight : 28;
+        const extraBottomPadding = 60; // Комфортный отступ снизу, чтобы контент не перекрывался нижней панелью при скролле
         
         if (document.body.classList.contains('header-bottom')) {
-            document.body.style.setProperty('padding-top', '0px', 'important');
-            document.body.style.setProperty('padding-bottom', (height + gap) + 'px', 'important');
+            if (bottomBar) {
+                bottomBar.style.bottom = height + 'px';
+            }
+            const notifContainer = document.getElementById('notificationContainer');
+            if (notifContainer) {
+                notifContainer.style.bottom = (height + bottomBarHeight + 10) + 'px';
+            }
+            document.body.style.setProperty('padding-top', '20px', 'important');
+            document.body.style.setProperty('padding-bottom', (height + bottomBarHeight + extraBottomPadding) + 'px', 'important');
         } else {
+            if (bottomBar) {
+                bottomBar.style.bottom = '';
+            }
+            const notifContainer = document.getElementById('notificationContainer');
+            if (notifContainer) {
+                notifContainer.style.bottom = '';
+            }
             document.body.style.setProperty('padding-top', (height + gap) + 'px', 'important');
-            document.body.style.setProperty('padding-bottom', '0px', 'important');
+            document.body.style.setProperty('padding-bottom', (bottomBarHeight + extraBottomPadding) + 'px', 'important');
         }
     }
     

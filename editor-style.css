@@ -131,7 +131,7 @@ body {
     font-family: Arial, sans-serif;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 20px 20px 88px 20px;
     background-color: var(--bg-color);
     color: var(--text-color);
     transition: background-color 0.3s, color 0.3s;
@@ -2726,11 +2726,13 @@ button:hover {
     min-height: 200px;
     resize: vertical;
     white-space: pre-wrap;
+    padding-bottom: 24px;
 }
 
 #contentVisual.editor-field {
     min-height: 200px;
     line-height: 1.6;
+    padding-bottom: 24px;
 }
 
 #contentVisual.editor-field p {
@@ -4905,7 +4907,7 @@ button:hover {
 /* --- FIXED HEADER & FOOTER STYLES --- */
 body {
     padding-top: 88px !important;
-    padding-bottom: 38px !important;
+    padding-bottom: 88px !important;
 }
 
 .editor-header {
@@ -5342,7 +5344,8 @@ body.header-bottom .editor-bottom-bar {
     bottom: 64px;
 }
 body.header-bottom {
-    padding-bottom: 110px !important;
+    padding-top: 20px !important;
+    padding-bottom: 140px !important;
 }
 
 .editor-header #submitButton {
@@ -5802,8 +5805,8 @@ html.is-android .blog-ascii-art {
 
 /* --- BOTTOM HEADER LAYOUT --- */
 body.header-bottom {
-    padding-top: 0 !important;
-    padding-bottom: 88px !important;
+    padding-top: 20px !important;
+    padding-bottom: 140px !important;
 }
 
 body.header-bottom .editor-header {
@@ -5851,15 +5854,15 @@ body.header-bottom .color-picker-wrap.is-open .color-palette-popover {
 /* Responsive adjustments for bottom header */
 @media (max-width: 1450px) {
     body.header-bottom {
-        padding-top: 0 !important;
-        padding-bottom: 116px !important;
+        padding-top: 20px !important;
+        padding-bottom: 160px !important;
     }
 }
 
 @media (max-width: 600px) {
     body.header-bottom {
-        padding-top: 0 !important;
-        padding-bottom: 156px !important;
+        padding-top: 20px !important;
+        padding-bottom: 190px !important;
     }
 }
 

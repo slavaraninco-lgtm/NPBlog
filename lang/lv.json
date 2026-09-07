@@ -397,7 +397,20 @@
     "rerun_setup_btn": "Palaist sākotnējo iestatīšanu no jauna",
     "seconds_short": "sek.",
     "default_btn_short": "Noklusējums",
-    "sec_pwd_subtext": "Pieprasīt paroli katru reizi, kad tiek atvērts redaktors"
+    "sec_pwd_subtext": "Pieprasīt paroli katru reizi, kad tiek atvērts redaktors",
+    "sec_pwd_already_set_title": "Parole jau iestatīta",
+    "sec_pwd_already_set_desc": "Paroles aizsardzība ir aktīva. Pašreizējā parole tiks saglabāta.",
+    "sec_pwd_badge_active": "Aktīvs",
+    "sec_pwd_status_changing": "Paroles maiņa: ievadiet pašreizējo un jauno paroli.",
+    "sec_pwd_status_disabling": "Aizsardzības atspējošana: apstipriniet ar pašreizējo paroli.",
+    "sec_pwd_old_label": "Pašreizējā (vecā) parole:",
+    "sec_pwd_old_ph": "Ievadiet pašreizējo paroli",
+    "sec_change_pwd_btn": "Mainīt paroli",
+    "sec_disable_pwd_btn": "Atspējot aizsardzību",
+    "sec_cancel_action_btn": "Atcelt",
+    "sec_disable_warning": "Uzmanību: redaktors būs pieejams bez paroles!",
+    "sec_pwd_current_to_disable": "Ievadiet pašreizējo paroli, lai apstiprinātu:",
+    "validation_pwd_current_empty": "Lūdzu, ievadiet pašreizējo paroli"
   },
   "safemode": {
     "title": "Safe Mode — Atkopšanas režīms",

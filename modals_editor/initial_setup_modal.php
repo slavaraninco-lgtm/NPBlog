@@ -32,6 +32,19 @@ if (file_exists($blogViewSettingsFile)) {
         $defaultBlogTitle = $bView['title'];
     }
 }
+
+$settingsFile = __DIR__ . '/../editor_settings.json';
+$initialHasPassword = false;
+$initialIpWhitelist = false;
+if (file_exists($settingsFile)) {
+    $edSettings = json_decode(@file_get_contents($settingsFile), true) ?: [];
+    if (!empty($edSettings['password_hash'])) {
+        $initialHasPassword = true;
+    }
+    if (!empty($edSettings['ip_whitelist_enabled'])) {
+        $initialIpWhitelist = true;
+    }
+}
 ?>
 
 <style>
@@ -399,7 +412,7 @@ if (file_exists($blogViewSettingsFile)) {
 }
 
 .setup-expandable-section.is-open {
-    max-height: 300px;
+    max-height: 450px;
     opacity: 1;
     transform: translateY(0);
 }
@@ -634,8 +647,78 @@ if (file_exists($blogViewSettingsFile)) {
                     </div>
                 </div>
 
-                <!-- 1. Переключатель пароля -->
-                <div class="modal-section-card setup-stagger-2" style="padding: 16px 18px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(128,128,128,0.04); margin-bottom: 18px;">
+                <!-- 1. Вариант А: Пароль УЖЕ установлен -->
+                <div id="setupPasswordAlreadySetSection" class="modal-section-card setup-stagger-2" style="padding: 16px 18px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(128,128,128,0.04); margin-bottom: 18px; display: <?= $initialHasPassword ? 'block' : 'none' ?>;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(76, 175, 80, 0.15); color: var(--primary-color, #4CAF50); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
+                                🔒
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 14px; font-weight: 600; color: var(--text-color);" data-i18n="setup.sec_pwd_already_set_title">Пароль уже установлен</span>
+                                    <span style="display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(76, 175, 80, 0.15); color: var(--primary-color, #4CAF50);" data-i18n="setup.sec_pwd_badge_active">Активен</span>
+                                </div>
+                                <div id="setupPwdStatusText" style="font-size: 11.5px; opacity: 0.7; margin-top: 2px; color: var(--text-color);" data-i18n="setup.sec_pwd_already_set_desc">
+                                    Защита паролем активна. Текущий пароль будет сохранён.
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" id="setupBtnShowChangePwd" onclick="toggleSetupChangePasswordForm()" class="modal-btn modal-btn-secondary" style="font-size: 12px; padding: 6px 14px; white-space: nowrap;" data-i18n="setup.sec_change_pwd_btn">
+                                Сменить пароль
+                            </button>
+                            <button type="button" id="setupBtnShowDisablePwd" onclick="toggleSetupDisablePasswordForm()" class="modal-btn modal-btn-secondary" style="font-size: 12px; padding: 6px 14px; opacity: 0.85; white-space: nowrap;" data-i18n="setup.sec_disable_pwd_btn">
+                                Отключить защиту
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Форма смены пароля -->
+                    <div id="setupChangePasswordFields" class="setup-expandable-section" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+                        <div style="margin-bottom: 12px;">
+                            <label class="modal-label modal-label-required" for="setupChangeOldPassword" data-i18n="setup.sec_pwd_old_label" style="font-size: 12px; font-weight: 600;">Текущий (старый) пароль:</label>
+                            <div style="position: relative;">
+                                <input type="password" id="setupChangeOldPassword" class="modal-input" placeholder="Введите текущий пароль" data-i18n-placeholder="setup.sec_pwd_old_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
+                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                            </div>
+                        </div>
+                        <div class="modal-grid-2" style="gap: 16px; margin-bottom: 8px;">
+                            <div class="modal-form-group" style="margin-bottom: 0;">
+                                <label class="modal-label modal-label-required" for="setupChangeNewPassword" data-i18n="setup.sec_pwd_new_label" style="font-size: 12px; font-weight: 600;">Новый пароль:</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="setupChangeNewPassword" class="modal-input" placeholder="Введите новый пароль" data-i18n-placeholder="setup.sec_pwd_new_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
+                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                </div>
+                            </div>
+                            <div class="modal-form-group" style="margin-bottom: 0;">
+                                <label class="modal-label modal-label-required" for="setupChangeConfirmPassword" data-i18n="setup.sec_pwd_confirm_label" style="font-size: 12px; font-weight: 600;">Подтверждение нового пароля:</label>
+                                <div style="position: relative;">
+                                    <input type="password" id="setupChangeConfirmPassword" class="modal-input" placeholder="Повторите новый пароль" data-i18n-placeholder="setup.sec_pwd_confirm_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
+                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Форма отключения защиты -->
+                    <div id="setupDisablePasswordFields" class="setup-expandable-section" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+                        <div class="modal-alert modal-alert-danger" style="margin-bottom: 12px; font-size: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 8px;">
+                            <span>⚠️</span>
+                            <span data-i18n="setup.sec_disable_warning">Внимание: редактор станет доступен без пароля!</span>
+                        </div>
+                        <div class="modal-form-group" style="margin-bottom: 0;">
+                            <label class="modal-label modal-label-required" for="setupDisableOldPassword" data-i18n="setup.sec_pwd_current_to_disable" style="font-size: 12px; font-weight: 600;">Введите текущий пароль для подтверждения:</label>
+                            <div style="position: relative;">
+                                <input type="password" id="setupDisableOldPassword" class="modal-input" placeholder="Введите текущий пароль" data-i18n-placeholder="setup.sec_pwd_old_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
+                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupDisableOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. Вариант Б: Пароль НЕ установлен -->
+                <div id="setupPasswordNotSetSection" class="modal-section-card setup-stagger-2" style="padding: 16px 18px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(128,128,128,0.04); margin-bottom: 18px; display: <?= $initialHasPassword ? 'none' : 'block' ?>;">
                     <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
                         <div class="modal-switch-control">
                             <input type="checkbox" id="setupPasswordEnabled" onchange="toggleSetupPasswordFields(this.checked)">
@@ -674,7 +757,7 @@ if (file_exists($blogViewSettingsFile)) {
                 <!-- 2. Ограничение по IP -->
                 <div class="modal-section-card setup-stagger-3" style="padding: 16px 18px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(128,128,128,0.04);">
                     <label class="modal-checkbox-label" style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
-                        <input type="checkbox" id="setupIpWhitelistEnabled" class="modal-checkbox" style="margin-top: 2px;">
+                        <input type="checkbox" id="setupIpWhitelistEnabled" class="modal-checkbox" style="margin-top: 2px;" <?= $initialIpWhitelist ? 'checked' : '' ?>>
                         <div>
                             <span style="font-size: 13.5px; font-weight: 600; color: var(--text-color);" data-i18n="setup.sec_ip_toggle">Ограничить доступ по списку IP (allowed_ips.txt)</span>
                             <div style="font-size: 12px; opacity: 0.7; margin-top: 3px;" data-i18n="setup.sec_ip_hint">Ваш текущий IP-адрес будет автоматически добавлен в список доверенных.</div>
@@ -738,6 +821,8 @@ window.currentSetupStep = 0;
 window.setupDefaultDataPath = <?= json_encode($defaultDataPath) ?>;
 window.setupCanNavigate = true;
 window.setupIsTransitioning = false;
+window.setupHasExistingPassword = <?= $initialHasPassword ? 'true' : 'false' ?>;
+window.setupExistingPasswordAction = window.setupHasExistingPassword ? 'keep' : 'none';
 
 function openInitialSetupModal() {
     window.currentSetupStep = 0;
@@ -771,6 +856,16 @@ function openInitialSetupModal() {
                 if (s.active_blog_path || s.data_path) {
                     const pInput = document.getElementById('setupDataPath');
                     if (pInput) pInput.value = s.active_blog_path || s.data_path;
+                }
+                
+                // Парсинг статуса пароля
+                const hasPassword = !!(s.password_set || s.password_enabled);
+                updateSetupPasswordUI(hasPassword);
+                
+                // Парсинг белого списка IP
+                if (s.ip_whitelist_enabled !== undefined) {
+                    const ipChk = document.getElementById('setupIpWhitelistEnabled');
+                    if (ipChk) ipChk.checked = !!s.ip_whitelist_enabled;
                 }
                 
                 // Если настройка запускается повторно пользователем (уже была завершена ранее), показываем крестик закрытия
@@ -859,6 +954,158 @@ function toggleSetupPasswordFields(isEnabled) {
     }
 }
 
+function updateSetupPasswordUI(hasPassword) {
+    window.setupHasExistingPassword = !!hasPassword;
+    const notSetSec = document.getElementById('setupPasswordNotSetSection');
+    const alreadySetSec = document.getElementById('setupPasswordAlreadySetSection');
+    
+    if (window.setupHasExistingPassword) {
+        if (notSetSec) notSetSec.style.display = 'none';
+        if (alreadySetSec) alreadySetSec.style.display = 'block';
+        window.setupExistingPasswordAction = 'keep';
+        resetSetupPasswordActionForms();
+    } else {
+        if (notSetSec) notSetSec.style.display = 'block';
+        if (alreadySetSec) alreadySetSec.style.display = 'none';
+        window.setupExistingPasswordAction = 'none';
+        const pwdChk = document.getElementById('setupPasswordEnabled');
+        if (pwdChk) {
+            pwdChk.checked = false;
+            toggleSetupPasswordFields(false);
+        }
+    }
+}
+
+function resetSetupPasswordActionForms() {
+    const changeFields = document.getElementById('setupChangePasswordFields');
+    const disableFields = document.getElementById('setupDisablePasswordFields');
+    const btnChange = document.getElementById('setupBtnShowChangePwd');
+    const btnDisable = document.getElementById('setupBtnShowDisablePwd');
+    const statusText = document.getElementById('setupPwdStatusText');
+    
+    if (changeFields) {
+        changeFields.classList.remove('is-open');
+        setTimeout(() => {
+            if (window.setupExistingPasswordAction !== 'change') {
+                changeFields.style.display = 'none';
+            }
+        }, 200);
+    }
+    if (disableFields) {
+        disableFields.classList.remove('is-open');
+        setTimeout(() => {
+            if (window.setupExistingPasswordAction !== 'disable') {
+                disableFields.style.display = 'none';
+            }
+        }, 200);
+    }
+    
+    if (btnChange) {
+        btnChange.classList.remove('modal-btn-primary');
+        btnChange.classList.add('modal-btn-secondary');
+        btnChange.textContent = (window.t ? window.t('setup.sec_change_pwd_btn', 'Сменить пароль') : 'Сменить пароль');
+    }
+    if (btnDisable) {
+        btnDisable.classList.remove('modal-btn-primary');
+        btnDisable.classList.add('modal-btn-secondary');
+        btnDisable.textContent = (window.t ? window.t('setup.sec_disable_pwd_btn', 'Отключить защиту') : 'Отключить защиту');
+    }
+    
+    if (statusText) {
+        if (window.setupExistingPasswordAction === 'keep') {
+            statusText.textContent = (window.t ? window.t('setup.sec_pwd_already_set_desc', 'Защита паролем активна. Текущий пароль будет сохранён.') : 'Защита паролем активна. Текущий пароль будет сохранён.');
+        } else if (window.setupExistingPasswordAction === 'change') {
+            statusText.textContent = (window.t ? window.t('setup.sec_pwd_status_changing', 'Смена пароля: укажите текущий и новый пароль.') : 'Смена пароля: укажите текущий и новый пароль.');
+        } else if (window.setupExistingPasswordAction === 'disable') {
+            statusText.textContent = (window.t ? window.t('setup.sec_pwd_status_disabling', 'Отключение защиты: подтвердите текущим паролем.') : 'Отключение защиты: подтвердите текущим паролем.');
+        }
+    }
+}
+
+function toggleSetupChangePasswordForm() {
+    hideSetupError();
+    const changeFields = document.getElementById('setupChangePasswordFields');
+    const disableFields = document.getElementById('setupDisablePasswordFields');
+    const btnChange = document.getElementById('setupBtnShowChangePwd');
+    const btnDisable = document.getElementById('setupBtnShowDisablePwd');
+    
+    if (window.setupExistingPasswordAction === 'change') {
+        window.setupExistingPasswordAction = 'keep';
+        resetSetupPasswordActionForms();
+    } else {
+        window.setupExistingPasswordAction = 'change';
+        if (disableFields) {
+            disableFields.classList.remove('is-open');
+            disableFields.style.display = 'none';
+        }
+        if (changeFields) {
+            changeFields.style.display = 'block';
+            void changeFields.offsetHeight;
+            changeFields.classList.add('is-open');
+            setTimeout(() => {
+                const oldInput = document.getElementById('setupChangeOldPassword');
+                if (oldInput) oldInput.focus();
+            }, 100);
+        }
+        if (btnChange) {
+            btnChange.classList.remove('modal-btn-secondary');
+            btnChange.classList.add('modal-btn-primary');
+            btnChange.textContent = (window.t ? window.t('setup.sec_cancel_action_btn', 'Отмена') : 'Отмена');
+        }
+        if (btnDisable) {
+            btnDisable.classList.remove('modal-btn-primary');
+            btnDisable.classList.add('modal-btn-secondary');
+            btnDisable.textContent = (window.t ? window.t('setup.sec_disable_pwd_btn', 'Отключить защиту') : 'Отключить защиту');
+        }
+        const statusText = document.getElementById('setupPwdStatusText');
+        if (statusText) {
+            statusText.textContent = (window.t ? window.t('setup.sec_pwd_status_changing', 'Смена пароля: укажите текущий и новый пароль.') : 'Смена пароля: укажите текущий и новый пароль.');
+        }
+    }
+}
+
+function toggleSetupDisablePasswordForm() {
+    hideSetupError();
+    const changeFields = document.getElementById('setupChangePasswordFields');
+    const disableFields = document.getElementById('setupDisablePasswordFields');
+    const btnChange = document.getElementById('setupBtnShowChangePwd');
+    const btnDisable = document.getElementById('setupBtnShowDisablePwd');
+    
+    if (window.setupExistingPasswordAction === 'disable') {
+        window.setupExistingPasswordAction = 'keep';
+        resetSetupPasswordActionForms();
+    } else {
+        window.setupExistingPasswordAction = 'disable';
+        if (changeFields) {
+            changeFields.classList.remove('is-open');
+            changeFields.style.display = 'none';
+        }
+        if (disableFields) {
+            disableFields.style.display = 'block';
+            void disableFields.offsetHeight;
+            disableFields.classList.add('is-open');
+            setTimeout(() => {
+                const oldInput = document.getElementById('setupDisableOldPassword');
+                if (oldInput) oldInput.focus();
+            }, 100);
+        }
+        if (btnDisable) {
+            btnDisable.classList.remove('modal-btn-secondary');
+            btnDisable.classList.add('modal-btn-primary');
+            btnDisable.textContent = (window.t ? window.t('setup.sec_cancel_action_btn', 'Отмена') : 'Отмена');
+        }
+        if (btnChange) {
+            btnChange.classList.remove('modal-btn-primary');
+            btnChange.classList.add('modal-btn-secondary');
+            btnChange.textContent = (window.t ? window.t('setup.sec_change_pwd_btn', 'Сменить пароль') : 'Сменить пароль');
+        }
+        const statusText = document.getElementById('setupPwdStatusText');
+        if (statusText) {
+            statusText.textContent = (window.t ? window.t('setup.sec_pwd_status_disabling', 'Отключение защиты: подтвердите текущим паролем.') : 'Отключение защиты: подтвердите текущим паролем.');
+        }
+    }
+}
+
 function toggleSetupPasswordEye(inputId, btnEl) {
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -925,28 +1172,63 @@ function validateSetupStep1() {
 
 function validateSetupStep2() {
     hideSetupError();
-    const pwdEnabled = document.getElementById('setupPasswordEnabled').checked;
     
-    if (pwdEnabled) {
-        const newPwd = document.getElementById('setupNewPassword').value;
-        const confirmPwd = document.getElementById('setupConfirmPassword').value;
-        
-        if (!newPwd) {
-            showSetupError('setup.validation_pwd_empty', 'Пожалуйста, введите новый пароль');
-            document.getElementById('setupNewPassword').focus();
-            return false;
+    if (window.setupHasExistingPassword) {
+        if (window.setupExistingPasswordAction === 'change') {
+            const oldPwd = document.getElementById('setupChangeOldPassword').value;
+            const newPwd = document.getElementById('setupChangeNewPassword').value;
+            const confirmPwd = document.getElementById('setupChangeConfirmPassword').value;
+            
+            if (!oldPwd) {
+                showSetupError('setup.validation_pwd_current_empty', 'Пожалуйста, введите текущий пароль');
+                document.getElementById('setupChangeOldPassword').focus();
+                return false;
+            }
+            if (!newPwd) {
+                showSetupError('setup.validation_pwd_empty', 'Пожалуйста, введите новый пароль');
+                document.getElementById('setupChangeNewPassword').focus();
+                return false;
+            }
+            if (newPwd.length < 4) {
+                showSetupError('setup.validation_pwd_short', 'Пароль должен содержать минимум 4 символа');
+                document.getElementById('setupChangeNewPassword').focus();
+                return false;
+            }
+            if (newPwd !== confirmPwd) {
+                showSetupError('setup.validation_pwd_mismatch', 'Пароли не совпадают!');
+                document.getElementById('setupChangeConfirmPassword').focus();
+                return false;
+            }
+        } else if (window.setupExistingPasswordAction === 'disable') {
+            const oldPwd = document.getElementById('setupDisableOldPassword').value;
+            if (!oldPwd) {
+                showSetupError('setup.validation_pwd_current_empty', 'Пожалуйста, введите текущий пароль');
+                document.getElementById('setupDisableOldPassword').focus();
+                return false;
+            }
         }
-        
-        if (newPwd.length < 4) {
-            showSetupError('setup.validation_pwd_short', 'Пароль должен содержать минимум 4 символа');
-            document.getElementById('setupNewPassword').focus();
-            return false;
-        }
-        
-        if (newPwd !== confirmPwd) {
-            showSetupError('setup.validation_pwd_mismatch', 'Пароли не совпадают!');
-            document.getElementById('setupConfirmPassword').focus();
-            return false;
+        // Action 'keep' is valid as-is
+    } else {
+        const pwdEnabled = document.getElementById('setupPasswordEnabled').checked;
+        if (pwdEnabled) {
+            const newPwd = document.getElementById('setupNewPassword').value;
+            const confirmPwd = document.getElementById('setupConfirmPassword').value;
+            
+            if (!newPwd) {
+                showSetupError('setup.validation_pwd_empty', 'Пожалуйста, введите новый пароль');
+                document.getElementById('setupNewPassword').focus();
+                return false;
+            }
+            if (newPwd.length < 4) {
+                showSetupError('setup.validation_pwd_short', 'Пароль должен содержать минимум 4 символа');
+                document.getElementById('setupNewPassword').focus();
+                return false;
+            }
+            if (newPwd !== confirmPwd) {
+                showSetupError('setup.validation_pwd_mismatch', 'Пароли не совпадают!');
+                document.getElementById('setupConfirmPassword').focus();
+                return false;
+            }
         }
     }
     
@@ -1164,8 +1446,6 @@ async function finishInitialSetup() {
     const autosaveEnabled = document.getElementById('setupAutosaveEnabled').checked;
     const autosaveInterval = parseInt(document.getElementById('setupAutosaveInterval').value, 10) || 60;
     const dataPath = document.getElementById('setupDataPath').value.trim();
-    const pwdEnabled = document.getElementById('setupPasswordEnabled').checked;
-    const newPwd = document.getElementById('setupNewPassword').value;
     const ipWhitelistEnabled = document.getElementById('setupIpWhitelistEnabled').checked;
     
     const payload = {
@@ -1177,12 +1457,30 @@ async function finishInitialSetup() {
         blog_paths: [dataPath],
         active_blog_path: dataPath,
         data_path: dataPath,
-        ip_whitelist_enabled: ipWhitelistEnabled,
-        password_enabled: pwdEnabled
+        ip_whitelist_enabled: ipWhitelistEnabled
     };
     
-    if (pwdEnabled && newPwd) {
-        payload.new_password = newPwd;
+    if (window.setupHasExistingPassword) {
+        if (window.setupExistingPasswordAction === 'change') {
+            payload.password_enabled = true;
+            payload.old_password = document.getElementById('setupChangeOldPassword').value;
+            payload.new_password = document.getElementById('setupChangeNewPassword').value;
+        } else if (window.setupExistingPasswordAction === 'disable') {
+            payload.password_enabled = false;
+            payload.old_password = document.getElementById('setupDisableOldPassword').value;
+        } else {
+            // 'keep': Текущий пароль сохраняется без изменений
+            payload.password_enabled = true;
+        }
+    } else {
+        const pwdEnabled = document.getElementById('setupPasswordEnabled').checked;
+        payload.password_enabled = pwdEnabled;
+        if (pwdEnabled) {
+            const newPwd = document.getElementById('setupNewPassword').value;
+            if (newPwd) {
+                payload.new_password = newPwd;
+            }
+        }
     }
     
     try {

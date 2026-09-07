@@ -38,7 +38,9 @@ usort($fileList, function($a, $b) {
     if (function_exists('mb_strcasecmp')) {
         return mb_strcasecmp($a['displayName'], $b['displayName'], 'UTF-8');
     }
-    return strcasecmp(mb_strtolower($a['displayName'], 'UTF-8'), mb_strtolower($b['displayName'], 'UTF-8'));
+    $nameA = function_exists('mb_strtolower') ? mb_strtolower($a['displayName'], 'UTF-8') : strtolower($a['displayName']);
+    $nameB = function_exists('mb_strtolower') ? mb_strtolower($b['displayName'], 'UTF-8') : strtolower($b['displayName']);
+    return strcasecmp($nameA, $nameB);
 });
 
 echo json_encode(['success' => true, 'files' => $fileList], JSON_UNESCAPED_UNICODE);

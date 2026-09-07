@@ -370,7 +370,20 @@
     "rerun_setup_btn": "Re-run Initial Setup Wizard",
     "seconds_short": "sec.",
     "default_btn_short": "Default",
-    "sec_pwd_subtext": "Require password each time editor is opened"
+    "sec_pwd_subtext": "Require password each time editor is opened",
+    "sec_pwd_already_set_title": "Password already set",
+    "sec_pwd_already_set_desc": "Password protection is active. Current password will be kept.",
+    "sec_pwd_badge_active": "Active",
+    "sec_pwd_status_changing": "Changing password: enter current and new password.",
+    "sec_pwd_status_disabling": "Disabling protection: confirm with current password.",
+    "sec_pwd_old_label": "Current (old) password:",
+    "sec_pwd_old_ph": "Enter current password",
+    "sec_change_pwd_btn": "Change password",
+    "sec_disable_pwd_btn": "Disable protection",
+    "sec_cancel_action_btn": "Cancel",
+    "sec_disable_warning": "Warning: editor will be accessible without a password!",
+    "sec_pwd_current_to_disable": "Enter current password to confirm:",
+    "validation_pwd_current_empty": "Please enter current password"
   },
   "safemode": {
     "title": "Safe Mode — Recovery Mode",
