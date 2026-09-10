@@ -12,7 +12,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-info">🔢</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.numbering_check_title">Проверка нумерации статей</h3>
                     <p class="modal-subtitle" data-i18n="modals.numbering_check_subtitle">Анализ порядка и целостности ID статей</p>
@@ -33,7 +33,7 @@
         <!-- Подвал -->
         <div class="modal-footer">
             <button type="button" class="modal-btn modal-btn-ghost" onclick="closeNumberingCheck()" data-modal-close data-i18n="common.close">Закрыть</button>
-            <button type="button" class="modal-btn modal-btn-primary" id="fixNumberingBtn" style="display:none;" onclick="fixNumbering()">Исправить</button>
+            <button type="button" class="modal-btn modal-btn-primary" id="fixNumberingBtn" style="display:none;" onclick="fixNumbering()" data-i18n="modals.numbering_fix_btn">Исправить</button>
         </div>
     </div>
 </div>

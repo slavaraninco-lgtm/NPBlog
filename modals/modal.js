@@ -555,6 +555,11 @@
         async open() {
             if (this.isOpen) return this;
 
+            // Preserve editor selection before focus shifts into modal
+            if (window.VisualEngine && typeof window.VisualEngine.saveSelection === 'function') {
+                window.VisualEngine.saveSelection();
+            }
+
             // Trigger beforeOpen hook
             if (typeof this.options.beforeOpen === 'function') {
                 const canOpen = await this.options.beforeOpen(this);

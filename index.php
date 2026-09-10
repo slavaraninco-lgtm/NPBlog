@@ -1,6 +1,56 @@
 <?php
+// Перехват фатальных ошибок PHP и аварийный переход в Safe Mode
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
+        if (!headers_sent()) {
+            http_response_code(200);
+        }
+        $errObj = [
+            'message' => 'Критическая ошибка PHP: ' . $error['message'],
+            'filename' => $error['file'],
+            'lineno' => $error['line'],
+            'stack' => 'PHP Fatal Error in ' . $error['file'] . ':' . $error['line']
+        ];
+        echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>NPBlog - Safe Mode</title><style>body{margin:0;background:#18191e;color:#f3f4f6;font-family:sans-serif;}</style></head><body>';
+        if (file_exists(__DIR__ . '/modals_editor/safe_mode_modal.php')) {
+            include __DIR__ . '/modals_editor/safe_mode_modal.php';
+            echo '<script>
+                if (typeof enterSafeMode === "function") {
+                    enterSafeMode(' . json_encode($errObj, JSON_UNESCAPED_UNICODE) . ');
+                }
+            </script>';
+        } else {
+            echo '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;box-sizing:border-box;"><div style="background:#23242a;border:2px solid #ef4444;border-radius:12px;padding:24px;max-width:700px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.8);"><h2 style="color:#ef4444;margin-top:0;">🛡️ Safe Mode — Критическая ошибка PHP</h2><p style="color:#e5e7eb;">Обнаружена неисправимая ошибка на сервере:</p><pre style="background:#000;color:#fca5a5;padding:12px;border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap;">' . htmlspecialchars($error['message']) . ' в ' . htmlspecialchars($error['file']) . ':' . $error['line'] . '</pre><p style="color:#9ca3af;font-size:13px;">Для восстановления системы замените поврежденные файлы или восстановите их из резервной копии.</p></div></div>';
+        }
+        echo '</body></html>';
+    }
+});
+
 require_once __DIR__ . '/security_bootstrap.php';
 require_once __DIR__ . '/lang_helper.php';
+
+// Функция безопасного подключения модальных окон без падения PHP
+if (!function_exists('safe_include_editor_modal')) {
+    function safe_include_editor_modal($filename) {
+        $path = __DIR__ . '/modals_editor/' . $filename;
+        if (file_exists($path)) {
+            try {
+                include_once $path;
+            } catch (Throwable $e) {
+                error_log("NPBlog Modal Error [$filename]: " . $e->getMessage());
+                echo "\n<script>if(typeof window.triggerSafeModeEarly === 'function') window.triggerSafeModeEarly(" . json_encode([
+                    'message' => 'Критическая ошибка PHP в компоненте ' . $filename . ': ' . $e->getMessage(),
+                    'filename' => 'modals_editor/' . $filename,
+                    'lineno' => $e->getLine(),
+                    'stack' => $e->getTraceAsString()
+                ], JSON_UNESCAPED_UNICODE) . ");</script>\n";
+            }
+        } else {
+            echo "\n<script>if(typeof window.recordMissingComponent === 'function') window.recordMissingComponent(" . json_encode('modals_editor/' . $filename) . ");</script>\n";
+        }
+    }
+}
 
 $availableLanguages = getAvailableLanguages();
 $availableCodes = getAvailableLanguageCodes();
@@ -56,8 +106,80 @@ if (file_exists($versionFile)) {
         if(/Android/i.test(navigator.userAgent)) document.documentElement.classList.add('is-android');
         const DATA_URL_PREFIX = '<?php echo getDataUrl(); ?>';
         window.isDevBuild = <?php echo $isDevBuild ? 'true' : 'false'; ?>;
+
+        // Отслеживание отсутствующих компонентов
+        window._missingComponentsList = [];
+        window.recordMissingComponent = function(name) {
+            if (!window._missingComponentsList.includes(name)) {
+                window._missingComponentsList.push(name);
+            }
+            if (typeof window.enterSafeMode === 'function') {
+                window.enterSafeMode({
+                    message: 'Отсутствуют необходимые компоненты редактора: ' + window._missingComponentsList.join(', '),
+                    filename: name,
+                    stack: 'Missing component recorded: ' + name
+                });
+            }
+        };
+
+        // Ранний перехватчик ошибок для перехода в Safe Mode
+        window._safeModeErrors = [];
+        window.triggerSafeModeEarly = function(errorObj) {
+            window._safeModeErrors.push(errorObj);
+            if (typeof window.enterSafeMode === 'function') {
+                window.enterSafeMode(errorObj);
+            }
+        };
+
+        // 1. Перехват ошибок ресурсов (<script src="...">, <link href="..."> 404/network error) и JS ошибок в фазе захвата (true)
+        window.addEventListener('error', function(e) {
+            // 1. Ошибки загрузки DOM-элементов
+            if (e.target && e.target !== window && e.target.tagName) {
+                const tag = e.target.tagName.toLowerCase();
+                // Критичными для редактора являются только теги скриптов и стилей
+                if (tag === 'script' || tag === 'link') {
+                    const src = e.target.src || e.target.href || '';
+                    const errorObj = {
+                        message: `Не удалось загрузить ресурс <${tag}> (HTTP 404 / Ошибка сети): ${src}`,
+                        filename: src,
+                        lineno: 0,
+                        colno: 0,
+                        stack: `Resource load failure on <${tag}> with URL: ${src}`
+                    };
+                    window.triggerSafeModeEarly(errorObj);
+                }
+                // Ошибки img, video, audio и т.д. не являются критическими сбоями ядра редактора
+                return;
+            }
+            
+            // 2. Реальные ошибки выполнения JavaScript
+            if (e.error || e.message) {
+                const msg = e.message || (e.error && e.error.message) || 'Ошибка выполнения JavaScript';
+                const src = e.filename || (e.error && e.error.fileName) || '';
+                const errorObj = {
+                    message: msg,
+                    filename: src,
+                    lineno: e.lineno,
+                    colno: e.colno,
+                    stack: e.error ? (e.error.stack || e.error.toString()) : (e.message || '')
+                };
+                window.triggerSafeModeEarly(errorObj);
+            }
+        }, true);
+
+        // 2. Необработанные Promise Rejection
+        window.addEventListener('unhandledrejection', function(e) {
+            const reason = e.reason || {};
+            const msg = reason.message || (typeof reason === 'string' ? reason : 'Необработанная ошибка Promise');
+            const errorObj = {
+                message: msg,
+                filename: reason.fileName || '',
+                lineno: reason.lineNumber || 0,
+                stack: reason.stack || JSON.stringify(reason)
+            };
+            window.triggerSafeModeEarly(errorObj);
+        });
         
-        // Global Fetch Interceptor to automatically append CSRF Token headers
         // Global Fetch Interceptor to automatically append CSRF Token headers and handle session expiration
         (function() {
             const originalFetch = window.fetch;
@@ -129,36 +251,52 @@ if (file_exists($versionFile)) {
     
     <!-- Контейнер для уведомлений -->
     <div class="notification-container" id="notificationContainer"></div>
+
+    <!-- Модальное окно Safe Mode (Аварийное восстановление) - подключается первым в body -->
+    <?php safe_include_editor_modal('safe_mode_modal.php'); ?>
     
     <!-- Диалог подтверждения удаления -->
-    <?php require_once __DIR__ . '/modals_editor/delete_confirm_modal.php'; ?>
+    <?php safe_include_editor_modal('delete_confirm_modal.php'); ?>
 
     <!-- Диалог сохранения в includes -->
-    <?php require_once __DIR__ . '/modals_editor/save_include_modal.php'; ?>
+    <?php safe_include_editor_modal('save_include_modal.php'); ?>
 
     <!-- Менеджер бэкапов -->
-    <?php require_once __DIR__ . '/modals_editor/backup_manager_modal.php'; ?>
+    <?php safe_include_editor_modal('backup_manager_modal.php'); ?>
 
     <!-- Диалог проверки нумерации -->
-    <?php require_once __DIR__ . '/modals_editor/numbering_check_modal.php'; ?>
+    <?php safe_include_editor_modal('numbering_check_modal.php'); ?>
 
-    <!-- Гайд для первого запуска -->
+    <!-- Интерактивный тур-обучение -->
     <div class="tutorial-overlay" id="tutorialOverlay">
         <div class="tutorial-spotlight" id="tutorialSpotlight"></div>
         <div class="tutorial-tooltip" id="tutorialTooltip">
-            <div class="tutorial-progress" id="tutorialProgress"></div>
+            <div class="tutorial-header">
+                <span class="tutorial-step-badge" id="tutorialStepBadge">Шаг 1 из 17</span>
+                <button type="button" class="tutorial-close-btn" onclick="skipTutorial()" title="Закрыть (Esc)">×</button>
+            </div>
+            <div class="tutorial-progress-bar">
+                <div class="tutorial-progress-fill" id="tutorialProgressFill"></div>
+            </div>
             <h3 id="tutorialTitle"></h3>
             <p id="tutorialText"></p>
             <div class="tutorial-buttons">
-                <button class="tutorial-btn skip" onclick="skipTutorial()">Пропустить</button>
-                <button class="tutorial-btn next" onclick="nextTutorialStep()">Далее</button>
+                <button type="button" class="tutorial-btn skip" id="tutorialSkipBtn" onclick="skipTutorial()" data-i18n="tutorial.skip_btn">Пропустить</button>
+                <div class="tutorial-nav-buttons">
+                    <button type="button" class="tutorial-btn prev" id="tutorialPrevBtn" onclick="prevTutorialStep()" data-i18n="tutorial.prev_btn">← Назад</button>
+                    <button type="button" class="tutorial-btn next" id="tutorialNextBtn" onclick="nextTutorialStep()" data-i18n="tutorial.next_btn">Далее →</button>
+                </div>
             </div>
         </div>
         <div class="tutorial-complete-dialog" id="tutorialComplete" style="display:none;">
-            <div class="tutorial-complete-icon">🎉</div>
-            <h2>Обучение завершено!</h2>
-            <p>Теперь вы знаете основы работы с редактором NPBlog. Приятного использования!</p>
-            <button class="tutorial-complete-btn" onclick="completeTutorial()">OK</button>
+            <div class="tutorial-complete-circle">
+                <svg viewBox="0 0 52 52" style="width: 38px; height: 38px;">
+                    <path fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" d="M14 27 l8 8 l16 -17"/>
+                </svg>
+            </div>
+            <h2 id="tutorialCompleteTitle" data-i18n="tutorial.complete_title">Обучение завершено!</h2>
+            <p id="tutorialCompleteText" data-i18n="tutorial.complete_text">Теперь вы знаете все основные инструменты и возможности NPBlog. Приятного использования!</p>
+            <button type="button" class="tutorial-complete-btn modal-btn modal-btn-primary" onclick="completeTutorial()" data-i18n="tutorial.finish_btn">Начать работу</button>
         </div>
     </div>
 
@@ -168,13 +306,6 @@ if (file_exists($versionFile)) {
             <div id="toolbar-row-1" class="toolbar-row" data-placeholder="Ряд 1">
                 <span class="header-logo">NPBlog</span>
             <span class="toolbar-divider" id="logoDivider"></span>
-            
-            <div class="mode-toggle" id="headerModeToggle" onmousedown="if(!document.body.classList.contains('header-customizing')) event.preventDefault()">
-                <button type="button" id="modeVisualBtn" class="format-btn" title="Визуальный режим" data-i18n="tabs.visual" data-i18n-title="tabs.visual">Визуально</button>
-                <button type="button" id="modeCodeBtn" class="format-btn" title="Режим кода" data-i18n="tabs.code" data-i18n-title="tabs.code">Код</button>
-            </div>
-            
-            <span class="toolbar-divider" id="modeActionsDivider"></span>
             
             <div class="editor-actions" id="headerEditorActions" onmousedown="if(!document.body.classList.contains('header-customizing')) event.preventDefault()">
                 <button type="button" id="undoBtn" class="format-btn" onclick="undoEdit()" title="Отменить (Ctrl+Z)" data-i18n-title="toolbar.undo">
@@ -318,11 +449,6 @@ if (file_exists($versionFile)) {
         </div>
         
         <div class="header-right">
-            <!-- Таймер автосохранения -->
-            <div id="autosaveBadge" onmousedown="event.preventDefault()" style="display: none;">
-                <span id="autosaveBadgeText">Автосохранение через 60с</span>
-            </div>
-            
             <!-- Кнопка сохранения -->
             <button type="submit" id="submitButton" form="blogForm" data-i18n="header.btn_save">Сохранить</button>
             
@@ -366,6 +492,27 @@ if (file_exists($versionFile)) {
         <div id="contentVisual" class="content228 editor-field" contenteditable="true"></div>
     </form>
 
+    <!-- Нижняя полоса редактора (Статус-бар) -->
+    <footer class="editor-bottom-bar" id="editorBottomBar">
+        <div class="editor-bottom-bar-left">
+            <div class="mode-toggle bottom-bar-mode-toggle" id="bottomModeToggle" onmousedown="event.preventDefault()">
+                <button type="button" id="modeVisualBtn" class="format-btn" title="Визуальный режим" data-i18n="tabs.visual" data-i18n-title="tabs.visual">Визуально</button>
+                <button type="button" id="modeCodeBtn" class="format-btn" title="Режим кода" data-i18n="tabs.code" data-i18n-title="tabs.code">Код</button>
+            </div>
+            <div id="blogSelectorContainer" class="bottom-bar-blog-selector" style="display: none;">
+                <label for="blogSelector" class="bottom-bar-blog-label" data-i18n="header.manage_posts_blog_label">Блог:</label>
+                <select id="blogSelector" class="bottom-bar-blog-select" onchange="selectActiveBlog(this.value)">
+                </select>
+            </div>
+        </div>
+        <div class="editor-bottom-bar-right">
+            <!-- Таймер автосохранения (чисто текст, кликабельный для открытия менеджера) -->
+            <div id="autosaveBadge" onclick="openAutosaveManager()" onmousedown="event.preventDefault()" style="display: none;" title="Менеджер автосохранений" data-i18n-title="header.menu_autosave_manager">
+                <span id="autosaveBadgeText">Автосохранение через 60с</span>
+            </div>
+        </div>
+    </footer>
+
     <div id="editorContextMenu" class="editor-context-menu" role="menu">
         <button type="button" class="editor-context-item" data-cmd="paste" role="menuitem" data-i18n="context_menu.paste">Вставить</button>
         <button type="button" class="editor-context-item" data-cmd="copy" role="menuitem" data-i18n="context_menu.copy">Копировать</button>
@@ -392,11 +539,6 @@ if (file_exists($versionFile)) {
             <h2 data-i18n="header.manage_posts_title">Все статьи</h2>
             <button type="button" class="close-manage" onclick="toggleManagePosts()" aria-label="Закрыть">×</button>
         </div>
-        <div id="blogSelectorContainer" style="display: none; padding: 12px 16px 0;">
-            <label style="display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; opacity: 0.8; color: var(--text-color);" data-i18n="header.manage_posts_blog_label">Блог:</label>
-            <select id="blogSelector" onchange="selectActiveBlog(this.value)">
-            </select>
-        </div>
         <div style="padding: 16px 16px 0;">
             <input type="text" id="postsSearchInput" class="posts-search-input" placeholder="🔍 Поиск по статьям..." data-i18n-placeholder="header.manage_posts_search" oninput="filterPosts()">
         </div>
@@ -404,19 +546,19 @@ if (file_exists($versionFile)) {
     </div>
     
     <!-- Менеджер шаблонов -->
-    <?php require_once __DIR__ . '/modals_editor/template_manager_modal.php'; ?>
+    <?php safe_include_editor_modal('template_manager_modal.php'); ?>
 
     <!-- Модальное окно добавления изображения -->
-    <?php require_once __DIR__ . '/modals_editor/image_upload_modal.php'; ?>
+    <?php safe_include_editor_modal('image_upload_modal.php'); ?>
 
     <!-- Модальное окно вставки кода -->
-    <?php require_once __DIR__ . '/modals_editor/code_modal.php'; ?>
+    <?php safe_include_editor_modal('code_modal.php'); ?>
 
 <!-- Модальное окно Вставки кнопки со ссылкой -->
-<?php require_once __DIR__ . '/modals_editor/custom_button_modal.php'; ?>
+<?php safe_include_editor_modal('custom_button_modal.php'); ?>
 
 <!-- Диалог загрузки файлов -->
-<?php require_once __DIR__ . '/modals_editor/file_upload_modal.php'; ?>
+<?php safe_include_editor_modal('file_upload_modal.php'); ?>
 
 <div id="fontSizeDialog" class="dialog">
     <div class="dialog-content">
@@ -431,51 +573,81 @@ if (file_exists($versionFile)) {
 
 
     <!-- Модальное окно добавления медиа -->
-    <?php require_once __DIR__ . '/modals_editor/media_modal.php'; ?>
+    <?php safe_include_editor_modal('media_modal.php'); ?>
 
     <!-- Модальное окно сворачиваемого блока -->
-    <?php require_once __DIR__ . '/modals_editor/spoiler_modal.php'; ?>
+    <?php safe_include_editor_modal('spoiler_modal.php'); ?>
 
     <!-- Модальное окно выделения маркером -->
-    <?php require_once __DIR__ . '/modals_editor/marker_modal.php'; ?>
+    <?php safe_include_editor_modal('marker_modal.php'); ?>
 
     <!-- Модальное окно вставки таблицы -->
-    <?php require_once __DIR__ . '/modals_editor/table_modal.php'; ?>
+    <?php safe_include_editor_modal('table_modal.php'); ?>
 
 <!-- Модальное окно перекрашивания ячейки -->
-<?php require_once __DIR__ . '/modals_editor/cell_color_modal.php'; ?>
+<?php safe_include_editor_modal('cell_color_modal.php'); ?>
 
     <!-- Модальное окно вставки ссылки -->
-    <?php require_once __DIR__ . '/modals_editor/link_modal.php'; ?>
+    <?php safe_include_editor_modal('link_modal.php'); ?>
 
 <!-- Модальное окно управления наборами смайлов -->
-<?php require_once __DIR__ . '/modals_editor/smile_sets_modal.php'; ?>
+<?php safe_include_editor_modal('smile_sets_modal.php'); ?>
 
 <script src="modals/modal.js?v=<?php echo file_exists(__DIR__ . '/modals/modal.js') ? filemtime(__DIR__ . '/modals/modal.js') : time(); ?>"></script>
-<script src="editor-main.js?v=<?php echo file_exists(__DIR__ . '/editor-main.js') ? filemtime(__DIR__ . '/editor-main.js') : time(); ?>"></script>
+<?php
+$editorJsFiles = [
+    'core.js',
+    'notifications.js',
+    'drafts.js',
+    'history.js',
+    'formatting.js',
+    'tables.js',
+    'media.js',
+    'network.js',
+    'ui.js',
+    'integrity.js',
+    'backups.js',
+    'includes.js',
+    'tour.js',
+    'file-upload.js',
+    'ascii-drawer.js',
+    'smooth-typing.js',
+    'markdown.js',
+    'templates.js',
+    'smiles.js',
+    'custom-button.js'
+];
+foreach ($editorJsFiles as $jsFile) {
+    $v = file_exists(__DIR__ . '/editorjs/' . $jsFile) ? filemtime(__DIR__ . '/editorjs/' . $jsFile) : time();
+    echo '<script src="editorjs/' . $jsFile . '?v=' . $v . '"></script>' . "\n";
+}
+?>
 
 <script src="editor-img.js?v=<?php echo file_exists(__DIR__ . '/editor-img.js') ? filemtime(__DIR__ . '/editor-img.js') : time(); ?>"></script>
 
 <!-- Модальное окно дополнительных настроек -->
-<?php require_once __DIR__ . '/modals_editor/additional_settings_modal.php'; ?>
+<?php safe_include_editor_modal('additional_settings_modal.php'); ?>
 
 <!-- Модальное окно предупреждения о DEV сборке -->
-<?php require_once __DIR__ . '/modals_editor/dev_warning_modal.php'; ?>
+<?php safe_include_editor_modal('dev_warning_modal.php'); ?>
 
 <!-- Модальное окно глобальных параметров -->
-<?php require_once __DIR__ . '/modals_editor/global_settings_modal.php'; ?>
+<?php safe_include_editor_modal('global_settings_modal.php'); ?>
 
 <!-- Модальное окно пользовательских шрифтов -->
-<?php require_once __DIR__ . '/modals_editor/custom_fonts_modal.php'; ?>
+<?php safe_include_editor_modal('custom_fonts_modal.php'); ?>
 
 <!-- Модальное окно менеджера автосохранений -->
-<?php require_once __DIR__ . '/modals_editor/autosave_manager_modal.php'; ?>
+<?php safe_include_editor_modal('autosave_manager_modal.php'); ?>
 
 <!-- Модальные окна обновления и отката системы -->
-<?php require_once __DIR__ . '/modals_editor/system_update_modal.php'; ?>
+<?php safe_include_editor_modal('system_update_modal.php'); ?>
 
 <!-- Модальное окно публикации и загрузки по FTP -->
-<?php require_once __DIR__ . '/modals_editor/ftp_upload_modal.php'; ?>
+<?php safe_include_editor_modal('ftp_upload_modal.php'); ?>
+
+<!-- Модальное окно первоначальной настройки -->
+<?php safe_include_editor_modal('initial_setup_modal.php'); ?>
 
 <script>
 function openRestoreModal() {
@@ -1119,7 +1291,8 @@ function loadRssSection() {
         })
         .catch(err => {
             console.error(err);
-            previewContainer.innerHTML = '<div style="font-size: 14px; color: #f44336; font-weight: 500;">Ошибка загрузки превью виджета</div>';
+            const errMsg = window.t ? window.t('settings.rss_preview_error', 'Ошибка загрузки превью виджета') : 'Ошибка загрузки превью виджета';
+            previewContainer.innerHTML = '<div style="font-size: 14px; color: #f44336; font-weight: 500;">' + errMsg + '</div>';
         });
 }
 
@@ -1581,6 +1754,7 @@ let autosaveCountdown = 0;
 function loadAutosaveSettings() {
     loadAndApplyAllSettings();
 }
+window.loadAutosaveSettings = loadAutosaveSettings;
 
 function saveAutosaveSettings() {
     const enabled = document.getElementById('autosaveEnabled').checked;
@@ -1613,6 +1787,69 @@ function saveAutosaveSettings() {
     });
 }
 
+function isEditorContentEmpty(htmlOrText) {
+    if (!htmlOrText) return true;
+    if (typeof htmlOrText !== 'string') {
+        if (htmlOrText instanceof HTMLElement) {
+            htmlOrText = htmlOrText.innerHTML;
+        } else {
+            return true;
+        }
+    }
+    const trimmed = htmlOrText.trim();
+    if (!trimmed || trimmed === '<br>' || trimmed === '<br/>' || 
+        trimmed === '<p><br></p>' || trimmed === '<p><br/></p>' || 
+        trimmed === '<div><br></div>' || trimmed === '<div><br/></div>' || 
+        trimmed === '<p></p>' || trimmed === '<div></div>') {
+        return true;
+    }
+    if (/<(img|video|audio|iframe|table|hr|object|embed|canvas|svg|blockquote)\b/i.test(trimmed)) {
+        return false;
+    }
+    const textOnly = trimmed
+        .replace(/<[^>]*>/g, '')
+        .replace(/&(nbsp|#160|#xa0|#8203|#x200b|#65279|#xfeff|zwnj|zwj);/gi, ' ')
+        .replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
+    return textOnly.length === 0;
+}
+window.isEditorContentEmpty = isEditorContentEmpty;
+
+function hasEditorContent() {
+    const title = document.getElementById('title')?.value?.trim() || '';
+    const ve = document.getElementById('contentVisual');
+    const ta = document.getElementById('content');
+    const content = (typeof editorMode !== 'undefined' && editorMode === 'visual')
+        ? (ve ? ve.innerHTML : '')
+        : (ta ? ta.value : '');
+
+    const hasTitle = title.length > 0;
+    const hasContent = !isEditorContentEmpty(content);
+
+    return hasTitle || hasContent;
+}
+
+function updateAutosaveBadge(statusText = null) {
+    const badge = document.getElementById('autosaveBadgeText');
+    if (!badge) return;
+
+    if (statusText) {
+        badge.textContent = statusText;
+        return;
+    }
+
+    if (!hasEditorContent()) {
+        badge.textContent = window.t ? window.t('header.autosave_badge_waiting', 'Ожидание контента...') : 'Ожидание контента...';
+        return;
+    }
+
+    if (typeof isEditorDirty !== 'undefined' && !isEditorDirty) {
+        badge.textContent = '✓ Сохранено';
+        return;
+    }
+
+    badge.textContent = window.t ? window.t('header.autosave_badge_timer', `Автосохранение через ${autosaveCountdown}с`, { sec: autosaveCountdown }) : `Автосохранение через ${autosaveCountdown}с`;
+}
+
 function startAutosave() {
     stopAutosave(); // Останавливаем предыдущий таймер если есть
     
@@ -1621,14 +1858,21 @@ function startAutosave() {
     
     // Единый таймер обратного отсчета
     autosaveCountdownTimer = setInterval(() => {
-        // Проверяем наличие контента
+        // 1. Проверяем наличие контента
         if (!hasEditorContent()) {
-            // Если контента нет, сбрасываем таймер
+            autosaveCountdown = autosaveInterval;
+            updateAutosaveBadge();
+            return;
+        }
+
+        // 2. Если контент есть, но изменений не было (isEditorDirty === false) - таймер на паузе
+        if (typeof isEditorDirty !== 'undefined' && !isEditorDirty) {
             autosaveCountdown = autosaveInterval;
             updateAutosaveBadge();
             return;
         }
         
+        // 3. Отсчитываем секунды только при наличии реальных несохраненных изменений
         autosaveCountdown--;
         updateAutosaveBadge();
         
@@ -1637,24 +1881,17 @@ function startAutosave() {
             performAutosave();
             // Сбрасываем счетчик
             autosaveCountdown = autosaveInterval;
-            updateAutosaveBadge();
+            updateAutosaveBadge('✓ Автосохранено');
+            setTimeout(() => {
+                updateAutosaveBadge();
+            }, 3000);
         }
     }, 1000);
     
-    document.getElementById('autosaveBadge').style.display = 'block';
-}
-
-function hasEditorContent() {
-    const title = document.getElementById('title').value.trim();
-    const content = editorMode === 'visual' 
-        ? document.getElementById('contentVisual').innerHTML.trim()
-        : document.getElementById('content').value.trim();
-    
-    // Проверяем, есть ли заголовок или контент (не считая пустые теги)
-    const hasTitle = title.length > 0;
-    const hasContent = content.length > 0 && content !== '<br>' && content !== '<div><br></div>';
-    
-    return hasTitle || hasContent;
+    const badgeContainer = document.getElementById('autosaveBadge');
+    if (badgeContainer) {
+        badgeContainer.style.display = 'inline-flex';
+    }
 }
 
 function stopAutosave() {
@@ -1663,36 +1900,34 @@ function stopAutosave() {
         autosaveCountdownTimer = null;
     }
     
-    document.getElementById('autosaveBadge').style.display = 'none';
-}
-
-function updateAutosaveBadge() {
-    const badge = document.getElementById('autosaveBadgeText');
-    if (badge) {
-        if (hasEditorContent()) {
-            badge.textContent = window.t ? window.t('header.autosave_badge_timer', `Автосохранение через ${autosaveCountdown}с`, { sec: autosaveCountdown }) : `Автосохранение через ${autosaveCountdown}с`;
-        } else {
-            badge.textContent = window.t ? window.t('header.autosave_badge_waiting', 'Ожидание контента...') : 'Ожидание контента...';
-        }
+    const badgeContainer = document.getElementById('autosaveBadge');
+    if (badgeContainer) {
+        badgeContainer.style.display = 'none';
     }
 }
 
 function performAutosave() {
-    const title = document.getElementById('title').value.trim();
-    let content = editorMode === 'visual' 
-        ? document.getElementById('contentVisual').innerHTML 
-        : document.getElementById('content').value;
+    const title = document.getElementById('title')?.value?.trim() || '';
+    const ve = document.getElementById('contentVisual');
+    const ta = document.getElementById('content');
+    
+    let content = '';
+    if (typeof editorMode !== 'undefined' && editorMode === 'visual' && ve) {
+        content = typeof cleanContentForSave === 'function' ? cleanContentForSave(ve.innerHTML) : ve.innerHTML;
+    } else if (ta) {
+        content = ta.value;
+    }
     
     if (window.enableMarkdown) {
-        if (editorMode === 'visual') {
-            document.getElementById('content').value = convertHtmlToMarkdown(document.getElementById('contentVisual').innerHTML);
+        if (editorMode === 'visual' && ve) {
+            document.getElementById('content').value = convertHtmlToMarkdown(ve.innerHTML);
         }
-        const rawMarkdown = document.getElementById('content').value;
+        const rawMarkdown = document.getElementById('content')?.value || '';
         const base64Markdown = btoa(unescape(encodeURIComponent(rawMarkdown)));
         content = parseMarkdownToHtml(rawMarkdown) + '\n<script type="text/markdown" id="markdown-source" data-base64="' + base64Markdown + '"></' + 'script>';
     }
     
-    if (!title && !content) {
+    if (!title && isEditorContentEmpty(content)) {
         return; // Нечего сохранять
     }
     
@@ -1706,7 +1941,7 @@ function performAutosave() {
     })
     .then(async response => {
         const text = await response.text();
-        if (!text) throw new Error('Сервер вернул пустой ответ (0 байт). Возможно, ошибка PHP (без вывода ошибок) или блокировка Nginx.');
+        if (!text) throw new Error('Сервер вернул пустой ответ (0 байт).');
         try {
             return JSON.parse(text);
         } catch (e) {
@@ -1717,7 +1952,13 @@ function performAutosave() {
     .then(data => {
         if (data.success) {
             console.log('Автосохранение выполнено');
-            // Можно показать небольшое уведомление
+            if (typeof isEditorDirty !== 'undefined') {
+                isEditorDirty = false;
+            }
+            updateAutosaveBadge('✓ Автосохранено');
+            setTimeout(() => {
+                updateAutosaveBadge();
+            }, 3000);
             showNotification(window.t ? window.t('notifications.autosave_completed', 'Автосохранение выполнено') : 'Автосохранение выполнено', 'success');
         }
     })
@@ -1725,6 +1966,24 @@ function performAutosave() {
         console.error('Ошибка автосохранения:', error);
     });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const titleEl = document.getElementById('title');
+    if (titleEl) {
+        titleEl.addEventListener('input', () => {
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            updateAutosaveBadge();
+        });
+    }
+
+    const contentEl = document.getElementById('content');
+    if (contentEl) {
+        contentEl.addEventListener('input', () => {
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            updateAutosaveBadge();
+        });
+    }
+});
 
 function checkAutosaveExists() {
     // Эта функция сохранена для совместимости,
@@ -2070,97 +2329,6 @@ function saveCrossBlogNav(action) {
     });
 }
 
-// Функции для навигации между блогами
-let currentCrossBlogNavItems = [];
-
-function checkCrossBlogNavStatus() {
-    fetch('save_blog_nav.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=check'
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (!data.is_standard) {
-            document.getElementById('crossBlogNavStatus').style.display = 'block';
-            document.getElementById('crossBlogNavEditor').style.display = 'none';
-        } else {
-            document.getElementById('crossBlogNavStatus').style.display = 'none';
-            document.getElementById('crossBlogNavEditor').style.display = 'block';
-            currentCrossBlogNavItems = data.buttons || [];
-            document.getElementById('enableCrossBlogNav').checked = currentCrossBlogNavItems.length > 0;
-            toggleCrossBlogNavUI();
-            renderCrossBlogNavItems();
-        }
-    });
-}
-
-function toggleCrossBlogNavUI() {
-    const isEnabled = document.getElementById('enableCrossBlogNav').checked;
-    document.getElementById('crossBlogNavList').style.display = isEnabled ? 'block' : 'none';
-}
-
-function addCrossBlogNavItem() {
-    currentCrossBlogNavItems.push({ text: 'Блог', url: '../data/blog.html' });
-    renderCrossBlogNavItems();
-}
-
-function removeCrossBlogNavItem(index) {
-    currentCrossBlogNavItems.splice(index, 1);
-    renderCrossBlogNavItems();
-}
-
-function updateCrossBlogNavItem(index, field, value) {
-    currentCrossBlogNavItems[index][field] = value;
-}
-
-function renderCrossBlogNavItems() {
-    const container = document.getElementById('crossBlogNavItems');
-    container.innerHTML = '';
-    currentCrossBlogNavItems.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.gap = '10px';
-        div.style.marginBottom = '10px';
-        div.style.alignItems = 'center';
-        
-        div.innerHTML = `
-            <input type="text" value="${item.text.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'text', this.value)" placeholder="Название кнопки" style="flex: 1; min-width: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-            <input type="text" value="${item.url.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'url', this.value)" placeholder="URL (например: ../data2/blog.html)" style="flex: 2; min-width: 150px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-            <button type="button" onclick="removeCrossBlogNavItem(${index})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 18px; padding: 4px;" title="Удалить">✖</button>
-        `;
-        container.appendChild(div);
-    });
-}
-
-function saveCrossBlogNav(action) {
-    const isEnabled = document.getElementById('enableCrossBlogNav').checked;
-    const buttonsToSave = isEnabled ? currentCrossBlogNavItems : [];
-    
-    fetch('save_blog_nav.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=' + action + '&buttons=' + encodeURIComponent(JSON.stringify(buttonsToSave))
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            if (action === 'apply_all') {
-                showAlert('Кнопки успешно применены к ' + data.updated_count + ' блогам со стандартными шаблонами!');
-            } else {
-                showAlert('Кнопки навигации успешно сохранены!');
-            }
-            checkCrossBlogNavStatus();
-        } else {
-            showAlert('Ошибка: ' + (data.message || 'Неизвестная ошибка'));
-        }
-    })
-    .catch(err => {
-        showAlert('Произошла ошибка при сохранении кнопок.');
-        console.error(err);
-    });
-}
-
 // Единая функция загрузки и применения всех настроек редактора
 function loadAndApplyAllSettings() {
     fetch('get_editor_settings.php?t=' + Date.now())
@@ -2262,48 +2430,37 @@ function loadAndApplyAllSettings() {
                     updateAmoledState();
                 }
                 
-                // Переключение отображения переключателя режимов и разделителей
-                const modeToggle = document.getElementById('headerModeToggle');
-                const logoDivider = document.getElementById('logoDivider');
+                // Переключение отображения переключателя режимов
+                const modeToggle = document.getElementById('bottomModeToggle') || document.getElementById('headerModeToggle');
                 if (modeToggle) {
                     if (hideModeButtons) {
                         modeToggle.style.display = 'none';
-                        if (logoDivider) logoDivider.style.display = 'none';
                         if (typeof setMode === 'function') {
                             setMode('visual');
                         }
                     } else {
-                        modeToggle.style.display = 'flex';
-                        if (logoDivider) logoDivider.style.display = '';
+                        modeToggle.style.display = 'inline-flex';
                     }
                 }
                 
-                // Переключение отображения кнопок истории (undo/redo) и разделителя
+                // Переключение отображения кнопок истории (undo/redo)
                 const editorActions = document.getElementById('headerEditorActions');
-                const modeActionsDivider = document.getElementById('modeActionsDivider');
                 if (editorActions) {
                     if (enableUndoRedo) {
                         editorActions.style.display = 'flex';
-                        if (modeActionsDivider) modeActionsDivider.style.display = '';
-                        
                         const undoBtn = document.getElementById('undoBtn');
                         const redoBtn = document.getElementById('redoBtn');
                         if (undoBtn) undoBtn.style.display = '';
                         if (redoBtn) redoBtn.style.display = '';
                     } else {
                         editorActions.style.display = 'none';
-                        if (modeActionsDivider) modeActionsDivider.style.display = 'none';
                     }
                 }
                 
                 // Управление разделителем перед панелью форматирования
                 const actionsFormattingDivider = document.getElementById('actionsFormattingDivider');
                 if (actionsFormattingDivider) {
-                    if (!hideModeButtons || enableUndoRedo) {
-                        actionsFormattingDivider.style.display = '';
-                    } else {
-                        actionsFormattingDivider.style.display = 'none';
-                    }
+                    actionsFormattingDivider.style.display = enableUndoRedo ? '' : 'none';
                 }
                 
                 // RSS Лента
@@ -2331,7 +2488,7 @@ function loadAndApplyAllSettings() {
                 if (rssFeedUseFirstLineCheck) rssFeedUseFirstLineCheck.checked = rssUseFirstLine;
                 if (rssFeedContentTemplateInput) rssFeedContentTemplateInput.value = rssContentTemplate;
                 
-                // 3. Пути к блогам и Безопасность
+                // 3. Пути к блогам, бэкапам и Безопасность
                 var blogPaths = settings.blog_paths || [];
                 if (!Array.isArray(blogPaths) || blogPaths.length === 0) {
                     if (settings.data_path) {
@@ -2345,6 +2502,33 @@ function loadAndApplyAllSettings() {
                 
                 renderBlogPathsInputs(blogPaths, window.currentActiveBlogPath);
                 updateBlogSelectorUI(blogPaths, window.currentActiveBlogPath);
+                
+                const backupPathInput = document.getElementById('backupPathInput');
+                const currentResolvedBackupPath = document.getElementById('currentResolvedBackupPath');
+                if (backupPathInput) {
+                    backupPathInput.value = settings.backup_path || '';
+                }
+                if (currentResolvedBackupPath) {
+                    currentResolvedBackupPath.textContent = settings.resolved_backup_path || settings.backup_path || 'data_backup';
+                }
+
+                const autosavePathInput = document.getElementById('autosavePathInput');
+                const currentResolvedAutosavePath = document.getElementById('currentResolvedAutosavePath');
+                if (autosavePathInput) {
+                    autosavePathInput.value = settings.autosave_path || '';
+                }
+                if (currentResolvedAutosavePath) {
+                    currentResolvedAutosavePath.textContent = settings.resolved_autosave_path || settings.autosave_path || 'autosave';
+                }
+
+                const editorBackupPathInput = document.getElementById('editorBackupPathInput');
+                const currentResolvedEditorBackupPath = document.getElementById('currentResolvedEditorBackupPath');
+                if (editorBackupPathInput) {
+                    editorBackupPathInput.value = settings.editor_backup_path || '';
+                }
+                if (currentResolvedEditorBackupPath) {
+                    currentResolvedEditorBackupPath.textContent = settings.resolved_editor_backup_path || settings.editor_backup_path || 'editor_backup';
+                }
                 
                 const passwordEnabled = settings.password_set || false;
                 const ipWhitelistEnabled = settings.ip_whitelist_enabled || false;
@@ -2385,10 +2569,26 @@ function loadAndApplyAllSettings() {
                 if (typeof adjustHeaderPadding === 'function') {
                     adjustHeaderPadding();
                 }
+
+                // Проверка первоначальной настройки (Onboarding Wizard)
+                if (settings.initial_setup_completed === false) {
+                    setTimeout(() => {
+                        if (typeof openInitialSetupModal === 'function') {
+                            openInitialSetupModal();
+                        }
+                    }, 200);
+                }
             }
         })
         .catch(error => {
             console.error('Ошибка загрузки настроек редактора:', error);
+            if (typeof enterSafeMode === 'function') {
+                enterSafeMode({
+                    message: 'Ошибка загрузки/применения настроек редактора: ' + (error.message || error),
+                    filename: 'index.php',
+                    stack: error.stack || ''
+                });
+            }
         });
 }
 
@@ -2436,11 +2636,13 @@ function saveAppearanceSettings() {
 function applyAppearanceSettings() {
     loadAndApplyAllSettings();
 }
+window.applyAppearanceSettings = applyAppearanceSettings;
 
 // Функции для экспериментальных настроек
 function loadExperimentalSettings() {
     loadAndApplyAllSettings();
 }
+window.loadExperimentalSettings = loadExperimentalSettings;
 
 function saveExperimentalSettings() {
     const enableUndoRedo = document.getElementById('enableUndoRedo').checked;
@@ -2503,6 +2705,7 @@ function deleteAllCustomTemplates() {
 function applyExperimentalSettings() {
     loadAndApplyAllSettings();
 }
+window.applyExperimentalSettings = applyExperimentalSettings;
 
 function loadSecuritySettings() {
     loadAndApplyAllSettings();
@@ -2677,7 +2880,8 @@ function addBlogPathRow(value = '') {
     deleteBtn.type = 'button';
     deleteBtn.className = 'global-action-btn';
     deleteBtn.style.cssText = 'background: #ef4444; color: #ffffff; border-color: #ef4444; padding: 8px 14px; font-size: 13px; cursor: pointer; border-radius: 8px;';
-    deleteBtn.textContent = 'Удалить';
+    deleteBtn.setAttribute('data-i18n', 'common.delete');
+    deleteBtn.textContent = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
     deleteBtn.onclick = function() {
         removeBlogPathRow(this);
     };
@@ -2703,6 +2907,30 @@ function removeBlogPathRow(btn) {
     if (row) row.remove();
 }
 
+function resetBackupPathToDefault() {
+    const input = document.getElementById('backupPathInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+}
+
+function resetAutosavePathToDefault() {
+    const input = document.getElementById('autosavePathInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+}
+
+function resetEditorBackupPathToDefault() {
+    const input = document.getElementById('editorBackupPathInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+}
+
 function savePathsSettings() {
     const inputs = document.querySelectorAll('.blog-path-input');
     const paths = [];
@@ -2718,10 +2946,24 @@ function savePathsSettings() {
         return;
     }
     
+    const backupPathInput = document.getElementById('backupPathInput');
+    const backupPath = backupPathInput ? backupPathInput.value.trim() : '';
+
+    const autosavePathInput = document.getElementById('autosavePathInput');
+    const autosavePath = autosavePathInput ? autosavePathInput.value.trim() : '';
+
+    const editorBackupPathInput = document.getElementById('editorBackupPathInput');
+    const editorBackupPath = editorBackupPathInput ? editorBackupPathInput.value.trim() : '';
+    
     fetch('save_editor_settings.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blog_paths: paths })
+        body: JSON.stringify({ 
+            blog_paths: paths,
+            backup_path: backupPath,
+            autosave_path: autosavePath,
+            editor_backup_path: editorBackupPath
+        })
     })
     .then(res => res.json())
     .then(data => {
@@ -2766,7 +3008,7 @@ function updateBlogSelectorUI(paths, activePath) {
         return;
     }
     
-    container.style.display = 'block';
+    container.style.display = 'inline-flex';
     selector.innerHTML = '';
     
     paths.forEach(p => {
@@ -2779,6 +3021,12 @@ function updateBlogSelectorUI(paths, activePath) {
         }
         selector.appendChild(option);
     });
+
+    if (window.syncCustomSelect) {
+        window.syncCustomSelect(selector);
+    } else if (window.initCustomSelect && !selector.dataset.customSelectInitialized) {
+        window.initCustomSelect(selector);
+    }
 }
 
 function selectActiveBlog(selectedPath) {
@@ -2806,177 +3054,6 @@ function selectActiveBlog(selectedPath) {
             }
         } else {
             showAlert(window.t ? window.t('notifications.blog_select_error_param', 'Ошибка при выборе блога: ' + data.error, { error: data.error }) : 'Ошибка при выборе блога: ' + data.error);
-        }
-    })
-    .catch(err => {
-        console.error('Ошибка выбора блога:', err);
-    });
-}
-
-// --- Функции управления путями к блогам ---
-function loadPathsSettings() {
-    loadAndApplyAllSettings();
-}
-
-function renderBlogPathsInputs(paths, activePath) {
-    const container = document.getElementById('blogPathsListContainer');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    const list = (Array.isArray(paths) && paths.length > 0) ? paths : ['/var/www/html/data'];
-    list.forEach(pathVal => {
-        addBlogPathRow(pathVal);
-    });
-}
-
-function addBlogPathRow(value = '') {
-    const container = document.getElementById('blogPathsListContainer');
-    if (!container) return;
-    
-    const row = document.createElement('div');
-    row.className = 'blog-path-item-row';
-    row.style.cssText = 'display: flex; gap: 10px; align-items: center;';
-    
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'blog-path-input';
-    input.placeholder = '/var/www/html/data';
-    input.value = value;
-    input.style.cssText = 'flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-color); font-size: 14px; box-sizing: border-box;';
-    
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'global-action-btn';
-    deleteBtn.style.cssText = 'background: #ef4444; color: #ffffff; border-color: #ef4444; padding: 8px 14px; font-size: 13px; cursor: pointer; border-radius: 8px;';
-    deleteBtn.textContent = 'Удалить';
-    deleteBtn.onclick = function() {
-        removeBlogPathRow(this);
-    };
-    
-    row.appendChild(input);
-    row.appendChild(deleteBtn);
-    container.appendChild(row);
-    if (value === '') {
-        input.focus();
-    }
-}
-
-function removeBlogPathRow(btn) {
-    const container = document.getElementById('blogPathsListContainer');
-    if (!container) return;
-    const rows = container.querySelectorAll('.blog-path-item-row');
-    if (rows.length <= 1) {
-        const input = rows[0].querySelector('.blog-path-input');
-        if (input) input.value = '';
-        return;
-    }
-    const row = btn.closest('.blog-path-item-row');
-    if (row) row.remove();
-}
-
-function savePathsSettings() {
-    const inputs = document.querySelectorAll('.blog-path-input');
-    const paths = [];
-    inputs.forEach(input => {
-        const val = input.value.trim();
-        if (val !== '' && !paths.includes(val)) {
-            paths.push(val);
-        }
-    });
-    
-    if (paths.length === 0) {
-        showAlert('Укажите хотя бы один путь к папке блога!');
-        return;
-    }
-    
-    fetch('save_editor_settings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blog_paths: paths })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            loadAndApplyAllSettings();
-            showAlert('Настройки путей сохранены!');
-        } else {
-            showAlert('Ошибка сохранения путей: ' + data.error);
-        }
-    })
-    .catch(err => {
-        console.error('Ошибка сохранения путей:', err);
-        showAlert('Ошибка при сохранении путей');
-    });
-}
-
-function getBlogFolderName(pathStr, allPaths) {
-    if (!pathStr) return 'data';
-    const clean = pathStr.replace(/\\/g, '/').replace(/\/+$/, '');
-    const parts = clean.split('/');
-    const last = parts[parts.length - 1] || clean;
-    if (allPaths && Array.isArray(allPaths)) {
-        const duplicates = allPaths.filter(p => {
-            const c = p.replace(/\\/g, '/').replace(/\/+$/, '');
-            const pts = c.split('/');
-            return (pts[pts.length - 1] || c) === last;
-        });
-        if (duplicates.length > 1 && parts.length >= 2) {
-            return parts.slice(-2).join('/');
-        }
-    }
-    return last;
-}
-
-function updateBlogSelectorUI(paths, activePath) {
-    const container = document.getElementById('blogSelectorContainer');
-    const selector = document.getElementById('blogSelector');
-    if (!container || !selector) return;
-    
-    if (!Array.isArray(paths) || paths.length <= 1) {
-        container.style.display = 'none';
-        return;
-    }
-    
-    container.style.display = 'block';
-    selector.innerHTML = '';
-    
-    paths.forEach(p => {
-        const option = document.createElement('option');
-        option.value = p;
-        option.textContent = getBlogFolderName(p, paths);
-        option.title = p;
-        if (p === activePath) {
-            option.selected = true;
-        }
-        selector.appendChild(option);
-    });
-}
-
-function selectActiveBlog(selectedPath) {
-    fetch('save_editor_settings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active_blog_path: selectedPath })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            window.currentActiveBlogPath = selectedPath;
-            const folderName = getBlogFolderName(selectedPath, window.allBlogPaths);
-            if (typeof showNotification === 'function') {
-                showNotification('Выбран блог: ' + folderName, 'info');
-            }
-            if (typeof loadPosts === 'function') {
-                loadPosts();
-            }
-            if (data.blogUrl) {
-                const goToBlogBtn = document.getElementById('goToBlogBtn');
-                if (goToBlogBtn) {
-                    goToBlogBtn.onclick = function() { window.location.href = data.blogUrl; };
-                }
-            }
-        } else {
-            showAlert('Ошибка при выборе блога: ' + data.error);
         }
     })
     .catch(err => {
@@ -3294,268 +3371,6 @@ function saveCustomCssCode() {
     .catch(err => {
         console.error(err);
         showAlert(window.t ? window.t('notifications.theme_css_network_error', 'Ошибка сети при сохранении CSS кода') : 'Ошибка сети при сохранении CSS кода');
-    });
-}
-
-function showSessionExpiredModal() {
-    const modal = document.getElementById('sessionExpiredOverlay');
-    if (modal) {
-        modal.style.display = 'flex';
-        const dialog = modal.querySelector('.session-expired-dialog');
-        if (dialog) {
-            setTimeout(() => {
-                dialog.style.transform = 'scale(1)';
-            }, 10);
-        }
-        const passwordInput = document.getElementById('sessionExpiredPassword');
-        if (passwordInput) {
-            passwordInput.value = '';
-            passwordInput.focus();
-        }
-        const errDiv = document.getElementById('sessionExpiredError');
-        if (errDiv) errDiv.style.display = 'none';
-    }
-}
-
-function submitSessionReauth() {
-    const passwordInput = document.getElementById('sessionExpiredPassword');
-    const errDiv = document.getElementById('sessionExpiredError');
-    if (!passwordInput || !errDiv) return;
-    
-    const password = passwordInput.value;
-    if (!password) {
-        errDiv.textContent = 'Введите пароль!';
-        errDiv.style.display = 'block';
-        return;
-    }
-    
-    errDiv.style.display = 'none';
-    
-    fetch('login.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ password: password })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.csrf_token) {
-            // Update CSRF token in meta tag
-            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-            if (csrfMeta) {
-                csrfMeta.setAttribute('content', data.csrf_token);
-            }
-            
-            // Hide modal
-            const modal = document.getElementById('sessionExpiredOverlay');
-            if (modal) {
-                const dialog = modal.querySelector('.session-expired-dialog');
-                if (dialog) dialog.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    modal.style.display = 'none';
-                }, 150);
-            }
-            
-            showNotification('Сессия успешно восстановлена! Теперь вы можете сохранить вашу работу.', 'success');
-        } else {
-            errDiv.textContent = data.message || 'Неверный пароль';
-            errDiv.style.display = 'block';
-            passwordInput.focus();
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка реавторизации:', error);
-        errDiv.textContent = 'Сетевая ошибка при проверке пароля';
-        errDiv.style.display = 'block';
-    });
-}
-
-function cancelSessionReauth() {
-    window.location.reload();
-}
-
-let currentSelectedTheme = localStorage.getItem('theme') || 'dark';
-
-function openThemeManager() {
-    const modal = document.getElementById('themeManagerModal');
-    if (!modal) return;
-    
-    currentSelectedTheme = localStorage.getItem('theme') || 'dark';
-    updateThemeSelectionUI(currentSelectedTheme);
-    
-    fetch('editor_settings.json?v=' + Date.now())
-        .then(res => res.json())
-        .then(settings => {
-            if (settings.customThemeCss) {
-                const textarea = document.getElementById('customCssEditor');
-                if (textarea) textarea.value = settings.customThemeCss;
-            }
-        }).catch(() => {});
-        
-    modal.style.display = 'block';
-}
-
-function closeThemeManager() {
-    const modal = document.getElementById('themeManagerModal');
-    if (modal) modal.style.display = 'none';
-}
-
-function selectThemeOption(themeName) {
-    currentSelectedTheme = themeName;
-    updateThemeSelectionUI(themeName);
-}
-
-function updateThemeSelectionUI(themeName) {
-    const darkCard = document.getElementById('themeCardDark');
-    const lightCard = document.getElementById('themeCardLight');
-    const customCard = document.getElementById('themeCardCustom');
-    
-    const activeStyle = '2px solid var(--primary-color, #4CAF50)';
-    const defaultStyle = '2px solid var(--border-color)';
-    
-    if (darkCard) darkCard.style.border = (themeName === 'dark') ? activeStyle : defaultStyle;
-    if (lightCard) lightCard.style.border = (themeName === 'light') ? activeStyle : defaultStyle;
-    if (customCard) customCard.style.border = (themeName === 'custom') ? activeStyle : defaultStyle;
-    
-    const cssContainer = document.getElementById('customCssContainer');
-    if (cssContainer) {
-        cssContainer.style.display = (themeName === 'custom') ? 'block' : 'none';
-    }
-}
-
-function saveSelectedTheme() {
-    applyTheme(currentSelectedTheme);
-    
-    fetch('save_editor_settings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activeTheme: currentSelectedTheme })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Тема успешно применена и сохранена!', 'success');
-            closeThemeManager();
-        } else {
-            showAlert('Ошибка сохранения настройки темы');
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        showNotification('Тема применена локально', 'info');
-        closeThemeManager();
-    });
-}
-
-function applyTheme(themeName) {
-    const docEl = document.documentElement;
-    const customLink = document.getElementById('customThemeStyleLink');
-    
-    if (themeName === 'dark') {
-        docEl.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-        if (customLink) customLink.disabled = true;
-    } else if (themeName === 'light') {
-        docEl.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
-        if (customLink) customLink.disabled = true;
-    } else if (themeName === 'custom') {
-        docEl.setAttribute('data-theme', 'custom');
-        localStorage.setItem('theme', 'custom');
-        if (customLink) customLink.disabled = false;
-    }
-    
-    if (typeof updateAmoledState === 'function') {
-        updateAmoledState();
-    }
-}
-
-function handleCustomThemeFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    if (!file.name.toLowerCase().endsWith('.css')) {
-        showAlert('Пожалуйста, выберите файл с расширением .css');
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('themeFile', file);
-    
-    fetch('upload_custom_theme.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            showNotification(data.message || 'Кастомная тема загружена!', 'success');
-            
-            const textarea = document.getElementById('customCssEditor');
-            if (textarea && data.cssContent) {
-                textarea.value = data.cssContent;
-            }
-            
-            let customLink = document.getElementById('customThemeStyleLink');
-            if (!customLink) {
-                customLink = document.createElement('link');
-                customLink.id = 'customThemeStyleLink';
-                customLink.rel = 'stylesheet';
-                document.head.appendChild(customLink);
-            }
-            customLink.href = data.themeUrl;
-            customLink.disabled = false;
-            
-            selectThemeOption('custom');
-            applyTheme('custom');
-        } else {
-            showAlert('Ошибка загрузки темы: ' + (data.error || 'Неизвестная ошибка'));
-        }
-    })
-    .catch(err => {
-        console.error('Ошибка при загрузке темы:', err);
-        showAlert('Сетевая ошибка при загрузке темы');
-    });
-}
-
-function saveCustomCssCode() {
-    const textarea = document.getElementById('customCssEditor');
-    if (!textarea) return;
-    
-    const cssContent = textarea.value;
-    
-    fetch('save_editor_settings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            activeTheme: 'custom',
-            customThemeCss: cssContent
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            let customLink = document.getElementById('customThemeStyleLink');
-            if (!customLink) {
-                customLink = document.createElement('link');
-                customLink.id = 'customThemeStyleLink';
-                customLink.rel = 'stylesheet';
-                document.head.appendChild(customLink);
-            }
-            customLink.href = 'data/custom_editor_theme.css?v=' + Date.now();
-            customLink.disabled = false;
-            
-            selectThemeOption('custom');
-            applyTheme('custom');
-            showNotification('Кастомный CSS код применен и сохранен!', 'success');
-        } else {
-            showAlert('Ошибка при сохранении CSS кода');
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        showAlert('Ошибка сети при сохранении CSS кода');
     });
 }
 
@@ -4431,13 +4246,30 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const height = header.offsetHeight;
         const gap = 15; // Небольшой отступ между хедером и рабочей областью
+        const bottomBar = document.getElementById('editorBottomBar') || document.querySelector('.editor-bottom-bar');
+        const bottomBarHeight = (bottomBar && bottomBar.offsetHeight > 0) ? bottomBar.offsetHeight : 28;
+        const extraBottomPadding = 60; // Комфортный отступ снизу, чтобы контент не перекрывался нижней панелью при скролле
         
         if (document.body.classList.contains('header-bottom')) {
-            document.body.style.setProperty('padding-top', '0px', 'important');
-            document.body.style.setProperty('padding-bottom', (height + gap) + 'px', 'important');
+            if (bottomBar) {
+                bottomBar.style.bottom = height + 'px';
+            }
+            const notifContainer = document.getElementById('notificationContainer');
+            if (notifContainer) {
+                notifContainer.style.bottom = (height + bottomBarHeight + 10) + 'px';
+            }
+            document.body.style.setProperty('padding-top', '20px', 'important');
+            document.body.style.setProperty('padding-bottom', (height + bottomBarHeight + extraBottomPadding) + 'px', 'important');
         } else {
+            if (bottomBar) {
+                bottomBar.style.bottom = '';
+            }
+            const notifContainer = document.getElementById('notificationContainer');
+            if (notifContainer) {
+                notifContainer.style.bottom = '';
+            }
             document.body.style.setProperty('padding-top', (height + gap) + 'px', 'important');
-            document.body.style.setProperty('padding-bottom', '0px', 'important');
+            document.body.style.setProperty('padding-bottom', (bottomBarHeight + extraBottomPadding) + 'px', 'important');
         }
     }
     
@@ -4496,8 +4328,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const defaultIds = [
             'logoDivider',
-            'headerModeToggle',
-            'modeActionsDivider',
             'headerEditorActions',
             'actionsFormattingDivider',
             'btn-bold',
@@ -4530,6 +4360,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (layout && Array.isArray(layout) && layout.length > 0) {
             layout.forEach(item => {
+                if (item.id === 'headerModeToggle' || item.id === 'bottomModeToggle' || item.id === 'modeActionsDivider') {
+                    return;
+                }
                 let el = document.getElementById(item.id);
                 if (!el && item.id && item.id.startsWith('divider-')) {
                     el = document.createElement('span');
@@ -5100,10 +4933,10 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- Диалог восстановления сессии -->
-<?php require_once __DIR__ . '/modals_editor/session_expired_modal.php'; ?>
+<?php safe_include_editor_modal('session_expired_modal.php'); ?>
 
 <!-- Модальное окно: Менеджер тем -->
-<?php require_once __DIR__ . '/modals_editor/theme_manager_modal.php'; ?>
+<?php safe_include_editor_modal('theme_manager_modal.php'); ?>
 
 </body>
 </html>

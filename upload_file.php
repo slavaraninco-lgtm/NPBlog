@@ -1,10 +1,12 @@
 <?php
+ob_start();
 error_reporting(0);
 ini_set('display_errors', 0);
 require_once __DIR__ . '/security_bootstrap.php';
 header('Content-Type: application/json; charset=utf-8');
 
 if (!isset($_FILES['file'])) {
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => 'Файл не выбран']);
     exit;
 }
@@ -23,6 +25,7 @@ if ($file['error'] !== UPLOAD_ERR_OK) {
         UPLOAD_ERR_EXTENSION  => 'Загрузка файла остановлена PHP-расширением',
     ];
     $errorMsg = isset($uploadErrors[$file['error']]) ? $uploadErrors[$file['error']] : 'Ошибка загрузки файла (' . $file['error'] . ')';
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => $errorMsg]);
     exit;
 }
@@ -32,12 +35,14 @@ $uploadDir = getDataPath('files/');
 // Создаем папку если не существует
 if (!file_exists($uploadDir)) {
     if (!@mkdir($uploadDir, 0777, true)) {
+        if (ob_get_length()) ob_clean();
         echo json_encode(['success' => false, 'error' => 'Не удалось создать папку для файлов. Проверьте права доступа.']);
         exit;
     }
 }
 
-if (!is_writable($uploadDir)) {
+if (!isDirectoryWritableSafe($uploadDir)) {
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => 'Директория для файлов недоступна для записи.']);
     exit;
 }
@@ -45,6 +50,7 @@ if (!is_writable($uploadDir)) {
 // Проверяем размер файла (максимум 50MB)
 $maxSize = 50 * 1024 * 1024;
 if ($file['size'] > $maxSize) {
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => 'Файл слишком большой (максимум 50MB)']);
     exit;
 }
@@ -70,6 +76,7 @@ $blockedExtensions = [
 ];
 
 if (in_array($extension, $blockedExtensions) || !in_array($extension, $allowedExtensions)) {
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => 'Недопустимый тип файла. Загрузка исполняемых файлов запрещена.']);
     exit;
 }
@@ -90,15 +97,25 @@ while (file_exists($uploadDir . $fileName)) {
 
 $targetPath = $uploadDir . $fileName;
 
-if (@move_uploaded_file($file['tmp_name'], $targetPath)) {
+$saved = @move_uploaded_file($file['tmp_name'], $targetPath);
+if (!$saved) {
+    if (@copy($file['tmp_name'], $targetPath)) {
+        @unlink($file['tmp_name']);
+        $saved = true;
+    }
+}
+
+if ($saved) {
+    if (ob_get_length()) ob_clean();
     echo json_encode([
         'success' => true,
         'filename' => $fileName,
         'originalName' => $originalName,
         'size' => $file['size'],
-        'path' => $targetPath
+        'path' => getDataUrl('files/' . $fileName)
     ]);
 } else {
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => 'Ошибка при загрузке файла']);
 }
 ?>

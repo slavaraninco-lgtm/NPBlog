@@ -1,11 +1,13 @@
 <?php
+ob_start();
 error_reporting(0);
 ini_set('display_errors', 0);
 require_once __DIR__ . '/security_bootstrap.php';
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 if (!isset($_FILES['video'])) {
-    echo json_encode(['success' => false, 'error' => 'Файл не был загружен']);
+    if (ob_get_length()) ob_clean();
+    echo json_encode(['success' => false, 'error' => 'Файл не был загружен. Возможно, превышен лимит upload_max_filesize или post_max_size в php.ini']);
     exit;
 }
 
@@ -17,12 +19,13 @@ if ($file['error'] !== UPLOAD_ERR_OK) {
         UPLOAD_ERR_INI_SIZE   => 'Размер файла превышает допустимый лимит (upload_max_filesize в php.ini)',
         UPLOAD_ERR_FORM_SIZE  => 'Размер файла превышает лимит HTML-формы',
         UPLOAD_ERR_PARTIAL    => 'Файл был загружен только частично',
-        UPLOAD_ERR_NO_FILE    => 'Файл не был загружен',
+        UPLOAD_ERR_NO_FILE    => 'Файл не был выбран или не загрузился',
         UPLOAD_ERR_NO_TMP_DIR => 'Отсутствует временная папка на сервере',
         UPLOAD_ERR_CANT_WRITE => 'Не удалось записать файл на диск',
         UPLOAD_ERR_EXTENSION  => 'Загрузка файла остановлена PHP-расширением',
     ];
     $errorMsg = isset($uploadErrors[$file['error']]) ? $uploadErrors[$file['error']] : 'Ошибка загрузки видео (' . $file['error'] . ')';
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => $errorMsg]);
     exit;
 }
@@ -32,19 +35,22 @@ $uploadDir = getDataPath('files/videos/');
 // Создаем директорию если её нет
 if (!file_exists($uploadDir)) {
     if (!@mkdir($uploadDir, 0777, true)) {
-        echo json_encode(['success' => false, 'error' => 'Не удалось создать папку для видео. Проверьте права доступа.']);
+        if (ob_get_length()) ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Не удалось создать папку для видео: ' . $uploadDir . '. Проверьте права доступа.']);
         exit;
     }
 }
 
-if (!is_writable($uploadDir)) {
-    echo json_encode(['success' => false, 'error' => 'Директория для видео недоступна для записи.']);
+if (!isDirectoryWritableSafe($uploadDir)) {
+    if (ob_get_length()) ob_clean();
+    echo json_encode(['success' => false, 'error' => 'Директория для видео недоступна для записи: ' . $uploadDir]);
     exit;
 }
 
 $allowedVideoExts = ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi'];
 $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 if (!in_array($extension, $allowedVideoExts)) {
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => 'Недопустимое расширение видео файла. Разрешены только: ' . implode(', ', $allowedVideoExts)]);
     exit;
 }
@@ -64,6 +70,7 @@ if (empty($mimeType) && function_exists('mime_content_type')) {
 
 $allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/mpeg', 'video/quicktime', 'video/x-matroska', 'video/x-msvideo', 'application/octet-stream'];
 if (!empty($mimeType) && !in_array($mimeType, $allowedTypes)) {
+    if (ob_get_length()) ob_clean();
     echo json_encode(['success' => false, 'error' => 'Недопустимый тип файла. Разрешены только видео файлы.']);
     exit;
 }
@@ -86,13 +93,24 @@ while (file_exists($uploadDir . $fileName)) {
 
 $targetPath = $uploadDir . $fileName;
 
-if (@move_uploaded_file($file['tmp_name'], $targetPath)) {
+$saved = @move_uploaded_file($file['tmp_name'], $targetPath);
+if (!$saved) {
+    // Fallback: copy + unlink for network shares / custom mounts
+    if (@copy($file['tmp_name'], $targetPath)) {
+        @unlink($file['tmp_name']);
+        $saved = true;
+    }
+}
+
+if ($saved) {
+    if (ob_get_length()) ob_clean();
     echo json_encode([
         'success' => true,
         'filename' => $fileName,
         'path' => getDataUrl('files/videos/' . $fileName)
     ]);
 } else {
-    echo json_encode(['success' => false, 'error' => 'Ошибка при сохранении файла']);
+    if (ob_get_length()) ob_clean();
+    echo json_encode(['success' => false, 'error' => 'Ошибка при сохранении файла в целевую папку: ' . $targetPath]);
 }
 ?>

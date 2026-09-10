@@ -657,16 +657,17 @@
             for (var i = 0; i < langs.length; i++) {
                 var l = langs[i];
                 var isSelected = (l.code === lang);
-                var border = isSelected ? 'var(--primary-color, #4CAF50)' : 'var(--border-color)';
-                var bg = isSelected ? 'rgba(76, 175, 80, 0.08)' : 'transparent';
+                var border = isSelected ? 'var(--primary-color, #4CAF50)' : 'transparent';
+                var bg = isSelected ? 'rgba(76, 175, 80, 0.08)' : 'var(--modal-bg-subtle, rgba(0,0,0,0.02))';
                 var checked = isSelected ? ' checked' : '';
+                var langNameLower = (l.name || '').toLowerCase();
 
-                html += '<div id="langCard-' + escapeHtml(l.code) + '" data-lang-code="' + escapeHtml(l.code) + '" class="lang-selection-card" onclick="selectLanguageOption(\'' + escapeHtml(l.code) + '\', true)" style="border: 2px solid ' + border + '; border-radius: 12px; padding: 20px; cursor: pointer; background: ' + bg + '; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center;">' +
-                        '<div style="font-size: 28px;">' + (l.smile || l.icon || '🌐') + '</div>' +
-                        '<input type="radio" name="editor_lang_radio" id="langRadio-' + escapeHtml(l.code) + '" value="' + escapeHtml(l.code) + '" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption(\'' + escapeHtml(l.code) + '\', true)"' + checked + '>' +
+                html += '<div id="langCard-' + escapeHtml(l.code) + '" data-lang-code="' + escapeHtml(l.code) + '" data-lang-name="' + escapeHtml(langNameLower) + '" class="lang-selection-card" onclick="selectLanguageOption(\'' + escapeHtml(l.code) + '\', true)" style="border: 1px solid ' + border + '; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: ' + bg + '; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between;">' +
+                    '<div style="display: flex; align-items: center; gap: 10px;">' +
+                        '<span style="font-size: 18px; line-height: 1;">' + (l.smile || l.icon || '🌐') + '</span>' +
+                        '<span style="font-size: 14px; font-weight: 500; color: var(--text-color);">' + escapeHtml(l.name) + '</span>' +
                     '</div>' +
-                    '<div style="font-size: 18px; font-weight: 700; color: var(--text-color); margin-top: 4px;">' + escapeHtml(l.name) + '</div>' +
+                    '<input type="radio" name="editor_lang_radio" id="langRadio-' + escapeHtml(l.code) + '" value="' + escapeHtml(l.code) + '" style="cursor: pointer; width: 14px; height: 14px; margin: 0;" onchange="selectLanguageOption(\'' + escapeHtml(l.code) + '\', true)"' + checked + '>' +
                 '</div>';
             }
             el.innerHTML = html;

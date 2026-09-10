@@ -25,27 +25,65 @@ if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && $curre
     }
 }
 
+// Mbstring fallback polyfills for environments without php-mbstring
+if (!function_exists('mb_strtolower')) {
+    function mb_strtolower($string, $encoding = 'UTF-8') {
+        return strtolower($string);
+    }
+}
+if (!function_exists('mb_strtoupper')) {
+    function mb_strtoupper($string, $encoding = 'UTF-8') {
+        return strtoupper($string);
+    }
+}
+if (!function_exists('mb_strlen')) {
+    function mb_strlen($string, $encoding = 'UTF-8') {
+        return strlen($string);
+    }
+}
+if (!function_exists('mb_substr')) {
+    function mb_substr($string, $start, $length = null, $encoding = 'UTF-8') {
+        return $length === null ? substr($string, $start) : substr($string, $start, $length);
+    }
+}
+if (!function_exists('mb_strpos')) {
+    function mb_strpos($haystack, $needle, $offset = 0, $encoding = 'UTF-8') {
+        return strpos($haystack, $needle, $offset);
+    }
+}
+if (!function_exists('mb_strcasecmp')) {
+    function mb_strcasecmp($str1, $str2, $encoding = 'UTF-8') {
+        return strcasecmp($str1, $str2);
+    }
+}
+
 if (!function_exists('validateSafePath')) {
     function validateSafePath($baseDir, $filename) {
         $realBase = realpath($baseDir);
         if ($realBase === false) {
             // Attempt to create baseDir if it doesn't exist
-            if (!@mkdir($baseDir, 0777, true)) {
+            if (!is_dir($baseDir) && !@mkdir($baseDir, 0777, true)) {
                 header('HTTP/1.1 500 Internal Server Error');
+                header('Content-Type: application/json; charset=utf-8');
                 die(json_encode([
                     'success' => false,
                     'error' => 'filesystem_error',
-                    'message' => 'Не удалось создать директорию: ' . $baseDir
+                    'message' => 'Не удалось создать папку: ' . $baseDir . '. Проверьте права доступа на сервере (например, chmod 777 или chown www-data:www-data) или корректность указанного пути.'
                 ], JSON_UNESCAPED_UNICODE));
             }
             $realBase = realpath($baseDir);
             if ($realBase === false) {
-                header('HTTP/1.1 500 Internal Server Error');
-                die(json_encode([
-                    'success' => false,
-                    'error' => 'filesystem_error',
-                    'message' => 'Не удалось разрешить путь к директории: ' . $baseDir
-                ], JSON_UNESCAPED_UNICODE));
+                if (is_dir($baseDir)) {
+                    $realBase = rtrim(str_replace('\\', '/', $baseDir), '/');
+                } else {
+                    header('HTTP/1.1 500 Internal Server Error');
+                    header('Content-Type: application/json; charset=utf-8');
+                    die(json_encode([
+                        'success' => false,
+                        'error' => 'filesystem_error',
+                        'message' => 'Директория недоступна для чтения/записи на сервере: ' . $baseDir
+                    ], JSON_UNESCAPED_UNICODE));
+                }
             }
         }
         
@@ -106,6 +144,21 @@ if (!function_exists('validateSafePath')) {
     }
 }
 
+if (!function_exists('isDirectoryWritableSafe')) {
+    function isDirectoryWritableSafe($dir) {
+        if (!is_dir($dir)) return false;
+        if (@is_writable($dir)) return true;
+        // Fallback test: attempt to create a temporary test file (reliable on Windows network shares/UNC paths)
+        $testFile = rtrim(str_replace('\\', '/', $dir), '/') . '/.test_write_' . uniqid('', true);
+        $written = @file_put_contents($testFile, '1');
+        if ($written !== false) {
+            @unlink($testFile);
+            return true;
+        }
+        return false;
+    }
+}
+
 function getDataPath($subpath = '') {
     $settingsFile = __DIR__ . '/editor_settings.json';
     $settings = [];
@@ -131,21 +184,28 @@ function getDataPath($subpath = '') {
 
     $dataDir = $activePath;
     
-    // Make absolute if relative
-    if (strpos($dataDir, '/') !== 0 && strpos($dataDir, ':\\') !== 1) {
-        $dataDir = __DIR__ . '/' . ltrim($dataDir, '/');
+    // Normalize path: check if absolute or relative
+    $isAbsolute = (strpos($dataDir, '/') === 0) || 
+                  (strpos($dataDir, '\\') === 0) || 
+                  (strlen($dataDir) >= 2 && $dataDir[1] === ':');
+    if (!$isAbsolute) {
+        $dataDir = __DIR__ . '/' . ltrim($dataDir, '/\\');
     }
 
     if (!is_dir($dataDir)) {
         if (!@mkdir($dataDir, 0777, true)) {
             // Only fallback if we literally cannot create the directory
             $dataDir = __DIR__ . '/data/';
+            if (!is_dir($dataDir)) {
+                @mkdir($dataDir, 0777, true);
+            }
         }
     } else {
-        if (!is_writable($dataDir)) {
+        if (!isDirectoryWritableSafe($dataDir)) {
             $isApiRequest = (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) || 
                             ($_SERVER['REQUEST_METHOD'] === 'POST') || 
-                            (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+                            (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
+                            (isset($_SERVER['SCRIPT_NAME']) && (strpos($_SERVER['SCRIPT_NAME'], 'upload_') !== false || strpos($_SERVER['SCRIPT_NAME'], 'get_') !== false || strpos($_SERVER['SCRIPT_NAME'], 'save_') !== false || strpos($_SERVER['SCRIPT_NAME'], 'delete_') !== false));
             if ($isApiRequest) {
                 header('HTTP/1.1 403 Forbidden');
                 header('Content-Type: application/json; charset=utf-8');
@@ -162,27 +222,179 @@ function getDataPath($subpath = '') {
     
     // Ensure trailing slash and correct path separators
     $dataDir = rtrim(str_replace('\\', '/', $dataDir), '/') . '/';
-    return $dataDir . $subpath;
+    return $dataDir . ltrim($subpath, '/\\');
+}
+
+if (!function_exists('getBackupPath')) {
+    function getBackupPath($subpath = '') {
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        $settings = [];
+        if (file_exists($settingsFile)) {
+            $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+        }
+        
+        $backupPath = '';
+        if (!empty($_SESSION['backup_path'])) {
+            $backupPath = $_SESSION['backup_path'];
+        } elseif (!empty($settings['backup_path'])) {
+            $backupPath = $settings['backup_path'];
+            $_SESSION['backup_path'] = $backupPath;
+        } else {
+            $backupPath = __DIR__ . '/data_backup';
+        }
+
+        $backupDir = $backupPath;
+        
+        // Normalize path: check if absolute or relative
+        $isAbsolute = (strpos($backupDir, '/') === 0) || 
+                      (strpos($backupDir, '\\') === 0) || 
+                      (strlen($backupDir) >= 2 && $backupDir[1] === ':');
+        if (!$isAbsolute) {
+            $backupDir = __DIR__ . '/' . ltrim($backupDir, '/\\');
+        }
+
+        if (!is_dir($backupDir)) {
+            if (!@mkdir($backupDir, 0777, true)) {
+                // Fallback to default directory if cannot create custom path
+                $backupDir = __DIR__ . '/data_backup/';
+                if (!is_dir($backupDir)) {
+                    @mkdir($backupDir, 0777, true);
+                }
+            }
+        }
+        
+        // Ensure trailing slash and normalize directory separators
+        $backupDir = rtrim(str_replace('\\', '/', $backupDir), '/') . '/';
+        return $backupDir . ltrim($subpath, '/\\');
+    }
+}
+
+if (!function_exists('getAutosavePath')) {
+    function getAutosavePath($subpath = '') {
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        $settings = [];
+        if (file_exists($settingsFile)) {
+            $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+        }
+        
+        $autosavePath = '';
+        if (!empty($_SESSION['autosave_path'])) {
+            $autosavePath = $_SESSION['autosave_path'];
+        } elseif (!empty($settings['autosave_path'])) {
+            $autosavePath = $settings['autosave_path'];
+            $_SESSION['autosave_path'] = $autosavePath;
+        } else {
+            $autosavePath = __DIR__ . '/autosave';
+        }
+
+        $autosaveDir = $autosavePath;
+        
+        // Normalize path: check if absolute or relative
+        $isAbsolute = (strpos($autosaveDir, '/') === 0) || 
+                      (strpos($autosaveDir, '\\') === 0) || 
+                      (strlen($autosaveDir) >= 2 && $autosaveDir[1] === ':');
+        if (!$isAbsolute) {
+            $autosaveDir = __DIR__ . '/' . ltrim($autosaveDir, '/\\');
+        }
+
+        if (!is_dir($autosaveDir)) {
+            if (!@mkdir($autosaveDir, 0777, true)) {
+                // Fallback to default directory if cannot create custom path
+                $autosaveDir = __DIR__ . '/autosave/';
+                if (!is_dir($autosaveDir)) {
+                    @mkdir($autosaveDir, 0777, true);
+                }
+            }
+        }
+        
+        // Ensure trailing slash and normalize directory separators
+        $autosaveDir = rtrim(str_replace('\\', '/', $autosaveDir), '/') . '/';
+        return $autosaveDir . ltrim($subpath, '/\\');
+    }
+}
+
+if (!function_exists('getEditorBackupPath')) {
+    function getEditorBackupPath($subpath = '') {
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        $settings = [];
+        if (file_exists($settingsFile)) {
+            $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
+        }
+        
+        $editorBackupPath = '';
+        if (!empty($_SESSION['editor_backup_path'])) {
+            $editorBackupPath = $_SESSION['editor_backup_path'];
+        } elseif (!empty($settings['editor_backup_path'])) {
+            $editorBackupPath = $settings['editor_backup_path'];
+            $_SESSION['editor_backup_path'] = $editorBackupPath;
+        } else {
+            $editorBackupPath = __DIR__ . '/editor_backup';
+        }
+
+        $editorBackupDir = $editorBackupPath;
+        
+        // Normalize path: check if absolute or relative
+        $isAbsolute = (strpos($editorBackupDir, '/') === 0) || 
+                      (strpos($editorBackupDir, '\\') === 0) || 
+                      (strlen($editorBackupDir) >= 2 && $editorBackupDir[1] === ':');
+        if (!$isAbsolute) {
+            $editorBackupDir = __DIR__ . '/' . ltrim($editorBackupDir, '/\\');
+        }
+
+        if (!is_dir($editorBackupDir)) {
+            if (!@mkdir($editorBackupDir, 0777, true)) {
+                // Fallback to default directory if cannot create custom path
+                $editorBackupDir = __DIR__ . '/editor_backup/';
+                if (!is_dir($editorBackupDir)) {
+                    @mkdir($editorBackupDir, 0777, true);
+                }
+            }
+        }
+        
+        // Ensure trailing slash and normalize directory separators
+        $editorBackupDir = rtrim(str_replace('\\', '/', $editorBackupDir), '/') . '/';
+        return $editorBackupDir . ltrim($subpath, '/\\');
+    }
 }
 
 function getDataUrl($subpath = '') {
     $dataDir = getDataPath();
-    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']) : '';
-    $docRoot = rtrim($docRoot, '/');
+    $subpath = ltrim($subpath, '/\\');
     
-    if (!empty($docRoot) && strpos($dataDir, $docRoot) === 0) {
-        $webPrefix = '/' . ltrim(substr($dataDir, strlen($docRoot)), '/');
-        $webPrefix = rtrim($webPrefix, '/') . '/';
-    } else {
-        // Find script directory prefix to handle subfolders correctly
-        $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
-        $subDir = '';
-        if (!empty($scriptName) && php_sapi_name() !== 'cli') {
-            $subDir = rtrim(dirname($scriptName), '/\\');
-        }
-        $webPrefix = (!empty($subDir) ? $subDir : '') . '/serve_data.php?file=';
+    // Normalize path separators
+    $dataDirClean = rtrim(str_replace('\\', '/', $dataDir), '/') . '/';
+    $appDirClean = rtrim(str_replace('\\', '/', __DIR__), '/') . '/';
+    
+    $scriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', $_SERVER['SCRIPT_NAME']) : '';
+    $webRoot = '';
+    if (!empty($scriptName) && php_sapi_name() !== 'cli') {
+        $webRoot = rtrim(dirname($scriptName), '/\\');
     }
-    return $webPrefix . $subpath;
+    
+    // 1. Check if dataDir is inside the application directory (__DIR__)
+    if (strpos($dataDirClean, $appDirClean) === 0) {
+        $rel = substr($dataDirClean, strlen($appDirClean));
+        $prefix = (!empty($webRoot) ? $webRoot : '') . '/' . ltrim($rel, '/');
+        return rtrim($prefix, '/') . '/' . $subpath;
+    }
+    
+    // 2. Check if dataDir is inside DOCUMENT_ROOT
+    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']) : '';
+    $docRootClean = rtrim($docRoot, '/') . '/';
+    if (!empty($docRoot) && strpos($dataDirClean, $docRootClean) === 0) {
+        $rel = substr($dataDirClean, strlen($docRootClean));
+        $prefix = '/' . ltrim($rel, '/');
+        return rtrim($prefix, '/') . '/' . $subpath;
+    }
+    
+    // 3. Fallback: serve through serve_data.php
+    $isHtml = (strtolower(pathinfo($subpath, PATHINFO_EXTENSION)) === 'html');
+    if ($isHtml) {
+        $prefix = (!empty($webRoot) ? $webRoot : '') . '/serve_data.php/';
+    } else {
+        $prefix = (!empty($webRoot) ? $webRoot : '') . '/serve_data.php?file=';
+    }
+    return $prefix . $subpath;
 }
 
 if (!function_exists('getClientIp')) {

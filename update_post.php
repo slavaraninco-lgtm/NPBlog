@@ -142,7 +142,7 @@ $filename = validateSafePath($blogDir, $meta[$postIndex]['filename']);
 file_put_contents($filename, $articleHtml, LOCK_EX);
 
 // Создаем бэкап перед обновлением
-$backupDir = validateSafePath(__DIR__ . '/data_backup/', (string)$postId) . '/';
+$backupDir = validateSafePath(getBackupPath(), (string)$postId) . '/';
 if (!is_dir($backupDir)) {
     mkdir($backupDir, 0755, true);
 }
@@ -165,7 +165,7 @@ $backupFilename = validateSafePath($backupDir, $postId . '-' . $nextBackupNumber
 file_put_contents($backupFilename, $articleHtml, LOCK_EX);
 
 // Сохраняем метаданные бэкапа
-$backupMetaFile = validateSafePath(__DIR__ . '/data_backup/', 'backup-meta.json');
+$backupMetaFile = validateSafePath(getBackupPath(), 'backup-meta.json');
 $backupMeta = [];
 if (file_exists($backupMetaFile)) {
     $backupMeta = json_decode(file_get_contents($backupMetaFile), true) ?: [];

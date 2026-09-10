@@ -17,7 +17,7 @@ if (empty($postId) || empty($backupFilename)) {
     exit;
 }
 
-$backupDir = validateSafePath(__DIR__ . '/data_backup/', $postId) . '/';
+$backupDir = validateSafePath(getBackupPath(), $postId) . '/';
 $backupPath = validateSafePath($backupDir, $backupFilename);
 
 if (!file_exists($backupPath)) {
@@ -55,7 +55,7 @@ $backupContent = file_get_contents($backupPath);
 if (file_put_contents($targetPath, $backupContent, LOCK_EX) !== false) {
     // Извлекаем заголовок из бэкапа для синхронизации метаданных
     $backupTitle = '';
-    $backupMetaFile = validateSafePath(__DIR__ . '/data_backup/', 'backup-meta.json');
+    $backupMetaFile = validateSafePath(getBackupPath(), 'backup-meta.json');
     if (file_exists($backupMetaFile)) {
         $bMeta = json_decode(file_get_contents($backupMetaFile), true) ?: [];
         if (isset($bMeta[$postId]['backups'])) {

@@ -12,7 +12,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-warning">⚠️</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" style="color: #f59e0b;" data-i18n="modals.dev_warning_title">DEV-версия системы</h3>
                     <p class="modal-subtitle" data-i18n="modals.dev_warning_subtitle">Предупреждение о тестовой сборке</p>
@@ -25,10 +25,10 @@
 
         <!-- Тело -->
         <div class="modal-body">
-            <p class="modal-text" style="font-weight: 500; margin-bottom: 10px;">
+            <p class="modal-text" style="font-weight: 500; margin-bottom: 10px;" data-i18n-html="modals.dev_warning_text1">
                 Вы используете <strong>Development (разрабатываемую)</strong> сборку NPBlog.
             </p>
-            <p class="modal-text" style="font-size: 13px; opacity: 0.85;">
+            <p class="modal-text" style="font-size: 13px; opacity: 0.85;" data-i18n-html="modals.dev_warning_text2">
                 Эта версия может быть <strong>нестабильной</strong>, содержать недоработки и незавершенные функции. Настоятельно рекомендуется периодически делать бэкапы ваших статей и файлов.
             </p>
         </div>

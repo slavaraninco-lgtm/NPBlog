@@ -14,7 +14,8 @@ if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $data['postId'])) {
     exit;
 }
 
-$filepath = validateSafePath('data_backup/' . $data['postId'] . '/', $data['filename']);
+$backupDir = validateSafePath(getBackupPath(), (string)$data['postId']) . '/';
+$filepath = validateSafePath($backupDir, $data['filename']);
 
 if (!file_exists($filepath)) {
     echo json_encode(['success' => false, 'error' => 'Файл бэкапа не найден'], JSON_UNESCAPED_UNICODE);

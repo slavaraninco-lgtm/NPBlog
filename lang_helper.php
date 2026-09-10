@@ -131,3 +131,24 @@ if (!function_exists('getLanguageByCode')) {
         return !empty($langs) ? $langs[0] : null;
     }
 }
+
+if (!function_exists('getCurrentLanguage')) {
+    function getCurrentLanguage() {
+        global $currentLanguage;
+        if (!empty($currentLanguage) && isValidLanguageCode($currentLanguage)) {
+            return $currentLanguage;
+        }
+        if (!empty($_SESSION['editor_language']) && isValidLanguageCode($_SESSION['editor_language'])) {
+            return $_SESSION['editor_language'];
+        }
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        if (file_exists($settingsFile)) {
+            $settings = json_decode(@file_get_contents($settingsFile), true);
+            if (!empty($settings['language']) && isValidLanguageCode($settings['language'])) {
+                return $settings['language'];
+            }
+        }
+        $available = getAvailableLanguageCodes();
+        return !empty($available) ? $available[0] : 'ru';
+    }
+}

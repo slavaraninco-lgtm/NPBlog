@@ -3,7 +3,7 @@ require_once __DIR__ . '/security_bootstrap.php';
 require_once __DIR__ . '/lang_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 
-$settingsFile = 'editor_settings.json';
+$settingsFile = __DIR__ . '/editor_settings.json';
 
 $availableCodes = getAvailableLanguageCodes();
 $defaultLang = !empty($availableCodes) ? $availableCodes[0] : 'ru';
@@ -18,9 +18,13 @@ $defaults = [
     'autosaveEnabled' => false,
     'autosaveInterval' => 60,
     'tutorialCompleted' => false,
+    'initial_setup_completed' => false,
     'contentWidth' => 920,
     'blog_paths' => [],
     'active_blog_path' => '',
+    'backup_path' => '',
+    'autosave_path' => '',
+    'editor_backup_path' => '',
     'rss_enabled' => false,
     'rss_base_url' => '',
     'rss_title' => 'NPBlog Feed',
@@ -29,20 +33,26 @@ $defaults = [
     'rss_content_template' => "*content*\n\n<p><a href=\"*url*\">Читать в блоге</a></p>",
     'activeTheme' => 'dark',
     'customThemeCss' => '',
-    'language' => $defaultLang
+    'language' => $defaultLang,
+    'password_set' => false,
+    'password_enabled' => false
 ];
 
 if (file_exists($settingsFile)) {
     $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
     $merged = array_merge($defaults, $settings);
-    if (isset($settings['password_hash'])) {
-        $merged['password_set'] = !empty($settings['password_hash']);
-    } else {
-        $merged['password_set'] = false;
-    }
+    $hasPassword = !empty($settings['password_hash']);
+    $merged['password_set'] = $hasPassword;
+    $merged['password_enabled'] = $hasPassword;
     unset($merged['password_hash']);
+    $merged['resolved_backup_path'] = getBackupPath();
+    $merged['resolved_autosave_path'] = getAutosavePath();
+    $merged['resolved_editor_backup_path'] = getEditorBackupPath();
     echo json_encode(['success' => true, 'settings' => $merged]);
 } else {
+    $defaults['resolved_backup_path'] = getBackupPath();
+    $defaults['resolved_autosave_path'] = getAutosavePath();
+    $defaults['resolved_editor_backup_path'] = getEditorBackupPath();
     echo json_encode([
         'success' => true, 
         'settings' => $defaults

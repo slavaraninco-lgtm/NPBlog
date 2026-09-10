@@ -9,6 +9,16 @@
     --text-color: #333333;
     --primary-color: rgb(255, 255, 255);
     --border-color: rgba(128, 128, 128, 0.25);
+
+    /* Motion Tokens - Luxury Fluid Animation System */
+    --anim-ease-out: cubic-bezier(0.2, 0.9, 0.3, 1);
+    --anim-ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+    --anim-ease-in-out: cubic-bezier(0.32, 0.72, 0, 1);
+    --anim-ease-spring: cubic-bezier(0.25, 1, 0.35, 1);
+    --anim-dur-fast: 0.2s;
+    --anim-dur-normal: 0.3s;
+    --anim-dur-medium: 0.38s;
+    --anim-dur-drawer: 0.42s;
 }
 
 [data-theme="dark"] {
@@ -58,7 +68,7 @@
     border-left: 1px solid #222222 !important;
 }
 
-/* Анимации редактора */
+/* Анимации редактора (Unified Motion System) */
 @keyframes dialogOverlayIn {
     from {
         opacity: 0;
@@ -72,7 +82,7 @@
 @keyframes dialogContentIn {
     from {
         opacity: 0;
-        transform: translate(-50%, -50%) scale(0.94);
+        transform: translate(-50%, -49%) scale(0.975);
     }
 
     to {
@@ -84,36 +94,36 @@
 @keyframes popoverIn {
     from {
         opacity: 0;
-        transform: translateY(-6px);
+        transform: translateY(-5px) scale(0.985);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
 @keyframes contextMenuIn {
     from {
         opacity: 0;
-        transform: scale(0.92);
+        transform: translateY(-4px) scale(0.98);
     }
 
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0) scale(1);
     }
 }
 
 @keyframes dialogScaleIn {
     from {
         opacity: 0;
-        transform: scale(0.94);
+        transform: translateY(-5px) scale(0.975);
     }
 
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0) scale(1);
     }
 }
 
@@ -121,7 +131,7 @@ body {
     font-family: Arial, sans-serif;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 20px 20px 88px 20px;
     background-color: var(--bg-color);
     color: var(--text-color);
     transition: background-color 0.3s, color 0.3s;
@@ -168,7 +178,7 @@ textarea {
     padding: 0;
     overflow-y: auto;
     transform: translateX(100%);
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--anim-dur-drawer) var(--anim-ease-in-out), box-shadow var(--anim-dur-drawer) ease;
     box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
     z-index: 1005;
 }
@@ -219,12 +229,17 @@ textarea {
     cursor: pointer;
     color: var(--text-color);
     opacity: 0.7;
-    transition: opacity 0.2s ease, background 0.2s ease;
+    transition: opacity var(--anim-dur-fast) ease, background-color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
 }
 
 .manage-posts .close-manage:hover {
     opacity: 1;
     background: rgba(0, 0, 0, 0.06);
+    transform: scale(1.06);
+}
+
+.manage-posts .close-manage:active {
+    transform: scale(0.94);
 }
 
 [data-theme="dark"] .manage-posts .close-manage:hover {
@@ -245,7 +260,9 @@ textarea {
     border-radius: 12px;
     border: 1px solid #ffffff;
     background: var(--bg-color);
-    transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .post-item {
@@ -299,8 +316,18 @@ textarea {
     border-radius: 8px;
     cursor: pointer;
     border: 1px solid #ffffff;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-fast) ease,
+        color var(--anim-dur-fast) ease,
+        border-color var(--anim-dur-fast) ease,
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        opacity var(--anim-dur-fast) ease;
     white-space: nowrap;
+}
+
+.post-item .edit-btn:active,
+.post-item .additional-btn:active,
+.post-item .delete-btn:active {
+    transform: scale(0.95);
 }
 
 .post-item .edit-btn {
@@ -524,13 +551,17 @@ textarea {
     color: #fff;
     font-size: 14px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-fast) ease, border-color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     padding: 0;
 }
 
 .image-toolbar-btn:hover {
     background: rgba(255, 255, 255, 0.25);
     transform: scale(1.05);
+}
+
+.image-toolbar-btn:active {
+    transform: scale(0.95);
 }
 
 .image-toolbar-btn.active {
@@ -570,12 +601,13 @@ textarea {
     color: #fff;
     font-size: 13px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, border-color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     text-align: left;
 }
 
 .image-align-option:hover {
     background: rgba(255, 255, 255, 0.15);
+    transform: translateX(2px);
 }
 
 .image-align-option.active {
@@ -675,7 +707,7 @@ textarea {
 
 .editor-context-menu.is-open {
     display: block;
-    animation: contextMenuIn 0.18s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation: contextMenuIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 .editor-context-item {
@@ -688,7 +720,7 @@ textarea {
     font-size: 14px;
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease;
     box-sizing: border-box;
 }
 
@@ -796,12 +828,12 @@ textarea {
 
 .dialog[style*="display: block"],
 .dialog[style*="display: flex"] {
-    animation: dialogOverlayIn 0.22s ease-out forwards;
+    animation: dialogOverlayIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 .dialog[style*="display: block"] .dialog-content,
 .dialog[style*="display: flex"] .dialog-content {
-    animation: dialogContentIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation: dialogContentIn var(--anim-dur-medium) var(--anim-ease-out) forwards;
 }
 
 .dialog-content {
@@ -811,7 +843,7 @@ textarea {
     transform: translate(-50%, -50%);
     background-color: var(--bg-color);
     color: var(--text-color);
-    transition: background-color 0.3s, color 0.3s;
+    transition: background-color var(--anim-dur-normal) ease, color var(--anim-dur-normal) ease;
     padding: 28px 28px 24px;
     border-radius: 16px;
     min-width: 320px;
@@ -858,7 +890,7 @@ textarea {
     color: var(--text-color);
     font-size: 14px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out), box-shadow var(--anim-dur-normal) var(--anim-ease-out);
     outline: none;
     width: 100%;
     box-sizing: border-box;
@@ -888,7 +920,10 @@ textarea {
     font-weight: 500;
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
     border: 1px solid var(--border-color);
     background: var(--bg-color);
     color: var(--text-color);
@@ -898,6 +933,11 @@ textarea {
     background: var(--text-color);
     color: var(--bg-color);
     border-color: var(--text-color);
+    transform: translateY(-1px);
+}
+
+.dialog-buttons button:active {
+    transform: scale(0.96);
 }
 
 .dialog-buttons button:first-child {
@@ -1109,118 +1149,128 @@ textarea {
 }
 
 /* Стили для маркера (выделение текста) */
+/* Стили для маркера (выделение текста) */
 mark {
-    padding: 2px 6px;
+    padding: 2px 5px;
     background: var(--marker-color, rgba(255, 235, 59, 0.5));
     color: inherit;
     font-weight: inherit;
     position: relative;
     display: inline;
-    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-}
-
-/* Ровное выделение */
-mark[data-marker-style="straight"] {
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
     border-radius: 3px;
-    padding: 3px 6px;
 }
 
-/* Кривое выделение (рука дрожала) */
-mark[data-marker-style="rough"] {
-    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-    padding: 3px 8px;
-    transform: rotate(-0.5deg);
+/* 1. Ровное выделение (аккуратный классический маркер) */
+mark[data-marker-style="straight"],
+.marker-preview-straight {
+    background-color: var(--marker-color, rgba(255, 235, 59, 0.65));
+    border-radius: 3px;
+    padding: 2px 8px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    display: inline-block;
+    line-height: 1.35;
 }
 
-/* Зигзагом */
-mark[data-marker-style="zigzag"] {
-    border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
-    padding: 3px 7px;
-    transform: rotate(0.3deg);
-    background: linear-gradient(to right,
-            var(--marker-color) 0%,
-            transparent 0%) 0 0,
-        linear-gradient(to right,
-            var(--marker-color) 0%,
-            transparent 0%) 0 100%;
-    background-size: 8px 3px;
-    background-repeat: repeat-x;
-    background-color: var(--marker-color);
+/* 2. Кривое / От руки (живой органичный мазок маркера) */
+mark[data-marker-style="rough"],
+mark[data-marker-style="zigzag"],
+mark[data-marker-style="wavy"],
+.marker-preview-rough {
+    background: linear-gradient(104deg, rgba(255, 255, 255, 0.15) 0%, var(--marker-color, rgba(255, 235, 59, 0.65)) 10%, var(--marker-color, rgba(255, 235, 59, 0.65)) 90%, rgba(0, 0, 0, 0.08) 100%), var(--marker-color, rgba(255, 235, 59, 0.65));
+    border-radius: 4px 18px 3px 22px / 20px 4px 22px 5px;
+    transform: rotate(-0.8deg);
+    padding: 3px 12px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    display: inline-block;
+    box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.06);
+    line-height: 1.35;
 }
 
-/* Волнистое */
-mark[data-marker-style="wavy"] {
-    border-radius: 225px 255px 15px 225px/255px 15px 225px 15px;
-    padding: 3px 7px;
-    transform: rotate(-0.3deg);
-    position: relative;
+/* Цвета маркера */
+mark[data-marker-color="yellow"],
+#markerDialog.marker-color-yellow {
+    --marker-color: rgba(255, 235, 59, 0.65);
 }
 
-mark[data-marker-style="wavy"]::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: inherit;
-    border-radius: inherit;
-    transform: scaleY(0.95) translateY(1px);
-    z-index: -1;
+mark[data-marker-color="green"],
+#markerDialog.marker-color-green {
+    --marker-color: rgba(76, 175, 80, 0.6);
 }
 
-mark[data-marker-color="yellow"] {
-    --marker-color: rgba(255, 235, 59, 0.5);
+mark[data-marker-color="blue"],
+#markerDialog.marker-color-blue {
+    --marker-color: rgba(33, 150, 243, 0.6);
 }
 
-mark[data-marker-color="green"] {
-    --marker-color: rgba(76, 175, 80, 0.45);
+mark[data-marker-color="orange"],
+#markerDialog.marker-color-orange {
+    --marker-color: rgba(255, 152, 0, 0.65);
 }
 
-mark[data-marker-color="blue"] {
-    --marker-color: rgba(33, 150, 243, 0.45);
+mark[data-marker-color="pink"],
+#markerDialog.marker-color-pink {
+    --marker-color: rgba(233, 30, 99, 0.6);
 }
 
-mark[data-marker-color="orange"] {
-    --marker-color: rgba(255, 152, 0, 0.5);
-}
-
-mark[data-marker-color="pink"] {
-    --marker-color: rgba(233, 30, 99, 0.45);
-}
-
-mark[data-marker-color="purple"] {
-    --marker-color: rgba(156, 39, 176, 0.45);
+mark[data-marker-color="purple"],
+#markerDialog.marker-color-purple {
+    --marker-color: rgba(156, 39, 176, 0.6);
 }
 
 /* Диалог выбора стиля и цвета маркера */
 .marker-styles {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin: 16px 0;
+    gap: 10px;
+    margin: 12px 0 16px 0;
 }
 
 .marker-style-btn {
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    background: var(--bg-color);
-    cursor: pointer;
-    transition: all 0.2s ease;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 8px;
+    padding: 12px 10px;
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    text-align: center;
 }
 
 .marker-style-btn:hover {
-    border-color: #999;
-    transform: scale(1.05);
+    border-color: rgba(76, 175, 80, 0.6);
+    background: rgba(76, 175, 80, 0.06);
+    transform: translateY(-2px);
 }
 
 .marker-style-btn.active {
     border-color: #4caf50;
-    background: rgba(76, 175, 80, 0.1);
+    background: rgba(76, 175, 80, 0.12);
+    box-shadow: 0 0 0 1px #4caf50, 0 4px 14px rgba(76, 175, 80, 0.25);
+}
+
+.marker-preview-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    width: 100%;
+}
+
+.marker-style-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.85;
+    letter-spacing: 0.2px;
 }
 
 .marker-style-preview {
@@ -1229,58 +1279,36 @@ mark[data-marker-color="purple"] {
     color: var(--text-color);
 }
 
-.marker-preview-straight {
-    background: rgba(255, 235, 59, 0.5);
-    padding: 3px 8px;
-    border-radius: 3px;
-}
-
-.marker-preview-rough {
-    background: rgba(255, 235, 59, 0.5);
-    padding: 3px 10px;
-    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-    transform: rotate(-0.5deg);
-}
-
-.marker-preview-zigzag {
-    background: rgba(255, 235, 59, 0.5);
-    padding: 3px 9px;
-    border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
-    transform: rotate(0.3deg);
-}
-
-.marker-preview-wavy {
-    background: rgba(255, 235, 59, 0.5);
-    padding: 3px 9px;
-    border-radius: 225px 255px 15px 225px/255px 15px 225px 15px;
-    transform: rotate(-0.3deg);
-}
-
 /* Диалог выбора цвета маркера */
 .marker-colors {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
-    margin: 20px 0;
+    gap: 10px;
+    margin: 8px 0;
+    justify-items: center;
 }
 
 .marker-color-btn {
-    width: 48px;
-    height: 48px;
-    border: 3px solid transparent;
-    border-radius: 8px;
+    width: 44px;
+    height: 44px;
+    border: 2px solid transparent;
+    border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    outline: none;
 }
 
 .marker-color-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transform: scale(1.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-.marker-color-btn:active {
-    transform: scale(0.95);
+.marker-color-btn.active,
+.marker-color-btn:focus-visible {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px #4caf50, 0 4px 12px rgba(0, 0, 0, 0.4);
+    transform: scale(1.08);
 }
 
 .dialog.code-dialog .dialog-content {
@@ -1367,11 +1395,11 @@ mark[data-marker-color="purple"] {
 
 #fontFamilyDialog[style*="display: block"] {
     display: flex !important;
-    animation: dialogOverlayIn 0.22s ease-out forwards;
+    animation: dialogOverlayIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 #fontFamilyDialog[style*="display: block"] .dialog-content {
-    animation: dialogScaleIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out) forwards;
 }
 
 #fontFamilyDialog .dialog-content {
@@ -1566,7 +1594,10 @@ mark[data-marker-color="purple"] {
     border: 1.5px solid var(--border-color, rgba(255, 255, 255, 0.15));
     background: var(--glass-bg, rgba(255, 255, 255, 0.03));
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out),
+        background-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        opacity var(--anim-dur-fast) ease;
     color: var(--text-color);
     opacity: 0.8;
     text-align: center;
@@ -1761,8 +1792,20 @@ button:hover {
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.editor-menu-btn:hover {
+    transform: translateY(-1px);
+}
+
+.editor-menu-btn:active {
+    transform: scale(0.97);
 }
 
 [data-theme="dark"] .editor-menu-btn {
@@ -1785,7 +1828,7 @@ button:hover {
     border-top: 5px solid currentColor;
     margin-left: 2px;
     opacity: 0.8;
-    transition: transform 0.2s ease;
+    transition: transform var(--anim-dur-normal) var(--anim-ease-out);
 }
 
 .editor-menu-dropdown {
@@ -1800,10 +1843,10 @@ button:hover {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-12px) scale(0.95);
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-        visibility 0.3s;
+    transform: translateY(-5px) scale(0.985);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-normal) var(--anim-ease-out),
+        visibility var(--anim-dur-normal);
 }
 
 [data-theme="dark"] .editor-menu-dropdown {
@@ -1820,7 +1863,7 @@ button:hover {
 .editor-menu-wrap.is-closing .editor-menu-dropdown {
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-12px) scale(0.95);
+    transform: translateY(-5px) scale(0.985);
 }
 
 .editor-menu-wrap.is-open .editor-menu-btn::after {
@@ -1837,13 +1880,14 @@ button:hover {
     color: var(--text-color);
     font-size: 14px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     text-decoration: none;
     box-sizing: border-box;
 }
 
 .editor-menu-item:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
 
 [data-theme="dark"] .editor-menu-item:hover {
@@ -1854,33 +1898,6 @@ button:hover {
     color: inherit;
     text-decoration: none;
     display: block;
-}
-
-/* Плашка автосохранения */
-#autosaveBadge {
-    opacity: 0.95;
-    animation: autosaveBadgeFadeIn 0.3s ease;
-}
-
-@keyframes autosaveBadgeFadeIn {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(-10px);
-    }
-
-    to {
-        opacity: 0.95;
-        transform: translateX(-50%) translateY(0);
-    }
-}
-
-[data-theme="dark"] #autosaveBadge {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-#autosaveBadge::before {
-    content: '💾';
-    margin-right: 6px;
 }
 
 /* Кнопки глобальных параметров */
@@ -1930,8 +1947,17 @@ button:hover {
 }
 
 /* Параметры */
+.global-nav-btn {
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
+}
+
 .global-nav-btn:hover {
     background: rgba(0, 0, 0, 0.08) !important;
+    transform: translateX(2px);
+}
+
+.global-nav-btn:active {
+    transform: scale(0.98);
 }
 
 .global-nav-btn.active {
@@ -1950,7 +1976,7 @@ button:hover {
 @keyframes globalSectionIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(4px);
     }
 
     to {
@@ -1960,7 +1986,7 @@ button:hover {
 }
 
 .global-section {
-    animation: globalSectionIn 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: globalSectionIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 /* Анимации модальных окон */
@@ -2028,7 +2054,11 @@ button:hover {
     border: 1px solid #000000;
     background: var(--bg-color);
     color: var(--text-color);
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2041,6 +2071,11 @@ button:hover {
 
 .editor-actions .format-btn:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.editor-actions .format-btn:active {
+    transform: scale(0.96);
 }
 
 [data-theme="dark"] .editor-actions .format-btn:hover {
@@ -2116,7 +2151,11 @@ button:hover {
     border: 1px solid #000000;
     background: var(--bg-color);
     color: var(--text-color);
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .mode-toggle .format-btn {
@@ -2126,6 +2165,11 @@ button:hover {
 
 .mode-toggle .format-btn:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.mode-toggle .format-btn:active {
+    transform: scale(0.96);
 }
 
 [data-theme="dark"] .mode-toggle .format-btn:hover {
@@ -2136,12 +2180,14 @@ button:hover {
     background: #000000;
     color: #ffffff;
     border-color: #000000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 [data-theme="dark"] .mode-toggle .format-btn.active {
     background: #2a2a2a;
     color: #ffffff;
     border-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .formatting-buttons {
@@ -2337,8 +2383,8 @@ button:hover {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
     min-width: 200px;
     opacity: 0;
-    transform: translateY(-6px);
-    transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
+    transform: translateY(-5px) scale(0.985);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out), transform var(--anim-dur-normal) var(--anim-ease-out);
     overflow: hidden;
 }
 
@@ -2349,7 +2395,7 @@ button:hover {
 .color-picker-wrap.is-open .color-palette-popover {
     display: block;
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .color-palette-grid {
@@ -2365,11 +2411,16 @@ button:hover {
     border-radius: 6px;
     border: 1px solid rgba(0, 0, 0, 0.15);
     cursor: pointer;
-    transition: transform 0.1s ease;
+    transition: transform var(--anim-dur-fast) var(--anim-ease-out), box-shadow var(--anim-dur-fast) ease;
 }
 
 .color-swatch:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-swatch:active {
+    transform: scale(0.95);
 }
 
 .color-palette-custom {
@@ -2462,8 +2513,8 @@ button:hover {
     min-width: 160px;
     max-height: 280px;
     opacity: 0;
-    transform: translateY(-6px);
-    transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
+    transform: translateY(-5px) scale(0.985);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out), transform var(--anim-dur-normal) var(--anim-ease-out);
     overflow: hidden;
     padding: 0;
 }
@@ -2516,7 +2567,7 @@ button:hover {
 .font-family-picker-wrap.is-open .font-family-popover {
     display: block;
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .font-size-item,
@@ -2531,13 +2582,14 @@ button:hover {
     background: none;
     color: var(--text-color);
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     box-sizing: border-box;
 }
 
 .font-size-item:hover,
 .font-family-item:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
 
 [data-theme="dark"] .font-size-item:hover,
@@ -2674,11 +2726,13 @@ button:hover {
     min-height: 200px;
     resize: vertical;
     white-space: pre-wrap;
+    padding-bottom: 24px;
 }
 
 #contentVisual.editor-field {
     min-height: 200px;
     line-height: 1.6;
+    padding-bottom: 24px;
 }
 
 #contentVisual.editor-field p {
@@ -2707,10 +2761,12 @@ button:hover {
     padding: 12px;
     text-align: left;
     border: 1px solid var(--text-color);
-    min-width: 50px;
+    min-width: 40px;
     position: relative;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    box-sizing: border-box;
 }
 
 #contentVisual table th {
@@ -2731,20 +2787,18 @@ button:hover {
 .column-resizer {
     position: absolute;
     top: 0;
-    right: -3px;
+    right: 0;
     width: 6px;
     height: 100%;
     cursor: col-resize;
     z-index: 10;
     background: transparent;
+    user-select: none;
 }
 
-.column-resizer:hover {
-    background: rgba(76, 175, 80, 0.3);
-}
-
+.column-resizer:hover,
 .column-resizer.resizing {
-    background: rgba(76, 175, 80, 0.5);
+    background: rgba(76, 175, 80, 0.6);
 }
 
 #submitButton,
@@ -2761,7 +2815,11 @@ button:hover {
     border: 1px solid #000000;
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     flex-shrink: 0;
     pointer-events: auto;
@@ -2778,6 +2836,12 @@ button:hover {
     background: var(--text-color);
     color: var(--bg-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+#submitButton:active,
+#floatingSaveBtn:active {
+    transform: scale(0.96);
 }
 
 #submitButton.editing,
@@ -2791,6 +2855,7 @@ button:hover {
 #floatingSaveBtn.editing:hover {
     background: #bf360c;
     color: #fff;
+    transform: translateY(-1px);
 }
 
 #blogForm {
@@ -2806,9 +2871,9 @@ button:hover {
 /* ——— Система уведомлений ——— */
 .notification-container {
     position: fixed;
-    bottom: 20px;
+    bottom: 38px;
     left: 20px;
-    z-index: 10000;
+    z-index: 100000 !important;
     display: flex;
     flex-direction: column-reverse;
     gap: 12px;
@@ -2827,8 +2892,10 @@ button:hover {
     align-items: flex-start;
     gap: 12px;
     opacity: 0;
-    transform: translateX(-100%);
-    transition: all 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+    transform: translateX(-16px) scale(0.98);
+    transition: transform var(--anim-dur-medium) var(--anim-ease-out),
+        opacity var(--anim-dur-medium) var(--anim-ease-out),
+        box-shadow var(--anim-dur-medium) ease;
     pointer-events: auto;
     min-width: 300px;
 }
@@ -2839,12 +2906,12 @@ button:hover {
 
 .notification.show {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
 }
 
 .notification.hide {
     opacity: 0;
-    transform: translateX(-100%);
+    transform: translateX(-16px) scale(0.98);
 }
 
 .notification-icon {
@@ -2912,6 +2979,182 @@ button:hover {
     border-color: var(--text-color);
 }
 
+/* ——— Стили плашки восстановления черновика ——— */
+.notification.draft-restore-toast {
+    max-width: 460px;
+    padding: 12px 16px;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] .notification.draft-restore-toast {
+    background: #181818;
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"][data-amoled="true"] .notification.draft-restore-toast {
+    background: #000000;
+    border-color: #262626;
+}
+
+.draft-restore-toast .notification-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(128, 128, 128, 0.08);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 0;
+    user-select: none;
+}
+
+[data-theme="dark"] .draft-restore-toast .notification-icon {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.draft-restore-toast .notification-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.draft-restore-toast .notification-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color);
+    line-height: 1.25;
+    margin-bottom: 0;
+}
+
+.draft-restore-toast .draft-toast-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.72;
+    line-height: 1.3;
+}
+
+.draft-restore-toast .draft-toast-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+}
+
+.draft-restore-toast .draft-toast-bullet {
+    opacity: 0.4;
+    font-size: 10px;
+}
+
+.draft-restore-toast .draft-toast-time {
+    font-size: 11.5px;
+    white-space: nowrap;
+    opacity: 0.85;
+}
+
+.draft-restore-toast .draft-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.draft-restore-toast .draft-btn-restore {
+    height: 32px;
+    padding: 0 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 7px;
+    border: 1px solid var(--text-color);
+    background: var(--text-color);
+    color: var(--bg-color);
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color var(--anim-dur-fast) var(--anim-ease-out),
+        color var(--anim-dur-fast) var(--anim-ease-out),
+        border-color var(--anim-dur-fast) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-fast) var(--anim-ease-out),
+        opacity var(--anim-dur-fast) var(--anim-ease-out);
+    user-select: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] .draft-restore-toast .draft-btn-restore {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.draft-restore-toast .draft-btn-restore:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.draft-restore-toast .draft-btn-restore:active {
+    transform: scale(0.96);
+}
+
+.draft-restore-toast .notification-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.45;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-color);
+    transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+    margin: 0;
+    padding: 0;
+}
+
+.draft-restore-toast .notification-close:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.14);
+}
+
+[data-theme="dark"] .draft-restore-toast .notification-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 500px) {
+    .notification.draft-restore-toast {
+        flex-wrap: wrap;
+        padding: 12px 14px;
+    }
+    .draft-restore-toast .draft-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 4px;
+    }
+    .draft-restore-toast .draft-toast-name {
+        max-width: 130px;
+    }
+}
+
 /* ——— Диалог ошибки целостности ——— */
 .integrity-error-overlay {
     display: none;
@@ -2939,7 +3182,7 @@ button:hover {
     max-width: 500px;
     width: 90%;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 .integrity-error-header {
@@ -2991,7 +3234,7 @@ button:hover {
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out), transform var(--anim-dur-fast) var(--anim-ease-out), box-shadow var(--anim-dur-normal) var(--anim-ease-out);
 }
 
 .integrity-error-button:hover {
@@ -3001,7 +3244,7 @@ button:hover {
 }
 
 .integrity-error-button:active {
-    transform: translateY(0);
+    transform: scale(0.97);
 }
 
 /* ——— Диалог подтверждения удаления ——— */
@@ -3031,7 +3274,7 @@ button:hover {
     max-width: 450px;
     width: 90%;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .delete-confirm-dialog {
@@ -3091,7 +3334,15 @@ button:hover {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out);
+}
+
+.delete-confirm-btn:active {
+    transform: scale(0.96);
 }
 
 .delete-confirm-btn.cancel {
@@ -3102,6 +3353,7 @@ button:hover {
 .delete-confirm-btn.cancel:hover {
     background: var(--text-color);
     color: var(--bg-color);
+    transform: translateY(-1px);
 }
 
 .delete-confirm-btn.delete {
@@ -3112,6 +3364,7 @@ button:hover {
 .delete-confirm-btn.delete:hover {
     background: var(--bg-color);
     color: var(--text-color);
+    transform: translateY(-1px);
 }
 
 /* ——— Меню "Прочее" ——— */
@@ -3134,8 +3387,10 @@ button:hover {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     opacity: 0;
-    transform: translateY(-8px);
-    transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.2, 0.64, 1), visibility 0.25s;
+    transform: translateY(-5px) scale(0.985);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-normal) var(--anim-ease-out),
+        visibility var(--anim-dur-normal);
 }
 
 [data-theme="dark"] .more-menu-dropdown {
@@ -3146,7 +3401,7 @@ button:hover {
     visibility: visible;
     pointer-events: auto;
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .more-menu-item {
@@ -3159,12 +3414,13 @@ button:hover {
     color: var(--text-color);
     font-size: 14px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     box-sizing: border-box;
 }
 
 .more-menu-item:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
 
 [data-theme="dark"] .more-menu-item:hover {
@@ -3200,8 +3456,10 @@ button:hover {
     padding: 8px 0;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
     opacity: 0;
-    transform: translateX(-8px);
-    transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.2, 0.64, 1), visibility 0.25s;
+    transform: translateX(-5px) scale(0.985);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-normal) var(--anim-ease-out),
+        visibility var(--anim-dur-normal);
 }
 
 [data-theme="dark"] .more-submenu {
@@ -3225,7 +3483,7 @@ button:hover {
     color: var(--text-color);
     font-size: 13px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     box-sizing: border-box;
     white-space: nowrap;
     overflow: hidden;
@@ -3234,6 +3492,7 @@ button:hover {
 
 .more-submenu-item:hover {
     background: rgba(0, 0, 0, 0.06);
+    transform: translateX(2px);
 }
 
 [data-theme="dark"] .more-submenu-item:hover {
@@ -3331,7 +3590,7 @@ button:hover {
     max-width: 450px;
     width: 90%;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .save-include-dialog {
@@ -3382,7 +3641,14 @@ button:hover {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.save-include-btn:active {
+    transform: scale(0.96);
 }
 
 .save-include-btn.cancel {
@@ -3393,6 +3659,7 @@ button:hover {
 .save-include-btn.cancel:hover {
     background: var(--text-color);
     color: var(--bg-color);
+    transform: translateY(-1px);
 }
 
 .save-include-btn.save {
@@ -3402,6 +3669,7 @@ button:hover {
 
 .save-include-btn.save:hover {
     opacity: 0.85;
+    transform: translateY(-1px);
 }
 
 /* ——— Менеджер бэкапов ——— */
@@ -3434,7 +3702,7 @@ button:hover {
     display: flex;
     flex-direction: column;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.16), 0 8px 24px rgba(0, 0, 0, 0.08);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .backup-manager-dialog {
@@ -3639,23 +3907,11 @@ button:hover {
     font-size: 13px;
 }
 
-@keyframes dialogScaleIn {
-    0% {
-        transform: scale(0.95);
-        opacity: 0;
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
 @media (max-width: 768px) {
     .notification-container {
         left: 10px;
         right: 10px;
-        bottom: 10px;
+        bottom: 34px;
         max-width: calc(100% - 20px);
     }
 
@@ -3695,7 +3951,7 @@ button:hover {
     display: flex;
     flex-direction: column;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-    animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    animation: dialogScaleIn var(--anim-dur-medium) var(--anim-ease-out);
 }
 
 .numbering-check-header {
@@ -3827,7 +4083,7 @@ button:hover {
     cursor: not-allowed;
 }
 
-/* ——— Гайд для первого запуска ——— */
+/* ——— Интерактивный тур-обучение (Modern Tour) ——— */
 .tutorial-overlay {
     display: none;
     position: fixed;
@@ -3835,162 +4091,233 @@ button:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: transparent;
     z-index: 10010;
     align-items: center;
     justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease;
+    pointer-events: auto;
 }
 
 .tutorial-overlay.show {
     display: flex;
+    opacity: 1;
 }
 
+.tutorial-overlay.dimmed {
+    background: rgba(0, 0, 0, 0.65);
+}
+
+/* Spotlight */
 .tutorial-spotlight {
     position: fixed;
-    border: 3px solid #4CAF50;
-    border-radius: 8px;
-    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+    border: 2px solid var(--text-color);
+    border-radius: 10px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 16px rgba(255, 255, 255, 0.15);
     pointer-events: none;
     z-index: 10011;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: top, left, width, height;
 }
 
+/* Tooltip card */
 .tutorial-tooltip {
     position: fixed;
-    background: var(--bg-color);
-    border: 2px solid #4CAF50;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 400px;
-    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
-    z-index: 10012;
-    animation: tutorialFadeIn 0.4s ease;
+    background: var(--modal-bg, #1a1a1a);
+    border: 1px solid var(--modal-border, rgba(255, 255, 255, 0.14));
+    border-radius: 14px;
+    padding: 18px 22px;
+    max-width: 440px;
+    width: calc(100vw - 32px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    z-index: 10015;
+    animation: tutorialTooltipIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: top 0.25s cubic-bezier(0.16, 1, 0.3, 1), left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: auto;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-sizing: border-box;
 }
 
-@keyframes tutorialFadeIn {
+@keyframes tutorialTooltipIn {
     from {
         opacity: 0;
-        transform: scale(0.9);
+        transform: translateY(10px) scale(0.97);
     }
-
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0) scale(1);
     }
+}
+
+.tutorial-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.tutorial-step-badge {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-color);
+    background: rgba(128, 128, 128, 0.16);
+    border: 1px solid var(--border-color);
+    padding: 3px 9px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+}
+
+.tutorial-close-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--text-color);
+    opacity: 0.5;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: opacity 0.15s, background 0.15s;
+}
+
+.tutorial-close-btn:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.15);
+}
+
+.tutorial-progress-bar {
+    width: 100%;
+    height: 3px;
+    background: rgba(128, 128, 128, 0.2);
+    border-radius: 2px;
+    margin: 8px 0 14px 0;
+    overflow: hidden;
+}
+
+.tutorial-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--text-color);
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tutorial-tooltip h3 {
-    margin: 0 0 12px 0;
-    font-size: 1.3em;
+    margin: 0 0 8px 0;
+    font-size: 16.5px;
+    font-weight: 700;
     color: var(--text-color);
+    line-height: 1.3;
 }
 
 .tutorial-tooltip p {
     margin: 0 0 20px 0;
-    line-height: 1.6;
+    font-size: 13.5px;
+    line-height: 1.55;
     color: var(--text-color);
-    opacity: 0.9;
-}
-
-.tutorial-progress {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 20px;
-}
-
-.tutorial-progress-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transition: all 0.3s;
-}
-
-.tutorial-progress-dot.active {
-    background: #fff;
-    width: 24px;
-    border-radius: 4px;
+    opacity: 0.85;
 }
 
 .tutorial-buttons {
     display: flex;
-    gap: 12px;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.tutorial-nav-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .tutorial-btn {
-    padding: 10px 20px;
-    border: 2px solid var(--text-color);
+    padding: 7px 16px;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
-}
-
-.tutorial-btn.skip {
-    background: var(--bg-color);
+    transition: all 0.18s ease;
+    border: 1px solid var(--border-color);
+    background: transparent;
     color: var(--text-color);
 }
 
+.tutorial-btn.skip {
+    opacity: 0.6;
+    border-color: transparent;
+    padding: 7px 10px;
+}
+
 .tutorial-btn.skip:hover {
-    opacity: 0.7;
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.1);
+}
+
+.tutorial-btn.prev {
+    background: rgba(128, 128, 128, 0.08);
+}
+
+.tutorial-btn.prev:hover {
+    background: rgba(128, 128, 128, 0.16);
 }
 
 .tutorial-btn.next {
     background: var(--text-color);
     color: var(--bg-color);
+    border: 1px solid var(--text-color);
 }
 
 .tutorial-btn.next:hover {
-    opacity: 0.85;
+    opacity: 0.88;
 }
 
+/* Диалог завершения обучения */
 .tutorial-complete-dialog {
-    background: var(--bg-color);
-    border: 2px solid #28a745;
+    background: var(--modal-bg, #1a1a1a);
+    border: 1px solid var(--modal-border, rgba(255, 255, 255, 0.15));
     border-radius: 16px;
-    padding: 32px;
-    max-width: 500px;
+    padding: 36px 32px;
+    max-width: 480px;
+    width: calc(100vw - 40px);
     text-align: center;
-    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
-    animation: tutorialFadeIn 0.4s ease;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    animation: tutorialTooltipIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-sizing: border-box;
+    z-index: 10016;
 }
 
-.tutorial-complete-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
+.tutorial-complete-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--text-color);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px auto;
+    background: transparent;
 }
 
 .tutorial-complete-dialog h2 {
-    margin: 0 0 16px 0;
-    font-size: 1.8em;
+    margin: 0 0 12px 0;
+    font-size: 22px;
+    font-weight: 700;
     color: var(--text-color);
 }
 
 .tutorial-complete-dialog p {
-    margin: 0 0 24px 0;
+    margin: 0 0 26px 0;
+    font-size: 14px;
     line-height: 1.6;
     color: var(--text-color);
-    opacity: 0.9;
-}
-
-.tutorial-complete-btn {
-    padding: 14px 32px;
-    background: #28a745;
-    color: #fff;
-    border: 2px solid #28a745;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.tutorial-complete-btn:hover {
-    background: #218838;
-    border-color: #218838;
+    opacity: 0.85;
 }
 
 /* Модальное окно уведомлений */
@@ -4026,11 +4353,11 @@ button:hover {
 }
 
 .file-upload-dialog[style*="display: block"] {
-    animation: dialogOverlayIn 0.22s ease-out forwards;
+    animation: dialogOverlayIn var(--anim-dur-normal) var(--anim-ease-out) forwards;
 }
 
 .file-upload-dialog[style*="display: block"] .dialog-content {
-    animation: dialogContentIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation: dialogContentIn var(--anim-dur-medium) var(--anim-ease-out) forwards;
     width: 600px;
     max-width: 95vw;
 }
@@ -4042,7 +4369,9 @@ button:hover {
     padding: 24px 20px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out),
+        background-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -4336,7 +4665,11 @@ button:hover {
     border-radius: 12px;
     text-decoration: none;
     color: var(--text-color);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        border-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out);
     max-width: 450px;
     width: 100%;
     box-sizing: border-box;
@@ -4362,6 +4695,10 @@ button:hover {
     background: var(--text-color);
     color: var(--bg-color);
     border-color: var(--text-color);
+}
+
+.blog-file-button:active {
+    transform: scale(0.98);
 }
 
 [data-theme="dark"] .blog-file-button:hover {
@@ -4447,7 +4784,9 @@ button:hover {
     cursor: pointer;
     overflow: hidden;
     background: rgba(0, 0, 0, 0.01);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: border-color var(--anim-dur-normal) var(--anim-ease-out),
+        background-color var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
 }
 
 [data-theme="dark"] .grid-preview-tile {
@@ -4565,9 +4904,10 @@ button:hover {
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
 }
 
-/* --- FIXED HEADER STYLES --- */
+/* --- FIXED HEADER & FOOTER STYLES --- */
 body {
     padding-top: 88px !important;
+    padding-bottom: 88px !important;
 }
 
 .editor-header {
@@ -4655,17 +4995,27 @@ body {
     background: transparent;
     color: var(--text-color);
     box-shadow: none;
+    cursor: pointer;
+    transition: background-color var(--anim-dur-normal) var(--anim-ease-out),
+        color var(--anim-dur-normal) var(--anim-ease-out),
+        box-shadow var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.editor-header .mode-toggle .format-btn:active {
+    transform: scale(0.96);
 }
 
 .editor-header .mode-toggle .format-btn.active {
     background: var(--bg-color);
     color: var(--text-color);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 [data-theme="dark"] .editor-header .mode-toggle .format-btn.active {
     background: #2a2a2a;
     color: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .editor-header .editor-actions {
@@ -4694,27 +5044,308 @@ body {
     flex-shrink: 0;
 }
 
-/* Стили для автосохранения внутри хедера */
-.editor-header #autosaveBadge {
-    display: inline-flex;
+/* --- НИЖНЯЯ ПАНЕЛЬ РЕДАКТОРА (STATUS BAR) --- */
+.editor-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    background: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    display: flex;
     align-items: center;
-    padding: 6px 12px;
-    background: rgba(0, 0, 0, 0.05);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
-    opacity: 0.9;
-    box-shadow: none;
-    pointer-events: auto;
-    animation: autosaveBadgeFadeIn 0.3s ease;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 1000;
+    box-sizing: border-box;
+    user-select: none;
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
-[data-theme="dark"] .editor-header #autosaveBadge {
-    background: rgba(255, 255, 255, 0.07);
+[data-theme="dark"] .editor-bottom-bar {
+    border-top-color: rgba(255, 255, 255, 0.08);
+    background: var(--bg-color);
+}
+
+[data-theme="dark"][data-amoled="true"] .editor-bottom-bar {
+    border-top-color: #222222;
+    background: #000000;
+}
+
+.editor-bottom-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11.5px;
+    color: var(--text-color);
+}
+
+/* Переключатель режимов в нижней панели (Визуально / Код) */
+.editor-bottom-bar .mode-toggle,
+.bottom-bar-mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(128, 128, 128, 0.08);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1px;
+    gap: 2px;
+    height: 22px;
+    box-sizing: border-box;
+    user-select: none;
+    flex-shrink: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+[data-theme="dark"] .editor-bottom-bar .mode-toggle,
+[data-theme="dark"] .bottom-bar-mode-toggle {
+    background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"][data-amoled="true"] .editor-bottom-bar .mode-toggle,
+[data-theme="dark"][data-amoled="true"] .bottom-bar-mode-toggle {
+    background: #111111;
+    border-color: #262626;
+}
+
+.editor-bottom-bar .mode-toggle .format-btn,
+.bottom-bar-mode-toggle .format-btn {
+    border-radius: 4px;
+    height: 18px;
+    line-height: 18px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 0 8px;
+    min-width: auto;
+    width: auto;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    opacity: 0.75;
+    box-shadow: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+    transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.editor-bottom-bar .mode-toggle .format-btn:hover:not(.active),
+.bottom-bar-mode-toggle .format-btn:hover:not(.active) {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.14);
+}
+
+[data-theme="dark"] .editor-bottom-bar .mode-toggle .format-btn:hover:not(.active),
+[data-theme="dark"] .bottom-bar-mode-toggle .format-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.editor-bottom-bar .mode-toggle .format-btn:active,
+.bottom-bar-mode-toggle .format-btn:active {
+    transform: scale(0.96);
+}
+
+.editor-bottom-bar .mode-toggle .format-btn.active,
+.bottom-bar-mode-toggle .format-btn.active {
+    opacity: 1;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] .editor-bottom-bar .mode-toggle .format-btn.active,
+[data-theme="dark"] .bottom-bar-mode-toggle .format-btn.active {
+    background: #2a2a2a;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"][data-amoled="true"] .editor-bottom-bar .mode-toggle .format-btn.active,
+[data-theme="dark"][data-amoled="true"] .bottom-bar-mode-toggle .format-btn.active {
+    background: #222222;
+    color: #ffffff;
+    border: 1px solid #333333;
+    box-shadow: 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+.bottom-bar-mode-toggle #modeVisualBtn::before,
+.bottom-bar-mode-toggle #modeCodeBtn::before {
+    display: none !important;
+    content: none !important;
+}
+
+/* Выбор блога в нижней панели */
+.bottom-bar-blog-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+}
+
+.bottom-bar-blog-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.75;
+    margin: 0;
+    cursor: default;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+
+.bottom-bar-blog-select {
+    height: 22px;
+    padding: 0 6px;
+    font-size: 11.5px;
+    border-radius: 6px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.bottom-bar-blog-selector .custom-select-wrapper {
+    display: inline-flex;
+    vertical-align: middle;
+    width: auto;
+}
+
+.bottom-bar-blog-selector .custom-select-trigger {
+    min-height: 22px;
+    height: 22px;
+    padding: 0 8px;
+    font-size: 11.5px;
+    font-weight: 500;
+    border-radius: 6px;
+    background: rgba(128, 128, 128, 0.08);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    gap: 6px;
+    min-width: 80px;
+    box-shadow: none;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bottom-bar-blog-selector .custom-select-trigger:hover {
+    background: rgba(128, 128, 128, 0.16);
+    border-color: rgba(128, 128, 128, 0.4);
+}
+
+.bottom-bar-blog-selector .custom-select-wrapper.is-open .custom-select-trigger {
+    border-color: var(--accent-color, #3b82f6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.bottom-bar-blog-selector .custom-select-value {
+    font-size: 11.5px;
+    line-height: 20px;
+}
+
+.bottom-bar-blog-selector .custom-select-arrow {
+    width: 10px;
+    height: 10px;
+    opacity: 0.7;
+}
+
+.bottom-bar-blog-selector .custom-select-arrow svg {
+    width: 10px;
+    height: 10px;
+}
+
+.bottom-bar-blog-selector .custom-select-popover {
+    min-width: 110px;
+    width: auto;
+    max-width: 220px;
+    font-size: 12px;
+    border-radius: 8px;
+    padding: 4px;
+    z-index: 12500;
+}
+
+.bottom-bar-blog-selector .custom-select-option {
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 5px;
+}
+
+[data-theme="dark"] .bottom-bar-blog-selector .custom-select-trigger {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .bottom-bar-blog-selector .custom-select-trigger:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-blog-selector .custom-select-trigger {
+    background: #111111;
+    border-color: #262626;
+}
+
+.editor-bottom-bar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Таймер автосохранения в нижней полосе (чисто текст, кликабельный) */
+#autosaveBadge {
+    display: inline-flex;
+    align-items: center;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 5px !important;
+    padding: 2px 6px !important;
+    box-shadow: none !important;
+    font-size: 11.5px;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--text-color);
+    opacity: 0.65;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    cursor: pointer !important;
+    pointer-events: auto;
+    transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+#autosaveBadge:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.12) !important;
+}
+
+[data-theme="dark"] #autosaveBadge:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+#autosaveBadge:active {
+    opacity: 0.8;
+}
+
+#autosaveBadge::before {
+    display: none !important;
+    content: none !important;
+}
+
+#autosaveBadgeText {
+    display: inline;
+}
+
+body.header-bottom .editor-bottom-bar {
+    bottom: 64px;
+}
+body.header-bottom {
+    padding-top: 20px !important;
+    padding-bottom: 140px !important;
 }
 
 .editor-header #submitButton {
@@ -4762,7 +5393,10 @@ body {
     justify-content: center;
     font-size: 16px;
     font-family: inherit;
-    transition: all 0.15s ease;
+    transition: background-color var(--anim-dur-fast) ease,
+        border-color var(--anim-dur-fast) ease,
+        color var(--anim-dur-fast) ease,
+        transform var(--anim-dur-fast) var(--anim-ease-out);
     padding: 0;
     box-shadow: none;
 }
@@ -4770,6 +5404,11 @@ body {
 .editor-header .editor-actions .format-btn:hover {
     background: rgba(0, 0, 0, 0.06);
     border-color: rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.editor-header .editor-actions .format-btn:active:not(:disabled) {
+    transform: scale(0.94);
 }
 
 [data-theme="dark"] .editor-header .editor-actions .format-btn:hover {
@@ -4837,26 +5476,26 @@ body {
         font-weight: bold;
     }
 
-    #modeVisualBtn {
+    .editor-header #modeVisualBtn {
         font-size: 0 !important;
         width: 32px;
         min-width: 32px;
         padding: 0 !important;
     }
 
-    #modeVisualBtn::before {
+    .editor-header #modeVisualBtn::before {
         content: "👁️";
         font-size: 14px;
     }
 
-    #modeCodeBtn {
+    .editor-header #modeCodeBtn {
         font-size: 0 !important;
         width: 32px;
         min-width: 32px;
         padding: 0 !important;
     }
 
-    #modeCodeBtn::before {
+    .editor-header #modeCodeBtn::before {
         content: "</>";
         font-size: 13px;
         font-weight: bold;
@@ -5166,8 +5805,8 @@ html.is-android .blog-ascii-art {
 
 /* --- BOTTOM HEADER LAYOUT --- */
 body.header-bottom {
-    padding-top: 0 !important;
-    padding-bottom: 88px !important;
+    padding-top: 20px !important;
+    padding-bottom: 140px !important;
 }
 
 body.header-bottom .editor-header {
@@ -5215,15 +5854,15 @@ body.header-bottom .color-picker-wrap.is-open .color-palette-popover {
 /* Responsive adjustments for bottom header */
 @media (max-width: 1450px) {
     body.header-bottom {
-        padding-top: 0 !important;
-        padding-bottom: 116px !important;
+        padding-top: 20px !important;
+        padding-bottom: 160px !important;
     }
 }
 
 @media (max-width: 600px) {
     body.header-bottom {
-        padding-top: 0 !important;
-        padding-bottom: 156px !important;
+        padding-top: 20px !important;
+        padding-bottom: 190px !important;
     }
 }
 
@@ -5478,7 +6117,7 @@ body.header-customizing .dragging {
 }
 
 /* Стилизация перенесенных кнопок форматирования в меню "Прочее" */
-.more-menu-dropdown .format-btn {
+.more-menu-dropdown > .format-btn {
     display: block !important;
     width: 100% !important;
     height: auto !important;
@@ -5495,16 +6134,114 @@ body.header-customizing .dragging {
     box-sizing: border-box !important;
 }
 
-.more-menu-dropdown .format-btn:hover {
+.more-menu-dropdown > .format-btn:hover {
     background: rgba(128, 128, 128, 0.1) !important;
 }
 
-.more-menu-dropdown .format-btn .button-icon {
+.more-menu-dropdown > .format-btn .button-icon {
     display: none !important;
 }
 
-.more-menu-dropdown .format-btn .button-text {
+.more-menu-dropdown > .format-btn .button-text {
     display: inline !important;
+}
+
+/* Стилизация переключателя режимов (Визуально / Код) в меню "Прочее" */
+.more-menu-dropdown .mode-toggle {
+    display: flex !important;
+    gap: 4px !important;
+    background: rgba(0, 0, 0, 0.06) !important;
+    border-radius: 8px !important;
+    padding: 3px !important;
+    margin: 6px 12px !important;
+    box-sizing: border-box !important;
+    width: calc(100% - 24px) !important;
+    border: none !important;
+    height: auto !important;
+}
+
+[data-theme="dark"] .more-menu-dropdown .mode-toggle {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"][data-amoled="true"] .more-menu-dropdown .mode-toggle {
+    background: #161616 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.more-menu-dropdown .mode-toggle .format-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    width: 50% !important;
+    height: 30px !important;
+    padding: 0 10px !important;
+    text-align: center !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-color) !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    transition: all 0.18s ease !important;
+    margin: 0 !important;
+}
+
+.more-menu-dropdown .mode-toggle .format-btn:hover:not(.active) {
+    background: rgba(128, 128, 128, 0.12) !important;
+}
+
+.more-menu-dropdown .mode-toggle .format-btn.active {
+    background: var(--bg-color) !important;
+    color: var(--text-color) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="dark"] .more-menu-dropdown .mode-toggle .format-btn.active {
+    background: #2a2a2a !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"][data-amoled="true"] .more-menu-dropdown .mode-toggle .format-btn.active {
+    background: #222222 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Стилизация кнопок истории (Undo/Redo) в меню "Прочее" */
+.more-menu-dropdown .editor-actions {
+    display: flex !important;
+    gap: 6px !important;
+    padding: 0 !important;
+    margin: 6px 12px !important;
+    width: calc(100% - 24px) !important;
+    box-sizing: border-box !important;
+}
+
+.more-menu-dropdown .editor-actions .format-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    width: 50% !important;
+    height: 32px !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    background: rgba(128, 128, 128, 0.08) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-color) !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    transition: all 0.18s ease !important;
+}
+
+.more-menu-dropdown .editor-actions .format-btn:hover {
+    background: rgba(128, 128, 128, 0.18) !important;
 }
 
 /* Стилизация пикеров в меню "Прочее" */
@@ -6036,7 +6773,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     width: 14px;
     height: 14px;
     opacity: 0.65;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s;
+    transition: transform var(--anim-dur-normal) var(--anim-ease-out), opacity var(--anim-dur-fast) ease;
     color: var(--text-color);
 }
 
@@ -6070,9 +6807,11 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-4px);
+    transform: translateY(-5px) scale(0.985);
     pointer-events: none;
-    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+        transform var(--anim-dur-normal) var(--anim-ease-out),
+        visibility var(--anim-dur-normal);
     overflow: hidden;
     padding: 4px;
 }
@@ -6080,18 +6819,18 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 .custom-select-wrapper.is-open .custom-select-popover {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     pointer-events: auto;
 }
 
 .custom-select-popover.drop-up {
     top: auto;
     bottom: calc(100% + 4px);
-    transform: translateY(4px);
+    transform: translateY(5px) scale(0.985);
 }
 
 .custom-select-wrapper.is-open .custom-select-popover.drop-up {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .custom-select-popover-inner {
@@ -6138,7 +6877,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     font-family: inherit;
     text-align: left;
     cursor: pointer;
-    transition: background 0.12s ease;
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     box-sizing: border-box;
     outline: none;
     user-select: none;
@@ -6148,6 +6887,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 .custom-select-option.is-highlighted {
     background: rgba(0, 0, 0, 0.06);
     color: var(--text-color);
+    transform: translateX(2px);
 }
 
 .custom-select-option .custom-option-text {

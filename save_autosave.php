@@ -19,10 +19,7 @@ if ($title === null || $content === null) {
     exit;
 }
 
-// Создаем папку autosave если её нет
-if (!file_exists('autosave')) {
-    mkdir('autosave', 0755, true);
-}
+$autosaveDir = getAutosavePath();
 
 // Генерируем уникальный ID на основе md5 хэша заголовка и времени для защиты от tainted-filename
 $timestamp = time();
@@ -33,7 +30,7 @@ if (!preg_match('/^[a-f0-9]+_\d+$/', $id)) {
     exit;
 }
 
-$filepath = validateSafePath('autosave/', 'autosave_' . $id . '.json');
+$filepath = validateSafePath($autosaveDir, 'autosave_' . $id . '.json');
 
 $autosave = [
     'id' => $id,

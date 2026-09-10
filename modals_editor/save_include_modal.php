@@ -12,7 +12,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-info">📁</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.save_include_title">Сохранить в includes</h3>
                     <p class="modal-subtitle" data-i18n="modals.save_include_subtitle">Сохранение фрагмента для повторного использования</p>

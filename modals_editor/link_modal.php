@@ -14,7 +14,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-info">🔗</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.link_title">Вставить ссылку</h3>
                     <p class="modal-subtitle" data-i18n="modals.link_subtitle">Добавление гиперссылки в текст статьи</p>
@@ -31,14 +31,14 @@
             <div class="modal-form-group">
                 <label class="modal-label modal-label-required" for="linkUrl" data-i18n="modals.link_url_label">URL адрес ссылки:</label>
                 <input type="text" id="linkUrl" class="modal-input" placeholder="https://example.com" value="https://" required autofocus onkeydown="if(event.key==='Enter') insertLinkFromDialog()">
-                <div class="modal-help-text">Адрес веб-страницы (включая https://)</div>
+                <div class="modal-help-text" data-i18n="modals.link_url_hint">Адрес веб-страницы (включая https://)</div>
             </div>
 
             <!-- Текст ссылки -->
             <div class="modal-form-group" style="margin-top: 14px;">
                 <label class="modal-label" for="linkText" data-i18n="modals.link_text_label">Текст ссылки (необязательно):</label>
                 <input type="text" id="linkText" class="modal-input" placeholder="Оставьте пустым — будет использован выделенный текст" data-i18n-placeholder="modals.link_text_ph" onkeydown="if(event.key==='Enter') insertLinkFromDialog()">
-                <div class="modal-help-text">Если не заполнено, будет использован текущий выделенный текст.</div>
+                <div class="modal-help-text" data-i18n="modals.link_text_hint">Если не заполнено, будет использован текущий выделенный текст.</div>
             </div>
         </div>
 

@@ -14,7 +14,7 @@
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-info">💻</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" id="codeDialogTitle" data-i18n="modals.code_title">Вставить код</h3>
                     <p class="modal-subtitle" data-i18n="modals.code_subtitle">Блок исходного кода с подсветкой синтаксиса</p>

@@ -3,9 +3,13 @@ require_once __DIR__ . '/security_bootstrap.php';
 require_once __DIR__ . '/lang_helper.php';
 header('Content-Type: application/json; charset=utf-8');
 
-$data = json_decode(file_get_contents('php://input'), true);
+$rawInput = file_get_contents('php://input');
+if (($rawInput === false || $rawInput === '') && php_sapi_name() === 'cli') {
+    $rawInput = file_get_contents('php://stdin');
+}
+$data = json_decode($rawInput, true);
 
-$settingsFile = 'editor_settings.json';
+$settingsFile = __DIR__ . '/editor_settings.json';
 
 // Загружаем существующие настройки
 $existingSettings = [];
@@ -63,6 +67,20 @@ if (isset($data['tutorialCompleted'])) {
     $existingSettings['tutorialCompleted'] = (bool)$data['tutorialCompleted'];
 }
 
+if (isset($data['initial_setup_completed'])) {
+    $existingSettings['initial_setup_completed'] = (bool)$data['initial_setup_completed'];
+}
+
+if (isset($data['blog_title'])) {
+    $blogViewFile = getDataPath('blog-view-settings.json');
+    $blogViewSettings = [];
+    if (file_exists($blogViewFile)) {
+        $blogViewSettings = json_decode(file_get_contents($blogViewFile), true) ?: [];
+    }
+    $blogViewSettings['title'] = trim($data['blog_title']);
+    safeWriteJson($blogViewFile, $blogViewSettings);
+}
+
 if (isset($data['headerLayout']) && is_array($data['headerLayout'])) {
     $existingSettings['headerLayout'] = $data['headerLayout'];
 }
@@ -103,6 +121,33 @@ if (isset($data['active_blog_path'])) {
     $_SESSION['active_blog_path'] = $activePath;
     // Set data_path for backwards compatibility
     $existingSettings['data_path'] = $activePath;
+}
+
+if (isset($data['backup_path'])) {
+    $backupPath = trim($data['backup_path']);
+    $existingSettings['backup_path'] = $backupPath;
+    $_SESSION['backup_path'] = $backupPath;
+    if (!empty($backupPath)) {
+        getBackupPath(); // Ensure directory exists / is created
+    }
+}
+
+if (isset($data['autosave_path'])) {
+    $autosavePath = trim($data['autosave_path']);
+    $existingSettings['autosave_path'] = $autosavePath;
+    $_SESSION['autosave_path'] = $autosavePath;
+    if (!empty($autosavePath)) {
+        getAutosavePath(); // Ensure directory exists / is created
+    }
+}
+
+if (isset($data['editor_backup_path'])) {
+    $editorBackupPath = trim($data['editor_backup_path']);
+    $existingSettings['editor_backup_path'] = $editorBackupPath;
+    $_SESSION['editor_backup_path'] = $editorBackupPath;
+    if (!empty($editorBackupPath)) {
+        getEditorBackupPath(); // Ensure directory exists / is created
+    }
 }
 
 if (isset($data['rss_enabled'])) {
@@ -153,6 +198,13 @@ if (isset($data['password_enabled'])) {
     $passwordEnabled = (bool)$data['password_enabled'];
     $hasOldPassword = !empty($existingSettings['password_hash']);
     
+    // Защита: если завершается первоначальная настройка, у пользователя уже установлен пароль,
+    // но в запросе не передавались old_password и new_password (пользователь не менял пароль),
+    // сохраняем текущий пароль нетронутым и не требуем подтверждения старого пароля
+    if ($hasOldPassword && !empty($data['initial_setup_completed']) && empty($data['old_password']) && empty($data['new_password'])) {
+        $passwordEnabled = true;
+    }
+    
     if ($hasOldPassword) {
         $isChangingOrDisabling = (!$passwordEnabled) || !empty($data['new_password']);
         if ($isChangingOrDisabling) {
@@ -174,6 +226,8 @@ if (isset($data['password_enabled'])) {
             $existingSettings['password_hash'] = password_hash($data['new_password'], $algo);
             $existingSettings['failed_attempts'] = 0;
             $existingSettings['lockout_until'] = 0;
+            $_SESSION['authenticated'] = true;
+            $_SESSION['auth_time'] = time();
         } else if (empty($existingSettings['password_hash'])) {
             echo json_encode(['success' => false, 'error' => 'Необходимо указать новый пароль для включения защиты']);
             exit;

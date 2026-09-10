@@ -12,7 +12,11 @@ $protectedPaths = [
     getDataPath('audio/'),
     getDataPath('video/'),
     getDataPath('files/'),
+    getBackupPath(),
+    getAutosavePath(),
+    getEditorBackupPath(),
     'data_backup/',
+    'autosave/',
     'editor_backup/',
     getDataPath('global-settings.json'),
     'editor_settings.json',
@@ -25,31 +29,41 @@ $protectedPaths = [
 function isProtected($path) {
     global $protectedPaths;
     
+    $normPath = ltrim(str_replace('\\', '/', $path), './');
+    $lowerNormPath = strtolower($normPath);
+    $ext = strtolower(pathinfo($normPath, PATHINFO_EXTENSION));
+    
     // Специальное исключение: JS и CSS файлы (скрипты/стили) должны обновляться всегда
-    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
     if ($ext === 'js' || $ext === 'css') {
         return false;
     }
     
     // Специальное исключение: data/blog.html должен обновляться
-    if ($path === getDataPath('blog.html')) {
+    $dataBlogHtml = function_exists('getDataPath') ? strtolower(str_replace('\\', '/', getDataPath('blog.html'))) : 'data/blog.html';
+    if ($lowerNormPath === 'data/blog.html' || $lowerNormPath === $dataBlogHtml) {
         return false;
     }
     
-    // Защищаем все json файлы (метаданные, история, настройки и т.д.)
-    if (str_ends_with(strtolower($path), '.json')) {
+    // Специальное исключение: JSON файлы локализации в папке lang должны обновляться
+    if (str_starts_with($lowerNormPath, 'lang/') && $ext === 'json') {
+        return false;
+    }
+    
+    // Защищаем все остальные json файлы (метаданные, история, настройки и т.д.)
+    if ($ext === 'json') {
         return true;
     }
     
     foreach ($protectedPaths as $protected) {
+        $normProtected = strtolower(ltrim(str_replace('\\', '/', $protected), './'));
         // Если это папка
-        if (str_ends_with($protected, '/')) {
-            if (str_starts_with($path, $protected)) {
+        if (str_ends_with($normProtected, '/')) {
+            if (str_starts_with($lowerNormPath, $normProtected)) {
                 return true;
             }
         } else {
             // Если это конкретный файл
-            if ($path === $protected) {
+            if ($lowerNormPath === $normProtected) {
                 return true;
             }
         }
@@ -120,6 +134,7 @@ if ($action === 'preview') {
         foreach ($iterator as $item) {
             if ($item->isFile()) {
                 $relativePath = substr($item->getPathname(), strlen($tmpDir));
+                $relativePath = str_replace('\\', '/', $relativePath);
                 $filesToReplace[] = $relativePath;
             }
         }
@@ -205,7 +220,7 @@ elseif ($action === 'update') {
     }
     
     // 1. Создаем бекап всего проекта
-    $backupDir = 'editor_backup/';
+    $backupDir = getEditorBackupPath();
     if (!is_dir($backupDir)) {
         mkdir($backupDir, 0755, true);
     }
@@ -219,13 +234,25 @@ elseif ($action === 'update') {
             RecursiveIteratorIterator::LEAVES_ONLY
         );
 
+        $normEditorBackup = rtrim(str_replace('\\', '/', realpath($backupDir) ?: $backupDir), '/') . '/';
+        $normDataBackup = rtrim(str_replace('\\', '/', realpath(getBackupPath()) ?: getBackupPath()), '/') . '/';
+        $normAutosave = rtrim(str_replace('\\', '/', realpath(getAutosavePath()) ?: getAutosavePath()), '/') . '/';
+
         foreach ($files as $name => $file) {
             if (!$file->isDir()) {
                 $filePath = $file->getRealPath();
+                $normFilePath = str_replace('\\', '/', $filePath);
                 $relativePath = substr($filePath, strlen($rootPath) + 1);
                 $relativePath = str_replace('\\', '/', $relativePath);
                 
-                if (!str_starts_with($relativePath, 'sys_update_tmp/') && !str_starts_with($relativePath, 'editor_backup/') && !str_starts_with($relativePath, 'rollback_tmp/')) {
+                if (!str_starts_with($relativePath, 'sys_update_tmp/') && 
+                    !str_starts_with($relativePath, 'rollback_tmp/') && 
+                    !str_starts_with($relativePath, 'editor_backup/') &&
+                    !str_starts_with($relativePath, 'autosave/') &&
+                    !str_starts_with($relativePath, 'data_backup/') &&
+                    !str_starts_with($normFilePath, $normEditorBackup) &&
+                    !str_starts_with($normFilePath, $normDataBackup) &&
+                    !str_starts_with($normFilePath, $normAutosave)) {
                     $zip->addFile($filePath, $relativePath);
                 }
             }
@@ -252,6 +279,7 @@ elseif ($action === 'update') {
     foreach ($iterator as $item) {
         if ($item->isFile()) {
             $relativePath = substr($item->getPathname(), strlen($tmpDir));
+            $relativePath = str_replace('\\', '/', $relativePath);
             
             $actualPath = $relativePath;
             if ($rootFolder && str_starts_with($relativePath, $rootFolder)) {

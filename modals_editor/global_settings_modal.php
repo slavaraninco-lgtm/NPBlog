@@ -30,7 +30,7 @@ if (!isset($availableLanguages)) {
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                <span class="modal-icon icon-info">⚙️</span>
+                
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="settings.title">Параметры</h3>
                     <p class="modal-subtitle" data-i18n="settings.subtitle">Глобальные настройки блога, интерфейса, безопасности и интеграций</p>
@@ -292,6 +292,8 @@ if (!isset($availableLanguages)) {
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button type="button" onclick="checkPostNumbering()" class="modal-btn modal-btn-primary" data-i18n="settings.exp_check_num_btn">Проверка нумерации</button>
                             <button type="button" onclick="resetTutorial()" class="modal-btn modal-btn-secondary" data-i18n="settings.exp_reset_guide_btn">Сбросить обучение</button>
+                            <button type="button" onclick="closeGlobalSettings(); openInitialSetupModal();" class="modal-btn modal-btn-secondary" data-i18n="setup.rerun_setup_btn">🚀 Первоначальная настройка</button>
+                            <button type="button" onclick="closeGlobalSettings(); enterSafeMode('Тестовый запуск Safe Mode (проверка интерфейса аварийного восстановления)');" class="modal-btn modal-btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">🛡️ Safe Mode</button>
                             <button type="button" onclick="deleteAllCustomTemplates()" class="modal-btn modal-btn-danger" data-i18n="settings.exp_delete_templates_btn">Удалить кастомные шаблоны</button>
                         </div>
                     </div>
@@ -404,18 +406,85 @@ if (!isset($availableLanguages)) {
                     </div>
                 </div>
 
-                <!-- Секция 8: Пути к блогам -->
+                <!-- Секция 8: Пути -->
                 <div id="globalSection-paths" class="global-section" style="display: none;">
-                    <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.paths_desc">Настройте пути к директориям блогов на сервере.</p>
+                    <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.paths_desc">Настройте пути к директориям блогов, резервных копий и автосохранений на сервере.</p>
                     
-                    <div id="blogPathsListContainer" style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
-                        <!-- Динамически заполняется через JS -->
-                    </div>
-                    
-                    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
-                        <button type="button" onclick="addBlogPathRow()" class="modal-btn modal-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
-                            <span>➕</span> <span data-i18n="settings.paths_add_btn">Добавить путь</span>
+                    <!-- Подсекция 1: Директории блогов (data) -->
+                    <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                        <h4 style="margin: 0 0 8px 0; color: var(--text-color); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <span data-i18n="settings.paths_blog_dirs_title">Директории блогов (data)</span>
+                        </h4>
+                        <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_blog_dirs_hint">
+                            Укажите пути к папкам данных блогов. При наличии нескольких блогов переключение доступно в нижней панели редактора.
+                        </p>
+                        <div id="blogPathsListContainer" style="margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Динамически заполняется через JS -->
+                        </div>
+                        <button type="button" onclick="addBlogPathRow()" class="modal-btn modal-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px;">
+                            <span>➕</span> <span data-i18n="settings.paths_add_btn">Добавить путь к блогу</span>
                         </button>
+                    </div>
+
+                    <!-- Подсекция 2: Директория резервных копий статей (data_backup) -->
+                    <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                        <h4 style="margin: 0 0 8px 0; color: var(--text-color); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <span data-i18n="settings.paths_backup_dir_title">Директория для резервных копий статей (data_backup)</span>
+                        </h4>
+                        <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_backup_dir_hint">
+                            Укажите путь к папке на сервере для хранения резервных копий статей (например: C:\xampp\htdocs\data_backup или data_backup). Если оставить пустым, бэкапы сохраняются в стандартную папку data_backup.
+                        </p>
+                        <div style="display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px;">
+                            <input type="text" id="backupPathInput" class="modal-input" placeholder="C:\xampp\htdocs\data_backup или data_backup" data-i18n-placeholder="settings.paths_backup_ph" style="flex: 1; font-family: monospace; font-size: 13px;">
+                            <button type="button" onclick="resetBackupPathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n="settings.paths_backup_default_btn">
+                                По умолч.
+                            </button>
+                        </div>
+                        <div style="font-size: 12px; opacity: 0.7; color: var(--text-color); margin-top: 6px;">
+                            <span data-i18n="settings.paths_backup_current">Текущее расположение:</span> <code id="currentResolvedBackupPath" style="font-family: monospace; padding: 2px 6px; background: var(--modal-bg-subtle, rgba(0,0,0,0.05)); border-radius: 4px;">...</code>
+                        </div>
+                    </div>
+
+                    <!-- Подсекция 3: Директория автосохранений и черновиков (autosave) -->
+                    <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                        <h4 style="margin: 0 0 8px 0; color: var(--text-color); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <span data-i18n="settings.paths_autosave_dir_title">Директория для автосохранений и черновиков (autosave)</span>
+                        </h4>
+                        <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_autosave_dir_hint">
+                            Укажите путь к папке на сервере для хранения автосохранений и черновиков статей. Если оставить пустым, данные сохраняются в стандартную папку autosave.
+                        </p>
+                        <div style="display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px;">
+                            <input type="text" id="autosavePathInput" class="modal-input" placeholder="C:\xampp\htdocs\autosave или autosave" data-i18n-placeholder="settings.paths_autosave_ph" style="flex: 1; font-family: monospace; font-size: 13px;">
+                            <button type="button" onclick="resetAutosavePathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n="settings.paths_autosave_default_btn">
+                                По умолч.
+                            </button>
+                        </div>
+                        <div style="font-size: 12px; opacity: 0.7; color: var(--text-color); margin-top: 6px;">
+                            <span data-i18n="settings.paths_autosave_current">Текущее расположение:</span> <code id="currentResolvedAutosavePath" style="font-family: monospace; padding: 2px 6px; background: var(--modal-bg-subtle, rgba(0,0,0,0.05)); border-radius: 4px;">...</code>
+                        </div>
+                    </div>
+
+                    <!-- Подсекция 4: Директория бэкапов системы (editor_backup) -->
+                    <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                        <h4 style="margin: 0 0 8px 0; color: var(--text-color); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <span data-i18n="settings.paths_editor_backup_dir_title">Директория для бэкапов системы и обновлений (editor_backup)</span>
+                        </h4>
+                        <p style="color: var(--text-color); opacity: 0.75; font-size: 12px; margin-bottom: 14px;" data-i18n="settings.paths_editor_backup_dir_hint">
+                            Укажите путь к папке на сервере для хранения архивов бэкапов всей системы перед обновлениями. Если оставить пустым, архивы сохраняются в стандартную папку editor_backup.
+                        </p>
+                        <div style="display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px;">
+                            <input type="text" id="editorBackupPathInput" class="modal-input" placeholder="C:\xampp\htdocs\editor_backup или editor_backup" data-i18n-placeholder="settings.paths_editor_backup_ph" style="flex: 1; font-family: monospace; font-size: 13px;">
+                            <button type="button" onclick="resetEditorBackupPathToDefault()" class="modal-btn modal-btn-secondary" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n="settings.paths_editor_backup_default_btn">
+                                По умолч.
+                            </button>
+                        </div>
+                        <div style="font-size: 12px; opacity: 0.7; color: var(--text-color); margin-top: 6px;">
+                            <span data-i18n="settings.paths_editor_backup_current">Текущее расположение:</span> <code id="currentResolvedEditorBackupPath" style="font-family: monospace; padding: 2px 6px; background: var(--modal-bg-subtle, rgba(0,0,0,0.05)); border-radius: 4px;">...</code>
+                        </div>
+                    </div>
+
+                    <!-- Кнопка сохранения -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
                         <button type="button" onclick="savePathsSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.paths_save_btn">
                             Сохранить настройки путей
                         </button>
@@ -423,7 +492,7 @@ if (!isset($availableLanguages)) {
                     
                     <div style="padding: 14px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px;">
                         <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;" data-i18n-html="settings.paths_hint">
-                            💡 Укажите абсолютные пути к папкам данных блогов (например: <code>/var/www/html/data</code>). При добавлении нескольких путей переключение между блогами доступно в боковой панели «Управление статьями».
+                            💡 Укажите абсолютные или относительные пути к папкам данных, бэкапов статей, автосохранений и бэкапов системы на сервере. При изменении путей новые файлы будут автоматически сохраняться в указанные директории.
                         </p>
                     </div>
                 </div>
@@ -534,7 +603,7 @@ if (!isset($availableLanguages)) {
 
                     <div style="margin-bottom: 18px;">
                         <label class="modal-label" for="seoDefaultDescription" data-i18n="settings.seo_default_desc_label">Описание по умолчанию (Default Description):</label>
-                        <textarea id="seoDefaultDescription" placeholder="Интересные статьи о программировании и технологиях." class="modal-textarea" style="height: 80px;"></textarea>
+                        <textarea id="seoDefaultDescription" placeholder="Интересные статьи о программировании и технологиях." data-i18n-placeholder="settings.seo_default_desc_ph" class="modal-textarea" style="height: 80px;"></textarea>
                         <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin-top: 4px;" data-i18n-html="settings.seo_default_desc_hint">
                             Описание, которое будет использоваться, если статья слишком короткая или не содержит текста.
                         </p>
@@ -556,21 +625,42 @@ if (!isset($availableLanguages)) {
                 <div id="globalSection-language" class="global-section" style="display: none;">
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.lang_desc">Выберите язык интерфейса редактора NPBlog.</p>
                     
-                    <div id="languageCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                    <div style="margin-bottom: 16px;">
+                        <input type="text" id="langSearchInput" onkeyup="filterLanguages()" placeholder="Поиск языка..." data-i18n-placeholder="settings.lang_search" class="modal-input" style="width: 100%;">
+                    </div>
+
+                    <div id="languageCardsContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; padding-right: 8px;">
                         <?php foreach ($availableLanguages as $l): 
                             $isSel = ($l['code'] === $currentLanguage);
                             $borderStyle = $isSel ? 'var(--primary-color, #4CAF50)' : 'var(--border-color)';
                             $bgStyle = $isSel ? 'rgba(76, 175, 80, 0.08)' : 'var(--modal-bg-subtle, rgba(0,0,0,0.02))';
+                            $nameStr = (string)$l['name'];
+                            $langNameLower = htmlspecialchars(function_exists('mb_strtolower') ? mb_strtolower($nameStr, 'UTF-8') : strtolower($nameStr));
                         ?>
-                        <div id="langCard-<?php echo htmlspecialchars($l['code']); ?>" data-lang-code="<?php echo htmlspecialchars($l['code']); ?>" class="lang-selection-card" onclick="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" style="border: 2px solid <?php echo $borderStyle; ?>; border-radius: 12px; padding: 16px; cursor: pointer; background: <?php echo $bgStyle; ?>; transition: all 0.2s; position: relative; display: flex; flex-direction: column; gap: 8px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="font-size: 26px;"><?php echo htmlspecialchars($l['smile']); ?></div>
-                                <input type="radio" name="editor_lang_radio" id="langRadio-<?php echo htmlspecialchars($l['code']); ?>" value="<?php echo htmlspecialchars($l['code']); ?>" style="cursor: pointer; width: 18px; height: 18px;" onchange="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" <?php echo $isSel ? 'checked' : ''; ?>>
+                        <div id="langCard-<?php echo htmlspecialchars($l['code']); ?>" data-lang-code="<?php echo htmlspecialchars($l['code']); ?>" data-lang-name="<?php echo $langNameLower; ?>" class="lang-selection-card" onclick="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" style="border: 1px solid <?php echo $borderStyle; ?>; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: <?php echo $bgStyle; ?>; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 18px; line-height: 1;"><?php echo htmlspecialchars($l['smile']); ?></span>
+                                <span style="font-size: 14px; font-weight: 500; color: var(--text-color);"><?php echo htmlspecialchars($l['name']); ?></span>
                             </div>
-                            <div style="font-size: 16px; font-weight: 700; color: var(--text-color); margin-top: 4px;"><?php echo htmlspecialchars($l['name']); ?></div>
+                            <input type="radio" name="editor_lang_radio" id="langRadio-<?php echo htmlspecialchars($l['code']); ?>" value="<?php echo htmlspecialchars($l['code']); ?>" style="cursor: pointer; width: 14px; height: 14px; margin: 0;" onchange="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" <?php echo $isSel ? 'checked' : ''; ?>>
                         </div>
                         <?php endforeach; ?>
                     </div>
+                    
+                    <script>
+                    function filterLanguages() {
+                        let input = document.getElementById('langSearchInput').value.toLowerCase();
+                        let cards = document.querySelectorAll('.lang-selection-card');
+                        cards.forEach(card => {
+                            let name = card.getAttribute('data-lang-name') || '';
+                            if (name.includes(input)) {
+                                card.style.display = 'flex';
+                            } else {
+                                card.style.display = 'none';
+                            }
+                        });
+                    }
+                    </script>
                 </div>
             </div>
         </div>

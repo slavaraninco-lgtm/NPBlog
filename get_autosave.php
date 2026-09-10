@@ -5,9 +5,11 @@ header('Content-Type: application/json');
 $data = json_decode(file_get_contents('php://input'), true);
 $id = isset($data['id']) ? $data['id'] : null;
 
+$autosaveDir = getAutosavePath();
+
 if ($id) {
     // Загружаем конкретное автосохранение по ID
-    $filepath = validateSafePath('autosave/', 'autosave_' . $id . '.json');
+    $filepath = validateSafePath($autosaveDir, 'autosave_' . $id . '.json');
     
     if (file_exists($filepath)) {
         $content = file_get_contents($filepath);
@@ -23,7 +25,7 @@ if ($id) {
     }
 } else {
     // Загружаем последнее автосохранение (для обратной совместимости)
-    $files = glob('autosave/autosave_*.json');
+    $files = glob($autosaveDir . 'autosave_*.json');
     
     if (empty($files)) {
         echo json_encode(['success' => false, 'error' => 'Автосохранения не найдены']);

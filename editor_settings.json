@@ -1,6 +1,7 @@
 {
     "language": "ru",
     "tutorialCompleted": true,
+    "initial_setup_completed": true,
     "blog_paths": [
         "C:\\xampp\\htdocs\\data"
     ],
@@ -9,20 +10,6 @@
         {
             "id": "logoDivider",
             "name": "logoDivider",
-            "visible": true,
-            "inDropdown": false,
-            "row": 1
-        },
-        {
-            "id": "headerModeToggle",
-            "name": "Визуально\nКод",
-            "visible": true,
-            "inDropdown": false,
-            "row": 1
-        },
-        {
-            "id": "modeActionsDivider",
-            "name": "modeActionsDivider",
             "visible": true,
             "inDropdown": false,
             "row": 1
@@ -56,15 +43,15 @@
             "row": 1
         },
         {
-            "id": "btn-underline",
-            "name": "Подчёркнутый (Ctrl+U)",
+            "id": "btn-strike",
+            "name": "Зачёркнутый",
             "visible": true,
             "inDropdown": false,
             "row": 1
         },
         {
-            "id": "btn-strike",
-            "name": "Зачёркнутый",
+            "id": "btn-underline",
+            "name": "Подчёркнутый (Ctrl+U)",
             "visible": true,
             "inDropdown": false,
             "row": 1
@@ -225,5 +212,22 @@
         }
     ],
     "headerHeight": 64,
-    "headerTwoRows": false
+    "headerTwoRows": false,
+    "autosaveEnabled": true,
+    "autosaveInterval": 60,
+    "data_path": "C:\\xampp\\htdocs\\data",
+    "backup_path": "",
+    "autosave_path": "",
+    "editor_backup_path": "",
+    "enableUndoRedo": false,
+    "enableMarkdown": false,
+    "ip_whitelist_enabled": false,
+    "password_hash": "",
+    "failed_attempts": 0,
+    "lockout_until": 0,
+    "hideEditorModeButtons": false,
+    "amoledTheme": false,
+    "smoothTyping": false,
+    "headerBottomPosition": false,
+    "contentWidth": 920
 }
