@@ -13,7 +13,7 @@ Options -Indexes
 </FilesMatch>
 
 # 2. Deny direct access to sensitive configuration, backup, and metadata files
-<FilesMatch "(editor_settings\.json|allowed_ips\.txt|ftp\.json|version\.json|history\.json|backup-meta\.json|includes-meta\.json|login_lockouts\.json|\.(bak|log|sql|dist|sh|bat|cmd|ini))$">
+<FilesMatch "(editor_settings\.json|allowed_ips\.txt|ftp\.json|version\.json|history\.json|backup-meta\.json|includes-meta\.json|login_lockouts\.json|api_tokens\.json|\.(bak|log|sql|dist|sh|bat|cmd|ini))$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

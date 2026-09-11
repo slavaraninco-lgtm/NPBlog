@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NPBlog Mobile REST API — Интерактивная документация Swagger</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg-dark: #0f172a;
+            --card-dark: #1e293b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f8fafc;
+        }
+
+        .api-header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #ffffff;
+            padding: 24px 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .badge {
+            background: rgba(37, 99, 235, 0.25);
+            border: 1px solid #3b82f6;
+            color: #93c5fd;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 9999px;
+        }
+
+        .header-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .header-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .header-btn.primary {
+            background: #2563eb;
+            border-color: #3b82f6;
+        }
+
+        .header-btn.primary:hover {
+            background: #1d4ed8;
+        }
+
+        /* Swagger UI tweaks */
+        .swagger-ui .topbar {
+            display: none !important;
+        }
+
+        .swagger-ui .wrapper {
+            padding: 0 32px;
+            max-width: 1400px;
+        }
+
+        .swagger-ui .info {
+            margin: 24px 0;
+        }
+
+        .swagger-ui .info .title {
+            font-size: 28px;
+            color: #0f172a;
+        }
+
+        .swagger-ui .scheme-container {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+            padding: 16px 24px;
+        }
+
+        .swagger-ui .opblock {
+            border-radius: 10px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            margin-bottom: 12px !important;
+            overflow: hidden;
+        }
+
+        .swagger-ui .btn.authorize {
+            background: #10b981;
+            border-color: #10b981;
+            color: #fff;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .swagger-ui .btn.authorize svg {
+            fill: #fff;
+        }
+
+        .quick-banner {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin: 24px 32px 0 32px;
+            max-width: 1336px;
+            color: #1e3a8a;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .quick-banner code {
+            background: #dbeafe;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <header class="api-header">
+        <div class="header-title">
+            <span style="font-size: 24px;">📱</span>
+            <h1>NPBlog Mobile REST API</h1>
+            <span class="badge">v1.0.0</span>
+            <span class="badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #6ee7b7;">OpenAPI 3.1</span>
+        </div>
+        <div class="header-links">
+            <a href="../../API_DOCUMENTATION.md" class="header-btn" target="_blank">📖 Markdown Документация</a>
+            <a href="openapi.json" class="header-btn" target="_blank" download="openapi.json">⬇ Скачать openapi.json</a>
+            <a href="../../index.php" class="header-btn primary">✏️ Веб-редактор NPBlog</a>
+        </div>
+    </header>
+
+    <div class="quick-banner">
+        💡 <b>Быстрый старт для разработчиков мобильного приложения:</b>
+        Для авторизации вызовите <code>POST /api/v1/auth/login</code> с паролем редактора, скопируйте полученный <code>access_token</code>, нажмите зеленую кнопку <b>Authorize</b> вверху справа и вставьте токен в формате <code>Bearer npb_...</code>. После этого вы сможете тестировать любые запросы прямо из этого интерактивного окна!
+    </div>
+
+    <div id="swagger-ui"></div>
+
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            const ui = SwaggerUIBundle({
+                url: "./openapi.json",
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "BaseLayout",
+                persistAuthorization: true,
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+                docExpansion: "list"
+            });
+            window.ui = ui;
+        };
+    </script>
+</body>
+</html>

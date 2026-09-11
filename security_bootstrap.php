@@ -10,7 +10,7 @@ if (empty($_SESSION['csrf_token'])) {
 
 // Automatically validate CSRF token on POST requests (excluding CLI and login.php)
 $currentScript = basename($_SERVER['SCRIPT_NAME']);
-if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && $currentScript !== 'login.php') {
+if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && $currentScript !== 'login.php' && !defined('NPBLOG_API_REQUEST')) {
     $csrfHeader = isset($_SERVER['HTTP_X_CSRF_TOKEN']) ? $_SERVER['HTTP_X_CSRF_TOKEN'] : '';
     $sessionToken = isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : '';
     if (empty($sessionToken) || empty($csrfHeader) || !hash_equals($sessionToken, $csrfHeader)) {
@@ -614,7 +614,7 @@ if (!empty($passwordHash) && php_sapi_name() !== 'cli') {
                     
     $currentScript = basename($_SERVER['SCRIPT_NAME']);
     
-    if (!$isAuthorized && $currentScript !== 'login.php' && $currentScript !== 'serve_data.php') {
+    if (!$isAuthorized && $currentScript !== 'login.php' && $currentScript !== 'serve_data.php' && !defined('NPBLOG_API_REQUEST')) {
         if ($currentScript === 'index.php') {
             // Render beautiful login page and exit
             renderLoginPage($settings);

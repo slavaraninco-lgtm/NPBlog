@@ -1,1 +1,21 @@
-[]
+{
+    "deleted_1_1789144267": {
+        "postId": 1,
+        "postTitle": "Тестовая статья API (Обновлена)",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "1-1.html",
+                "date": "11.09.2026 18:31",
+                "title": "Тестовая статья API"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "1-2.html",
+                "date": "11.09.2026 18:31",
+                "title": "Тестовая статья API (Обновлена)"
+            }
+        ],
+        "deletedAt": "11.09.2026 18:31"
+    }
+}
