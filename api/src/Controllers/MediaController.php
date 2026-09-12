@@ -366,7 +366,7 @@ class MediaController
         $blogDir = getDataPath('blog/');
         $htmlFile = validateSafePath($blogDir, "post-{$postId}.html");
         if (file_exists($htmlFile)) {
-            removeBackgroundFromHtml($htmlFile);
+            applyBackgroundToHtml($htmlFile, []);
         }
 
         Response::json(['post_id' => $postId], 200, 'Фон статьи удален');
