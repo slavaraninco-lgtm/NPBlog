@@ -126,13 +126,14 @@
       "MediaItem": {
         "type": "object",
         "properties": {
-          "filename": { "type": "string", "example": "m_6a8c3d.jpg" },
-          "type": { "type": "string", "enum": ["images", "video", "audio", "documents", "fonts"], "example": "images" },
-          "extension": { "type": "string", "example": "jpg" },
+          "name": { "type": "string", "example": "m_6a8c3d.jpg" },
+          "path": { "type": "string", "example": "/data/uploads/m_6a8c3d.jpg" },
+          "url": { "type": "string", "description": "Канонический относительный URL файла из папки data (например /data/uploads/photo.jpg) для вставки в HTML-теги <img src='...'>", "example": "/data/uploads/m_6a8c3d.jpg" },
+          "absolute_url": { "type": "string", "description": "Полный абсолютный URL с доменом (http://хост/data/uploads/photo.jpg) для мобильных приложений и внешних редакторов", "example": "http://localhost/data/uploads/m_6a8c3d.jpg" },
+          "data_path": { "type": "string", "description": "Относительный путь к файлу в файловой системе сайта (всегда внутри папки data/)", "example": "data/uploads/m_6a8c3d.jpg" },
           "size": { "type": "integer", "example": 1048576 },
-          "uploaded_at": { "type": "integer", "example": 1789144000 },
-          "date": { "type": "string", "example": "11.09.2026 19:30" },
-          "url": { "type": "string", "example": "/data/uploads/m_6a8c3d.jpg" }
+          "modified_at": { "type": "string", "example": "2026-09-11T19:30:00+03:00" },
+          "type": { "type": "string", "example": "image" }
         }
       },
       "MediaUploadRequest": {
@@ -142,6 +143,19 @@
           "base64": { "type": "string", "description": "Base64-строка файла (альтернатива multipart для мобильных)", "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..." },
           "filename": { "type": "string", "description": "Оригинальное имя файла для Base64", "example": "photo.png" },
           "type": { "type": "string", "enum": ["image", "video", "audio", "document", "font"], "description": "Категория загружаемого файла", "example": "image" }
+        }
+      },
+      "MediaUploadResponse": {
+        "type": "object",
+        "properties": {
+          "file_name": { "type": "string", "example": "m_6a8c3d.jpg" },
+          "url": { "type": "string", "description": "Относительный URL для вставки в HTML статьи (<img src='/data/uploads/...'>). Всегда начинается с /data/, никогда с /api/", "example": "/data/uploads/m_6a8c3d.jpg" },
+          "absolute_url": { "type": "string", "description": "Абсолютный URL с протоколом и хостом для удаленных редакторов и WebView", "example": "http://localhost/data/uploads/m_6a8c3d.jpg" },
+          "data_path": { "type": "string", "description": "Путь к файлу внутри папки data", "example": "data/uploads/m_6a8c3d.jpg" },
+          "size": { "type": "integer", "example": 245120 },
+          "mime_type": { "type": "string", "example": "image/jpeg" },
+          "type": { "type": "string", "example": "image" },
+          "created_at": { "type": "string", "example": "2026-09-11T19:30:00+03:00" }
         }
       }
     }
@@ -492,6 +506,7 @@
     "/v1/media": {
       "get": {
         "summary": "Список медиафайлов с фильтрацией по типу",
+        "description": "Возвращает список файлов из папки /data/ (uploads, smiles, backgrounds, custom_fonts). Каждый элемент содержит 'url' (/data/uploads/...), 'absolute_url' и 'data_path'. В сторонние редакторы передавайте 'url' для тегов <img src='...'>.",
         "parameters": [
           { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["all", "images", "video", "audio", "documents", "fonts"], "default": "all" } }
         ],
@@ -524,7 +539,7 @@
     "/v1/media/upload": {
       "post": {
         "summary": "Универсальная загрузка медиафайлов",
-        "description": "Поддерживает как передачу multipart/form-data (поле `file`), так и передачу Base64 строки в JSON (`base64`, `filename`, `type`). Идеально подходит для мобильных камер и фотогалерей.",
+        "description": "Загружает файл (multipart/form-data или Base64 JSON) напрямую в папку /data/uploads/. Возвращает канонический 'url' (/data/uploads/photo.jpg), 'absolute_url' (http://хост/data/uploads/photo.jpg) и 'data_path'. Вставляйте 'url' в статьи. Ни в коем случае не используйте префикс /api/ для ссылок на медиафайлы!",
         "requestBody": {
           "required": true,
           "content": {
@@ -537,7 +552,7 @@
           }
         },
         "responses": {
-          "201": { "description": "Файл загружен", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+          "201": { "description": "Файл успешно загружен в папку data/uploads/", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MediaUploadResponse" } } } }
         }
       }
     },

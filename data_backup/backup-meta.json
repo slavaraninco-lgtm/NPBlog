@@ -17,5 +17,243 @@
             }
         ],
         "deletedAt": "11.09.2026 18:31"
+    },
+    "1": {
+        "postId": 1,
+        "postTitle": "NPBlog Mobile Post",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "1-1.html",
+                "date": "11.09.2026 18:00",
+                "title": "NPBlog Mobile Post"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "1-2.html",
+                "date": "11.09.2026 20:39",
+                "title": "NPBlog Mobile Post"
+            }
+        ]
+    },
+    "2": {
+        "postId": 2,
+        "postTitle": "Тестовая статья с телефона",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "2-1.html",
+                "date": "11.09.2026 21:53",
+                "title": "Тестовая статья с телефона"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "2-2.html",
+                "date": "11.09.2026 20:53",
+                "title": "Тестовая статья с телефона"
+            }
+        ]
+    },
+    "deleted_4_1789163308": {
+        "postId": 4,
+        "postTitle": "Тестовая статья API (Обновлена)",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "4-1.html",
+                "date": "11.09.2026 23:48",
+                "title": "Тестовая статья API"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "4-2.html",
+                "date": "11.09.2026 23:48",
+                "title": "Тестовая статья API (Обновлена)"
+            }
+        ],
+        "deletedAt": "11.09.2026 23:48"
+    },
+    "deleted_4_1789163354": {
+        "postId": 4,
+        "postTitle": "Image Path Test",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "4-1.html",
+                "date": "11.09.2026 23:49",
+                "title": "Image Path Test"
+            }
+        ],
+        "deletedAt": "11.09.2026 23:49"
+    },
+    "deleted_4_1789163512": {
+        "postId": 4,
+        "postTitle": "Тестовая статья API (Обновлена)",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "4-1.html",
+                "date": "11.09.2026 23:51",
+                "title": "Тестовая статья API"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "4-2.html",
+                "date": "11.09.2026 23:51",
+                "title": "Тестовая статья API (Обновлена)"
+            }
+        ],
+        "deletedAt": "11.09.2026 23:51"
+    },
+    "deleted_5_1789167699": {
+        "postId": 5,
+        "postTitle": "Тестовая статья Delphi 5 (Обновлена)",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "5-1.html",
+                "date": "12.09.2026 02:00",
+                "title": "Тестовая статья Delphi 5"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "5-2.html",
+                "date": "12.09.2026 01:01",
+                "title": "Тестовая статья Delphi 5 (Обновлена)"
+            }
+        ],
+        "deletedAt": "12.09.2026 01:01"
+    },
+    "deleted_5_1789167728": {
+        "postId": 5,
+        "postTitle": "Тестовая статья Delphi 5 (Обновлена)",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "5-1.html",
+                "date": "12.09.2026 02:00",
+                "title": "Тестовая статья Delphi 5"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "5-2.html",
+                "date": "12.09.2026 01:02",
+                "title": "Тестовая статья Delphi 5 (Обновлена)"
+            }
+        ],
+        "deletedAt": "12.09.2026 01:02"
+    },
+    "deleted_6_1789169882": {
+        "postId": 6,
+        "postTitle": "Тестовая статья Delphi 5 (Обновлена)",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "6-1.html",
+                "date": "12.09.2026 02:00",
+                "title": "Тестовая статья Delphi 5"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "6-2.html",
+                "date": "12.09.2026 01:38",
+                "title": "Тестовая статья Delphi 5 (Обновлена)"
+            }
+        ],
+        "deletedAt": "12.09.2026 01:38"
+    },
+    "deleted_4_1789170940": {
+        "postId": 4,
+        "postTitle": "тест",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "4-1.html",
+                "date": "12.09.2026 01:25",
+                "title": "тест"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "4-2.html",
+                "date": "12.09.2026 00:27",
+                "title": "тест"
+            }
+        ],
+        "deletedAt": "12.09.2026 01:55"
+    },
+    "deleted_5_1789170950": {
+        "postId": 5,
+        "postTitle": "тест 228",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "6-1.html",
+                "date": "12.09.2026 02:41",
+                "title": "тест 228"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "6-2.html",
+                "date": "12.09.2026 01:43",
+                "title": "тест 228"
+            },
+            {
+                "backupNumber": 3,
+                "filename": "6-3.html",
+                "date": "12.09.2026 01:54",
+                "title": "тест 228"
+            }
+        ],
+        "deletedAt": "12.09.2026 01:55"
+    },
+    "deleted_4_1789170953": {
+        "postId": 4,
+        "postTitle": "ПИЗДА",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "5-1.html",
+                "date": "12.09.2026 02:09",
+                "title": "ПИЗДА"
+            }
+        ],
+        "deletedAt": "12.09.2026 01:55"
+    },
+    "deleted_3_1789170956": {
+        "postId": 3,
+        "postTitle": "тест нахуй блять",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "3-1.html",
+                "date": "12.09.2026 00:34",
+                "title": "тест"
+            },
+            {
+                "backupNumber": 2,
+                "filename": "3-2.html",
+                "date": "12.09.2026 00:15",
+                "title": "тест"
+            },
+            {
+                "backupNumber": 3,
+                "filename": "3-3.html",
+                "date": "12.09.2026 00:25",
+                "title": "тест нахуй блять"
+            }
+        ],
+        "deletedAt": "12.09.2026 01:55"
+    },
+    "3": {
+        "postId": 3,
+        "postTitle": "ризетки кабеля",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "3-1.html",
+                "date": "12.09.2026 02:58",
+                "title": "ризетки кабеля"
+            }
+        ]
     }
 }

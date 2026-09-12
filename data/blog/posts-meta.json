@@ -1,1 +1,20 @@
-[]
+[
+    {
+        "id": 1,
+        "title": "NPBlog Mobile Post",
+        "date": "11.09.2026 18:00",
+        "filename": "post-1.html"
+    },
+    {
+        "id": 2,
+        "title": "Тестовая статья с телефона",
+        "date": "11.09.2026 21:53",
+        "filename": "post-2.html"
+    },
+    {
+        "id": 3,
+        "title": "ризетки кабеля",
+        "date": "12.09.2026 02:58",
+        "filename": "post-3.html"
+    }
+]

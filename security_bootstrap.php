@@ -365,10 +365,21 @@ function getDataUrl($subpath = '') {
     $dataDirClean = rtrim(str_replace('\\', '/', $dataDir), '/') . '/';
     $appDirClean = rtrim(str_replace('\\', '/', __DIR__), '/') . '/';
     
-    $scriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', $_SERVER['SCRIPT_NAME']) : '';
+    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']) : '';
+    $docRootClean = rtrim($docRoot, '/') . '/';
     $webRoot = '';
-    if (!empty($scriptName) && php_sapi_name() !== 'cli') {
-        $webRoot = rtrim(dirname($scriptName), '/\\');
+    
+    // Determine the base web root of the application (where NPBlog root is located)
+    if (!empty($docRoot) && strpos($appDirClean, $docRootClean) === 0) {
+        $relApp = trim(substr($appDirClean, strlen($docRootClean)), '/');
+        $webRoot = !empty($relApp) ? '/' . $relApp : '';
+    } else {
+        $scriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', $_SERVER['SCRIPT_NAME']) : '';
+        if (!empty($scriptName) && php_sapi_name() !== 'cli') {
+            $webRoot = rtrim(dirname($scriptName), '/\\');
+            // If executed from /api or subdirectories, strip /api from web root
+            $webRoot = preg_replace('#/api(?:/.*)?$#i', '', $webRoot);
+        }
     }
     
     // 1. Check if dataDir is inside the application directory (__DIR__)

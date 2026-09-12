@@ -19,7 +19,7 @@ API предоставляет полный доступ ко всем функ�
    - [2. Статьи и публикации (`/posts`)](#2-статьи-и-публикации)
    - [3. Черновики и автосохранения (`/drafts`, `/autosaves`)](#3-черновики-и-автосохранения)
    - [4. Резервные копии и версионирование (`/backups`)](#4-резервные-копии-и-версионирование)
-   - [5. Медиафайлы, фоны, смайлы, шрифты (`/media`)](#5-медиафайлы-фоны-смайлы-шрифты)
+   - [5. Медиафайлы, фоны, смайлы, шрифты (`/media`) и интеграция со сторонними редакторами](#5-медиафайлы-фоны-смайлы-шрифты-media-и-интеграция-со-сторонними-редакторами)
    - [6. Шаблоны и сниппеты (`/templates`, `/includes`)](#6-шаблоны-и-сниппеты)
    - [7. Настройки редактора и блога (`/settings`)](#7-настройки-редактора-и-блога)
    - [8. Системная диагностика и история (`/system`)](#8-системная-диагностика-и-история)
@@ -28,6 +28,7 @@ API предоставляет полный доступ ко всем функ�
    - [Swift / iOS (URLSession & Codable)](#swift--ios-urlsession--codable)
    - [Kotlin / Android (Retrofit 2 & Coroutines)](#kotlin--android-retrofit-2--coroutines)
    - [React Native / TypeScript (Axios)](#react-native--typescript-axios)
+7. [🛠️ Руководство по разработке кастомных клиентов редактора](CUSTOM_CLIENT_GUIDE.md)
 
 ---
 
@@ -37,6 +38,7 @@ API предоставляет полный доступ ко всем функ�
 
 - **Swagger UI**: `http://localhost/api/docs/`
 - **Спецификация OpenAPI 3.1.0**: `http://localhost/api/docs/openapi.json`
+- **Руководство по созданию кастомных клиентов редактора**: [CUSTOM_CLIENT_GUIDE.md](CUSTOM_CLIENT_GUIDE.md) — подробный архитектурный справочник с примерами на TypeScript, Kotlin, Delphi и Python.
 
 Файл спецификации `openapi.json` можно напрямую импортировать в **Postman**, **Insomnia** или использовать в `openapi-generator-cli` для автоматической генерации клиентского кода на любом языке (Dart, Swift, Kotlin, TypeScript).
 
@@ -304,7 +306,29 @@ http://<ваш-хост>/api/v1
 
 ---
 
-### 5. Медиафайлы, фоны, смайлы, шрифты
+### 5. Медиафайлы, фоны, смайлы, шрифты (`/media`) и интеграция со сторонними редакторами
+
+> [!IMPORTANT]
+> **ПРАВИЛО АДРЕСАЦИИ МЕДИАФАЙЛОВ: ПАПКА `/data/`, А НЕ `/api/`**
+> - Все статические медиафайлы (изображения, видео, аудио, смайлы, фоны, шрифты) физически размещаются и отдаются веб-сервером **напрямую из папки `/data/`** (например `/data/uploads/...`, `/data/backgrounds/...`, `/data/smiles/...`).
+> - Эндпоинты API `/api/v1/media/...` служат **исключительно для операций управления** (прием загружаемых файлов, получение каталога, удаление). Сами медиафайлы **НЕ должны** адресоваться через префикс `/api/`!
+> - Ссылки, вставляемые в статьи, **ОБЯЗАНЫ ссылаться на папку `/data/`**:
+>   - ✅ **Правильно**: `<img src="/data/uploads/m_6aa42c.jpg">` или `data/uploads/m_6aa42c.jpg`
+>   - ❌ **Неправильно**: `<img src="/api/data/uploads/m_6aa42c.jpg">` или `<img src="/api/v1/media/uploads/m_6aa42c.jpg">`
+> 
+> *Автоматическая нормализация на сервере*: Даже если сторонний редактор или мобильный клиент по ошибке отправит в теле статьи ссылку с префиксом `/api/data/` или с полным внешним доменом (`http://domain.com/data/uploads/...`), серверный обработчик `PostsController` и `formatArticleContent()` автоматически перехватит, очистит и сохранит канонический путь `/data/uploads/...` при записи HTML на диск.
+
+#### Поля URL в ответах API
+
+При загрузке файла (`POST /v1/media/upload`) или запросе списка файлов (`GET /v1/media`) сервер возвращает расширенный набор полей адресации:
+
+| Поле | Пример значения | Назначение и использование |
+|---|---|---|
+| `url` | `/data/uploads/m_6aa42c.jpg` | **Канонический относительный URL.** Именно его следует передавать в сторонний HTML-редактор и вставлять в атрибут `src` тегов `<img>`, `<video>`, `<audio>`. Гарантирует переносимость блога между серверами, IP-адресами и протоколами (HTTP/HTTPS). |
+| `absolute_url` | `http://example.com/data/uploads/m_6aa42c.jpg` | **Полный абсолютный URL с протоколом и доменом.** Используется для прямого рендеринга картинок в сторонних редакторах, мобильных WebView, нативных виджетах `Image.network()` (Flutter), `AsyncImage` (SwiftUI) или `Glide/Coil` (Android). |
+| `data_path` | `data/uploads/m_6aa42c.jpg` | **Внутренний файловый путь** относительно корня проекта. |
+
+---
 
 #### `GET /v1/media` — Список файлов
 - **Параметр**: `type` (`all`, `images`, `video`, `audio`, `documents`, `fonts`).
@@ -328,16 +352,130 @@ http://<ваш-хост>/api/v1
   {
     "success": true,
     "status": 201,
+    "message": "Файл успешно загружен в папку data/uploads/",
     "data": {
-      "filename": "m_6aa42c.jpg",
-      "original_name": "camera_photo.jpg",
-      "type": "image",
-      "extension": "jpg",
+      "file_name": "m_6aa42c.jpg",
+      "url": "/data/uploads/m_6aa42c.jpg",
+      "absolute_url": "http://localhost/data/uploads/m_6aa42c.jpg",
+      "data_path": "data/uploads/m_6aa42c.jpg",
       "size": 245120,
-      "url": "/data/uploads/m_6aa42c.jpg"
+      "mime_type": "image/jpeg",
+      "type": "image",
+      "created_at": "2026-09-11T19:30:00+03:00"
     }
   }
   ```
+
+---
+
+#### 🛠️ Инструкция по интеграции со сторонними редакторами
+
+При интеграции API с любым сторонним визуальным редактором (TinyMCE, Quill, Summernote, Flutter HTML Editor, React Native Rich Editor) используйте следующую регламентированную последовательность:
+
+1. **Перехват загрузки изображения в редакторе**:
+   - Настройте кастомный обработчик вставки изображений (upload handler / image handler).
+2. **Отправка файла на сервер блога**:
+   - Отправьте POST-запрос на `/api/v1/media/upload` с заголовком `Authorization: Bearer <token>`.
+3. **Получение пути к файлу**:
+   - Из ответа возьмите поле `data.url` (значение вида `/data/uploads/photo.jpg`).
+   - Для прямого предпросмотра внутри мобильного WebView или нативного редактора используйте `data.absolute_url`.
+4. **Вставка в контент статьи**:
+   - Вставьте в HTML разметку статьи тег: `<img src="/data/uploads/m_6aa42c.jpg" alt="Описание" />`.
+   - **Важно:** Передавайте в атрибут `src` именно путь `/data/uploads/...`. Не используйте префикс `/api/`!
+5. **Сохранение статьи**:
+   - Передайте сформированный HTML в теле запроса `POST /v1/posts` или `PUT /v1/posts/{id}`. Сервер гарантирует сохранение ссылок на `/data/uploads/` и автоматическую валидацию.
+
+##### Пример: Интеграция с TinyMCE 6 / 7
+```javascript
+tinymce.init({
+  selector: '#editor',
+  plugins: 'image link media',
+  toolbar: 'undo redo | formatselect | bold italic | image media link',
+  images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'http://localhost/api/v1/media/upload');
+    xhr.setRequestHeader('Authorization', 'Bearer ' + userAccessToken);
+    
+    xhr.onload = () => {
+      if (xhr.status !== 201) {
+        reject('HTTP Error: ' + xhr.status);
+        return;
+      }
+      const json = JSON.parse(xhr.responseText);
+      if (!json || !json.data || !json.data.url) {
+        reject('Invalid JSON response: ' + xhr.responseText);
+        return;
+      }
+      // Передаем канонический URL из папки /data/ в TinyMCE:
+      resolve(json.data.url); // -> /data/uploads/m_xxxxxx.jpg
+    };
+    
+    const formData = new FormData();
+    formData.append('file', blobInfo.blob(), blobInfo.filename());
+    formData.append('type', 'image');
+    xhr.send(formData);
+  })
+});
+```
+
+##### Пример: Интеграция с Quill.js
+```javascript
+const quill = new Quill('#editor', { theme: 'snow', modules: { toolbar: ['bold', 'italic', 'image'] } });
+
+quill.getModule('toolbar').addHandler('image', () => {
+  const input = document.createElement('input');
+  input.setAttribute('type', 'file');
+  input.setAttribute('accept', 'image/*');
+  input.click();
+
+  input.onchange = async () => {
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'image');
+
+    const res = await fetch('http://localhost/api/v1/media/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + userAccessToken },
+      body: formData
+    });
+    const result = await res.json();
+    
+    if (result.success) {
+      const range = quill.getSelection(true);
+      // Вставляем изображение с каноническим URL из папки data:
+      quill.insertEmbed(range.index, 'image', result.data.url);
+    }
+  };
+});
+```
+
+##### Пример: Интеграция во Flutter (HTML Editor / WebView)
+```dart
+Future<void> insertImageFromGallery(HtmlEditorController controller) async {
+  final picker = ImagePicker();
+  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+  if (image == null) return;
+
+  final bytes = await image.readAsBytes();
+  final base64String = 'data:image/jpeg;base64,' + base64Encode(bytes);
+
+  // Загружаем в NPBlog API
+  final uploadRes = await apiService.uploadMediaBase64(
+    base64String, 
+    image.name, 
+    type: 'image'
+  );
+
+  if (uploadRes['success'] == true) {
+    final String dataUrl = uploadRes['data']['url']; // /data/uploads/...
+    // Вставляем тег изображения с ссылкой на data в HTML редактор
+    controller.insertHtml('<img src="$dataUrl" style="max-width:100%; height:auto;" />');
+  }
+}
+```
+
+---
 
 #### `DELETE /v1/media` — Удаление файла
 - **Тело запроса**: `{"filename": "m_6aa42c.jpg", "type": "image"}`

@@ -20,6 +20,9 @@ $content = $data['content'];
 $dataDir = getDataPath();
 $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
 $staticPrefix = '/' . $dirName . '/';
+$content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?api\/' . preg_quote($dirName, '/') . '\//i', $staticPrefix, $content);
+$content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?api\/(uploads|files|fonts|smiles)\//i', $staticPrefix . '$1/', $content);
+$content = preg_replace('/https?:\/\/[^\/]+\/' . preg_quote($dirName, '/') . '\//i', $staticPrefix, $content);
 $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data.php\?file=/i', $staticPrefix, $content);
 $content = preg_replace('/(?:[?&]|&amp;)t=\d+/i', '', $content);
 

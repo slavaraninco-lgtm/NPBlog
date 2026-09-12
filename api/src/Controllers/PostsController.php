@@ -121,11 +121,15 @@ class PostsController
         $rawHtml = file_get_contents($filename);
         $extractedContent = extractPostContentFromHtml($rawHtml, $postId);
 
-        // Convert static paths to URLs
+        // Convert static paths to canonical data URLs for editors
         $dataDir = getDataPath();
         $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
         $staticPrefix = '/' . $dirName . '/';
-        $content = str_replace($staticPrefix, getDataUrl(), $extractedContent);
+        $canonicalDataUrl = getDataUrl();
+        $content = str_replace($staticPrefix, $canonicalDataUrl, $extractedContent);
+        // Clean any legacy /api/data/ or /api/... references in content
+        $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?api\/' . preg_quote($dirName, '/') . '\//i', $canonicalDataUrl, $content);
+        $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?api\/(uploads|files|fonts|smiles)\//i', $canonicalDataUrl . '$1/', $content);
 
         // Get background settings
         $background = getPostBackground($postId);
@@ -536,6 +540,14 @@ class PostsController
         $dataDir = getDataPath();
         $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
         $staticPrefix = '/' . $dirName . '/';
+        // 1. Clean any /api/data/... or /api/uploads/... paths to canonical static prefix (/data/)
+        $html = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?api\/' . preg_quote($dirName, '/') . '\//i', $staticPrefix, $html);
+        $html = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?api\/(uploads|files|fonts|smiles)\//i', $staticPrefix . '$1/', $html);
+
+        // 2. Normalize full URLs with host to canonical relative static prefix
+        $html = preg_replace('/https?:\/\/[^\/]+\/' . preg_quote($dirName, '/') . '\//i', $staticPrefix, $html);
+
+        // 3. Clean serve_data.php paths and timestamps
         $html = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data\.php\?file=/i', $staticPrefix, $html);
         $html = preg_replace('/(?:[?&]|&amp;)t=\d+/i', '', $html);
 

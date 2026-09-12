@@ -15,6 +15,16 @@ class MediaController
     }
 
     /**
+     * Build fully-qualified URL for external editors and mobile apps
+     */
+    private function makeAbsoluteUrl(string $relativeUrl): string
+    {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return $scheme . '://' . $host . '/' . ltrim($relativeUrl, '/');
+    }
+
+    /**
      * GET /api/v1/media
      */
     public function list(array $params, array $body): void
@@ -77,7 +87,9 @@ class MediaController
                     'size' => $stat['size'] ?? 0,
                     'uploaded_at' => $stat['mtime'] ?? 0,
                     'date' => date('d.m.Y H:i', $stat['mtime'] ?? time()),
-                    'url' => getDataUrl($info['url_prefix'] . $file)
+                    'url' => getDataUrl($info['url_prefix'] . $file),
+                    'absolute_url' => $this->makeAbsoluteUrl(getDataUrl($info['url_prefix'] . $file)),
+                    'data_path' => 'data/' . $info['url_prefix'] . $file
                 ];
             }
         }
@@ -177,13 +189,16 @@ class MediaController
                 @unlink($uploadedFile['tmp_name']);
             }
 
+            $url = getDataUrl($config['url_prefix'] . $safeFilename);
             Response::json([
                 'filename' => $safeFilename,
                 'original_name' => $origName,
                 'type' => $category,
                 'extension' => $ext,
                 'size' => filesize($targetPath),
-                'url' => getDataUrl($config['url_prefix'] . $safeFilename)
+                'url' => $url,
+                'absolute_url' => $this->makeAbsoluteUrl($url),
+                'data_path' => 'data/' . $config['url_prefix'] . $safeFilename
             ], 201, 'Файл успешно загружен');
         }
 
@@ -238,13 +253,16 @@ class MediaController
                 Response::error('save_error', 'Не удалось записать файл на диск', 500);
             }
 
+            $url = getDataUrl($config['url_prefix'] . $safeFilename);
             Response::json([
                 'filename' => $safeFilename,
                 'original_name' => $filename ?: $safeFilename,
                 'type' => $category,
                 'extension' => $ext,
                 'size' => strlen($binaryData),
-                'url' => getDataUrl($config['url_prefix'] . $safeFilename)
+                'url' => $url,
+                'absolute_url' => $this->makeAbsoluteUrl($url),
+                'data_path' => 'data/' . $config['url_prefix'] . $safeFilename
             ], 201, 'Файл успешно загружен из Base64');
         }
 
@@ -375,9 +393,12 @@ class MediaController
                     foreach ($files as $f) {
                         $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
                         if (in_array($ext, ['png', 'gif', 'webp', 'svg', 'jpg'], true)) {
+                            $url = getDataUrl("smiles/{$d}/{$f}");
                             $images[] = [
                                 'filename' => $f,
-                                'url' => getDataUrl("smiles/{$d}/{$f}")
+                                'url' => $url,
+                                'absolute_url' => $this->makeAbsoluteUrl($url),
+                                'data_path' => "data/smiles/{$d}/{$f}"
                             ];
                         }
                     }
@@ -409,11 +430,14 @@ class MediaController
                 $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
                 if (in_array($ext, ['ttf', 'otf', 'woff', 'woff2'], true)) {
                     $fontName = pathinfo($f, PATHINFO_FILENAME);
+                    $url = getDataUrl("fonts/{$f}");
                     $fonts[] = [
                         'filename' => $f,
                         'name' => $fontName,
                         'format' => $ext,
-                        'url' => getDataUrl("fonts/{$f}")
+                        'url' => $url,
+                        'absolute_url' => $this->makeAbsoluteUrl($url),
+                        'data_path' => "data/fonts/{$f}"
                     ];
                 }
             }
