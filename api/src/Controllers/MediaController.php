@@ -179,7 +179,12 @@ class MediaController
                 @mkdir($dir, 0755, true);
             }
 
-            $safeFilename = uniqid('m_', true) . '.' . $ext;
+            if ($category === 'font') {
+                $cleanBase = preg_replace('/[^a-zA-Z0-9_\-]/', '', pathinfo($origName, PATHINFO_FILENAME));
+                $safeFilename = ($cleanBase !== '' ? $cleanBase : uniqid('font_', false)) . '.' . $ext;
+            } else {
+                $safeFilename = uniqid('m_', true) . '.' . $ext;
+            }
             $targetPath = validateSafePath($dir, $safeFilename);
 
             if (!move_uploaded_file($uploadedFile['tmp_name'], $targetPath)) {
@@ -246,7 +251,12 @@ class MediaController
                 @mkdir($dir, 0755, true);
             }
 
-            $safeFilename = uniqid('m_', true) . '.' . $ext;
+            if ($category === 'font' && $filename !== '') {
+                $cleanBase = preg_replace('/[^a-zA-Z0-9_\-]/', '', pathinfo($filename, PATHINFO_FILENAME));
+                $safeFilename = ($cleanBase !== '' ? $cleanBase : uniqid('font_', false)) . '.' . $ext;
+            } else {
+                $safeFilename = uniqid('m_', true) . '.' . $ext;
+            }
             $targetPath = validateSafePath($dir, $safeFilename);
 
             if (file_put_contents($targetPath, $binaryData, LOCK_EX) === false) {
@@ -449,5 +459,190 @@ class MediaController
             'fonts' => $fonts,
             'css' => $customCss
         ], 200);
+    }
+
+    /**
+     * POST /api/v1/media/smiles
+     * Upload smiles into a smile set (multipart files or base64 items)
+     */
+    public function uploadSmiles(array $params, array $body): void
+    {
+        Auth::requireAuth();
+
+        $setName = (string)($body['setName'] ?? $body['set_name'] ?? $_POST['setName'] ?? $_POST['set_name'] ?? '');
+        $setName = preg_replace('/[^a-zA-Z0-9_\-\sА-Яа-яЁё]/u', '', $setName);
+        $setName = trim($setName);
+
+        if (empty($setName) || $setName === '.' || $setName === '..') {
+            Response::error('invalid_set_name', 'Неверное или пустое название набора смайлов', 422);
+        }
+
+        $smilesBaseDir = getDataPath('smiles/');
+        if (!is_dir($smilesBaseDir)) {
+            @mkdir($smilesBaseDir, 0755, true);
+        }
+
+        $targetDir = validateSafePath($smilesBaseDir, $setName . '/');
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0755, true);
+        }
+
+        if (!is_writable($targetDir)) {
+            Response::error('dir_not_writable', "Папка набора смайлов недоступна для записи: {$setName}", 500);
+        }
+
+        $uploaded = [];
+        $allowedExts = ['gif', 'png', 'webp', 'svg', 'jpg', 'jpeg'];
+
+        // 1. Check multipart $_FILES
+        $files = $_FILES['smiles'] ?? $_FILES['file'] ?? $_FILES['files'] ?? null;
+        if ($files !== null && is_array($files) && isset($files['name'])) {
+            $names = is_array($files['name']) ? $files['name'] : [$files['name']];
+            $tmpNames = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
+            $errors = is_array($files['error']) ? $files['error'] : [$files['error']];
+
+            foreach ($names as $i => $name) {
+                if (($errors[$i] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) continue;
+                $tmpName = $tmpNames[$i];
+                if (empty($tmpName) || !is_uploaded_file($tmpName)) continue;
+
+                $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                if (!in_array($ext, $allowedExts, true)) continue;
+
+                $baseName = preg_replace('/[^a-zA-Z0-9_\-]/', '', pathinfo($name, PATHINFO_FILENAME));
+                if (empty($baseName)) $baseName = 'smile';
+
+                $safeName = $baseName . '.' . $ext;
+                $counter = 1;
+                while (file_exists($targetDir . $safeName)) {
+                    $safeName = $baseName . '_' . $counter . '.' . $ext;
+                    $counter++;
+                }
+
+                $destPath = validateSafePath($targetDir, $safeName);
+                if (@move_uploaded_file($tmpName, $destPath)) {
+                    $url = getDataUrl("smiles/{$setName}/{$safeName}");
+                    $uploaded[] = [
+                        'filename' => $safeName,
+                        'url' => $url,
+                        'absolute_url' => $this->makeAbsoluteUrl($url),
+                        'data_path' => "data/smiles/{$setName}/{$safeName}"
+                    ];
+                }
+            }
+        }
+
+        // 2. Check JSON items array (Base64)
+        if (!empty($body['items']) && is_array($body['items'])) {
+            foreach ($body['items'] as $item) {
+                if (empty($item['base64'])) continue;
+                $rawBase64 = (string)$item['base64'];
+                if (preg_match('/^data:([^;]+);base64,(.+)$/is', $rawBase64, $m)) {
+                    $rawBase64 = $m[2];
+                }
+                $bin = base64_decode($rawBase64, true);
+                if ($bin === false) continue;
+
+                $origName = (string)($item['filename'] ?? 'smile.gif');
+                $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+                if (!in_array($ext, $allowedExts, true)) $ext = 'gif';
+
+                $baseName = preg_replace('/[^a-zA-Z0-9_\-]/', '', pathinfo($origName, PATHINFO_FILENAME));
+                if (empty($baseName)) $baseName = 'smile';
+
+                $safeName = $baseName . '.' . $ext;
+                $counter = 1;
+                while (file_exists($targetDir . $safeName)) {
+                    $safeName = $baseName . '_' . $counter . '.' . $ext;
+                    $counter++;
+                }
+
+                $destPath = validateSafePath($targetDir, $safeName);
+                if (file_put_contents($destPath, $bin, LOCK_EX) !== false) {
+                    $url = getDataUrl("smiles/{$setName}/{$safeName}");
+                    $uploaded[] = [
+                        'filename' => $safeName,
+                        'url' => $url,
+                        'absolute_url' => $this->makeAbsoluteUrl($url),
+                        'data_path' => "data/smiles/{$setName}/{$safeName}"
+                    ];
+                }
+            }
+        }
+
+        if (empty($uploaded)) {
+            Response::error('upload_failed', 'Не удалось загрузить ни одного файла смайла (поддерживаются форматы gif, png, webp, svg, jpg)', 400);
+        }
+
+        Response::json([
+            'set_name' => $setName,
+            'count' => count($uploaded),
+            'items' => $uploaded
+        ], 201, "Успешно загружено " . count($uploaded) . " смайлов в набор '{$setName}'");
+    }
+
+    /**
+     * DELETE /api/v1/media/smiles/{setName}
+     * Delete an entire smile set
+     */
+    public function deleteSmileSet(array $params, array $body): void
+    {
+        Auth::requireAuth();
+
+        $setName = trim((string)($params['setName'] ?? ''));
+        $setName = preg_replace('/[^a-zA-Z0-9_\-\sА-Яа-яЁё]/u', '', $setName);
+
+        if (empty($setName) || $setName === '.' || $setName === '..') {
+            Response::error('invalid_set_name', 'Неверное название набора смайлов', 422);
+        }
+
+        $smilesBaseDir = getDataPath('smiles/');
+        $targetDir = validateSafePath($smilesBaseDir, $setName);
+
+        if (!is_dir($targetDir)) {
+            Response::error('not_found', "Набор смайлов '{$setName}' не найден", 404);
+        }
+
+        $files = glob(rtrim($targetDir, '/\\') . '/*');
+        if (is_array($files)) {
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
+            }
+        }
+
+        if (!@rmdir($targetDir)) {
+            Response::error('delete_failed', "Не удалось удалить папку набора '{$setName}'. Проверьте права доступа.", 500);
+        }
+
+        Response::json(['set_name' => $setName], 200, "Набор смайлов '{$setName}' успешно удален");
+    }
+
+    /**
+     * DELETE /api/v1/media/fonts/{filename}
+     * Delete custom font file
+     */
+    public function deleteFont(array $params, array $body): void
+    {
+        Auth::requireAuth();
+
+        $filename = basename((string)($params['filename'] ?? ''));
+        if (empty($filename)) {
+            Response::error('missing_filename', 'Имя файла шрифта обязательно', 400);
+        }
+
+        $fontsDir = getDataPath('fonts/');
+        $targetFile = validateSafePath($fontsDir, $filename);
+
+        if (!file_exists($targetFile)) {
+            Response::error('not_found', "Шрифт '{$filename}' не найден", 404);
+        }
+
+        if (!@unlink($targetFile)) {
+            Response::error('delete_failed', "Не удалось удалить файл шрифта '{$filename}'", 500);
+        }
+
+        Response::json(['filename' => $filename], 200, "Шрифт '{$filename}' успешно удален");
     }
 }

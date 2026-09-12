@@ -90,16 +90,6 @@
         "last_used_at": 1789149324
     },
     {
-        "id": "tok_19282e8ae2d9ff4b",
-        "hash": "3b7fe55995c37638fce10083443f9a48d6992bd4f9a5fb15d2baf45b3d14c670",
-        "device_name": "24069PC21G",
-        "ip_created": "192.168.31.83",
-        "user_agent": "okhttp\/4.12.0",
-        "created_at": 1789152778,
-        "expires_at": 1791744778,
-        "last_used_at": 1789152778
-    },
-    {
         "id": "tok_44966481d6ecc619",
         "hash": "58a38c5cafd0608de2b11abb31bb989a502311685a98f995e7438f0bc2d11eee",
         "device_name": "API Test Runner",

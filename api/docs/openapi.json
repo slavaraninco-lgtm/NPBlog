@@ -599,12 +599,79 @@
       "get": {
         "summary": "Список наборов стикеров и смайлов",
         "responses": { "200": { "description": "Наборы смайлов" } }
+      },
+      "post": {
+        "summary": "Загрузка набора смайлов или добавление смайлов в набор",
+        "description": "Позволяет загрузить набор GIF/PNG/WebP/SVG/JPG смайлов. Поддерживает multipart/form-data (параметры 'setName' и файлы 'smiles[]' или 'file') и JSON Base64 (объект с 'setName' и массивом 'items' [{ 'filename': 'smile1.gif', 'base64': '...' }]).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "setName": { "type": "string", "example": "kolobok" },
+                  "smiles": { "type": "array", "items": { "type": "string", "format": "binary" } }
+                },
+                "required": ["setName"]
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "setName": { "type": "string", "example": "kolobok" },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "filename": { "type": "string", "example": "smile1.gif" },
+                        "base64": { "type": "string", "example": "data:image/gif;base64,R0lGODlh..." }
+                      },
+                      "required": ["base64"]
+                    }
+                  }
+                },
+                "required": ["setName", "items"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Смайлы успешно загружены", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
+        }
+      }
+    },
+    "/v1/media/smiles/{setName}": {
+      "delete": {
+        "summary": "Удаление набора смайлов",
+        "description": "Удаляет указанную директорию набора смайлов со всеми входящими в неё файлами.",
+        "parameters": [
+          { "name": "setName", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Имя набора смайлов" }
+        ],
+        "responses": {
+          "200": { "description": "Набор смайлов успешно удален", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "404": { "description": "Набор смайлов не найден" }
+        }
       }
     },
     "/v1/media/fonts": {
       "get": {
         "summary": "Список пользовательских шрифтов и сгенерированный CSS",
         "responses": { "200": { "description": "Шрифты и CSS" } }
+      }
+    },
+    "/v1/media/fonts/{filename}": {
+      "delete": {
+        "summary": "Удаление пользовательского шрифта",
+        "parameters": [
+          { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Имя файла шрифта (например 'Roboto-Bold.ttf')" }
+        ],
+        "responses": {
+          "200": { "description": "Шрифт успешно удален", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "404": { "description": "Шрифт не найден" }
+        }
       }
     },
     "/v1/templates": {

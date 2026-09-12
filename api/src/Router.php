@@ -119,18 +119,29 @@ class Router
             return rtrim($route, '/') ?: '/';
         }
 
-        // 2. Fallback to REQUEST_URI
+        // 2. Check PATH_INFO if provided by web server (e.g. fastcgi_split_path_info)
+        if (!empty($_SERVER['PATH_INFO'])) {
+            $route = '/' . ltrim((string)$_SERVER['PATH_INFO'], '/');
+            return rtrim($route, '/') ?: '/';
+        }
+
+        // 3. Fallback to REQUEST_URI
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
         $uri = parse_url($uri, PHP_URL_PATH);
 
-        // Strip basePath
+        // Strip basePath (e.g. /api)
         if ($this->basePath !== '' && strpos($uri, $this->basePath) === 0) {
             $uri = substr($uri, strlen($this->basePath));
         }
 
-        // Strip /api/ if needed
+        // Strip /api if still present at beginning
         if (strpos($uri, '/api') === 0) {
             $uri = substr($uri, 4);
+        }
+
+        // Strip /index.php if called directly (e.g. /api/index.php/v1/auth/login)
+        if (strpos($uri, '/index.php') === 0) {
+            $uri = substr($uri, 10);
         }
 
         $uri = '/' . ltrim($uri, '/');

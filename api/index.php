@@ -152,7 +152,10 @@ $router->get('/v1/media/backgrounds', [MediaController::class, 'getBackgrounds']
 $router->post('/v1/media/backgrounds', [MediaController::class, 'saveBackground']);
 $router->delete('/v1/media/backgrounds/{postId}', [MediaController::class, 'removeBackground']);
 $router->get('/v1/media/smiles', [MediaController::class, 'listSmiles']);
+$router->post('/v1/media/smiles', [MediaController::class, 'uploadSmiles']);
+$router->delete('/v1/media/smiles/{setName}', [MediaController::class, 'deleteSmileSet']);
 $router->get('/v1/media/fonts', [MediaController::class, 'listFonts']);
+$router->delete('/v1/media/fonts/{filename}', [MediaController::class, 'deleteFont']);
 
 // --- Templates & Includes Routes ---
 $router->get('/v1/templates', [TemplatesController::class, 'list']);
