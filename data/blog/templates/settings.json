@@ -1,6 +1,8 @@
 {
     "default": "main",
-    "post_templates": [],
+    "post_templates": {
+        "1": "main"
+    },
     "templates": {
         "main": {
             "title": "Стандартный шаблон",

@@ -211,6 +211,8 @@
     "exp_desc": "Enable or disable experimental editor features.",
     "exp_undo_redo": "Enable Undo/Redo (history undo/redo)",
     "exp_markdown": "Use Markdown syntax",
+    "exp_enable_api": "Enable REST API (mobile apps and external editors)",
+    "exp_enable_api_desc": "Allows access to /api/v1/... endpoints. Uncheck to completely disable the API for security.",
     "exp_save_btn": "Save Settings",
     "exp_maint_title": "Maintenance & Onboarding",
     "exp_maint_desc": "Run integrity checks or reset interactive guide.",

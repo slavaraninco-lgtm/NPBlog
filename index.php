@@ -2363,8 +2363,8 @@ function loadAndApplyAllSettings() {
                 const amoledTheme = settings.amoledTheme || false;
                 const enableUndoRedo = settings.enableUndoRedo || false;
                 const smoothTyping = settings.smoothTyping || false;
-                const headerBottomPosition = settings.headerBottomPosition || false;
                 const enableMarkdown = settings.enableMarkdown || false;
+                const enableApi = settings.enableApi !== undefined ? settings.enableApi : true;
                 const contentWidth = settings.contentWidth || 920;
                 
                 const hideModeCheck = document.getElementById('hideEditorModeButtons');
@@ -2373,6 +2373,7 @@ function loadAndApplyAllSettings() {
                 const smoothTypingCheck = document.getElementById('smoothTyping');
                 const headerBottomCheck = document.getElementById('headerBottomPosition');
                 const enableMarkdownCheck = document.getElementById('enableMarkdown');
+                const enableApiCheck = document.getElementById('enableApi');
                 const contentWidthInput = document.getElementById('settingsContentWidth');
                 
                 if (hideModeCheck) hideModeCheck.checked = hideModeButtons;
@@ -2381,6 +2382,7 @@ function loadAndApplyAllSettings() {
                 if (smoothTypingCheck) smoothTypingCheck.checked = smoothTyping;
                 if (headerBottomCheck) headerBottomCheck.checked = headerBottomPosition;
                 if (enableMarkdownCheck) enableMarkdownCheck.checked = enableMarkdown;
+                if (enableApiCheck) enableApiCheck.checked = enableApi;
                 if (contentWidthInput) contentWidthInput.value = contentWidth;
 
                 // Apply content width dynamically
@@ -2647,6 +2649,7 @@ window.loadExperimentalSettings = loadExperimentalSettings;
 function saveExperimentalSettings() {
     const enableUndoRedo = document.getElementById('enableUndoRedo').checked;
     const enableMarkdown = document.getElementById('enableMarkdown').checked;
+    const enableApi = document.getElementById('enableApi') ? document.getElementById('enableApi').checked : true;
     
     fetch('save_editor_settings.php', {
         method: 'POST',
@@ -2655,7 +2658,8 @@ function saveExperimentalSettings() {
         },
         body: JSON.stringify({ 
             enableUndoRedo: enableUndoRedo,
-            enableMarkdown: enableMarkdown
+            enableMarkdown: enableMarkdown,
+            enableApi: enableApi
         })
     })
     .then(response => response.json())

@@ -71,6 +71,28 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
     return false;
 });
 
+// Check if REST API is completely disabled in editor_settings.json
+$settingsFile = NPBLOG_ROOT . '/editor_settings.json';
+if (file_exists($settingsFile)) {
+    $editorSettings = json_decode(@file_get_contents($settingsFile) ?: '[]', true) ?: [];
+    if (isset($editorSettings['enableApi']) && $editorSettings['enableApi'] === false) {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
+            Response::sendCorsHeaders();
+            http_response_code(204);
+            exit;
+        }
+
+        Response::error(
+            'api_disabled',
+            'REST API полностью отключен в параметрах редактора NPBlog.',
+            403,
+            [
+                'help' => 'Включите API в панели веб-редактора: Настройки -> Экспериментальные -> Включить REST API'
+            ]
+        );
+    }
+}
+
 // Initialize Router
 $router = new Router('/api');
 

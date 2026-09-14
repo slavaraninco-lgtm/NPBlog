@@ -233,6 +233,8 @@
     "exp_desc": "Iespējot vai atspējot redaktora eksperimentālās funkcijas.",
     "exp_undo_redo": "Iespējot Undo/Redo (vēstures atcelšana/atkārtošana)",
     "exp_markdown": "Izmantot Markdown sintaksi",
+    "exp_enable_api": "Iespējot REST API (mobilās lietotnes un ārējie redaktori)",
+    "exp_enable_api_desc": "Atļauj piekļuvi /api/v1/... galapunktiem. Noņemiet atzīmi, lai drošības nolūkos pilnībā atspējotu API.",
     "exp_save_btn": "Saglabāt iestatījumus",
     "exp_maint_title": "Apkope un apmācība",
     "exp_maint_desc": "Palaidiet integritātes pārbaudes vai atiestatiet interaktīvo ceļvedi.",

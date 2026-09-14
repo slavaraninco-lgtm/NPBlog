@@ -281,6 +281,14 @@ if (!isset($availableLanguages)) {
                                 <input type="checkbox" id="enableMarkdown" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.exp_markdown">Использовать Markdown</span>
                             </label>
+                            
+                            <label style="display: flex; align-items: flex-start; cursor: pointer;">
+                                <input type="checkbox" id="enableApi" style="width: 18px; height: 18px; margin-right: 10px; margin-top: 2px; cursor: pointer;">
+                                <div>
+                                    <span style="color: var(--text-color); font-weight: 500; font-size: 14px; display: block;" data-i18n="settings.exp_enable_api">Включить REST API (мобильные приложения и сторонние редакторы)</span>
+                                    <span style="color: var(--text-color); font-size: 12px; opacity: 0.7; display: block; margin-top: 3px;" data-i18n="settings.exp_enable_api_desc">Разрешает доступ к эндпоинтам /api/v1/... Снимите флажок, чтобы полностью отключить API в целях безопасности.</span>
+                                </div>
+                            </label>
                         </div>
                         
                         <button type="button" onclick="saveExperimentalSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.exp_save_btn">Сохранить настройки</button>

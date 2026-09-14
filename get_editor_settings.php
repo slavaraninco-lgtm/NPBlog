@@ -15,6 +15,7 @@ $defaults = [
     'smoothTyping' => false,
     'headerBottomPosition' => false,
     'enableMarkdown' => false,
+    'enableApi' => true,
     'autosaveEnabled' => false,
     'autosaveInterval' => 60,
     'tutorialCompleted' => false,

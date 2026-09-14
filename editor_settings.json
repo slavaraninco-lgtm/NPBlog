@@ -221,6 +221,7 @@
     "editor_backup_path": "",
     "enableUndoRedo": false,
     "enableMarkdown": false,
+    "enableApi": true,
     "ip_whitelist_enabled": false,
     "password_hash": "",
     "failed_attempts": 0,

@@ -56,6 +56,7 @@ class SettingsController
             'headerBottomPosition' => 'bool',
             'contentWidth' => 'int',
             'enableMarkdown' => 'bool',
+            'enableApi' => 'bool',
             'autosaveEnabled' => 'bool',
             'autosaveInterval' => 'int',
             'hideEditorModeButtons' => 'bool',
