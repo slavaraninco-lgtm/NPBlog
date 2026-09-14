@@ -2363,6 +2363,7 @@ function loadAndApplyAllSettings() {
                 const amoledTheme = settings.amoledTheme || false;
                 const enableUndoRedo = settings.enableUndoRedo || false;
                 const smoothTyping = settings.smoothTyping || false;
+                const headerBottomPosition = settings.headerBottomPosition || false;
                 const enableMarkdown = settings.enableMarkdown || false;
                 const enableApi = settings.enableApi !== undefined ? settings.enableApi : true;
                 const contentWidth = settings.contentWidth || 920;
