@@ -1080,29 +1080,30 @@ def publish_from_markdown(title: str, md_text: str, api_token: str, base_url="ht
 | 15 | `addColumnResizers()` | Живые ресайзеры колонок таблицы | Drag-маркеры на границах ячеек `<th>` | — |
 | 16 | `setCellColor(color)` | Заливка фона ячейки таблицы | `td.style.backgroundColor` + авто-контраст | — |
 | 17 | `addAnchor()` | Добавление якоря в текст | `<span id="..." data-npblog-anchor="true">` | — |
-| 18 | `loadTocList()` | Оглавление статьи (TOC) | Парсинг элементов `[id]`, вставка ссылок `#id` | — |
-| 19 | `insertFileButton()` | Карточка скачивания файла | `<a class="blog-file-button" download="...">` | `POST /v1/media/upload` |
-| 20 | `uploadImage()` | Загрузка и вставка картинки | Обертка в `.blog-image-align-wrap` | `POST /v1/media/upload` |
-| 21 | `insertImagesInGrid()` | Сетка картинок (Grid Layout) | `<div class="image-grid">...</div>` | `POST /v1/media/upload` |
-| 22 | `insertImagesAsGallery()` | Фотогалерея (Lightbox) | `<div class="image-gallery">...</div>` | `POST /v1/media/upload` |
-| 23 | `insertMedia()` | Вставка видео/аудио/YouTube | `<video>`, `<audio>`, iframe YouTube/Vimeo | `POST /v1/media/upload` |
-| 24 | `showGlobalMediaOverlay()` | Оверлей ресайза и выравнивания | Рамка с маркерами nw/ne/sw/se вокруг медиа | — |
-| 25 | `parseMarkdownToHtml()` | Компиляция Markdown в HTML | Двухсторонний парсер MD в HTML | — |
-| 26 | `convertHtmlToMarkdown()` | Преобразование HTML в Markdown | Рекурсивный парсер DOM в MD | — |
-| 27 | `cleanContentForSave()` | Очистка разметки перед сейвом | Удаление оверлеев, ресайзеров и `contenteditable` | — |
-| 28 | `applySmoothTypingState()` | Мягкий скользящий курсор | Floating div `#customCaret` с анимацией | — |
-| 29 | `scheduleLocalDraftSave()` | Локальный автосейв (LocalStorage) | Запись в `localStorage['npblog_draft_...']` | — |
-| 30 | `checkLocalDraftOnStartup()` | Восстановление после сбоя | Проверка таймстемпа и вывод Toast | — |
-| 31 | `saveDraft()` | Серверный черновик | Сохранение черновика без публикации | `POST /v1/drafts` |
-| 32 | `restoreBackup()` | Откат к версии бэкапа | Замена текущей статьи на выбранную версию | `POST /v1/backups/.../restore` |
-| 33 | `applyTemplateToPost()` | Применение HTML-шаблона | Выбор шаблона блога | `POST /v1/templates/apply` |
-| 34 | `openSaveInclude()` | Сохранение фрагмента в сниппет | Сохранение текста в `includes/` | `POST /v1/includes` |
-| 35 | `insertSmile()` | Вставка смайла / стикера | `<img src="/data/smiles/..." class="blog-smile">` | `GET /v1/media/smiles` |
-| 36 | `openSmileSetsDialog()` | Управление наборами смайлов | Загрузка и удаление паков смайлов | `POST / DELETE /v1/media/smiles` |
-| 37 | `updatePostBackground()` | Персональный фон статьи | Настройка фонового изображения и затемнения | `POST /v1/media/backgrounds` |
-| 38 | `undoEdit() / redoEdit()` | Отмена / повтор действий | Стек из 50 состояний с оффсетами курсора | `GET/POST /v1/system/history` |
-| 39 | `filterPosts()` | Живой поиск по публикациям | Фильтрация по подстроке заголовка или ID | `GET /v1/posts?q=...` |
-| 40 | `renumberPosts()` | Сквозная перенумерация статей | Восстановление нумерации 1..N | `POST /v1/posts/renumber` |
+| 18 | `insertHorizontalRule()` | Вставка разделительной линии | `<hr>` (в визуальном) или `---` (в Markdown) | — |
+| 19 | `loadTocList()` | Оглавление статьи (TOC) | Парсинг элементов `[id]`, вставка ссылок `#id` | — |
+| 20 | `insertFileButton()` | Карточка скачивания файла | `<a class="blog-file-button" download="...">` | `POST /v1/media/upload` |
+| 21 | `uploadImage()` | Загрузка и вставка картинки | Обертка в `.blog-image-align-wrap` | `POST /v1/media/upload` |
+| 22 | `insertImagesInGrid()` | Сетка картинок (Grid Layout) | `<div class="image-grid">...</div>` | `POST /v1/media/upload` |
+| 23 | `insertImagesAsGallery()` | Фотогалерея (Lightbox) | `<div class="image-gallery">...</div>` | `POST /v1/media/upload` |
+| 24 | `insertMedia()` | Вставка видео/аудио/YouTube | `<video>`, `<audio>`, iframe YouTube/Vimeo | `POST /v1/media/upload` |
+| 25 | `showGlobalMediaOverlay()` | Оверлей ресайза и выравнивания | Рамка с маркерами nw/ne/sw/se вокруг медиа | — |
+| 26 | `parseMarkdownToHtml()` | Компиляция Markdown в HTML | Двухсторонний парсер MD в HTML | — |
+| 27 | `convertHtmlToMarkdown()` | Преобразование HTML в Markdown | Рекурсивный парсер DOM в MD | — |
+| 28 | `cleanContentForSave()` | Очистка разметки перед сейвом | Удаление оверлеев, ресайзеров и `contenteditable` | — |
+| 29 | `applySmoothTypingState()` | Мягкий скользящий курсор | Floating div `#customCaret` с анимацией | — |
+| 30 | `scheduleLocalDraftSave()` | Локальный автосейв (LocalStorage) | Запись в `localStorage['npblog_draft_...']` | — |
+| 31 | `checkLocalDraftOnStartup()` | Восстановление после сбоя | Проверка таймстемпа и вывод Toast | — |
+| 32 | `saveDraft()` | Серверный черновик | Сохранение черновика без публикации | `POST /v1/drafts` |
+| 33 | `restoreBackup()` | Откат к версии бэкапа | Замена текущей статьи на выбранную версию | `POST /v1/backups/.../restore` |
+| 34 | `applyTemplateToPost()` | Применение HTML-шаблона | Выбор шаблона блога | `POST /v1/templates/apply` |
+| 35 | `openSaveInclude()` | Сохранение фрагмента в сниппет | Сохранение текста в `includes/` | `POST /v1/includes` |
+| 36 | `insertSmile()` | Вставка смайла / стикера | `<img src="/data/smiles/..." class="blog-smile">` | `GET /v1/media/smiles` |
+| 37 | `openSmileSetsDialog()` | Управление наборами смайлов | Загрузка и удаление паков смайлов | `POST / DELETE /v1/media/smiles` |
+| 38 | `updatePostBackground()` | Персональный фон статьи | Настройка фонового изображения и затемнения | `POST /v1/media/backgrounds` |
+| 39 | `undoEdit() / redoEdit()` | Отмена / повтор действий | Стек из 50 состояний с оффсетами курсора | `GET/POST /v1/system/history` |
+| 40 | `filterPosts()` | Живой поиск по публикациям | Фильтрация по подстроке заголовка или ID | `GET /v1/posts?q=...` |
+| 41 | `renumberPosts()` | Сквозная перенумерация статей | Восстановление нумерации 1..N | `POST /v1/posts/renumber` |
 
 ---
 

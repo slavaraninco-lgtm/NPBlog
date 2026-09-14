@@ -36,6 +36,7 @@ clearHistory
 insertHtmlAtCaret
 insertImageBlockAtCaret
 insertList
+insertHorizontalRule
 openTableDialog
 closeTableDialog
 addTableRow

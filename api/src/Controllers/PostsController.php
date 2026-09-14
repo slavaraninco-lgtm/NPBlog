@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace NPBlog\Api\Controllers;
 
 use NPBlog\Api\Auth;
+use NPBlog\Api\BlogContext;
 use NPBlog\Api\Response;
 
 class PostsController
@@ -82,37 +83,100 @@ class PostsController
     }
 
     /**
+     * Find post in current active blog or fallback to other configured blogs if not explicitly pinned
+     */
+    private function findPostOrSearchCrossBlog(int $postId): ?array
+    {
+        $blogDir = getDataPath('blog/');
+        $metaFile = validateSafePath($blogDir, 'posts-meta.json');
+        $meta = file_exists($metaFile) ? (json_decode(@file_get_contents($metaFile) ?: '[]', true) ?: []) : [];
+
+        foreach ($meta as $idx => $item) {
+            if ((int)($item['id'] ?? 0) === $postId) {
+                return [
+                    'found' => true,
+                    'blogDir' => $blogDir,
+                    'metaFile' => $metaFile,
+                    'meta' => $meta,
+                    'index' => $idx,
+                    'post' => $item,
+                    'crossBlog' => false,
+                    'blogPath' => getDataPath()
+                ];
+            }
+        }
+
+        // Check if request explicitly specified a blog
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $hasExplicitBlog = false;
+        foreach ($headers as $k => $v) {
+            $kLower = strtolower((string)$k);
+            if (($kLower === 'x-blog' || $kLower === 'x-blog-path') && trim((string)$v) !== '') {
+                $hasExplicitBlog = true;
+                break;
+            }
+        }
+        if (!empty($_GET['blog']) || !empty($_GET['blog_path'])) {
+            $hasExplicitBlog = true;
+        }
+
+        // If no explicit blog requested, search all configured blog paths
+        if (!$hasExplicitBlog) {
+            $currentNormalized = BlogContext::normalizePath(getDataPath());
+            $allBlogs = BlogContext::getBlogPaths();
+
+            foreach ($allBlogs as $candidatePath) {
+                if (BlogContext::normalizePath($candidatePath) === $currentNormalized) {
+                    continue;
+                }
+
+                $candidateBlogDir = rtrim(str_replace('\\', '/', $candidatePath), '/') . '/blog/';
+                $candidateMetaFile = validateSafePath($candidateBlogDir, 'posts-meta.json');
+
+                if (file_exists($candidateMetaFile)) {
+                    $candidateMeta = json_decode(@file_get_contents($candidateMetaFile) ?: '[]', true) ?: [];
+                    foreach ($candidateMeta as $cIdx => $cItem) {
+                        if ((int)($cItem['id'] ?? 0) === $postId) {
+                            // Found in this blog! Switch context for this request
+                            BlogContext::setActiveBlogPath($candidatePath, false);
+                            return [
+                                'found' => true,
+                                'blogDir' => getDataPath('blog/'),
+                                'metaFile' => $candidateMetaFile,
+                                'meta' => $candidateMeta,
+                                'index' => $cIdx,
+                                'post' => $cItem,
+                                'crossBlog' => true,
+                                'blogPath' => $candidatePath
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * GET /api/v1/posts/{id}
      */
     public function get(array $params, array $body): void
     {
         Auth::requireAuth();
 
-        $postId = (int)($params['id'] ?? 0);
+        $postId = (int)($params['id'] ?? $_GET['id'] ?? 0);
         if ($postId <= 0) {
             Response::error('invalid_id', 'Некорректный ID статьи', 400);
         }
 
-        $blogDir = getDataPath('blog/');
-        $metaFile = validateSafePath($blogDir, 'posts-meta.json');
-        if (!file_exists($metaFile)) {
-            Response::error('meta_not_found', 'Файл метаданных posts-meta.json не найден', 404);
-        }
-
-        $meta = json_decode(@file_get_contents($metaFile) ?: '[]', true) ?: [];
-        $post = null;
-
-        foreach ($meta as $item) {
-            if ((int)($item['id'] ?? 0) === $postId) {
-                $post = $item;
-                break;
-            }
-        }
-
-        if (!$post) {
+        $foundInfo = $this->findPostOrSearchCrossBlog($postId);
+        if (!$foundInfo) {
             Response::error('post_not_found', "Статья с ID $postId не найдена", 404);
         }
 
+        $post = $foundInfo['post'];
+        $blogDir = $foundInfo['blogDir'];
         $filename = validateSafePath($blogDir, $post['filename'] ?? 'post-' . $postId . '.html');
         if (!file_exists($filename)) {
             Response::error('file_not_found', "HTML-файл статьи не найден: " . basename($filename), 404);
@@ -259,7 +323,7 @@ class PostsController
     {
         Auth::requireAuth();
 
-        $postId = (int)($params['id'] ?? 0);
+        $postId = (int)($params['id'] ?? $body['id'] ?? $_GET['id'] ?? 0);
         if ($postId <= 0) {
             Response::error('invalid_id', 'Некорректный ID статьи', 400);
         }
@@ -275,25 +339,15 @@ class PostsController
             Response::error('missing_content', 'Контент статьи обязателен', 422);
         }
 
-        $blogDir = getDataPath('blog/');
-        $metaFile = validateSafePath($blogDir, 'posts-meta.json');
-        if (!file_exists($metaFile)) {
-            Response::error('meta_not_found', 'Файл метаданных не найден', 404);
-        }
-
-        $meta = json_decode(@file_get_contents($metaFile) ?: '[]', true) ?: [];
-        $postIndex = -1;
-
-        foreach ($meta as $idx => $item) {
-            if ((int)($item['id'] ?? 0) === $postId) {
-                $postIndex = $idx;
-                break;
-            }
-        }
-
-        if ($postIndex === -1) {
+        $foundInfo = $this->findPostOrSearchCrossBlog($postId);
+        if (!$foundInfo) {
             Response::error('post_not_found', "Статья с ID $postId не найдена", 404);
         }
+
+        $blogDir = $foundInfo['blogDir'];
+        $metaFile = $foundInfo['metaFile'];
+        $meta = $foundInfo['meta'];
+        $postIndex = $foundInfo['index'];
 
         if ($date === '') {
             $date = $meta[$postIndex]['date'] ?? date('d.m.Y H:i');
@@ -375,72 +429,92 @@ class PostsController
 
     /**
      * DELETE /api/v1/posts/{id}
+     * Also supports body {"id": ...} and query ?id=...
      */
     public function delete(array $params, array $body): void
     {
         Auth::requireAuth();
 
-        $postId = (int)($params['id'] ?? 0);
+        $postId = (int)($params['id'] ?? $body['id'] ?? $_GET['id'] ?? 0);
         if ($postId <= 0) {
             Response::error('invalid_id', 'Некорректный ID статьи', 400);
         }
 
-        $blogDir = getDataPath('blog/');
-        $metaFile = validateSafePath($blogDir, 'posts-meta.json');
-        if (!file_exists($metaFile)) {
-            Response::error('meta_not_found', 'Файл метаданных не найден', 404);
-        }
-
-        $meta = json_decode(@file_get_contents($metaFile) ?: '[]', true) ?: [];
-        $foundIndex = -1;
-        $postTitle = '';
-        $filename = '';
-
-        foreach ($meta as $idx => $item) {
-            if ((int)($item['id'] ?? 0) === $postId) {
-                $foundIndex = $idx;
-                $postTitle = $item['title'] ?? '';
-                $filename = $item['filename'] ?? 'post-' . $postId . '.html';
-                break;
-            }
-        }
-
-        if ($foundIndex === -1) {
+        $foundInfo = $this->findPostOrSearchCrossBlog($postId);
+        if (!$foundInfo) {
             Response::error('post_not_found', "Статья с ID $postId не найдена", 404);
         }
 
-        // Delete post HTML file
+        $blogDir = $foundInfo['blogDir'];
+        $metaFile = $foundInfo['metaFile'];
+        $meta = $foundInfo['meta'];
+        $foundIndex = $foundInfo['index'];
+        $post = $foundInfo['post'];
+        $postTitle = $post['title'] ?? '';
+        $filename = $post['filename'] ?? 'post-' . $postId . '.html';
+
+        // 1. Delete post HTML file(s)
         $postFilePath = validateSafePath($blogDir, $filename);
         if (file_exists($postFilePath)) {
             @unlink($postFilePath);
         }
+        $canonicalHtml = validateSafePath($blogDir, 'post-' . $postId . '.html');
+        if (file_exists($canonicalHtml) && $canonicalHtml !== $postFilePath) {
+            @unlink($canonicalHtml);
+        }
 
-        // Remove from meta
-        array_splice($meta, $foundIndex, 1);
-        safeWriteJson($metaFile, $meta);
+        // 2. Remove background image file on disk & settings
+        $bgSettings = function_exists('getPostBackground') ? \getPostBackground($postId) : null;
+        if ($bgSettings && isset($bgSettings['background'])) {
+            $bgFile = validateSafePath(getDataPath('backgrounds/'), $bgSettings['background']);
+            if (file_exists($bgFile)) {
+                @unlink($bgFile);
+            }
+        }
+        if (function_exists('removePostBackground')) {
+            \removePostBackground($postId);
+        }
 
-        // Remove background if any
-        removePostBackground($postId);
-
-        // Mark backups as deleted in backup-meta.json
+        // 3. Rename backups folder on disk & update backup-meta.json
         $backupMetaFile = validateSafePath(getBackupPath(), 'backup-meta.json');
         if (file_exists($backupMetaFile)) {
             $backupMeta = json_decode(@file_get_contents($backupMetaFile) ?: '[]', true) ?: [];
             if (isset($backupMeta[$postId])) {
+                $oldBackupDir = validateSafePath(getBackupPath(), (string)$postId) . '/';
+                $newBackupDir = validateSafePath(getBackupPath(), 'deleted_' . $postId . '_' . time()) . '/';
+                if (is_dir($oldBackupDir)) {
+                    @rename($oldBackupDir, $newBackupDir);
+                }
+
                 $deletedKey = 'deleted_' . $postId . '_' . time();
                 $backupMeta[$deletedKey] = $backupMeta[$postId];
+                $backupMeta[$deletedKey]['postId'] = $deletedKey;
+                $backupMeta[$deletedKey]['postTitle'] = '[УДАЛЕНО] ' . $postTitle;
+                $backupMeta[$deletedKey]['deleted'] = true;
                 $backupMeta[$deletedKey]['deletedAt'] = date('d.m.Y H:i');
                 unset($backupMeta[$postId]);
                 safeWriteJson($backupMetaFile, $backupMeta);
             }
         }
 
-        // Regenerate RSS
-        generateRssFeed();
+        // 4. Remove autosave if any
+        $autosaveFile = validateSafePath(getAutosavePath(), "autosave_{$postId}.json");
+        if (file_exists($autosaveFile)) {
+            @unlink($autosaveFile);
+        }
 
-        // Optional auto-renumber
+        // 5. Remove from posts-meta.json
+        array_splice($meta, $foundIndex, 1);
+        safeWriteJson($metaFile, $meta);
+
+        // 6. Regenerate RSS
+        if (function_exists('generateRssFeed')) {
+            @generateRssFeed();
+        }
+
+        // 7. Optional auto-renumber
         $renumbered = false;
-        if (!empty($_GET['renumber']) && filter_var($_GET['renumber'], FILTER_VALIDATE_BOOLEAN)) {
+        if (isset($_GET['renumber']) && filter_var($_GET['renumber'], FILTER_VALIDATE_BOOLEAN)) {
             $this->performRenumbering();
             $renumbered = true;
         }
@@ -448,7 +522,8 @@ class PostsController
         Response::json([
             'id' => $postId,
             'title' => $postTitle,
-            'renumbered' => $renumbered
+            'renumbered' => $renumbered,
+            'blog_path' => BlogContext::getActiveBlogPath()
         ], 200, 'Статья успешно удалена');
     }
 
@@ -507,23 +582,18 @@ class PostsController
     {
         Auth::requireAuth();
 
-        $postId = (int)($params['id'] ?? 0);
-        $blogDir = getDataPath('blog/');
-        $metaFile = validateSafePath($blogDir, 'posts-meta.json');
-        $meta = file_exists($metaFile) ? json_decode(@file_get_contents($metaFile) ?: '[]', true) : [];
-
-        $post = null;
-        foreach ($meta as $item) {
-            if ((int)($item['id'] ?? 0) === $postId) {
-                $post = $item;
-                break;
-            }
+        $postId = (int)($params['id'] ?? $_GET['id'] ?? 0);
+        if ($postId <= 0) {
+            Response::error('invalid_id', 'Некорректный ID статьи', 400);
         }
 
-        if (!$post) {
+        $foundInfo = $this->findPostOrSearchCrossBlog($postId);
+        if (!$foundInfo) {
             Response::error('post_not_found', 'Статья не найдена', 404);
         }
 
+        $post = $foundInfo['post'];
+        $blogDir = $foundInfo['blogDir'];
         $postFile = validateSafePath($blogDir, $post['filename'] ?? 'post-' . $postId . '.html');
         if (!file_exists($postFile)) {
             Response::error('file_not_found', 'HTML файл статьи не найден', 404);

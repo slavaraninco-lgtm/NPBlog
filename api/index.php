@@ -33,7 +33,9 @@ spl_autoload_register(function ($class) {
 
 use NPBlog\Api\Response;
 use NPBlog\Api\Router;
+use NPBlog\Api\BlogContext;
 use NPBlog\Api\Controllers\AuthController;
+use NPBlog\Api\Controllers\BlogsController;
 use NPBlog\Api\Controllers\PostsController;
 use NPBlog\Api\Controllers\DraftsController;
 use NPBlog\Api\Controllers\BackupsController;
@@ -93,6 +95,10 @@ if (file_exists($settingsFile)) {
     }
 }
 
+// Initialize Blog Context from Request (supporting X-Blog-Path, X-Blog, ?blog=, ?blog_path=)
+require_once NPBLOG_ROOT . '/security_bootstrap.php';
+BlogContext::initFromRequest();
+
 // Initialize Router
 $router = new Router('/api');
 
@@ -111,8 +117,10 @@ $welcomeHandler = function () {
         'cms_version' => $version,
         'docs_url' => '/api/docs/',
         'openapi_url' => '/api/docs/openapi.json',
+        'active_blog' => BlogContext::getActiveBlogPath(),
         'endpoints' => [
             'auth' => '/api/v1/auth/login',
+            'blogs' => '/api/v1/blogs',
             'posts' => '/api/v1/posts',
             'drafts' => '/api/v1/drafts',
             'autosaves' => '/api/v1/autosaves',
@@ -128,6 +136,13 @@ $welcomeHandler = function () {
 
 $router->get('/', $welcomeHandler);
 $router->get('/v1', $welcomeHandler);
+
+// --- Blogs Routes ---
+$router->get('/v1/blogs', [BlogsController::class, 'list']);
+$router->get('/v1/blogs/active', [BlogsController::class, 'getActive']);
+$router->post('/v1/blogs/switch', [BlogsController::class, 'switchActive']);
+$router->post('/v1/blogs', [BlogsController::class, 'add']);
+$router->delete('/v1/blogs', [BlogsController::class, 'remove']);
 
 // --- Auth Routes ---
 $router->post('/v1/auth/login', [AuthController::class, 'login']);
@@ -146,6 +161,9 @@ $router->get('/v1/posts/{id}/preview', [PostsController::class, 'preview']);
 $router->get('/v1/posts/{id}', [PostsController::class, 'get']);
 $router->put('/v1/posts/{id}', [PostsController::class, 'update']);
 $router->delete('/v1/posts/{id}', [PostsController::class, 'delete']);
+$router->delete('/v1/posts', [PostsController::class, 'delete']);
+$router->post('/v1/posts/{id}/delete', [PostsController::class, 'delete']);
+$router->post('/v1/posts/delete', [PostsController::class, 'delete']);
 
 // --- Drafts & Autosaves Routes ---
 $router->get('/v1/drafts', [DraftsController::class, 'list']);

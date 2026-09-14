@@ -167,17 +167,25 @@ function getDataPath($subpath = '') {
     }
     
     $activePath = '';
-    if (!empty($_SESSION['active_blog_path'])) {
-        $activePath = $_SESSION['active_blog_path'];
+    if (!empty($GLOBALS['NPBLOG_ACTIVE_BLOG_PATH'])) {
+        $activePath = $GLOBALS['NPBLOG_ACTIVE_BLOG_PATH'];
     } elseif (!empty($settings['active_blog_path'])) {
         $activePath = $settings['active_blog_path'];
-        $_SESSION['active_blog_path'] = $activePath;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['active_blog_path'] = $activePath;
+        }
+    } elseif (!empty($_SESSION['active_blog_path'])) {
+        $activePath = $_SESSION['active_blog_path'];
     } elseif (!empty($settings['blog_paths']) && is_array($settings['blog_paths']) && count($settings['blog_paths']) > 0) {
         $activePath = $settings['blog_paths'][0];
-        $_SESSION['active_blog_path'] = $activePath;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['active_blog_path'] = $activePath;
+        }
     } elseif (!empty($settings['data_path'])) {
         $activePath = $settings['data_path'];
-        $_SESSION['active_blog_path'] = $activePath;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['active_blog_path'] = $activePath;
+        }
     } else {
         $activePath = __DIR__ . '/data';
     }
@@ -234,11 +242,13 @@ if (!function_exists('getBackupPath')) {
         }
         
         $backupPath = '';
-        if (!empty($_SESSION['backup_path'])) {
-            $backupPath = $_SESSION['backup_path'];
-        } elseif (!empty($settings['backup_path'])) {
+        if (!empty($settings['backup_path'])) {
             $backupPath = $settings['backup_path'];
-            $_SESSION['backup_path'] = $backupPath;
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['backup_path'] = $backupPath;
+            }
+        } elseif (!empty($_SESSION['backup_path'])) {
+            $backupPath = $_SESSION['backup_path'];
         } else {
             $backupPath = __DIR__ . '/data_backup';
         }
@@ -278,11 +288,13 @@ if (!function_exists('getAutosavePath')) {
         }
         
         $autosavePath = '';
-        if (!empty($_SESSION['autosave_path'])) {
-            $autosavePath = $_SESSION['autosave_path'];
-        } elseif (!empty($settings['autosave_path'])) {
+        if (!empty($settings['autosave_path'])) {
             $autosavePath = $settings['autosave_path'];
-            $_SESSION['autosave_path'] = $autosavePath;
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['autosave_path'] = $autosavePath;
+            }
+        } elseif (!empty($_SESSION['autosave_path'])) {
+            $autosavePath = $_SESSION['autosave_path'];
         } else {
             $autosavePath = __DIR__ . '/autosave';
         }
@@ -322,11 +334,13 @@ if (!function_exists('getEditorBackupPath')) {
         }
         
         $editorBackupPath = '';
-        if (!empty($_SESSION['editor_backup_path'])) {
-            $editorBackupPath = $_SESSION['editor_backup_path'];
-        } elseif (!empty($settings['editor_backup_path'])) {
+        if (!empty($settings['editor_backup_path'])) {
             $editorBackupPath = $settings['editor_backup_path'];
-            $_SESSION['editor_backup_path'] = $editorBackupPath;
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['editor_backup_path'] = $editorBackupPath;
+            }
+        } elseif (!empty($_SESSION['editor_backup_path'])) {
+            $editorBackupPath = $_SESSION['editor_backup_path'];
         } else {
             $editorBackupPath = __DIR__ . '/editor_backup';
         }

@@ -64,6 +64,14 @@ h1 {
     overflow-wrap: break-word;
 }
 
+.content hr {
+    display: block;
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 24px 0;
+    box-sizing: border-box;
+}
+
 .content img {
     max-width: 100%;
     height: auto;

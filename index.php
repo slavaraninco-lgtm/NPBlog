@@ -335,6 +335,7 @@ if (file_exists($versionFile)) {
             <button type="button" id="btn-spoiler" class="format-btn" onclick="openSpoilerDialog()" title="Сворачиваемый блок" data-i18n-title="toolbar.spoiler"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display: block;"><path d="M3 7l9 10 9-10H3z" /></svg></span><span class="button-text" data-i18n="toolbar.spoiler">Сворачиваемый блок</span></button>
             <button type="button" id="btn-marker" class="format-btn" onclick="openMarkerDialog()" title="Маркер" data-i18n-title="toolbar.marker"><span class="button-icon">🖍</span><span class="button-text" data-i18n="toolbar.marker">Маркер</span></button>
             <button type="button" id="btn-anchor" class="format-btn" onclick="addAnchor()" title="Добавить якорь" data-i18n-title="toolbar.anchor"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="5" r="3" /><line x1="12" y1="8" x2="12" y2="22" /><path d="M5 12H2a10 10 0 0 0 20 0h-3" /></svg></span><span class="button-text" data-i18n="toolbar.anchor">Добавить якорь</span></button>
+            <button type="button" id="btn-hr" class="format-btn" onclick="insertHorizontalRule()" title="Разделительная линия" data-i18n-title="toolbar.hr"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><line x1="2" y1="12" x2="22" y2="12" stroke-width="3"></line><line x1="4" y1="5" x2="12" y2="5" stroke-width="2" opacity="0.4"></line><line x1="4" y1="19" x2="12" y2="19" stroke-width="2" opacity="0.4"></line></svg></span><span class="button-text" data-i18n="toolbar.hr">Разделительная линия</span></button>
             
             <span class="toolbar-divider" id="divider-align"></span>
             
@@ -4346,6 +4347,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'btn-spoiler',
             'btn-marker',
             'btn-anchor',
+            'btn-hr',
             'divider-align',
             'btn-align-left',
             'btn-align-center',

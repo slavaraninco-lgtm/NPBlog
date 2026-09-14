@@ -428,5 +428,205 @@
         "created_at": 1789379770,
         "expires_at": 1791971770,
         "last_used_at": 1789379770
+    },
+    {
+        "id": "tok_33bea9bc8bf1ca16",
+        "hash": "f0f0edd0eee37e51e82ad9048e2c3989a219e3d5fb5f2890578d4e4a83d15f6b",
+        "device_name": "MultiBlog Test Suite",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789380970,
+        "expires_at": 1791972970,
+        "last_used_at": 1789380970
+    },
+    {
+        "id": "tok_afd6a689f75d60fa",
+        "hash": "760313265adf1a2ea6cb8346274f76f08e3774045ba5b425c69c52969ad4fc28",
+        "device_name": "MultiBlog Test Suite",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789380983,
+        "expires_at": 1791972983,
+        "last_used_at": 1789380983
+    },
+    {
+        "id": "tok_66812df4c80865e4",
+        "hash": "eeab871be2d4e8e1abafd232d4a0bd88c91eeffd710940faaf9619c675d4dd81",
+        "device_name": "API Test Runner",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789380991,
+        "expires_at": 1791972991,
+        "last_used_at": 1789380991
+    },
+    {
+        "id": "tok_56354bd8c986eee3",
+        "hash": "2366280c292f3d7f408a2f609f4e4d158d74948a44c562fa1b3aaa6c041d387b",
+        "device_name": "Test",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789380999,
+        "expires_at": 1791972999,
+        "last_used_at": 1789380999
+    },
+    {
+        "id": "tok_13ab474feadb696f",
+        "hash": "4733afcc4375680c2bb9570307377121feb9e75cbc46a9906b7e44d2bcff6978",
+        "device_name": "MultiBlog Test Suite",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789381223,
+        "expires_at": 1791973223,
+        "last_used_at": 1789381223
+    },
+    {
+        "id": "tok_873c4ced19e141d5",
+        "hash": "f185db8686342aaf6f26f36b7f2481e3e4217f922fdc3518959d490e6ba365dd",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789420628,
+        "expires_at": 1792012628,
+        "last_used_at": 1789420628
+    },
+    {
+        "id": "tok_c44f4974427c2d46",
+        "hash": "223400de5db72d4bd53a04a1609f6fafa38a71993880013311b9c0899dae60de",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789421124,
+        "expires_at": 1792013124,
+        "last_used_at": 1789421124
+    },
+    {
+        "id": "tok_cd2e34f56f13643c",
+        "hash": "33f8dbd61b66a763f9247061204b88035a142c9dd86927912bd6f1dfdcd2c64a",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789421148,
+        "expires_at": 1792013148,
+        "last_used_at": 1789421148
+    },
+    {
+        "id": "tok_bb73e8a00048d0d9",
+        "hash": "1556c441992a7759b8098d0e2bd96963bf90ca21a9798c45f85da3fd967aa5bb",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789421185,
+        "expires_at": 1792013185,
+        "last_used_at": 1789421185
+    },
+    {
+        "id": "tok_13b7090eadee0307",
+        "hash": "6df464c338ce219209b10c8b03f2eba3df561f5e37141e262bc230bc3daaca4e",
+        "device_name": "MultiBlog Test Suite",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789421192,
+        "expires_at": 1792013192,
+        "last_used_at": 1789421192
+    },
+    {
+        "id": "tok_828bffd132957cd5",
+        "hash": "66526e4f3628e12b740b3ecfd142b413efa7049d0dfccecd40704f964415d06c",
+        "device_name": "API Test Runner",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789421208,
+        "expires_at": 1792013208,
+        "last_used_at": 1789421208
+    },
+    {
+        "id": "tok_ba6f083d8b3d8d95",
+        "hash": "21430fc1ca7f47665b0799ac4ed3c3924e8af1375c34429dab8ac2e66e389c17",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789421214,
+        "expires_at": 1792013214,
+        "last_used_at": 1789421214
+    },
+    {
+        "id": "tok_ad03cfc9eb9f1c42",
+        "hash": "97a6e7e1d50b814509ad069df80260d6b8e3204949c48f8101d9b6e8159856c4",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "Mozilla\/5.0 (Windows NT; Windows NT 10.0; ru-RU) WindowsPowerShell\/5.1.19041.6456",
+        "created_at": 1789421250,
+        "expires_at": 1792013250,
+        "last_used_at": 1789421250
+    },
+    {
+        "id": "tok_2aa79b56220f7320",
+        "hash": "f018eb742e7d6733d19b8974a64424602e9bd9cb8988151cd51414d7a19534db",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789421266,
+        "expires_at": 1792013266,
+        "last_used_at": 1789421266
+    },
+    {
+        "id": "tok_05867b0e97fe50e3",
+        "hash": "32e4f800197a28f8144c8052e0ccca27c9d205fc5d44a94f50f1434cc7911c02",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "curl\/8.13.0",
+        "created_at": 1789423214,
+        "expires_at": 1792015214,
+        "last_used_at": 1789423214
+    },
+    {
+        "id": "tok_7930032e9042975d",
+        "hash": "25da42dcb9481b466ae93e09fc2db05d720e75eb9f28753260403e52b9e00a7a",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "curl\/8.13.0",
+        "created_at": 1789423359,
+        "expires_at": 1792015359,
+        "last_used_at": 1789423359
+    },
+    {
+        "id": "tok_8e98165c6619f8a5",
+        "hash": "6d2eb96e2300ecac9d8c9a5e6f9a5a9c2b9eeb5543eb23ec7f741fd7f86e4324",
+        "device_name": "API Test Runner",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789423397,
+        "expires_at": 1792015397,
+        "last_used_at": 1789423397
+    },
+    {
+        "id": "tok_fec96d8bb4f84d35",
+        "hash": "30771670bcbc0fdf3028c02ed823f4fc15c83f5da5b1a1f8bd7424fd49efcfff",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789423405,
+        "expires_at": 1792015405,
+        "last_used_at": 1789423405
+    },
+    {
+        "id": "tok_2bf895d8f568a02a",
+        "hash": "ce21ae244815e3022d36ecd47c08445e38a122f0de6ea148163ef6f646ffb13a",
+        "device_name": "Mobile Device",
+        "ip_created": "127.0.0.1",
+        "user_agent": "",
+        "created_at": 1789423417,
+        "expires_at": 1792015417,
+        "last_used_at": 1789423417
+    },
+    {
+        "id": "tok_8d2eca59de5ce1a3",
+        "hash": "86b6efdb262f2adf1c2ea2e8e8a021a8675c4a9b0a69dc28445f901deb70d34f",
+        "device_name": "sdk_gphone64_x86_64",
+        "ip_created": "192.168.31.98",
+        "user_agent": "okhttp\/4.12.0",
+        "created_at": 1789423468,
+        "expires_at": 1792015468,
+        "last_used_at": 1789423468
     }
 ]

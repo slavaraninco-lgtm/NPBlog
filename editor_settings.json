@@ -106,6 +106,13 @@
             "row": 1
         },
         {
+            "id": "btn-hr",
+            "name": "Разделительная линия",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
             "id": "divider-align",
             "name": "divider-align",
             "visible": true,

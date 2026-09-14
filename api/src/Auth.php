@@ -12,10 +12,26 @@ class Auth
      */
     private static function getTokensFilePath(): string
     {
-        if (function_exists('getDataPath')) {
-            return getDataPath('api_tokens.json');
+        $rootDir = defined('NPBLOG_ROOT') ? NPBLOG_ROOT : dirname(__DIR__, 2);
+        $primary = $rootDir . '/data/api_tokens.json';
+        if (file_exists($primary)) {
+            return $primary;
         }
-        return (defined('NPBLOG_ROOT') ? NPBLOG_ROOT : dirname(__DIR__, 2)) . '/data/api_tokens.json';
+
+        $settingsFile = $rootDir . '/editor_settings.json';
+        if (file_exists($settingsFile)) {
+            $settings = json_decode(@file_get_contents($settingsFile) ?: '[]', true) ?: [];
+            if (!empty($settings['blog_paths'][0])) {
+                $p = $settings['blog_paths'][0];
+                $isAbsolute = (strpos($p, '/') === 0) || (strpos($p, '\\') === 0) || (strlen($p) >= 2 && $p[1] === ':');
+                if (!$isAbsolute) {
+                    $p = $rootDir . '/' . ltrim($p, '/\\');
+                }
+                return rtrim(str_replace('\\', '/', $p), '/') . '/api_tokens.json';
+            }
+        }
+
+        return $primary;
     }
 
     /**

@@ -1291,6 +1291,10 @@
             if (typeof saveToHistory === 'function') saveToHistory();
         },
 
+        insertHorizontalRule(targetRange) {
+            this.insertBlockMedia('<hr>', targetRange);
+        },
+
         /**
          * Clean up empty inline tags, unwrap plain spans, and remove stray zero-width chars
          */
@@ -1679,6 +1683,10 @@
     window.alignText = function (side) { VisualEngine.setTextAlignment(side); };
 
     window.formatText = function (tag) {
+        if (tag === 'hr') {
+            window.insertHorizontalRule();
+            return;
+        }
         const ta = document.getElementById('content');
         if (window.enableMarkdown && editorMode === 'code') {
             const start = ta.selectionStart;
@@ -1742,6 +1750,41 @@
         }
         if (typeof saveToHistory === 'function') saveToHistory();
     };
+
+    window.insertHorizontalRule = function () {
+        const ta = document.getElementById('content');
+        if (window.enableMarkdown && editorMode === 'code') {
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const beforeText = ta.value.substring(0, start);
+            const afterText = ta.value.substring(end);
+            const prefix = (beforeText.length > 0 && !beforeText.endsWith('\n')) ? '\n\n' : (beforeText.endsWith('\n\n') ? '' : (beforeText.endsWith('\n') ? '\n' : ''));
+            const hrText = `${prefix}---\n\n`;
+            ta.value = beforeText + hrText + afterText;
+            const newCursor = start + hrText.length;
+            ta.setSelectionRange(newCursor, newCursor);
+            ta.focus();
+            if (typeof saveToHistory === 'function') saveToHistory();
+            return;
+        }
+
+        if (editorMode === 'code') {
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const beforeText = ta.value.substring(0, start);
+            const afterText = ta.value.substring(end);
+            const prefix = (beforeText.length > 0 && !beforeText.endsWith('\n')) ? '\n' : '';
+            const hrText = `${prefix}<hr>\n`;
+            ta.value = beforeText + hrText + afterText;
+            const newCursor = start + hrText.length;
+            ta.setSelectionRange(newCursor, newCursor);
+            ta.focus();
+            if (typeof saveToHistory === 'function') saveToHistory();
+        } else {
+            VisualEngine.insertBlockMedia('<hr>');
+        }
+    };
+    window.insertHr = window.insertHorizontalRule;
 
     window.setMode = function (mode) {
         editorMode = mode;

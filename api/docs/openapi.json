@@ -1,878 +1,2057 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "NPBlog Mobile REST API",
-    "description": "Полный REST API редактора и системы управления контентом NPBlog для мобильных приложений (iOS, Android, Flutter, React Native). Включает Bearer-аутентификацию, управление статьями, версионирование (бэкапы), черновики, автосохранения, медиа-хранилище, шаблоны, сниппеты, настройки блога и системную диагностику.",
-    "version": "1.0.0",
-    "contact": {
-      "name": "NPBlog Core Team"
-    }
-  },
-  "servers": [
-    {
-      "url": "/api",
-      "description": "Локальный сервер API"
-    }
-  ],
-  "components": {
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "Token",
-        "description": "Токен авторизации, полученный в эндпоинте POST /api/v1/auth/login. Передавать в заголовке: Authorization: Bearer <access_token>"
-      }
+    "openapi": "3.1.0",
+    "info": {
+        "title": "NPBlog Mobile REST API",
+        "description": "Полный REST API редактора и системы управления контентом NPBlog для мобильных приложений (iOS, Android, Flutter, React Native). Включает Bearer-аутентификацию, управление статьями, версионирование (бэкапы), черновики, автосохранения, медиа-хранилище, шаблоны, сниппеты, настройки блога и системную диагностику.",
+        "version": "1.0.0",
+        "contact": {
+            "name": "NPBlog Core Team"
+        }
     },
-    "schemas": {
-      "ApiResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean", "example": true },
-          "status": { "type": "integer", "example": 200 },
-          "message": { "type": "string", "example": "Операция выполнена успешно" },
-          "data": { "type": "object" },
-          "meta": { "type": "object" }
-        },
-        "required": ["success", "status"]
-      },
-      "ApiError": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean", "example": false },
-          "status": { "type": "integer", "example": 400 },
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": { "type": "string", "example": "invalid_credentials" },
-              "message": { "type": "string", "example": "Неверный пароль" },
-              "details": { "type": "object" }
-            },
-            "required": ["code", "message"]
-          }
-        },
-        "required": ["success", "status", "error"]
-      },
-      "LoginRequest": {
-        "type": "object",
-        "properties": {
-          "password": { "type": "string", "description": "Пароль доступа к редактору", "example": "mySecretPass" },
-          "device_name": { "type": "string", "description": "Имя мобильного устройства", "example": "iPhone 15 Pro Max" }
-        },
-        "required": ["password"]
-      },
-      "LoginResponse": {
-        "type": "object",
-        "properties": {
-          "access_token": { "type": "string", "example": "npb_7f8a9b2c3d4e5f6..." },
-          "token_type": { "type": "string", "example": "Bearer" },
-          "token_id": { "type": "string", "example": "tok_12345678" },
-          "device_name": { "type": "string", "example": "iPhone 15 Pro Max" },
-          "expires_at": { "type": "integer", "example": 1791735000 },
-          "expires_in": { "type": "integer", "example": 2592000 },
-          "created_at": { "type": "integer", "example": 1789143000 }
+    "servers": [
+        {
+            "url": "/api",
+            "description": "Локальный сервер API"
         }
-      },
-      "PostItem": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "example": 1 },
-          "title": { "type": "string", "example": "Моя первая статья" },
-          "date": { "type": "string", "example": "11.09.2026 19:30" },
-          "filename": { "type": "string", "example": "post-1.html" },
-          "url": { "type": "string", "example": "/data/blog/post-1.html" }
-        }
-      },
-      "PostDetail": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "example": 1 },
-          "title": { "type": "string", "example": "Моя первая статья" },
-          "date": { "type": "string", "example": "11.09.2026 19:30" },
-          "filename": { "type": "string", "example": "post-1.html" },
-          "content": { "type": "string", "description": "HTML-содержимое статьи для редактора", "example": "<p>Текст статьи...</p>" },
-          "background": { "type": "object", "nullable": true },
-          "url": { "type": "string", "example": "/data/blog/post-1.html" }
-        }
-      },
-      "PostCreateRequest": {
-        "type": "object",
-        "properties": {
-          "title": { "type": "string", "description": "Заголовок статьи", "example": "Новая статья из мобильного приложения" },
-          "content": { "type": "string", "description": "HTML контент статьи", "example": "<p>Привет из мобильного приложения!</p>" },
-          "date": { "type": "string", "description": "Дата публикации (необязательно)", "example": "11.09.2026 19:30" }
-        },
-        "required": ["title", "content"]
-      },
-      "DraftItem": {
-        "type": "object",
-        "properties": {
-          "filename": { "type": "string", "example": "1789144000.json" },
-          "title": { "type": "string", "example": "Набросок новой статьи" },
-          "content": { "type": "string", "example": "<p>Черновой текст...</p>" },
-          "timestamp": { "type": "integer", "example": 1789144000 },
-          "date": { "type": "string", "example": "2026-09-11 19:30:00" }
-        }
-      },
-      "AutosaveItem": {
-        "type": "object",
-        "properties": {
-          "post_id": { "type": "string", "example": "1" },
-          "title": { "type": "string", "example": "Статья 1" },
-          "content": { "type": "string", "example": "<p>Автосохраненный текст...</p>" },
-          "timestamp": { "type": "integer", "example": 1789144000 },
-          "date": { "type": "string", "example": "11.09.2026 19:30:00" }
-        }
-      },
-      "MediaItem": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "example": "m_6a8c3d.jpg" },
-          "path": { "type": "string", "example": "/data/uploads/m_6a8c3d.jpg" },
-          "url": { "type": "string", "description": "Канонический относительный URL файла из папки data (например /data/uploads/photo.jpg) для вставки в HTML-теги <img src='...'>", "example": "/data/uploads/m_6a8c3d.jpg" },
-          "absolute_url": { "type": "string", "description": "Полный абсолютный URL с доменом (http://хост/data/uploads/photo.jpg) для мобильных приложений и внешних редакторов", "example": "http://localhost/data/uploads/m_6a8c3d.jpg" },
-          "data_path": { "type": "string", "description": "Относительный путь к файлу в файловой системе сайта (всегда внутри папки data/)", "example": "data/uploads/m_6a8c3d.jpg" },
-          "size": { "type": "integer", "example": 1048576 },
-          "modified_at": { "type": "string", "example": "2026-09-11T19:30:00+03:00" },
-          "type": { "type": "string", "example": "image" }
-        }
-      },
-      "MediaUploadRequest": {
-        "type": "object",
-        "properties": {
-          "file": { "type": "string", "format": "binary", "description": "Бинарный файл при multipart/form-data передаче" },
-          "base64": { "type": "string", "description": "Base64-строка файла (альтернатива multipart для мобильных)", "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..." },
-          "filename": { "type": "string", "description": "Оригинальное имя файла для Base64", "example": "photo.png" },
-          "type": { "type": "string", "enum": ["image", "video", "audio", "document", "font"], "description": "Категория загружаемого файла", "example": "image" }
-        }
-      },
-      "MediaUploadResponse": {
-        "type": "object",
-        "properties": {
-          "file_name": { "type": "string", "example": "m_6a8c3d.jpg" },
-          "url": { "type": "string", "description": "Относительный URL для вставки в HTML статьи (<img src='/data/uploads/...'>). Всегда начинается с /data/, никогда с /api/", "example": "/data/uploads/m_6a8c3d.jpg" },
-          "absolute_url": { "type": "string", "description": "Абсолютный URL с протоколом и хостом для удаленных редакторов и WebView", "example": "http://localhost/data/uploads/m_6a8c3d.jpg" },
-          "data_path": { "type": "string", "description": "Путь к файлу внутри папки data", "example": "data/uploads/m_6a8c3d.jpg" },
-          "size": { "type": "integer", "example": 245120 },
-          "mime_type": { "type": "string", "example": "image/jpeg" },
-          "type": { "type": "string", "example": "image" },
-          "created_at": { "type": "string", "example": "2026-09-11T19:30:00+03:00" }
-        }
-      }
-    }
-  },
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
-  "paths": {
-    "/": {
-      "get": {
-        "summary": "Информация об API и корневой статус",
-        "security": [],
-        "responses": {
-          "200": { "description": "Успешный ответ", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
-        }
-      }
-    },
-    "/v1/auth/login": {
-      "post": {
-        "summary": "Авторизация и получение Bearer токена",
-        "description": "Проверяет пароль доступа, регистрирует мобильное устройство и возвращает Bearer-токен на 30 дней. Защищен от брутфорса (блокировка на 15 мин после 3 неверных попыток).",
-        "security": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "Token",
+                "description": "Токен авторизации, полученный в эндпоинте POST /api/v1/auth/login. Передавать в заголовке: Authorization: Bearer <access_token>"
             }
-          }
         },
-        "responses": {
-          "200": { "description": "Токен успешно выдан", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
-          "401": { "description": "Неверный пароль", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
-          "429": { "description": "IP временно заблокирован из-за превышения попыток", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
-      }
-    },
-    "/v1/auth/logout": {
-      "post": {
-        "summary": "Выход и отзыв текущего токена",
-        "responses": {
-          "200": { "description": "Токен отозван", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
-        }
-      }
-    },
-    "/v1/auth/me": {
-      "get": {
-        "summary": "Проверка авторизации и текущего токена",
-        "responses": {
-          "200": { "description": "Данные текущей сессии", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
-          "401": { "description": "Не авторизован", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
-        }
-      }
-    },
-    "/v1/auth/tokens": {
-      "get": {
-        "summary": "Список активных мобильных устройств и сессий",
-        "responses": {
-          "200": { "description": "Список сессий", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
-        }
-      }
-    },
-    "/v1/auth/tokens/{id}": {
-      "delete": {
-        "summary": "Отзыв токена конкретного устройства",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ID токена (например tok_5588d87a8c890fba)" }
-        ],
-        "responses": {
-          "200": { "description": "Токен отозван", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
-        }
-      }
-    },
-    "/v1/auth/change-password": {
-      "post": {
-        "summary": "Смена пароля администратора",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+        "schemas": {
+            "ApiResponse": {
                 "type": "object",
                 "properties": {
-                  "current_password": { "type": "string" },
-                  "new_password": { "type": "string", "minLength": 6 }
-                },
-                "required": ["new_password"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Пароль изменен" }
-        }
-      }
-    },
-    "/v1/posts": {
-      "get": {
-        "summary": "Список статей с пагинацией и поиском",
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Номер страницы" },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Количество на странице (1-100)" },
-          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Поисковый запрос по названию" },
-          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["id_desc", "id_asc", "date_desc", "date_asc"], "default": "id_desc" } }
-        ],
-        "responses": {
-          "200": { "description": "Список статей", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
-        }
-      },
-      "post": {
-        "summary": "Создание новой статьи",
-        "description": "Создает HTML-файл статьи из активного шаблона, обновляет posts-meta.json, создает версию бэкапа 1 и генерирует RSS ленту.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/PostCreateRequest" } }
-          }
-        },
-        "responses": {
-          "201": { "description": "Статья создана", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
-        }
-      }
-    },
-    "/v1/posts/{id}": {
-      "get": {
-        "summary": "Получение содержимого и метаданных статьи",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
-        ],
-        "responses": {
-          "200": { "description": "Данные статьи", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
-          "404": { "description": "Статья не найдена" }
-        }
-      },
-      "put": {
-        "summary": "Обновление статьи",
-        "description": "Обновляет HTML статьи, создает инкрементный бэкап и перегенерирует RSS.",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/PostCreateRequest" } }
-          }
-        },
-        "responses": {
-          "200": { "description": "Статья обновлена", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
-        }
-      },
-      "delete": {
-        "summary": "Удаление статьи",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } },
-          { "name": "renumber", "in": "query", "schema": { "type": "boolean", "default": false }, "description": "Автоматически перенумеровать статьи" }
-        ],
-        "responses": {
-          "200": { "description": "Статья удалена" }
-        }
-      }
-    },
-    "/v1/posts/{id}/preview": {
-      "get": {
-        "summary": "Готовый HTML-предпросмотр статьи для мобильного WebView",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
-        ],
-        "responses": {
-          "200": { "description": "HTML разметка статьи", "content": { "text/html": {} } }
-        }
-      }
-    },
-    "/v1/posts/renumber": {
-      "post": {
-        "summary": "Сквозная перенумерация всех статей блога",
-        "responses": {
-          "200": { "description": "Результат перенумерации" }
-        }
-      }
-    },
-    "/v1/posts/regenerate": {
-      "post": {
-        "summary": "Перегенерация всех HTML-статей блога из шаблонов",
-        "responses": {
-          "200": { "description": "Количество обновленных статей" }
-        }
-      }
-    },
-    "/v1/drafts": {
-      "get": {
-        "summary": "Список всех черновиков",
-        "responses": {
-          "200": { "description": "Массив черновиков" }
-        }
-      },
-      "post": {
-        "summary": "Сохранение нового черновика",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "title": { "type": "string" },
-                  "content": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Черновик сохранен" }
-        }
-      }
-    },
-    "/v1/drafts/{filename}": {
-      "get": {
-        "summary": "Получение содержимого черновика",
-        "parameters": [
-          { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Черновик" }
-        }
-      },
-      "delete": {
-        "summary": "Удаление черновика",
-        "parameters": [
-          { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Удален" }
-        }
-      }
-    },
-    "/v1/autosaves": {
-      "get": {
-        "summary": "Список всех автосохранений",
-        "responses": {
-          "200": { "description": "Массив автосохранений" }
-        }
-      },
-      "delete": {
-        "summary": "Очистка всех автосохранений",
-        "responses": {
-          "200": { "description": "Очищено" }
-        }
-      },
-      "post": {
-        "summary": "Сохранение состояния автосохранения",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "post_id": { "type": "string", "example": "1" },
-                  "title": { "type": "string" },
-                  "content": { "type": "string" }
-                },
-                "required": ["post_id", "content"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Сохранено" }
-        }
-      }
-    },
-    "/v1/autosaves/{postId}": {
-      "get": {
-        "summary": "Получение автосохранения конкретной статьи",
-        "parameters": [
-          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Данные автосохранения" }
-        }
-      },
-      "delete": {
-        "summary": "Удаление автосохранения статьи",
-        "parameters": [
-          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Удалено" }
-        }
-      }
-    },
-    "/v1/backups": {
-      "get": {
-        "summary": "Реестр всех резервных копий по статьям",
-        "responses": {
-          "200": { "description": "Реестр бэкапов" }
-        }
-      }
-    },
-    "/v1/backups/{postId}": {
-      "get": {
-        "summary": "Список резервных копий статьи",
-        "parameters": [
-          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Версии статьи" }
-        }
-      }
-    },
-    "/v1/backups/{postId}/{backupNumber}": {
-      "get": {
-        "summary": "Просмотр содержимого конкретной версии бэкапа",
-        "parameters": [
-          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "backupNumber", "in": "path", "required": true, "schema": { "type": "integer" } }
-        ],
-        "responses": {
-          "200": { "description": "Контент бэкапа" }
-        }
-      },
-      "delete": {
-        "summary": "Удаление версии бэкапа",
-        "parameters": [
-          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "backupNumber", "in": "path", "required": true, "schema": { "type": "integer" } }
-        ],
-        "responses": {
-          "200": { "description": "Удалено" }
-        }
-      }
-    },
-    "/v1/backups/{postId}/{backupNumber}/restore": {
-      "post": {
-        "summary": "Откат статьи к выбранной версии бэкапа",
-        "parameters": [
-          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "backupNumber", "in": "path", "required": true, "schema": { "type": "integer" } }
-        ],
-        "responses": {
-          "200": { "description": "Статья восстановлена" }
-        }
-      }
-    },
-    "/v1/media": {
-      "get": {
-        "summary": "Список медиафайлов с фильтрацией по типу",
-        "description": "Возвращает список файлов из папки /data/ (uploads, smiles, backgrounds, custom_fonts). Каждый элемент содержит 'url' (/data/uploads/...), 'absolute_url' и 'data_path'. В сторонние редакторы передавайте 'url' для тегов <img src='...'>.",
-        "parameters": [
-          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["all", "images", "video", "audio", "documents", "fonts"], "default": "all" } }
-        ],
-        "responses": {
-          "200": { "description": "Массив медиафайлов" }
-        }
-      },
-      "delete": {
-        "summary": "Удаление медиафайла",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "filename": { "type": "string" },
-                  "type": { "type": "string", "enum": ["images", "video", "audio", "documents", "fonts"] }
-                },
-                "required": ["filename"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Файл удален" }
-        }
-      }
-    },
-    "/v1/media/upload": {
-      "post": {
-        "summary": "Универсальная загрузка медиафайлов",
-        "description": "Загружает файл (multipart/form-data или Base64 JSON) напрямую в папку /data/uploads/. Возвращает канонический 'url' (/data/uploads/photo.jpg), 'absolute_url' (http://хост/data/uploads/photo.jpg) и 'data_path'. Вставляйте 'url' в статьи. Ни в коем случае не используйте префикс /api/ для ссылок на медиафайлы!",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": { "$ref": "#/components/schemas/MediaUploadRequest" }
-            },
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/MediaUploadRequest" }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Файл успешно загружен в папку data/uploads/", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MediaUploadResponse" } } } }
-        }
-      }
-    },
-    "/v1/media/backgrounds": {
-      "get": {
-        "summary": "Список настроек фонов статей",
-        "responses": { "200": { "description": "Фоны" } }
-      },
-      "post": {
-        "summary": "Установка индивидуального фона для статьи",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "post_id": { "type": "integer" },
-                  "background": { "type": "string", "example": "/data/uploads/bg.jpg" },
-                  "repeat": { "type": "string", "example": "no-repeat" },
-                  "size": { "type": "string", "example": "cover" },
-                  "position": { "type": "string", "example": "center" },
-                  "overlay_color": { "type": "string", "example": "#000000" },
-                  "overlay_opacity": { "type": "number", "example": 0.5 }
-                },
-                "required": ["post_id", "background"]
-              }
-            }
-          }
-        },
-        "responses": { "200": { "description": "Фон установлен" } }
-      }
-    },
-    "/v1/media/backgrounds/{postId}": {
-      "delete": {
-        "summary": "Удаление фона статьи",
-        "parameters": [
-          { "name": "postId", "in": "path", "required": true, "schema": { "type": "integer" } }
-        ],
-        "responses": { "200": { "description": "Фон удален" } }
-      }
-    },
-    "/v1/media/smiles": {
-      "get": {
-        "summary": "Список наборов стикеров и смайлов",
-        "responses": { "200": { "description": "Наборы смайлов" } }
-      },
-      "post": {
-        "summary": "Загрузка набора смайлов или добавление смайлов в набор",
-        "description": "Позволяет загрузить набор GIF/PNG/WebP/SVG/JPG смайлов. Поддерживает multipart/form-data (параметры 'setName' и файлы 'smiles[]' или 'file') и JSON Base64 (объект с 'setName' и массивом 'items' [{ 'filename': 'smile1.gif', 'base64': '...' }]).",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "setName": { "type": "string", "example": "kolobok" },
-                  "smiles": { "type": "array", "items": { "type": "string", "format": "binary" } }
-                },
-                "required": ["setName"]
-              }
-            },
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "setName": { "type": "string", "example": "kolobok" },
-                  "items": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "filename": { "type": "string", "example": "smile1.gif" },
-                        "base64": { "type": "string", "example": "data:image/gif;base64,R0lGODlh..." }
-                      },
-                      "required": ["base64"]
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "status": {
+                        "type": "integer",
+                        "example": 200
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Операция выполнена успешно"
+                    },
+                    "data": {
+                        "type": "object"
+                    },
+                    "meta": {
+                        "type": "object"
                     }
-                  }
                 },
-                "required": ["setName", "items"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Смайлы успешно загружены", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } }
-        }
-      }
-    },
-    "/v1/media/smiles/{setName}": {
-      "delete": {
-        "summary": "Удаление набора смайлов",
-        "description": "Удаляет указанную директорию набора смайлов со всеми входящими в неё файлами.",
-        "parameters": [
-          { "name": "setName", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Имя набора смайлов" }
-        ],
-        "responses": {
-          "200": { "description": "Набор смайлов успешно удален", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
-          "404": { "description": "Набор смайлов не найден" }
-        }
-      }
-    },
-    "/v1/media/fonts": {
-      "get": {
-        "summary": "Список пользовательских шрифтов и сгенерированный CSS",
-        "responses": { "200": { "description": "Шрифты и CSS" } }
-      }
-    },
-    "/v1/media/fonts/{filename}": {
-      "delete": {
-        "summary": "Удаление пользовательского шрифта",
-        "parameters": [
-          { "name": "filename", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Имя файла шрифта (например 'Roboto-Bold.ttf')" }
-        ],
-        "responses": {
-          "200": { "description": "Шрифт успешно удален", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
-          "404": { "description": "Шрифт не найден" }
-        }
-      }
-    },
-    "/v1/templates": {
-      "get": {
-        "summary": "Список доступных HTML-шаблонов",
-        "responses": { "200": { "description": "Шаблоны" } }
-      },
-      "post": {
-        "summary": "Создание или обновление шаблона",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+                "required": [
+                    "success",
+                    "status"
+                ]
+            },
+            "ApiError": {
                 "type": "object",
                 "properties": {
-                  "name": { "type": "string" },
-                  "title": { "type": "string" },
-                  "description": { "type": "string" },
-                  "code": { "type": "string" }
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "status": {
+                        "type": "integer",
+                        "example": 400
+                    },
+                    "error": {
+                        "type": "object",
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "example": "invalid_credentials"
+                            },
+                            "message": {
+                                "type": "string",
+                                "example": "Неверный пароль"
+                            },
+                            "details": {
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "code",
+                            "message"
+                        ]
+                    }
                 },
-                "required": ["name", "code"]
-              }
-            }
-          }
-        },
-        "responses": { "200": { "description": "Шаблон сохранен" } }
-      }
-    },
-    "/v1/templates/{name}": {
-      "get": {
-        "summary": "Код и параметры шаблона",
-        "parameters": [
-          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "Шаблон" } }
-      },
-      "delete": {
-        "summary": "Удаление кастомного шаблона",
-        "parameters": [
-          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "Шаблон удален" } }
-      }
-    },
-    "/v1/templates/apply": {
-      "post": {
-        "summary": "Применение шаблона к конкретной статье или ко всем",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+                "required": [
+                    "success",
+                    "status",
+                    "error"
+                ]
+            },
+            "LoginRequest": {
                 "type": "object",
                 "properties": {
-                  "template": { "type": "string" },
-                  "post_id": { "type": "integer", "description": "Если не указан, устанавливается как шаблон по умолчанию для всего блога" }
+                    "password": {
+                        "type": "string",
+                        "description": "Пароль доступа к редактору",
+                        "example": "mySecretPass"
+                    },
+                    "device_name": {
+                        "type": "string",
+                        "description": "Имя мобильного устройства",
+                        "example": "iPhone 15 Pro Max"
+                    }
                 },
-                "required": ["template"]
-              }
-            }
-          }
-        },
-        "responses": { "200": { "description": "Шаблон применен" } }
-      }
-    },
-    "/v1/includes": {
-      "get": {
-        "summary": "Список сниппетов (вставок)",
-        "responses": { "200": { "description": "Сниппеты" } }
-      },
-      "post": {
-        "summary": "Создание нового сниппета",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+                "required": [
+                    "password"
+                ]
+            },
+            "LoginResponse": {
                 "type": "object",
                 "properties": {
-                  "display_name": { "type": "string" },
-                  "content": { "type": "string" }
-                },
-                "required": ["display_name", "content"]
-              }
-            }
-          }
-        },
-        "responses": { "201": { "description": "Сниппет сохранен" } }
-      }
-    },
-    "/v1/includes/{name}": {
-      "get": {
-        "summary": "Содержимое сниппета",
-        "parameters": [
-          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "Сниппет" } }
-      },
-      "delete": {
-        "summary": "Удаление сниппета",
-        "parameters": [
-          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": { "200": { "description": "Удален" } }
-      }
-    },
-    "/v1/settings/editor": {
-      "get": {
-        "summary": "Настройки редактора NPBlog",
-        "responses": { "200": { "description": "Настройки" } }
-      },
-      "put": {
-        "summary": "Обновление параметров редактора",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "contentWidth": { "type": "integer", "example": 920 },
-                  "amoledTheme": { "type": "boolean", "example": false },
-                  "language": { "type": "string", "example": "ru" },
-                  "autosaveInterval": { "type": "integer", "example": 60 },
-                  "autosaveEnabled": { "type": "boolean", "example": true },
-                  "rss_enabled": { "type": "boolean", "example": false }
+                    "access_token": {
+                        "type": "string",
+                        "example": "npb_7f8a9b2c3d4e5f6..."
+                    },
+                    "token_type": {
+                        "type": "string",
+                        "example": "Bearer"
+                    },
+                    "token_id": {
+                        "type": "string",
+                        "example": "tok_12345678"
+                    },
+                    "device_name": {
+                        "type": "string",
+                        "example": "iPhone 15 Pro Max"
+                    },
+                    "expires_at": {
+                        "type": "integer",
+                        "example": 1791735000
+                    },
+                    "expires_in": {
+                        "type": "integer",
+                        "example": 2592000
+                    },
+                    "created_at": {
+                        "type": "integer",
+                        "example": 1789143000
+                    }
                 }
-              }
-            }
-          }
-        },
-        "responses": { "200": { "description": "Настройки сохранены" } }
-      }
-    },
-    "/v1/settings/global": {
-      "get": {
-        "summary": "Глобальные параметры блога (SEO, шапка, навигация)",
-        "responses": { "200": { "description": "Глобальные настройки" } }
-      },
-      "put": {
-        "summary": "Обновление глобальных параметров блога",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+            },
+            "PostItem": {
                 "type": "object",
                 "properties": {
-                  "global_settings": { "type": "object" },
-                  "blog_view_settings": { "type": "object" }
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Моя первая статья"
+                    },
+                    "date": {
+                        "type": "string",
+                        "example": "11.09.2026 19:30"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "example": "post-1.html"
+                    },
+                    "url": {
+                        "type": "string",
+                        "example": "/data/blog/post-1.html"
+                    }
                 }
-              }
+            },
+            "PostDetail": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Моя первая статья"
+                    },
+                    "date": {
+                        "type": "string",
+                        "example": "11.09.2026 19:30"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "example": "post-1.html"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "HTML-содержимое статьи для редактора",
+                        "example": "<p>Текст статьи...</p>"
+                    },
+                    "background": {
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "url": {
+                        "type": "string",
+                        "example": "/data/blog/post-1.html"
+                    }
+                }
+            },
+            "PostCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Заголовок статьи",
+                        "example": "Новая статья из мобильного приложения"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "HTML контент статьи",
+                        "example": "<p>Привет из мобильного приложения!</p>"
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Дата публикации (необязательно)",
+                        "example": "11.09.2026 19:30"
+                    }
+                },
+                "required": [
+                    "title",
+                    "content"
+                ]
+            },
+            "DraftItem": {
+                "type": "object",
+                "properties": {
+                    "filename": {
+                        "type": "string",
+                        "example": "1789144000.json"
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Набросок новой статьи"
+                    },
+                    "content": {
+                        "type": "string",
+                        "example": "<p>Черновой текст...</p>"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "example": 1789144000
+                    },
+                    "date": {
+                        "type": "string",
+                        "example": "2026-09-11 19:30:00"
+                    }
+                }
+            },
+            "AutosaveItem": {
+                "type": "object",
+                "properties": {
+                    "post_id": {
+                        "type": "string",
+                        "example": "1"
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Статья 1"
+                    },
+                    "content": {
+                        "type": "string",
+                        "example": "<p>Автосохраненный текст...</p>"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "example": 1789144000
+                    },
+                    "date": {
+                        "type": "string",
+                        "example": "11.09.2026 19:30:00"
+                    }
+                }
+            },
+            "MediaItem": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "m_6a8c3d.jpg"
+                    },
+                    "path": {
+                        "type": "string",
+                        "example": "/data/uploads/m_6a8c3d.jpg"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "Канонический относительный URL файла из папки data (например /data/uploads/photo.jpg) для вставки в HTML-теги <img src='...'>",
+                        "example": "/data/uploads/m_6a8c3d.jpg"
+                    },
+                    "absolute_url": {
+                        "type": "string",
+                        "description": "Полный абсолютный URL с доменом (http://хост/data/uploads/photo.jpg) для мобильных приложений и внешних редакторов",
+                        "example": "http://localhost/data/uploads/m_6a8c3d.jpg"
+                    },
+                    "data_path": {
+                        "type": "string",
+                        "description": "Относительный путь к файлу в файловой системе сайта (всегда внутри папки data/)",
+                        "example": "data/uploads/m_6a8c3d.jpg"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "example": 1048576
+                    },
+                    "modified_at": {
+                        "type": "string",
+                        "example": "2026-09-11T19:30:00+03:00"
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "image"
+                    }
+                }
+            },
+            "MediaUploadRequest": {
+                "type": "object",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "description": "Бинарный файл при multipart/form-data передаче"
+                    },
+                    "base64": {
+                        "type": "string",
+                        "description": "Base64-строка файла (альтернатива multipart для мобильных)",
+                        "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..."
+                    },
+                    "filename": {
+                        "type": "string",
+                        "description": "Оригинальное имя файла для Base64",
+                        "example": "photo.png"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "image",
+                            "video",
+                            "audio",
+                            "document",
+                            "font"
+                        ],
+                        "description": "Категория загружаемого файла",
+                        "example": "image"
+                    }
+                }
+            },
+            "MediaUploadResponse": {
+                "type": "object",
+                "properties": {
+                    "file_name": {
+                        "type": "string",
+                        "example": "m_6a8c3d.jpg"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "Относительный URL для вставки в HTML статьи (<img src='/data/uploads/...'>). Всегда начинается с /data/, никогда с /api/",
+                        "example": "/data/uploads/m_6a8c3d.jpg"
+                    },
+                    "absolute_url": {
+                        "type": "string",
+                        "description": "Абсолютный URL с протоколом и хостом для удаленных редакторов и WebView",
+                        "example": "http://localhost/data/uploads/m_6a8c3d.jpg"
+                    },
+                    "data_path": {
+                        "type": "string",
+                        "description": "Путь к файлу внутри папки data",
+                        "example": "data/uploads/m_6a8c3d.jpg"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "example": 245120
+                    },
+                    "mime_type": {
+                        "type": "string",
+                        "example": "image/jpeg"
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "image"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "example": "2026-09-11T19:30:00+03:00"
+                    }
+                }
+            },
+            "BlogItem": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "example": "4a7d1ed8203c94d97d0ffacfa8c71dec"
+                    },
+                    "path": {
+                        "type": "string",
+                        "example": "C:\\xampp\\htdocs\\data"
+                    },
+                    "normalized_path": {
+                        "type": "string",
+                        "example": "C:/xampp/htdocs/data"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "data"
+                    },
+                    "folder_name": {
+                        "type": "string",
+                        "example": "data"
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "is_default": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "exists": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "is_writable": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "posts_count": {
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "drafts_count": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "url": {
+                        "type": "string",
+                        "example": "/data/blog.html"
+                    }
+                }
+            },
+            "BlogAddRequest": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Абсолютный или относительный путь к директории блога",
+                        "example": "data_secondary"
+                    },
+                    "make_active": {
+                        "type": "boolean",
+                        "description": "Сделать добавляемый блог активным сразу после добавления",
+                        "example": false
+                    },
+                    "initialize": {
+                        "type": "boolean",
+                        "description": "Инициализировать файловую структуру блога (blog/, uploads/, drafts/, posts-meta.json)",
+                        "example": true
+                    }
+                },
+                "required": [
+                    "path"
+                ]
+            },
+            "BlogSwitchRequest": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Путь к блогу, имя папки (folder_name) или идентификатор для переключения",
+                        "example": "data_secondary"
+                    }
+                },
+                "required": [
+                    "path"
+                ]
             }
-          }
         },
-        "responses": { "200": { "description": "Сохранено" } }
-      }
+        "parameters": {
+            "BlogPathHeader": {
+                "name": "X-Blog-Path",
+                "in": "header",
+                "required": false,
+                "description": "Опциональный путь к директории блога для изоляции запроса (из blog_paths). Позволяет клиенту оперировать нужным блогом без переключения сервера.",
+                "schema": {
+                    "type": "string",
+                    "example": "C:\\xampp\\htdocs\\data_tech"
+                }
+            },
+            "BlogHeader": {
+                "name": "X-Blog",
+                "in": "header",
+                "required": false,
+                "description": "Опциональное имя папки блога (например data или data_tech) для изоляции запроса.",
+                "schema": {
+                    "type": "string",
+                    "example": "data_tech"
+                }
+            }
+        }
     },
-    "/v1/system/status": {
-      "get": {
-        "summary": "Системный статус, статистика и свободное место на диске",
-        "responses": { "200": { "description": "Системная диагностика" } }
-      }
-    },
-    "/v1/system/integrity": {
-      "get": {
-        "summary": "Проверка целостности файлов и метаданных блога",
-        "responses": { "200": { "description": "Отчет о целостности" } }
-      }
-    },
-    "/v1/system/integrity/fix": {
-      "post": {
-        "summary": "Автоматическое исправление нарушений целостности",
-        "responses": { "200": { "description": "Отчет об исправлении" } }
-      }
-    },
-    "/v1/system/languages": {
-      "get": {
-        "summary": "Список поддерживаемых языков локализации",
-        "security": [],
-        "responses": { "200": { "description": "Языки" } }
-      }
-    },
-    "/v1/system/history": {
-      "get": {
-        "summary": "Получение стека истории отмены/повтора (undo/redo)",
-        "responses": { "200": { "description": "История" } }
-      },
-      "post": {
-        "summary": "Синхронизация истории правок",
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object" } } }
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ],
+    "paths": {
+        "/": {
+            "get": {
+                "summary": "Информация об API и корневой статус",
+                "security": [],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         },
-        "responses": { "200": { "description": "Сохранено" } }
-      },
-      "delete": {
-        "summary": "Очистка истории правок",
-        "responses": { "200": { "description": "Очищено" } }
-      }
-    }
-  }
+        "/v1/auth/login": {
+            "post": {
+                "summary": "Авторизация и получение Bearer токена",
+                "description": "Проверяет пароль доступа, регистрирует мобильное устройство и возвращает Bearer-токен на 30 дней. Защищен от брутфорса (блокировка на 15 мин после 3 неверных попыток).",
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Токен успешно выдан",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Неверный пароль",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "IP временно заблокирован из-за превышения попыток",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/logout": {
+            "post": {
+                "summary": "Выход и отзыв текущего токена",
+                "responses": {
+                    "200": {
+                        "description": "Токен отозван",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/me": {
+            "get": {
+                "summary": "Проверка авторизации и текущего токена",
+                "responses": {
+                    "200": {
+                        "description": "Данные текущей сессии",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/tokens": {
+            "get": {
+                "summary": "Список активных мобильных устройств и сессий",
+                "responses": {
+                    "200": {
+                        "description": "Список сессий",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/tokens/{id}": {
+            "delete": {
+                "summary": "Отзыв токена конкретного устройства",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "ID токена (например tok_5588d87a8c890fba)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Токен отозван",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/change-password": {
+            "post": {
+                "summary": "Смена пароля администратора",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string"
+                                    },
+                                    "new_password": {
+                                        "type": "string",
+                                        "minLength": 6
+                                    }
+                                },
+                                "required": [
+                                    "new_password"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Пароль изменен"
+                    }
+                }
+            }
+        },
+        "/v1/blogs": {
+            "get": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Список всех настроенных блогов (blog_paths)",
+                "description": "Возвращает список всех зарегистрированных в editor_settings.json директорий блогов с метаданными (активен ли, количество статей, черновиков, url).",
+                "responses": {
+                    "200": {
+                        "description": "Список блогов",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/BlogItem"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Добавление нового блога в конфигурацию",
+                "description": "Добавляет новый путь в массив blog_paths в editor_settings.json и опционально создает необходимую файловую структуру (blog, uploads, drafts, templates, posts-meta.json).",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BlogAddRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Блог успешно добавлен",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Удаление пути блога из конфигурации",
+                "description": "Удаляет путь блога из массива blog_paths. Файлы на диске не удаляются в целях безопасности. Нельзя удалить единственный оставшийся блог.",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "path": {
+                                        "type": "string",
+                                        "example": "data_secondary"
+                                    }
+                                },
+                                "required": [
+                                    "path"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "path",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "data_secondary"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Блог успешно удален из конфигурации"
+                    }
+                }
+            }
+        },
+        "/v1/blogs/active": {
+            "get": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Получение информации о текущем активном блоге",
+                "description": "Возвращает подробную информацию о текущем активном блоге с учетом заголовков X-Blog-Path / X-Blog или глобальной настройки active_blog_path.",
+                "responses": {
+                    "200": {
+                        "description": "Данные активного блога",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/blogs/switch": {
+            "post": {
+                "tags": [
+                    "Blogs"
+                ],
+                "summary": "Глобальное переключение активного блога",
+                "description": "Переключает активный блог на сервере (сохраняется в active_blog_path в editor_settings.json и сессии). Перегенерирует RSS.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BlogSwitchRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Активный блог переключен",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/posts": {
+            "get": {
+                "summary": "Список статей с пагинацией и поиском",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        },
+                        "description": "Номер страницы"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        },
+                        "description": "Количество на странице (1-100)"
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Поисковый запрос по названию"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "id_desc",
+                                "id_asc",
+                                "date_desc",
+                                "date_asc"
+                            ],
+                            "default": "id_desc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список статей",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Создание новой статьи",
+                "description": "Создает HTML-файл статьи из активного шаблона, обновляет posts-meta.json, создает версию бэкапа 1 и генерирует RSS ленту.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PostCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Статья создана",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/posts/{id}": {
+            "get": {
+                "summary": "Получение содержимого и метаданных статьи",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные статьи",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Статья не найдена"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Обновление статьи",
+                "description": "Обновляет HTML статьи, создает инкрементный бэкап и перегенерирует RSS.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PostCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Статья обновлена",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Удаление статьи",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "renumber",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": "Автоматически перенумеровать статьи"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Статья удалена"
+                    }
+                }
+            }
+        },
+        "/v1/posts/{id}/preview": {
+            "get": {
+                "summary": "Готовый HTML-предпросмотр статьи для мобильного WebView",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML разметка статьи",
+                        "content": {
+                            "text/html": []
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/posts/renumber": {
+            "post": {
+                "summary": "Сквозная перенумерация всех статей блога",
+                "responses": {
+                    "200": {
+                        "description": "Результат перенумерации"
+                    }
+                }
+            }
+        },
+        "/v1/posts/regenerate": {
+            "post": {
+                "summary": "Перегенерация всех HTML-статей блога из шаблонов",
+                "responses": {
+                    "200": {
+                        "description": "Количество обновленных статей"
+                    }
+                }
+            }
+        },
+        "/v1/drafts": {
+            "get": {
+                "summary": "Список всех черновиков",
+                "responses": {
+                    "200": {
+                        "description": "Массив черновиков"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Сохранение нового черновика",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "content": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Черновик сохранен"
+                    }
+                }
+            }
+        },
+        "/v1/drafts/{filename}": {
+            "get": {
+                "summary": "Получение содержимого черновика",
+                "parameters": [
+                    {
+                        "name": "filename",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Черновик"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Удаление черновика",
+                "parameters": [
+                    {
+                        "name": "filename",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Удален"
+                    }
+                }
+            }
+        },
+        "/v1/autosaves": {
+            "get": {
+                "summary": "Список всех автосохранений",
+                "responses": {
+                    "200": {
+                        "description": "Массив автосохранений"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Очистка всех автосохранений",
+                "responses": {
+                    "200": {
+                        "description": "Очищено"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Сохранение состояния автосохранения",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "post_id": {
+                                        "type": "string",
+                                        "example": "1"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "content": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "post_id",
+                                    "content"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Сохранено"
+                    }
+                }
+            }
+        },
+        "/v1/autosaves/{postId}": {
+            "get": {
+                "summary": "Получение автосохранения конкретной статьи",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные автосохранения"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Удаление автосохранения статьи",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Удалено"
+                    }
+                }
+            }
+        },
+        "/v1/backups": {
+            "get": {
+                "summary": "Реестр всех резервных копий по статьям",
+                "responses": {
+                    "200": {
+                        "description": "Реестр бэкапов"
+                    }
+                }
+            }
+        },
+        "/v1/backups/{postId}": {
+            "get": {
+                "summary": "Список резервных копий статьи",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Версии статьи"
+                    }
+                }
+            }
+        },
+        "/v1/backups/{postId}/{backupNumber}": {
+            "get": {
+                "summary": "Просмотр содержимого конкретной версии бэкапа",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "backupNumber",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Контент бэкапа"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Удаление версии бэкапа",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "backupNumber",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Удалено"
+                    }
+                }
+            }
+        },
+        "/v1/backups/{postId}/{backupNumber}/restore": {
+            "post": {
+                "summary": "Откат статьи к выбранной версии бэкапа",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "backupNumber",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Статья восстановлена"
+                    }
+                }
+            }
+        },
+        "/v1/media": {
+            "get": {
+                "summary": "Список медиафайлов с фильтрацией по типу",
+                "description": "Возвращает список файлов из папки /data/ (uploads, smiles, backgrounds, custom_fonts). Каждый элемент содержит 'url' (/data/uploads/...), 'absolute_url' и 'data_path'. В сторонние редакторы передавайте 'url' для тегов <img src='...'>.",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "images",
+                                "video",
+                                "audio",
+                                "documents",
+                                "fonts"
+                            ],
+                            "default": "all"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Массив медиафайлов"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Удаление медиафайла",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "filename": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "images",
+                                            "video",
+                                            "audio",
+                                            "documents",
+                                            "fonts"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "filename"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Файл удален"
+                    }
+                }
+            }
+        },
+        "/v1/media/upload": {
+            "post": {
+                "summary": "Универсальная загрузка медиафайлов",
+                "description": "Загружает файл (multipart/form-data или Base64 JSON) напрямую в папку /data/uploads/. Возвращает канонический 'url' (/data/uploads/photo.jpg), 'absolute_url' (http://хост/data/uploads/photo.jpg) и 'data_path'. Вставляйте 'url' в статьи. Ни в коем случае не используйте префикс /api/ для ссылок на медиафайлы!",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MediaUploadRequest"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MediaUploadRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Файл успешно загружен в папку data/uploads/",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaUploadResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/media/backgrounds": {
+            "get": {
+                "summary": "Список настроек фонов статей",
+                "responses": {
+                    "200": {
+                        "description": "Фоны"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Установка индивидуального фона для статьи",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "post_id": {
+                                        "type": "integer"
+                                    },
+                                    "background": {
+                                        "type": "string",
+                                        "example": "/data/uploads/bg.jpg"
+                                    },
+                                    "repeat": {
+                                        "type": "string",
+                                        "example": "no-repeat"
+                                    },
+                                    "size": {
+                                        "type": "string",
+                                        "example": "cover"
+                                    },
+                                    "position": {
+                                        "type": "string",
+                                        "example": "center"
+                                    },
+                                    "overlay_color": {
+                                        "type": "string",
+                                        "example": "#000000"
+                                    },
+                                    "overlay_opacity": {
+                                        "type": "number",
+                                        "example": 0.5
+                                    }
+                                },
+                                "required": [
+                                    "post_id",
+                                    "background"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Фон установлен"
+                    }
+                }
+            }
+        },
+        "/v1/media/backgrounds/{postId}": {
+            "delete": {
+                "summary": "Удаление фона статьи",
+                "parameters": [
+                    {
+                        "name": "postId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Фон удален"
+                    }
+                }
+            }
+        },
+        "/v1/media/smiles": {
+            "get": {
+                "summary": "Список наборов стикеров и смайлов",
+                "responses": {
+                    "200": {
+                        "description": "Наборы смайлов"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Загрузка набора смайлов или добавление смайлов в набор",
+                "description": "Позволяет загрузить набор GIF/PNG/WebP/SVG/JPG смайлов. Поддерживает multipart/form-data (параметры 'setName' и файлы 'smiles[]' или 'file') и JSON Base64 (объект с 'setName' и массивом 'items' [{ 'filename': 'smile1.gif', 'base64': '...' }]).",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "setName": {
+                                        "type": "string",
+                                        "example": "kolobok"
+                                    },
+                                    "smiles": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "setName"
+                                ]
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "setName": {
+                                        "type": "string",
+                                        "example": "kolobok"
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "filename": {
+                                                    "type": "string",
+                                                    "example": "smile1.gif"
+                                                },
+                                                "base64": {
+                                                    "type": "string",
+                                                    "example": "data:image/gif;base64,R0lGODlh..."
+                                                }
+                                            },
+                                            "required": [
+                                                "base64"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "setName",
+                                    "items"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Смайлы успешно загружены",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/media/smiles/{setName}": {
+            "delete": {
+                "summary": "Удаление набора смайлов",
+                "description": "Удаляет указанную директорию набора смайлов со всеми входящими в неё файлами.",
+                "parameters": [
+                    {
+                        "name": "setName",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Имя набора смайлов"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Набор смайлов успешно удален",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Набор смайлов не найден"
+                    }
+                }
+            }
+        },
+        "/v1/media/fonts": {
+            "get": {
+                "summary": "Список пользовательских шрифтов и сгенерированный CSS",
+                "responses": {
+                    "200": {
+                        "description": "Шрифты и CSS"
+                    }
+                }
+            }
+        },
+        "/v1/media/fonts/{filename}": {
+            "delete": {
+                "summary": "Удаление пользовательского шрифта",
+                "parameters": [
+                    {
+                        "name": "filename",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Имя файла шрифта (например 'Roboto-Bold.ttf')"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Шрифт успешно удален",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Шрифт не найден"
+                    }
+                }
+            }
+        },
+        "/v1/templates": {
+            "get": {
+                "summary": "Список доступных HTML-шаблонов",
+                "responses": {
+                    "200": {
+                        "description": "Шаблоны"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Создание или обновление шаблона",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "code": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "code"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Шаблон сохранен"
+                    }
+                }
+            }
+        },
+        "/v1/templates/{name}": {
+            "get": {
+                "summary": "Код и параметры шаблона",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Шаблон"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Удаление кастомного шаблона",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Шаблон удален"
+                    }
+                }
+            }
+        },
+        "/v1/templates/apply": {
+            "post": {
+                "summary": "Применение шаблона к конкретной статье или ко всем",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "template": {
+                                        "type": "string"
+                                    },
+                                    "post_id": {
+                                        "type": "integer",
+                                        "description": "Если не указан, устанавливается как шаблон по умолчанию для всего блога"
+                                    }
+                                },
+                                "required": [
+                                    "template"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Шаблон применен"
+                    }
+                }
+            }
+        },
+        "/v1/includes": {
+            "get": {
+                "summary": "Список сниппетов (вставок)",
+                "responses": {
+                    "200": {
+                        "description": "Сниппеты"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Создание нового сниппета",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "display_name": {
+                                        "type": "string"
+                                    },
+                                    "content": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "display_name",
+                                    "content"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Сниппет сохранен"
+                    }
+                }
+            }
+        },
+        "/v1/includes/{name}": {
+            "get": {
+                "summary": "Содержимое сниппета",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Сниппет"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Удаление сниппета",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Удален"
+                    }
+                }
+            }
+        },
+        "/v1/settings/editor": {
+            "get": {
+                "summary": "Настройки редактора NPBlog",
+                "responses": {
+                    "200": {
+                        "description": "Настройки"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Обновление параметров редактора",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "contentWidth": {
+                                        "type": "integer",
+                                        "example": 920
+                                    },
+                                    "amoledTheme": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "language": {
+                                        "type": "string",
+                                        "example": "ru"
+                                    },
+                                    "autosaveInterval": {
+                                        "type": "integer",
+                                        "example": 60
+                                    },
+                                    "autosaveEnabled": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "rss_enabled": {
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Настройки сохранены"
+                    }
+                }
+            }
+        },
+        "/v1/settings/global": {
+            "get": {
+                "summary": "Глобальные параметры блога (SEO, шапка, навигация)",
+                "responses": {
+                    "200": {
+                        "description": "Глобальные настройки"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Обновление глобальных параметров блога",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "global_settings": {
+                                        "type": "object"
+                                    },
+                                    "blog_view_settings": {
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Сохранено"
+                    }
+                }
+            }
+        },
+        "/v1/system/status": {
+            "get": {
+                "summary": "Системный статус, статистика и свободное место на диске",
+                "responses": {
+                    "200": {
+                        "description": "Системная диагностика"
+                    }
+                }
+            }
+        },
+        "/v1/system/integrity": {
+            "get": {
+                "summary": "Проверка целостности файлов и метаданных блога",
+                "responses": {
+                    "200": {
+                        "description": "Отчет о целостности"
+                    }
+                }
+            }
+        },
+        "/v1/system/integrity/fix": {
+            "post": {
+                "summary": "Автоматическое исправление нарушений целостности",
+                "responses": {
+                    "200": {
+                        "description": "Отчет об исправлении"
+                    }
+                }
+            }
+        },
+        "/v1/system/languages": {
+            "get": {
+                "summary": "Список поддерживаемых языков локализации",
+                "security": [],
+                "responses": {
+                    "200": {
+                        "description": "Языки"
+                    }
+                }
+            }
+        },
+        "/v1/system/history": {
+            "get": {
+                "summary": "Получение стека истории отмены/повтора (undo/redo)",
+                "responses": {
+                    "200": {
+                        "description": "История"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Синхронизация истории правок",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Сохранено"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Очистка истории правок",
+                "responses": {
+                    "200": {
+                        "description": "Очищено"
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Blogs",
+            "description": "Управление множественными блогами (blog_paths, active_blog_path)"
+        }
+    ]
 }

@@ -14,7 +14,7 @@ class Response
         header("Access-Control-Allow-Origin: $origin");
         header('Access-Control-Allow-Credentials: true');
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
-        header('Access-Control-Allow-Headers: Authorization, Content-Type, Accept, Origin, X-Requested-With, X-API-Token, X-CSRF-Token, Cache-Control');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type, Accept, Origin, X-Requested-With, X-API-Token, X-CSRF-Token, Cache-Control, X-Blog-Path, X-Blog');
         header('Access-Control-Max-Age: 86400');
     }
 
