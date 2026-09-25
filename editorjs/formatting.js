@@ -105,16 +105,30 @@
         },
 
         isInsideEditor(node) {
-            const editor = this.getEditor();
-            if (!editor || !node) return false;
-            return editor.contains(node) || editor === node;
+            try {
+                const editor = this.getEditor();
+                if (!editor || !node) return false;
+                if (node === editor) return true;
+                if (node === document || node === window) return false;
+                if (typeof node.nodeType !== 'number') return false;
+                if (typeof editor.contains === 'function') {
+                    return editor.contains(node);
+                }
+            } catch (e) {
+                return false;
+            }
+            return false;
         },
 
         isSelectionInEditor() {
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return false;
-            const range = sel.getRangeAt(0);
-            return this.isInsideEditor(range.commonAncestorContainer);
+            try {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) return false;
+                const range = sel.getRangeAt(0);
+                return range && range.commonAncestorContainer ? this.isInsideEditor(range.commonAncestorContainer) : false;
+            } catch (e) {
+                return false;
+            }
         },
 
         restoreFocus(range) {
@@ -124,7 +138,7 @@
             const targetRange = range || window.savedRange || savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null);
             const sel = window.getSelection();
 
-            if (targetRange && this.isInsideEditor(targetRange.commonAncestorContainer)) {
+            if (targetRange && targetRange.commonAncestorContainer && this.isInsideEditor(targetRange.commonAncestorContainer)) {
                 try {
                     editor.focus({ preventScroll: true });
                     if (sel) {
@@ -148,36 +162,38 @@
         },
 
         saveSelection(customRange) {
-            const editor = this.getEditor();
-            if (!editor) return;
+            try {
+                const editor = this.getEditor();
+                if (!editor) return;
 
-            if (customRange && this.isInsideEditor(customRange.commonAncestorContainer)) {
-                const cloned = customRange.cloneRange();
-                savedRange = cloned;
-                window.savedRange = cloned;
-                if (typeof window.setGlobalSavedRange === 'function') {
-                    window.setGlobalSavedRange(cloned);
+                if (customRange && customRange.commonAncestorContainer && this.isInsideEditor(customRange.commonAncestorContainer)) {
+                    const cloned = customRange.cloneRange();
+                    savedRange = cloned;
+                    window.savedRange = cloned;
+                    if (typeof window.setGlobalSavedRange === 'function') {
+                        window.setGlobalSavedRange(cloned);
+                    }
+                    return;
                 }
-                return;
-            }
 
-            // If focus is currently in another element (modal, dropdown, text input), do not overwrite editor's selection
-            if (document.activeElement && document.activeElement !== editor && !editor.contains(document.activeElement)) {
-                return;
-            }
-
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-
-            const range = sel.getRangeAt(0);
-            if (this.isInsideEditor(range.commonAncestorContainer)) {
-                const cloned = range.cloneRange();
-                savedRange = cloned;
-                window.savedRange = cloned;
-                if (typeof window.setGlobalSavedRange === 'function') {
-                    window.setGlobalSavedRange(cloned);
+                // If focus is currently in another element (modal, dropdown, text input), do not overwrite editor's selection
+                if (document.activeElement && document.activeElement !== editor && !this.isInsideEditor(document.activeElement)) {
+                    return;
                 }
-            }
+
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) return;
+
+                const range = sel.getRangeAt(0);
+                if (range && range.commonAncestorContainer && this.isInsideEditor(range.commonAncestorContainer)) {
+                    const cloned = range.cloneRange();
+                    savedRange = cloned;
+                    window.savedRange = cloned;
+                    if (typeof window.setGlobalSavedRange === 'function') {
+                        window.setGlobalSavedRange(cloned);
+                    }
+                }
+            } catch (e) { }
         },
 
         setCursorToEnd(container) {
@@ -231,7 +247,7 @@
             if (!editor) return;
 
             // 1. If editor is completely empty or only contains whitespace/empty tags
-            if (!editor.hasChildNodes() || this.isEmpty(editor)) {
+            if (!editor.hasChildNodes() || (editor.children.length <= 1 && this.isEmpty(editor))) {
                 if (editor.innerHTML !== '<p><br></p>') {
                     editor.innerHTML = '<p><br></p>';
                 }
@@ -285,6 +301,22 @@
 
             // 4. Clean stray empty inline artifacts (without touching active caret)
             this.cleanDOMArtifacts(editor, true);
+
+            // 5. Ensure all formula widgets have contenteditable="false" and valid KaTeX markup
+            if (typeof window.refreshAllFormulasInEditor === 'function') {
+                window.refreshAllFormulasInEditor(editor);
+            } else {
+                editor.querySelectorAll('.npblog-formula, .npblog-formula-block').forEach(formulaEl => {
+                    formulaEl.setAttribute('contenteditable', 'false');
+                    const formula = formulaEl.getAttribute('data-formula');
+                    if (formula && typeof katex !== 'undefined') {
+                        const isBlock = formulaEl.getAttribute('data-display') === 'block' || formulaEl.classList.contains('npblog-formula-block');
+                        try {
+                            katex.render(formula, formulaEl, { displayMode: isBlock, throwOnError: false });
+                        } catch(e) {}
+                    }
+                });
+            }
         },
 
         /**
@@ -357,6 +389,7 @@
                 sel.addRange(range);
                 this.saveSelection();
                 if (typeof saveToHistory === 'function') saveToHistory();
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
@@ -372,6 +405,7 @@
                 sel.addRange(range);
                 this.saveSelection();
                 if (typeof saveToHistory === 'function') saveToHistory();
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
@@ -389,6 +423,7 @@
                 sel.addRange(range);
                 this.saveSelection();
                 if (typeof saveToHistory === 'function') saveToHistory();
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
@@ -415,6 +450,7 @@
                     this.setCursorToStart(newP);
                     this.saveSelection();
                     if (typeof saveToHistory === 'function') saveToHistory();
+                    editor.dispatchEvent(new Event('input', { bubbles: true }));
                     return;
                 }
                 // Non-empty list item -> default browser behavior handles LI cleanly
@@ -464,6 +500,7 @@
 
                 this.saveSelection();
                 if (typeof saveToHistory === 'function') saveToHistory();
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
@@ -477,8 +514,29 @@
                     this.setCursorToStart(newP);
                     this.saveSelection();
                     if (typeof saveToHistory === 'function') saveToHistory();
+                    editor.dispatchEvent(new Event('input', { bubbles: true }));
                     return;
                 }
+            }
+
+            // Formula block: Enter inserts new paragraph below without splitting formula
+            if (block && block.classList.contains('npblog-formula-block')) {
+                e.preventDefault();
+                const newP = document.createElement('p');
+                newP.innerHTML = '<br>';
+                block.parentNode.insertBefore(newP, block.nextSibling);
+                this.setCursorToStart(newP);
+                this.saveSelection();
+                if (typeof saveToHistory === 'function') saveToHistory();
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+                return;
+            }
+
+            // Ensure caret is never inside an inline formula when splitting
+            const formulaParent = (range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentNode).closest('.npblog-formula, .npblog-formula-block');
+            if (formulaParent) {
+                range.setStartAfter(formulaParent);
+                range.collapse(true);
             }
 
             // Standard Block Split (<p>, <div>, etc.)
@@ -526,7 +584,7 @@
                         afterContent = document.createDocumentFragment();
                     }
 
-                    const newBlock = document.createElement(block.tagName === 'DIV' ? 'div' : 'p');
+                    const newBlock = document.createElement('p');
                     if (block.className) newBlock.className = block.className;
                     if (block.style.cssText) newBlock.style.cssText = block.style.cssText;
 
@@ -552,6 +610,7 @@
 
             this.saveSelection();
             if (typeof saveToHistory === 'function') saveToHistory();
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
         },
 
         /**
@@ -600,6 +659,17 @@
                             if (lastCell) {
                                 this.setCursorToEnd(lastCell);
                             }
+                            this.saveSelection();
+                            if (typeof saveToHistory === 'function') saveToHistory();
+                        }
+                        return;
+                    }
+
+                    // If previous sibling is a formula block: do NOT delete or merge formula block on backspace from below
+                    if (prevSibling.classList.contains('npblog-formula-block')) {
+                        if (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
+                            block.parentNode.removeChild(block);
+                            this.setCursorToEnd(prevSibling);
                             this.saveSelection();
                             if (typeof saveToHistory === 'function') saveToHistory();
                         }
@@ -1238,34 +1308,44 @@
                 if (!block || block === editor) {
                     range.insertNode(frag);
                     if (lastNode && lastNode.parentNode) {
-                        lastNode.parentNode.insertBefore(emptyP, lastNode.nextSibling);
+                        if (lastNode.nextSibling) {
+                            this.setCursorToStart(lastNode.nextSibling);
+                        } else {
+                            lastNode.parentNode.insertBefore(emptyP, lastNode.nextSibling);
+                            this.setCursorToStart(emptyP);
+                        }
                     } else {
                         editor.appendChild(emptyP);
+                        this.setCursorToStart(emptyP);
                     }
-                    this.setCursorToStart(emptyP);
                 } else if (this.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr')) {
                     // Current block is empty paragraph -> replace with block media
                     const parent = block.parentNode;
+                    const next = block.nextSibling;
                     parent.insertBefore(frag, block);
-                    parent.insertBefore(emptyP, block);
                     parent.removeChild(block);
-                    this.setCursorToStart(emptyP);
+                    if (next) {
+                        this.setCursorToStart(next);
+                    } else {
+                        parent.appendChild(emptyP);
+                        this.setCursorToStart(emptyP);
+                    }
                 } else if (this.isCaretAtStartOfBlock(block, range)) {
                     // At start of block -> insert media before block
                     block.parentNode.insertBefore(frag, block);
                     this.setCursorToStart(block);
                 } else if (this.isCaretAtEndOfBlock(block, range)) {
-                    // At end of block -> insert media after block, then empty paragraph
+                    // At end of block -> insert media after block
                     const parent = block.parentNode;
                     const next = block.nextSibling;
                     if (next) {
                         parent.insertBefore(frag, next);
-                        parent.insertBefore(emptyP, next);
+                        this.setCursorToStart(next);
                     } else {
                         parent.appendChild(frag);
                         parent.appendChild(emptyP);
+                        this.setCursorToStart(emptyP);
                     }
-                    this.setCursorToStart(emptyP);
                 } else {
                     // In the middle of block -> split block, insert media between halves
                     const afterRange = document.createRange();
@@ -1311,6 +1391,7 @@
             const toRemove = [];
             while ((textNode = walker.nextNode())) {
                 if (activeNode && textNode === activeNode) continue;
+                if (textNode.parentElement && textNode.parentElement.closest('.npblog-formula, .npblog-formula-block, .katex, math')) continue;
                 const val = textNode.nodeValue;
                 if (/[\u200B\u200C\u200D\uFEFF]/.test(val)) {
                     const cleaned = val.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
@@ -1328,6 +1409,7 @@
             // 2. Unwrap useless spans without styling, class, or id
             container.querySelectorAll('span').forEach(span => {
                 if (span.id === 'customCaret' || span.dataset.npblogAnchor) return;
+                if (span.closest('.npblog-formula, .npblog-formula-block, .katex, math')) return;
                 const hasStyle = span.getAttribute('style') && span.getAttribute('style').trim().length > 0;
                 const hasClass = span.getAttribute('class') && span.getAttribute('class').trim().length > 0;
                 const hasId = span.getAttribute('id') && span.getAttribute('id').trim().length > 0;
@@ -1351,8 +1433,9 @@
                 passes++;
                 container.querySelectorAll(inlineSelectors).forEach(el => {
                     if (activeNode && el.contains(activeNode)) return;
-                    if (el.id === 'customCaret' || el.dataset.npblogAnchor) return;
-                    if (el.querySelector('img, video, audio, iframe, table, svg, canvas, [data-npblog-anchor]')) return;
+                    if (el.closest('.npblog-formula, .npblog-formula-block, .katex, math')) return;
+                    if (el.id === 'customCaret' || el.dataset.npblogAnchor || el.classList.contains('npblog-formula') || el.classList.contains('npblog-formula-block') || el.hasAttribute('data-formula') || el.classList.contains('katex')) return;
+                    if (el.querySelector('img, video, audio, iframe, table, svg, canvas, [data-npblog-anchor], [data-formula], .npblog-formula, .npblog-formula-block, .katex, math')) return;
                     const text = el.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '');
                     if (text.length === 0) {
                         if (el.parentNode) {
@@ -1388,29 +1471,43 @@
                 el.removeAttribute('data-resizers-added');
             });
 
-            // Remove contenteditable attributes from cells or blocks
-            temp.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+            // Remove contenteditable attributes from cells or blocks, but preserve on non-editable widgets
+            temp.querySelectorAll('[contenteditable]').forEach(el => {
+                if (el.getAttribute('contenteditable') === 'false' && (el.classList.contains('npblog-formula') || el.classList.contains('npblog-formula-block') || el.hasAttribute('data-formula') || el.classList.contains('code-block') || el.classList.contains('custom-blog-btn'))) {
+                    return;
+                }
+                el.removeAttribute('contenteditable');
+            });
 
             // Remove selection markers
             temp.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
 
+            // Shelter formula elements directly from DOM so they are never touched by cleanDOMArtifacts or regexes
+            const formulaSaveBlocks = [];
+            temp.querySelectorAll('.npblog-formula, .npblog-formula-block, [data-formula]').forEach(formulaEl => {
+                if (formulaEl.parentElement && formulaEl.parentElement.closest('.npblog-formula, .npblog-formula-block, [data-formula]')) {
+                    return;
+                }
+                const idx = formulaSaveBlocks.length;
+                formulaSaveBlocks.push(formulaEl.outerHTML);
+                const placeholder = document.createTextNode('___FORMULA_SAVE_HOLDER_' + idx + '___');
+                formulaEl.parentNode.replaceChild(placeholder, formulaEl);
+            });
+
             // Clean DOM artifacts: zero-width spaces, empty inline elements, useless spans
             this.cleanDOMArtifacts(temp, false);
 
-            // Trim trailing empty paragraphs and blocks at the end of the document
-            while (temp.lastElementChild) {
-                const last = temp.lastElementChild;
-                const tag = last.tagName.toUpperCase();
-                if (tag === 'P' || tag === 'DIV') {
-                    if (this.isEmpty(last)) {
-                        temp.removeChild(last);
-                        continue;
-                    }
+            // Remove stray empty paragraphs immediately following collapsible blocks (spoilers)
+            temp.querySelectorAll('details.spoiler-block').forEach(spoiler => {
+                let next = spoiler.nextElementSibling;
+                while (next && next.tagName === 'P' && this.isEmpty(next)) {
+                    const toRemove = next;
+                    next = next.nextElementSibling;
+                    toRemove.parentNode.removeChild(toRemove);
                 }
-                break;
-            }
+            });
 
-            // Ensure remaining empty paragraphs in the middle contain at least a <br>
+            // Ensure empty paragraphs and blocks contain at least a <br>
             temp.querySelectorAll('p, div').forEach(block => {
                 if (block.innerHTML.trim() === '') {
                     block.innerHTML = '<br>';
@@ -1418,6 +1515,9 @@
             });
 
             if (temp.children.length === 0 && temp.textContent.trim() === '') {
+                return '';
+            }
+            if (temp.children.length === 1 && temp.firstElementChild.tagName === 'P' && this.isEmpty(temp.firstElementChild)) {
                 return '';
             }
 
@@ -1430,13 +1530,17 @@
                 cleaned = cleaned.replace(/<(strong|b|em|i|u|s|strike|del|sup|sub|code|span)(?:\s+[^>]*)?>\s*(?:&nbsp;|\u200B|\uFEFF)?\s*<\/\1>/gi, '');
             } while (cleaned !== prevCleaned);
 
-            // Remove empty paragraphs that only contained empty tags
-            cleaned = cleaned.replace(/<p(?:\s+[^>]*)?>\s*<\/p>/gi, '');
+            // Normalize empty paragraphs without content to have <br> instead of deleting them
+            cleaned = cleaned.replace(/<p(?:\s+[^>]*)?>\s*<\/p>/gi, '<p><br></p>');
 
-            // Trim trailing empty paragraphs
-            cleaned = cleaned.replace(/(?:<p(?:\s+[^>]*)?>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>\s*)+$/gi, '');
+            let formatted = this.formatHTML(cleaned);
 
-            return this.formatHTML(cleaned);
+            // Restore sheltered formulas
+            for (let i = 0; i < formulaSaveBlocks.length; i++) {
+                formatted = formatted.replace('___FORMULA_SAVE_HOLDER_' + i + '___', formulaSaveBlocks[i]);
+            }
+
+            return formatted;
         },
 
         /**
@@ -1445,8 +1549,29 @@
         formatHTML(html) {
             if (!html) return '';
 
+            let formulaBlocks = [];
+            let formatted = html;
+
+            // Shelter formula elements from block indentation/splitting using DOM extraction if raw formulas exist
+            if (typeof document !== 'undefined' && (formatted.indexOf('npblog-formula') !== -1 || formatted.indexOf('data-formula') !== -1)) {
+                try {
+                    const tempDoc = document.createElement('div');
+                    tempDoc.innerHTML = formatted;
+                    tempDoc.querySelectorAll('.npblog-formula, .npblog-formula-block, [data-formula]').forEach(formulaEl => {
+                        if (formulaEl.parentElement && formulaEl.parentElement.closest('.npblog-formula, .npblog-formula-block, [data-formula]')) {
+                            return;
+                        }
+                        const idx = formulaBlocks.length;
+                        formulaBlocks.push(formulaEl.outerHTML);
+                        const placeholder = document.createTextNode('___FORMULA_BLOCK_HOLDER_' + idx + '___');
+                        formulaEl.parentNode.replaceChild(placeholder, formulaEl);
+                    });
+                    formatted = tempDoc.innerHTML;
+                } catch (e) { }
+            }
+
             let preBlocks = [];
-            let formatted = html.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, function (match) {
+            formatted = formatted.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, function (match) {
                 preBlocks.push(match);
                 return '___PRE_BLOCK_HOLDER_' + (preBlocks.length - 1) + '___';
             });
@@ -1454,7 +1579,8 @@
             const blockTags = [
                 'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
                 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
-                'blockquote', 'section', 'article', 'header', 'footer', 'hr'
+                'blockquote', 'section', 'article', 'header', 'footer', 'hr',
+                'details', 'summary'
             ];
 
             formatted = formatted.replace(/\r/g, '');
@@ -1513,6 +1639,9 @@
             }
 
             let finalHtml = result.join('\n');
+            for (let i = 0; i < formulaBlocks.length; i++) {
+                finalHtml = finalHtml.replace('___FORMULA_BLOCK_HOLDER_' + i + '___', formulaBlocks[i]);
+            }
             for (let i = 0; i < preBlocks.length; i++) {
                 finalHtml = finalHtml.replace('___PRE_BLOCK_HOLDER_' + i + '___', preBlocks[i]);
             }
@@ -1835,6 +1964,16 @@
     document.addEventListener('DOMContentLoaded', function () {
         const editor = VisualEngine.getEditor();
         if (!editor) return;
+
+        try {
+            document.execCommand('defaultParagraphSeparator', false, 'p');
+        } catch (e) {}
+
+        editor.addEventListener('focus', function () {
+            try {
+                document.execCommand('defaultParagraphSeparator', false, 'p');
+            } catch (e) {}
+        });
 
         // Toolbar focus guard
         const bar = document.getElementById('formatBarRow');

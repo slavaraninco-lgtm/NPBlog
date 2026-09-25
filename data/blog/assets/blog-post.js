@@ -44,10 +44,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Инициализация галерей
     initGalleries();
-    
+
+    // Инициализация формул (KaTeX)
+    initBlogFormulas();
+
     // Подгрузка глобального фона и шрифтов
     applyGlobalSettings();
 });
+
+// Авто-рендеринг формул NPBlog (KaTeX)
+function initBlogFormulas() {
+    if (typeof katex === 'undefined') return;
+    document.querySelectorAll('.npblog-formula, .npblog-formula-block').forEach(function(el) {
+        var tex = el.getAttribute('data-formula');
+        if (!tex) return;
+        var isBlock = el.getAttribute('data-display') === 'block' || el.classList.contains('npblog-formula-block');
+        try {
+            katex.render(tex, el, {
+                displayMode: isBlock,
+                throwOnError: false
+            });
+        } catch(e) {
+            console.warn('KaTeX render error:', e);
+        }
+    });
+}
 
 function openImageModal(src) {
     let index = modalImages.indexOf(src);

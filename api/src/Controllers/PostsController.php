@@ -45,9 +45,15 @@ class PostsController
             });
         }
 
-        // Sorting
+        // Sorting: pinned posts always at top unless requested otherwise
         $sort = (string)($_GET['sort'] ?? 'id_desc');
         usort($posts, function ($a, $b) use ($sort) {
+            $pinA = !empty($a['pinned']) ? 1 : 0;
+            $pinB = !empty($b['pinned']) ? 1 : 0;
+            if ($pinA !== $pinB) {
+                return $pinB - $pinA;
+            }
+
             $idA = (int)($a['id'] ?? 0);
             $idB = (int)($b['id'] ?? 0);
             $dateA = strtotime($a['date'] ?? '') ?: 0;
@@ -296,12 +302,16 @@ class PostsController
         safeWriteJson($backupMetaFile, $backupMeta);
 
         // Update posts-meta.json
-        $meta[] = [
+        $newPostItem = [
             'id' => $nextId,
             'title' => $title,
             'date' => $date,
             'filename' => 'post-' . $nextId . '.html'
         ];
+        if (!empty($body['pinned'])) {
+            $newPostItem['pinned'] = true;
+        }
+        $meta[] = $newPostItem;
         safeWriteJson($metaFile, $meta);
 
         // Regenerate RSS
@@ -412,6 +422,13 @@ class PostsController
         // Update posts-meta.json
         $meta[$postIndex]['title'] = $title;
         $meta[$postIndex]['date'] = $date;
+        if (isset($body['pinned'])) {
+            if (!empty($body['pinned'])) {
+                $meta[$postIndex]['pinned'] = true;
+            } else {
+                unset($meta[$postIndex]['pinned']);
+            }
+        }
         safeWriteJson($metaFile, $meta);
 
         // Regenerate RSS
@@ -538,6 +555,42 @@ class PostsController
     }
 
     /**
+     * POST /api/v1/posts/{id}/pin
+     */
+    public function togglePin(array $params, array $body): void
+    {
+        Auth::requireAuth();
+
+        $postId = (int)($params['id'] ?? $body['id'] ?? $_GET['id'] ?? 0);
+        if ($postId <= 0) {
+            Response::error('invalid_id', 'Некорректный ID статьи', 400);
+        }
+
+        $foundInfo = $this->findPostOrSearchCrossBlog($postId);
+        if (!$foundInfo) {
+            Response::error('post_not_found', 'Статья не найдена', 404);
+        }
+
+        $meta = $foundInfo['meta'];
+        $index = $foundInfo['index'];
+        $metaFile = $foundInfo['metaFile'];
+
+        $newPinned = isset($body['pinned']) ? (bool)$body['pinned'] : empty($meta[$index]['pinned']);
+        if ($newPinned) {
+            $meta[$index]['pinned'] = true;
+        } else {
+            unset($meta[$index]['pinned']);
+        }
+
+        safeWriteJson($metaFile, $meta);
+
+        Response::json([
+            'id' => $postId,
+            'pinned' => $newPinned
+        ], 200, $newPinned ? 'Статья закреплена' : 'Статья откреплена');
+    }
+
+    /**
      * POST /api/v1/posts/regenerate
      */
     public function regenerate(array $params, array $body): void
@@ -627,6 +680,53 @@ class PostsController
             return '___PRE_PLACEHOLDER_' . (count($preBlocks) - 1) . '___';
         }, $html);
 
+        // Extract formulas to preserve monolithic KaTeX structures without newlines or indentation
+        $formulaBlocks = [];
+        $offset = 0;
+        $sheltered = '';
+        while (preg_match('/<(span|div)[^>]*\b(npblog-formula|npblog-formula-block|data-formula)\b[^>]*>/i', $formatted, $m, PREG_OFFSET_CAPTURE, $offset)) {
+            $matchTag = strtolower($m[1][0]);
+            $startPos = $m[0][1];
+
+            $sheltered .= substr($formatted, $offset, $startPos - $offset);
+
+            $openTag = '<' . $matchTag;
+            $closeTag = '</' . $matchTag . '>';
+            $depth = 1;
+            $currPos = $startPos + strlen($m[0][0]);
+            $len = strlen($formatted);
+
+            while ($currPos < $len && $depth > 0) {
+                $nextOpen = stripos($formatted, $openTag, $currPos);
+                $nextClose = stripos($formatted, $closeTag, $currPos);
+
+                if ($nextClose === false) {
+                    $currPos = $len;
+                    break;
+                }
+
+                if ($nextOpen !== false && $nextOpen < $nextClose) {
+                    $charAfter = substr($formatted, $nextOpen + strlen($openTag), 1);
+                    if ($charAfter === ' ' || $charAfter === '>' || $charAfter === "\t" || $charAfter === "\n" || $charAfter === "\r") {
+                        $depth++;
+                    }
+                    $currPos = $nextOpen + strlen($openTag);
+                } else {
+                    $depth--;
+                    $currPos = $nextClose + strlen($closeTag);
+                }
+            }
+
+            $formulaHtml = substr($formatted, $startPos, $currPos - $startPos);
+            $idx = count($formulaBlocks);
+            $formulaBlocks[] = $formulaHtml;
+            $sheltered .= '___FORMULA_PLACEHOLDER_' . $idx . '___';
+
+            $offset = $currPos;
+        }
+        $sheltered .= substr($formatted, $offset);
+        $formatted = $sheltered;
+
         $blockTags = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'iframe', 'audio', 'center', 'details', 'summary', 'blockquote', 'hr'];
         $tagsRegex = implode('|', $blockTags);
 
@@ -643,6 +743,10 @@ class PostsController
         }
 
         $finalHtml = "\n" . implode("\n", $cleanLines) . "\n    ";
+
+        foreach ($formulaBlocks as $index => $formulaBlock) {
+            $finalHtml = str_replace('___FORMULA_PLACEHOLDER_' . $index . '___', $formulaBlock, $finalHtml);
+        }
 
         foreach ($preBlocks as $index => $preBlock) {
             $finalHtml = str_replace('___PRE_PLACEHOLDER_' . $index . '___', $preBlock, $finalHtml);

@@ -160,6 +160,8 @@ $router->post('/v1/posts/regenerate', [PostsController::class, 'regenerate']);
 $router->get('/v1/posts/{id}/preview', [PostsController::class, 'preview']);
 $router->get('/v1/posts/{id}', [PostsController::class, 'get']);
 $router->put('/v1/posts/{id}', [PostsController::class, 'update']);
+$router->post('/v1/posts/{id}/pin', [PostsController::class, 'togglePin']);
+$router->post('/v1/posts/pin', [PostsController::class, 'togglePin']);
 $router->delete('/v1/posts/{id}', [PostsController::class, 'delete']);
 $router->delete('/v1/posts', [PostsController::class, 'delete']);
 $router->post('/v1/posts/{id}/delete', [PostsController::class, 'delete']);

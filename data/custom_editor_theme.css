@@ -10,6 +10,7 @@
     --primary-color: rgba(129, 140, 248, 0.95);
     --primary-color2: #ffffff;
     --border-color: rgba(255, 255, 255, 0.18);
+    --hr-color: rgba(255, 255, 255, 0.18);
     
     /* Dark Liquid Glass System Tokens */
     --glass-bg: rgba(15, 22, 36, 0.72);
@@ -30,6 +31,7 @@
 /* AMOLED Deep Dark Variant Override */
 [data-amoled="true"] {
     --bg-color: #000000;
+    --hr-color: rgba(255, 255, 255, 0.18);
     --glass-bg: rgba(8, 10, 16, 0.85);
     --glass-bg-hover: rgba(16, 20, 32, 0.92);
     --glass-border: rgba(255, 255, 255, 0.22);
@@ -179,6 +181,7 @@ textarea {
 }
 
 .post-item {
+    position: relative;
     padding: 16px;
     border-radius: var(--glass-radius-md);
     border: 1px solid var(--glass-border);
@@ -189,6 +192,11 @@ textarea {
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.post-item.is-pinned {
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.18), var(--glass-shadow);
+}
+
 .post-item:hover {
     background: var(--glass-bg-hover);
     box-shadow: var(--glass-shadow-hover);
@@ -196,11 +204,55 @@ textarea {
     border-color: var(--glass-border-light);
 }
 
+.post-pin-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    opacity: 0.4;
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+.post-pin-btn:hover {
+    opacity: 1;
+    transform: scale(1.15);
+    background: rgba(255, 255, 255, 0.1);
+    color: #f59e0b;
+}
+
+.post-pin-btn.pinned {
+    opacity: 1;
+    color: #f59e0b;
+}
+
+.post-pin-btn.pinned:hover {
+    transform: scale(1.2);
+    color: #d97706;
+}
+
+.post-pin-btn svg {
+    display: block;
+    pointer-events: none;
+}
+
 .post-item-title {
     font-size: 14px;
     font-weight: 600;
     line-height: 1.35;
     margin: 0 0 6px 0;
+    padding-right: 30px;
     color: var(--text-color);
     display: -webkit-box;
     -webkit-line-clamp: 2;

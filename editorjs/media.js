@@ -1350,18 +1350,19 @@ initImageAlignmentHandlers();
         var alignWrap = node.nodeType === Node.ELEMENT_NODE ? node.closest('.blog-image-align-wrap') : (node.parentElement && node.parentElement.closest('.blog-image-align-wrap'));
         if (!alignWrap) return;
         e.preventDefault();
-        var emptyDiv = document.createElement('div');
-        emptyDiv.innerHTML = '<br>';
+        var emptyP = document.createElement('p');
+        emptyP.innerHTML = '<br>';
         var next = alignWrap.nextSibling;
         var parent = alignWrap.parentNode;
-        if (next) parent.insertBefore(emptyDiv, next);
-        else parent.appendChild(emptyDiv);
+        if (next) parent.insertBefore(emptyP, next);
+        else parent.appendChild(emptyP);
         var range = document.createRange();
-        range.setStart(emptyDiv, 0);
+        range.setStart(emptyP, 0);
         range.collapse(true);
         sel.removeAllRanges();
         sel.addRange(range);
         if (typeof savedRange !== 'undefined') savedRange = range.cloneRange();
+        ve.dispatchEvent(new Event('input', { bubbles: true }));
     });
 })();
 
@@ -1559,62 +1560,69 @@ initImageAlignmentHandlers();
         contentTa.addEventListener('keydown', onUndoRedoShortcut);
     }
 
-    // Обработчик для обеспечения возможности редактирования после spoiler блоков
+    // Позволяет кликнуть по пустому пространству редактора ниже последнего блока для продолжения ввода
     contentVisual.addEventListener('click', function (e) {
-        // Проверяем, кликнули ли мы на spoiler блок или рядом с ним
-        const ve = document.getElementById('contentVisual');
-        const spoilers = ve.querySelectorAll('.spoiler-block');
-
-        spoilers.forEach(function (spoiler) {
-            // Проверяем, есть ли после spoiler следующий элемент
-            if (!spoiler.nextSibling || (spoiler.nextSibling.nodeType === Node.TEXT_NODE && spoiler.nextSibling.textContent.trim() === '')) {
-                // Если нет следующего элемента или это пустой текстовый узел, создаем div
-                const emptyDiv = document.createElement('div');
-                emptyDiv.innerHTML = '<br>';
-                if (spoiler.nextSibling) {
-                    spoiler.parentNode.insertBefore(emptyDiv, spoiler.nextSibling);
-                } else {
-                    spoiler.parentNode.appendChild(emptyDiv);
+        if (e.target !== contentVisual) return;
+        const lastEl = contentVisual.lastElementChild;
+        if (!lastEl) return;
+        const rect = lastEl.getBoundingClientRect();
+        if (e.clientY > rect.bottom) {
+            // Кликнули ниже всех элементов редактора
+            if (lastEl.tagName === 'P' && typeof VisualEngine !== 'undefined' && VisualEngine.isEmpty(lastEl)) {
+                VisualEngine.setCursorToEnd(lastEl);
+                VisualEngine.saveSelection();
+            } else {
+                const emptyP = document.createElement('p');
+                emptyP.innerHTML = '<br>';
+                contentVisual.appendChild(emptyP);
+                if (typeof VisualEngine !== 'undefined') {
+                    VisualEngine.setCursorToStart(emptyP);
+                    VisualEngine.saveSelection();
                 }
+                contentVisual.dispatchEvent(new Event('input', { bubbles: true }));
             }
-        });
+        }
     });
 
-    // Обработчик для клавиш - создаем пустой блок при нажатии Enter в конце spoiler
+    // Обработчик клавиши Enter внутри spoiler-content:
+    // Позволяет делать переносы строк внутри спойлера, а при повторном Enter на пустой строке в конце — выйти из спойлера
     contentVisual.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            const sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-                const range = sel.getRangeAt(0);
-                let node = range.startContainer;
+        if (e.key !== 'Enter' || e.shiftKey) return;
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
 
-                // Ищем родительский spoiler-block
-                while (node && node !== contentVisual) {
-                    if (node.classList && node.classList.contains('spoiler-block')) {
-                        // Проверяем, находимся ли мы в конце spoiler
-                        const spoilerContent = node.querySelector('.spoiler-content');
-                        if (spoilerContent && spoilerContent.contains(range.startContainer)) {
-                            // Проверяем, есть ли после spoiler элемент
-                            if (!node.nextSibling || (node.nextSibling.nodeType === Node.TEXT_NODE && node.nextSibling.textContent.trim() === '')) {
-                                e.preventDefault();
-                                const emptyDiv = document.createElement('div');
-                                emptyDiv.innerHTML = '<br>';
-                                node.parentNode.insertBefore(emptyDiv, node.nextSibling);
+        let node = range.startContainer;
+        while (node && node !== contentVisual) {
+            if (node.classList && node.classList.contains('spoiler-block')) {
+                const spoilerContent = node.querySelector('.spoiler-content');
+                if (spoilerContent && spoilerContent.contains(range.startContainer)) {
+                    const block = (typeof VisualEngine !== 'undefined' && VisualEngine.getClosestBlock)
+                        ? VisualEngine.getClosestBlock(range.startContainer)
+                        : null;
 
-                                // Устанавливаем курсор в новый блок
-                                const newRange = document.createRange();
-                                newRange.setStart(emptyDiv, 0);
-                                newRange.collapse(true);
-                                sel.removeAllRanges();
-                                sel.addRange(newRange);
-                                return;
-                            }
+                    // Если текущий блок внутри spoiler пустой — выходим из спойлера
+                    if (block && spoilerContent.contains(block) && typeof VisualEngine !== 'undefined' && VisualEngine.isEmpty(block)) {
+                        e.preventDefault();
+                        if (block.parentNode) {
+                            block.parentNode.removeChild(block);
                         }
-                        break;
+                        if (node.nextElementSibling) {
+                            VisualEngine.setCursorToStart(node.nextElementSibling);
+                        } else {
+                            const emptyP = document.createElement('p');
+                            emptyP.innerHTML = '<br>';
+                            node.parentNode.insertBefore(emptyP, node.nextSibling);
+                            VisualEngine.setCursorToStart(emptyP);
+                            contentVisual.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        VisualEngine.saveSelection();
+                        return;
                     }
-                    node = node.parentNode;
                 }
+                break;
             }
+            node = node.parentNode;
         }
     });
 
@@ -2511,19 +2519,73 @@ function insertSpoiler() {
         const end = ta.selectionEnd;
         const before = ta.value.substring(0, start);
         const after = ta.value.substring(end);
-        ta.value = before + spoilerHtml + '\n' + after;
+        ta.value = before + spoilerHtml + after;
+        const newPos = start + spoilerHtml.length;
+        ta.setSelectionRange(newPos, newPos);
+        ta.focus();
     } else {
-        // Восстанавливаем сохраненный range если есть
+        const editor = document.getElementById('contentVisual');
+        if (!editor) return;
+
+        const sel = window.getSelection();
+        let range = savedSpoilerRange || (sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null);
+
         if (savedSpoilerRange) {
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(savedSpoilerRange);
+            if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(savedSpoilerRange);
+            }
             savedSpoilerRange.deleteContents();
+            range = savedSpoilerRange;
         }
-        insertImageBlockAtCaret(spoilerHtml);
+
+        const temp = document.createElement('div');
+        temp.innerHTML = spoilerHtml;
+        const detailsEl = temp.firstElementChild;
+
+        if (!range || !range.commonAncestorContainer || (typeof VisualEngine !== 'undefined' && VisualEngine.isInsideEditor ? !VisualEngine.isInsideEditor(range.commonAncestorContainer) : !editor.contains(range.commonAncestorContainer))) {
+            editor.appendChild(detailsEl);
+        } else {
+            let block = (typeof VisualEngine !== 'undefined' && VisualEngine.getClosestBlock)
+                ? VisualEngine.getClosestBlock(range.startContainer)
+                : null;
+
+            if (!block || block === editor) {
+                range.insertNode(detailsEl);
+            } else if (typeof VisualEngine !== 'undefined' && VisualEngine.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr')) {
+                block.parentNode.replaceChild(detailsEl, block);
+            } else if (typeof VisualEngine !== 'undefined' && VisualEngine.isCaretAtStartOfBlock(block, range)) {
+                block.parentNode.insertBefore(detailsEl, block);
+            } else if (typeof VisualEngine !== 'undefined' && VisualEngine.isCaretAtEndOfBlock(block, range)) {
+                block.parentNode.insertBefore(detailsEl, block.nextSibling);
+            } else {
+                const afterRange = document.createRange();
+                afterRange.setStart(range.endContainer, range.endOffset);
+                afterRange.setEndAfter(block.lastChild || block);
+                const afterContent = afterRange.extractContents();
+
+                const newBlock = document.createElement(block.tagName === 'DIV' ? 'div' : 'p');
+                if (block.className) newBlock.className = block.className;
+                if (block.style.cssText) newBlock.style.cssText = block.style.cssText;
+                newBlock.appendChild(afterContent);
+
+                const parent = block.parentNode;
+                const next = block.nextSibling;
+
+                parent.insertBefore(detailsEl, next);
+                parent.insertBefore(newBlock, next);
+            }
+        }
+
+        const spoilerContent = detailsEl.querySelector('.spoiler-content');
+        if (spoilerContent && typeof VisualEngine !== 'undefined') {
+            VisualEngine.setCursorToEnd(spoilerContent);
+            VisualEngine.saveSelection();
+        }
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
-    saveToHistory();
+    if (typeof saveToHistory === 'function') saveToHistory();
     closeSpoilerDialog();
 }
 
@@ -2846,16 +2908,18 @@ function insertImageGrid(layout) {
 
 // Подсветка активных кнопок при изменении выделения
 document.addEventListener('selectionchange', function () {
-    if (editorMode === 'visual') {
-        const editor = document.getElementById('contentVisual');
-        if (editor && (document.activeElement === editor || editor.contains(document.activeElement))) {
-            if (typeof saveSelection === 'function') {
-                saveSelection();
+    try {
+        if (typeof editorMode !== 'undefined' && editorMode === 'visual') {
+            const editor = document.getElementById('contentVisual');
+            if (editor && (document.activeElement === editor || (typeof VisualEngine !== 'undefined' && VisualEngine.isInsideEditor ? VisualEngine.isInsideEditor(document.activeElement) : (document.activeElement && editor.contains && editor.contains(document.activeElement))))) {
+                if (typeof saveSelection === 'function') {
+                    saveSelection();
+                }
             }
         }
-    }
-    if (typeof updateActiveButtons === 'function') {
-        updateActiveButtons();
-    }
+        if (typeof updateActiveButtons === 'function') {
+            updateActiveButtons();
+        }
+    } catch (e) { }
 });
 

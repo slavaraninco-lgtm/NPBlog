@@ -33,15 +33,35 @@ function loadPosts() {
                 return div.innerHTML;
             };
 
-            // Сортируем статьи по ID в обратном порядке (новые первыми)
-            const sortedPosts = [...posts].sort((a, b) => b.id - a.id);
+            // Сортируем статьи: сначала закрепленные, затем по ID в обратном порядке (новые первыми)
+            const sortedPosts = [...posts].sort((a, b) => {
+                const pinA = a.pinned ? 1 : 0;
+                const pinB = b.pinned ? 1 : 0;
+                if (pinA !== pinB) {
+                    return pinB - pinA;
+                }
+                return (b.id || 0) - (a.id || 0);
+            });
             const btnEdit = window.t ? window.t('header.manage_posts_edit', 'Изменить') : 'Изменить';
             const btnExtra = window.t ? window.t('header.manage_posts_extra', 'Дополнительно') : 'Дополнительно';
             const btnDelete = window.t ? window.t('header.manage_posts_delete', 'Удалить') : 'Удалить';
+            const titlePin = window.t ? window.t('header.manage_posts_pin', 'Закрепить статью') : 'Закрепить статью';
+            const titleUnpin = window.t ? window.t('header.manage_posts_unpin', 'Открепить статью') : 'Открепить статью';
 
             postsList.innerHTML = '<ul class="post-list">' +
-                sortedPosts.map(post => `
-                        <li class="post-item">
+                sortedPosts.map(post => {
+                    const isPinned = !!post.pinned;
+                    const pinTitle = isPinned ? titleUnpin : titlePin;
+                    return `
+                        <li class="post-item ${isPinned ? 'is-pinned' : ''}" data-post-id="${post.id}">
+                            <button type="button" class="post-pin-btn ${isPinned ? 'pinned' : ''}" 
+                                onclick="togglePinPost(${post.id}, event)" 
+                                title="${escapeHtml(pinTitle)}" 
+                                aria-label="${escapeHtml(pinTitle)}">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="${isPinned ? '#f59e0b' : 'none'}" stroke="${isPinned ? '#f59e0b' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                            </button>
                             <div class="post-item-title">${escapeHtml(post.title)}</div>
                             <span class="post-item-date">${escapeHtml(post.date)}</span>
                             <div class="post-item-actions">
@@ -50,7 +70,8 @@ function loadPosts() {
                                 <button type="button" class="delete-btn" onclick="deletePost(${post.id})">${btnDelete}</button>
                             </div>
                         </li>
-                    `).join('') +
+                    `;
+                }).join('') +
                 '</ul>';
         })
         .catch(error => {
@@ -142,6 +163,9 @@ function editPost(postId) {
                                 ve.innerHTML = editedContent;
                                 wrapExistingEditorImages();
                                 addColumnResizers();
+                                if (typeof window.refreshAllFormulasInEditor === 'function') {
+                                    window.refreshAllFormulasInEditor(ve);
+                                }
                             }
                         }
                     }
@@ -278,6 +302,49 @@ function confirmDelete() {
             showNotification('Ошибка при удалении статьи', 'error');
         });
 }
+
+function togglePinPost(postId, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
+    fetch('toggle_pin_post.php', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ id: postId })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const msg = data.pinned
+                    ? (window.t ? window.t('header.manage_posts_pinned_success', 'Статья закреплена') : 'Статья закреплена')
+                    : (window.t ? window.t('header.manage_posts_unpinned_success', 'Статья откреплена') : 'Статья откреплена');
+                if (typeof showNotification === 'function') {
+                    showNotification(msg, 'success');
+                }
+                loadPosts();
+            } else {
+                if (typeof showNotification === 'function') {
+                    showNotification(data.error || 'Ошибка при изменении закрепления', 'error');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка togglePinPost:', error);
+            if (typeof showNotification === 'function') {
+                showNotification('Ошибка при изменении закрепления', 'error');
+            }
+        });
+}
+window.togglePinPost = togglePinPost;
 
 // Обработчик отправки формы
 document.getElementById('modeVisualBtn').addEventListener('click', function () { setMode('visual'); });

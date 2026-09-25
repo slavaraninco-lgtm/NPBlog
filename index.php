@@ -244,6 +244,11 @@ if (file_exists($versionFile)) {
         })();
     </script>
     <link rel="stylesheet" href="editor-style.css?v=<?php echo file_exists(__DIR__ . '/editor-style.css') ? filemtime(__DIR__ . '/editor-style.css') : time(); ?>">
+    <link rel="stylesheet" href="assets/katex/katex.min.css?v=<?php echo file_exists(__DIR__ . '/assets/katex/katex.min.css') ? filemtime(__DIR__ . '/assets/katex/katex.min.css') : time(); ?>">
+    <script src="assets/katex/katex.min.js?v=<?php echo file_exists(__DIR__ . '/assets/katex/katex.min.js') ? filemtime(__DIR__ . '/assets/katex/katex.min.js') : time(); ?>"></script>
+    <link rel="stylesheet" href="assets/mathlive/mathlive-static.css?v=<?php echo file_exists(__DIR__ . '/assets/mathlive/mathlive-static.css') ? filemtime(__DIR__ . '/assets/mathlive/mathlive-static.css') : time(); ?>">
+    <link rel="stylesheet" href="assets/mathlive/mathlive-fonts.css?v=<?php echo file_exists(__DIR__ . '/assets/mathlive/mathlive-fonts.css') ? filemtime(__DIR__ . '/assets/mathlive/mathlive-fonts.css') : time(); ?>">
+    <script src="assets/mathlive/mathlive.min.js?v=<?php echo file_exists(__DIR__ . '/assets/mathlive/mathlive.min.js') ? filemtime(__DIR__ . '/assets/mathlive/mathlive.min.js') : time(); ?>"></script>
     <link rel="stylesheet" href="modals/modal.css?v=<?php echo file_exists(__DIR__ . '/modals/modal.css') ? filemtime(__DIR__ . '/modals/modal.css') : time(); ?>">
     <link rel="stylesheet" id="customThemeStyleLink" href="data/custom_editor_theme.css?v=<?php echo $customCssExists ? filemtime(__DIR__ . '/data/custom_editor_theme.css') : '1'; ?>" <?php echo ($activeTheme === 'custom' && $customCssExists) ? '' : 'disabled'; ?>>
 </head>
@@ -332,6 +337,7 @@ if (file_exists($versionFile)) {
             <button type="button" id="btn-sub" class="format-btn" onclick="formatText('sub')" title="Нижний индекс" data-i18n-title="toolbar.sub"><span class="button-icon">X<sub>2</sub></span><span class="button-text" data-i18n="toolbar.sub">Нижний индекс</span></button>
             <button type="button" id="btn-h2" class="format-btn" onclick="formatText('h2')" title="Подзаголовок" data-i18n-title="toolbar.heading"><span class="button-icon"><b>H</b></span><span class="button-text" data-i18n="toolbar.heading">Подзаголовок</span></button>
             <button type="button" id="btn-table" class="format-btn" onclick="openTableDialog()" title="Вставить таблицу" data-i18n-title="toolbar.table"><span class="button-icon">⊞</span><span class="button-text" data-i18n="toolbar.table">Вставить таблицу</span></button>
+            <button type="button" id="btn-formula" class="format-btn" onclick="openFormulaDialog()" title="Вставить формулу" data-i18n-title="toolbar.formula"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M3 12h2.5l3.5 9 4-17H21"/><path d="M15 11l4 5"/><path d="M19 11l-4 5"/></svg></span><span class="button-text" data-i18n="toolbar.formula">Формула</span></button>
             <button type="button" id="btn-spoiler" class="format-btn" onclick="openSpoilerDialog()" title="Сворачиваемый блок" data-i18n-title="toolbar.spoiler"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display: block;"><path d="M3 7l9 10 9-10H3z" /></svg></span><span class="button-text" data-i18n="toolbar.spoiler">Сворачиваемый блок</span></button>
             <button type="button" id="btn-marker" class="format-btn" onclick="openMarkerDialog()" title="Маркер" data-i18n-title="toolbar.marker"><span class="button-icon">🖍</span><span class="button-text" data-i18n="toolbar.marker">Маркер</span></button>
             <button type="button" id="btn-anchor" class="format-btn" onclick="addAnchor()" title="Добавить якорь" data-i18n-title="toolbar.anchor"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="5" r="3" /><line x1="12" y1="8" x2="12" y2="22" /><path d="M5 12H2a10 10 0 0 0 20 0h-3" /></svg></span><span class="button-text" data-i18n="toolbar.anchor">Добавить якорь</span></button>
@@ -435,6 +441,7 @@ if (file_exists($versionFile)) {
                     </button>
                     <button type="button" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
                     <button type="button" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
+                    <button type="button" class="more-menu-item" onclick="openFormulaDialog()" data-i18n="toolbar.formula">Вставить формулу</button>
                     <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
                     <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
                     <button type="button" class="more-menu-item has-submenu" onclick="toggleSmilesSubmenu(event)">
@@ -585,6 +592,9 @@ if (file_exists($versionFile)) {
     <!-- Модальное окно вставки таблицы -->
     <?php safe_include_editor_modal('table_modal.php'); ?>
 
+    <!-- Модальное окно конструктора формул -->
+    <?php safe_include_editor_modal('formula_modal.php'); ?>
+
 <!-- Модальное окно перекрашивания ячейки -->
 <?php safe_include_editor_modal('cell_color_modal.php'); ?>
 
@@ -616,7 +626,8 @@ $editorJsFiles = [
     'markdown.js',
     'templates.js',
     'smiles.js',
-    'custom-button.js'
+    'custom-button.js',
+    'formula.js'
 ];
 foreach ($editorJsFiles as $jsFile) {
     $v = file_exists(__DIR__ . '/editorjs/' . $jsFile) ? filemtime(__DIR__ . '/editorjs/' . $jsFile) : time();
@@ -3774,13 +3785,13 @@ function startSystemUpdateProcess() {
                             <span style="font-size: 16px;">✏️</span> <span data-i18n="modals.img_editor_tool_pencil">Карандаш</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="line" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">📏</span> <span data-i18n="modals.img_editor_tool_line">Прямая линия</span>
+                            <span style="font-size: 16px;">📏</span> <span data-i18n="modals.img_editor_tool_line">Линия</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="arrow" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
                             <span style="font-size: 16px;">↗️</span> <span data-i18n="modals.img_editor_tool_arrow">Стрелка</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="pixelate" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">⬛</span> <span data-i18n="modals.img_editor_tool_pixelate">Пикселизация</span>
+                            <span style="font-size: 16px;">▦</span> <span data-i18n="modals.img_editor_tool_pixelate">Пиксели</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="text" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
                             <span style="font-size: 16px;">🔤</span> <span data-i18n="modals.img_editor_tool_text">Текст</span>
@@ -4344,6 +4355,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'btn-sub',
             'btn-h2',
             'btn-table',
+            'btn-formula',
             'btn-spoiler',
             'btn-marker',
             'btn-anchor',

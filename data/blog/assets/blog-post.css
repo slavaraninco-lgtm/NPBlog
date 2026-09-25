@@ -10,6 +10,7 @@
     --border-color: #000000;
     --hover-bg: #000000;
     --hover-text: #ffffff;
+    --hr-color: rgba(128, 128, 128, 0.28);
 }
 
 [data-theme="dark"] {
@@ -18,6 +19,11 @@
     --border-color: #ffffff;
     --hover-bg: #ffffff;
     --hover-text: #000000;
+    --hr-color: rgba(128, 128, 128, 0.35);
+}
+
+[data-theme="dark"][data-amoled="true"] {
+    --hr-color: rgba(255, 255, 255, 0.18);
 }
 
 * {
@@ -66,16 +72,21 @@ h1 {
 
 .content hr {
     display: block;
+    clear: both;
+    width: 100%;
+    height: 0;
     border: none;
-    border-top: 1px solid var(--border-color);
-    margin: 24px 0;
+    border-top: 1px solid var(--hr-color, rgba(128, 128, 128, 0.28));
+    margin: 12px 0;
     box-sizing: border-box;
+    transition: border-color 0.2s ease;
 }
 
 .content img {
     max-width: 100%;
     height: auto;
     border: 2px solid var(--border-color);
+    border-radius: 8px;
     margin: 20px 0;
 }
 
@@ -167,9 +178,12 @@ h1 {
 .content table {
     width: 100%;
     max-width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     margin: 20px 0;
     border: 2px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
     table-layout: fixed;
     box-sizing: border-box;
 }
@@ -178,7 +192,10 @@ h1 {
 .content table td {
     padding: 12px;
     text-align: left;
-    border: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    border-top: none;
+    border-left: none;
     word-wrap: break-word;
     overflow-wrap: break-word;
     overflow-wrap: anywhere;
@@ -186,6 +203,15 @@ h1 {
     box-sizing: border-box;
     position: relative;
     overflow: hidden;
+}
+
+.content table th:last-child,
+.content table td:last-child {
+    border-right: none;
+}
+
+.content table tr:last-child td {
+    border-bottom: none;
 }
 
 .content table th {
@@ -222,7 +248,7 @@ h1 {
     color: var(--text-color);
     text-decoration: none;
     border: 2px solid var(--border-color);
-    border-radius: 0;
+    border-radius: 8px;
     transition: all 0.2s ease;
     font-weight: 500;
 }
@@ -240,7 +266,7 @@ h1 {
     background: var(--bg-color);
     color: var(--text-color);
     border: 2px solid var(--border-color);
-    border-radius: 0;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
@@ -503,6 +529,24 @@ h1 {
     overflow-wrap: break-word;
 }
 
+.spoiler-content p,
+.spoiler-content div,
+.spoiler-content li {
+    margin: 4px 0 !important;
+}
+
+.spoiler-content p:first-child,
+.spoiler-content div:first-child,
+.spoiler-content li:first-child {
+    margin-top: 0 !important;
+}
+
+.spoiler-content p:last-child,
+.spoiler-content div:last-child,
+.spoiler-content li:last-child {
+    margin-bottom: 0 !important;
+}
+
 @keyframes spoilerFadeIn {
     from {
         opacity: 0;
@@ -736,7 +780,7 @@ html.is-android .blog-ascii-art {
 .code-block {
     background: #f5f5f5;
     border: 1px solid #ddd;
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 15px;
     margin: 15px 0;
     position: relative;
@@ -766,7 +810,7 @@ html.is-android .blog-ascii-art {
     font-size: 12px;
     color: #666;
     border: 1px solid #ddd;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 [data-theme="dark"] .code-block::before {
@@ -793,6 +837,8 @@ html.is-android .blog-ascii-art {
     position: relative;
     margin: 20px auto;
     user-select: none;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .image-gallery img {
@@ -918,4 +964,41 @@ body[style*="background-image"] > .back-link {
     display: block;
     width: fit-content;
 }
+
+/* ==============================================================================
+ * Математические формулы NPBlog (KaTeX)
+ * ============================================================================== */
+.npblog-formula {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+
+.npblog-formula-block {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+    padding: 14px 18px;
+    overflow-x: auto;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(128, 128, 128, 0.12);
+}
+
+[data-theme="dark"] .npblog-formula-block {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.npblog-formula[data-size="large"],
+.npblog-formula-block[data-size="large"] {
+    font-size: 1.25em;
+}
+
+.npblog-formula[data-size="huge"],
+.npblog-formula-block[data-size="huge"] {
+    font-size: 1.5em;
+}
+
 
