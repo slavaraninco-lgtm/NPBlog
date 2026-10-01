@@ -1924,8 +1924,11 @@ function uploadVideoFileDirect(file) {
         })
         .then(data => {
             if (data.success) {
-                showNotification('Видео файл загружен', 'success');
+                showNotification('Видео файл успешно загружен', 'success');
                 loadVideoFilesList();
+                if (data.path) {
+                    insertVideoFile(data.path, data.filename || file.name);
+                }
             } else {
                 showNotification('Ошибка: ' + (data.error || data.message || 'Не удалось загрузить видео'), 'error');
             }
@@ -1985,8 +1988,11 @@ function uploadAudioFileDirect(file) {
         })
         .then(data => {
             if (data.success) {
-                showNotification('Аудио файл загружен', 'success');
+                showNotification('Аудио файл успешно загружен', 'success');
                 loadAudioFilesList();
+                if (data.path) {
+                    insertAudioFile(data.path, data.filename || file.name);
+                }
             } else {
                 showNotification('Ошибка: ' + (data.error || data.message || 'Не удалось загрузить аудио'), 'error');
             }
@@ -2010,7 +2016,56 @@ window.handleMediaFileChange = function (input, type) {
     input.value = '';
 };
 
+let isMediaTabsInitialized = false;
+
+function initMediaTabs() {
+    if (isMediaTabsInitialized) return;
+    const mediaTypeRadios = document.querySelectorAll('input[name="mediaType"]');
+    mediaTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('input[name="mediaType"]').forEach(r => {
+                r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
+            });
+            const vUrlSec = document.getElementById('videoUrlSection');
+            const vFileSec = document.getElementById('videoFileSection');
+            const aMedSec = document.getElementById('audioMediaSection');
+            const aStrSec = document.getElementById('audioStreamSection');
+            if (vUrlSec) vUrlSec.style.display = 'none';
+            if (vFileSec) vFileSec.style.display = 'none';
+            if (aMedSec) aMedSec.style.display = 'none';
+            if (aStrSec) aStrSec.style.display = 'none';
+
+            if (this.value === 'video-url') {
+                if (vUrlSec) vUrlSec.style.display = 'block';
+            } else if (this.value === 'video-file') {
+                if (vFileSec) vFileSec.style.display = 'block';
+                loadVideoFilesList();
+            } else if (this.value === 'audio') {
+                if (aMedSec) aMedSec.style.display = 'block';
+                loadAudioFilesList();
+            } else if (this.value === 'audio-stream') {
+                if (aStrSec) aStrSec.style.display = 'block';
+            }
+        });
+    });
+    isMediaTabsInitialized = true;
+}
+
 function showMediaDialog() {
+    if (typeof editorMode !== 'undefined' && editorMode === 'code') {
+        const ta = document.getElementById('content');
+        if (ta) {
+            window.mediaInsertStart = ta.selectionStart;
+            window.mediaInsertEnd = ta.selectionEnd;
+        }
+    } else {
+        if (window.VisualEngine && typeof window.VisualEngine.saveSelection === 'function') {
+            window.VisualEngine.saveSelection();
+        } else if (typeof saveSelection === 'function') {
+            saveSelection();
+        }
+    }
+
     if (window.Modal) {
         Modal.open('#mediaDialog');
     } else {
@@ -2018,31 +2073,7 @@ function showMediaDialog() {
         if (dlg) dlg.style.display = 'block';
     }
     initMediaDragDrop();
-
-    const mediaTypeRadios = document.querySelectorAll('input[name="mediaType"]');
-    mediaTypeRadios.forEach(radio => {
-        radio.addEventListener('change', function () {
-            document.querySelectorAll('input[name="mediaType"]').forEach(r => {
-                r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.checked);
-            });
-            document.getElementById('videoUrlSection').style.display = 'none';
-            document.getElementById('videoFileSection').style.display = 'none';
-            document.getElementById('audioMediaSection').style.display = 'none';
-            document.getElementById('audioStreamSection').style.display = 'none';
-
-            if (this.value === 'video-url') {
-                document.getElementById('videoUrlSection').style.display = 'block';
-            } else if (this.value === 'video-file') {
-                document.getElementById('videoFileSection').style.display = 'block';
-                loadVideoFilesList();
-            } else if (this.value === 'audio') {
-                document.getElementById('audioMediaSection').style.display = 'block';
-                loadAudioFilesList();
-            } else if (this.value === 'audio-stream') {
-                document.getElementById('audioStreamSection').style.display = 'block';
-            }
-        });
-    });
+    initMediaTabs();
 }
 
 function closeMediaDialog() {
@@ -2052,20 +2083,29 @@ function closeMediaDialog() {
         const dlg = document.getElementById('mediaDialog');
         if (dlg) dlg.style.display = 'none';
     }
-    document.getElementById('mediaUrl').value = '';
-    document.getElementById('videoFile').value = '';
-    document.getElementById('audioFile').value = '';
-    document.getElementById('audioStreamUrl').value = '';
+    const mediaUrl = document.getElementById('mediaUrl');
+    if (mediaUrl) mediaUrl.value = '';
+    const videoFile = document.getElementById('videoFile');
+    if (videoFile) videoFile.value = '';
+    const audioFile = document.getElementById('audioFile');
+    if (audioFile) audioFile.value = '';
+    const audioStreamUrl = document.getElementById('audioStreamUrl');
+    if (audioStreamUrl) audioStreamUrl.value = '';
+
     // Сбрасываем на видео URL
     const videoRadio = document.querySelector('input[name="mediaType"][value="video-url"]');
     if (videoRadio) videoRadio.checked = true;
     document.querySelectorAll('input[name="mediaType"]').forEach(r => {
         r.closest('.modal-tab-btn')?.classList.toggle('is-active', r.value === 'video-url');
     });
-    document.getElementById('videoUrlSection').style.display = 'block';
-    document.getElementById('videoFileSection').style.display = 'none';
-    document.getElementById('audioMediaSection').style.display = 'none';
-    document.getElementById('audioStreamSection').style.display = 'none';
+    const videoUrlSection = document.getElementById('videoUrlSection');
+    if (videoUrlSection) videoUrlSection.style.display = 'block';
+    const videoFileSection = document.getElementById('videoFileSection');
+    if (videoFileSection) videoFileSection.style.display = 'none';
+    const audioMediaSection = document.getElementById('audioMediaSection');
+    if (audioMediaSection) audioMediaSection.style.display = 'none';
+    const audioStreamSection = document.getElementById('audioStreamSection');
+    if (audioStreamSection) audioStreamSection.style.display = 'none';
 
     const videoFileName = document.getElementById('videoFileName');
     if (videoFileName) {
@@ -2080,16 +2120,19 @@ function closeMediaDialog() {
 }
 
 function insertMedia() {
-    const mediaType = document.querySelector('input[name="mediaType"]:checked').value;
+    const checkedRadio = document.querySelector('input[name="mediaType"]:checked');
+    const mediaType = checkedRadio ? checkedRadio.value : 'video-url';
 
     if (mediaType === 'video-url') {
-        const url = document.getElementById('mediaUrl').value.trim();
+        const urlInput = document.getElementById('mediaUrl');
+        const url = urlInput ? urlInput.value.trim() : '';
         if (!url) {
             showNotification('Пожалуйста, введите URL видео', 'warning');
             return;
         }
 
         let embedCode = '';
+        let mediaTagType = 'iframe';
 
         // Определяем тип медиа по URL
         if (url.includes('youtube.com') || url.includes('youtu.be')) {
@@ -2098,98 +2141,103 @@ function insertMedia() {
         } else if (url.includes('vimeo.com')) {
             const vimeoId = extractVimeoId(url);
             embedCode = `<iframe width="560" height="315" src="https://player.vimeo.com/video/${vimeoId}" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+        } else if (/\.(mp4|webm|ogg|ogv|mov|mkv)($|\?)/i.test(url)) {
+            const ext = url.split(/[#?]/)[0].split('.').pop().toLowerCase();
+            let mime = 'video/mp4';
+            if (ext === 'webm') mime = 'video/webm';
+            else if (ext === 'ogg' || ext === 'ogv') mime = 'video/ogg';
+            else if (ext === 'mov') mime = 'video/quicktime';
+            embedCode = `<video controls playsinline preload="metadata" style="width: 100%; min-width: 280px; max-width: 800px; height: auto; display: block; margin: 10px auto; border-radius: 8px;"><source src="${url}" type="${mime}">Ваш браузер не поддерживает видео элемент.</video>`;
+            mediaTagType = 'video';
         } else {
             // Встраиваем как iframe
             embedCode = `<iframe width="560" height="315" src="${url}" frameborder="0" sandbox="allow-same-origin allow-scripts allow-popups" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
         }
 
-        if (editorMode === 'code') {
+        if (typeof editorMode !== 'undefined' && editorMode === 'code') {
             const ta = document.getElementById('content');
-            const cursorPos = ta.selectionStart;
-            ta.value = ta.value.substring(0, cursorPos) + embedCode + ta.value.substring(cursorPos);
+            if (ta) {
+                const cursorPos = (typeof window.mediaInsertStart === 'number') ? window.mediaInsertStart : (ta.selectionStart !== undefined ? ta.selectionStart : ta.value.length);
+                ta.value = ta.value.substring(0, cursorPos) + embedCode + '\n' + ta.value.substring(cursorPos);
+            }
         } else {
-            insertHtmlAtCaret(wrapMediaWithControls(embedCode, 'iframe'));
+            const wrapped = wrapMediaWithControls(embedCode, mediaTagType);
+            if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+                window.VisualEngine.insertBlockMedia(wrapped);
+            } else if (typeof insertImageBlockAtCaret === 'function') {
+                insertImageBlockAtCaret(wrapped);
+            } else if (typeof insertHtmlAtCaret === 'function') {
+                insertHtmlAtCaret(wrapped);
+            } else {
+                const ve = document.getElementById('contentVisual');
+                if (ve) ve.insertAdjacentHTML('beforeend', wrapped);
+            }
         }
 
-        saveToHistory();
+        if (typeof saveToHistory === 'function') saveToHistory();
         closeMediaDialog();
+        showNotification('Видео добавлено в статью', 'success');
+    } else if (mediaType === 'video-file') {
+        const fileInput = document.getElementById('videoFile');
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            uploadVideoFileDirect(fileInput.files[0]);
+        } else {
+            showNotification('Пожалуйста, выберите видео файл для загрузки или нажмите «Вставить» напротив файла в списке', 'warning');
+        }
+    } else if (mediaType === 'audio') {
+        const fileInput = document.getElementById('audioFile');
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            uploadAudioFileDirect(fileInput.files[0]);
+        } else {
+            showNotification('Пожалуйста, выберите аудио файл для загрузки или нажмите «Вставить» напротив файла в списке', 'warning');
+        }
     } else if (mediaType === 'audio-stream') {
-        const url = document.getElementById('audioStreamUrl').value.trim();
+        const urlInput = document.getElementById('audioStreamUrl');
+        const url = urlInput ? urlInput.value.trim() : '';
         if (!url) {
             showNotification('Пожалуйста, введите URL аудиопотока', 'warning');
             return;
         }
 
-        const audioElement = `<audio controls style="width: 100%; max-width: 600px; margin: 10px 0;"><source src="${url}">Ваш браузер не поддерживает аудио элемент.</audio>`;
+        const audioElement = `<audio controls preload="metadata" style="width: 100%; min-width: 280px; max-width: 600px; display: block; margin: 10px auto;"><source src="${url}">Ваш браузер не поддерживает аудио элемент.</audio>`;
 
-        if (editorMode === 'code') {
+        if (typeof editorMode !== 'undefined' && editorMode === 'code') {
             const ta = document.getElementById('content');
-            const cursorPos = ta.selectionStart;
-            ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
+            if (ta) {
+                const cursorPos = (typeof window.mediaInsertStart === 'number') ? window.mediaInsertStart : (ta.selectionStart !== undefined ? ta.selectionStart : ta.value.length);
+                ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
+            }
         } else {
-            insertHtmlAtCaret(wrapMediaWithControls(audioElement, 'audio'));
+            const wrapped = wrapMediaWithControls(audioElement, 'audio');
+            if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+                window.VisualEngine.insertBlockMedia(wrapped);
+            } else if (typeof insertImageBlockAtCaret === 'function') {
+                insertImageBlockAtCaret(wrapped);
+            } else if (typeof insertHtmlAtCaret === 'function') {
+                insertHtmlAtCaret(wrapped);
+            } else {
+                const ve = document.getElementById('contentVisual');
+                if (ve) ve.insertAdjacentHTML('beforeend', wrapped);
+            }
         }
 
-        saveToHistory();
+        if (typeof saveToHistory === 'function') saveToHistory();
         closeMediaDialog();
+        showNotification('Аудиопоток добавлен в статью', 'success');
     }
-    // Для аудио вставка происходит при клике на файл в списке
 }
 
 function uploadAudioFile() {
     const fileInput = document.getElementById('audioFile');
-    const file = fileInput.files[0];
+    const file = fileInput ? fileInput.files[0] : null;
 
     if (!file) {
         showNotification('Пожалуйста, выберите аудио файл', 'warning');
         return;
     }
 
-    // Проверяем тип файла
-    if (!file.type.startsWith('audio/')) {
-        showNotification('Пожалуйста, выберите аудио файл', 'warning');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('audio', file);
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const headers = {
-        'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-    };
-    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
-
-    fetch('upload_audio.php', {
-        method: 'POST',
-        headers: headers,
-        body: formData
-    })
-        .then(async response => {
-            const text = await response.text();
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-                throw new Error(clean || `HTTP ${response.status}`);
-            }
-            return data;
-        })
-        .then(data => {
-            if (data.success) {
-                showNotification('Аудио файл загружен', 'success');
-                fileInput.value = '';
-                loadAudioFilesList();
-            } else {
-                showNotification('Ошибка: ' + (data.error || data.message || 'Не удалось загрузить аудио'), 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка:', error);
-            showNotification('Ошибка загрузки аудио: ' + error.message, 'error');
-        });
+    uploadAudioFileDirect(file);
+    fileInput.value = '';
 }
 
 function loadAudioFilesList() {
@@ -2197,54 +2245,75 @@ function loadAudioFilesList() {
         .then(response => response.json())
         .then(data => {
             const list = document.getElementById('audioFilesList');
+            if (!list) return;
 
-            if (data.success && data.files.length > 0) {
-                list.innerHTML = data.files.map(file => `
-                        <div style="padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" 
-                             onmouseover="this.style.background='rgba(128,128,128,0.06)'" onmouseout="this.style.background='transparent'"
-                             onclick="insertAudioFile('${file.path}', '${file.name}')">
-                            <div style="min-width: 0; flex: 1; padding-right: 10px;">
-                                <div style="color: var(--text-color); font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🎵 ${file.name}</div>
+            if (data.success && data.files && data.files.length > 0) {
+                list.innerHTML = data.files.map(file => {
+                    const safeName = (file.name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const jsonPath = JSON.stringify(file.path || '');
+                    const jsonName = JSON.stringify(file.name || '');
+                    return `
+                        <div style="padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" 
+                             onmouseover="this.style.background='rgba(128,128,128,0.06)'" onmouseout="this.style.background='transparent'">
+                            <div style="min-width: 0; flex: 1; padding-right: 10px; cursor: pointer;" onclick='insertAudioFile(${jsonPath}, ${jsonName})'>
+                                <div style="color: var(--text-color); font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🎵 ${safeName}</div>
                                 <div style="color: var(--text-color); opacity: 0.6; font-size: 12px; margin-top: 2px;">${formatFileSize(file.size)}</div>
                             </div>
-                            <button onclick="event.stopPropagation(); deleteAudioFile('${file.name}')" 
-                                    style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid rgba(220, 53, 69, 0.4); background: transparent; color: #dc3545; cursor: pointer; transition: all 0.2s;"
-                                    onmouseover="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='#dc3545'"
-                                    onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(220, 53, 69, 0.4)'">
-                                Удалить
-                            </button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button type="button" class="modal-btn modal-btn-primary" style="padding: 5px 12px; font-size: 12px;" onclick='event.stopPropagation(); insertAudioFile(${jsonPath}, ${jsonName})'>
+                                    Вставить
+                                </button>
+                                <button type="button" class="modal-btn modal-btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick='event.stopPropagation(); deleteAudioFile(${jsonName})'>
+                                    Удалить
+                                </button>
+                            </div>
                         </div>
-                    `).join('');
+                    `;
+                }).join('');
             } else {
-                list.innerHTML = '<div style="color: var(--text-color); opacity: 0.6;">Нет загруженных аудио файлов</div>';
+                list.innerHTML = '<div style="color: var(--text-color); opacity: 0.6; padding: 10px; text-align: center;">Нет загруженных аудио файлов</div>';
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            document.getElementById('audioFilesList').innerHTML = '<div style="color: #f44336;">Ошибка загрузки списка</div>';
+            const list = document.getElementById('audioFilesList');
+            if (list) list.innerHTML = '<div style="color: #f44336; padding: 10px; text-align: center;">Ошибка загрузки списка</div>';
         });
 }
 
 function insertAudioFile(filePath, fileName) {
-    const audioElement = `<audio controls style="width: 100%; min-width: 300px; max-width: 600px; margin: 10px 0;"><source src="${filePath}" type="audio/mpeg">Ваш браузер не поддерживает аудио элемент.</audio>`;
+    if (!filePath) return;
 
-    if (editorMode === 'code') {
+    let mimeType = 'audio/mpeg';
+    const ext = filePath.split(/[#?]/)[0].split('.').pop().toLowerCase();
+    if (ext === 'ogg') mimeType = 'audio/ogg';
+    else if (ext === 'wav') mimeType = 'audio/wav';
+    else if (ext === 'aac') mimeType = 'audio/aac';
+    else if (ext === 'm4a') mimeType = 'audio/mp4';
+
+    const audioElement = `<audio controls preload="metadata" style="width: 100%; min-width: 280px; max-width: 600px; display: block; margin: 10px auto;"><source src="${filePath}" type="${mimeType}">Ваш браузер не поддерживает аудио элемент.</audio>`;
+
+    if (typeof editorMode !== 'undefined' && editorMode === 'code') {
         const ta = document.getElementById('content');
-        const cursorPos = ta.selectionStart;
-        ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
-        // Вставляем аудио элемент через стандартный движок вставки блоков по каретке
+        if (ta) {
+            const cursorPos = (typeof window.mediaInsertStart === 'number') ? window.mediaInsertStart : (ta.selectionStart !== undefined ? ta.selectionStart : ta.value.length);
+            ta.value = ta.value.substring(0, cursorPos) + audioElement + '\n' + ta.value.substring(cursorPos);
+        }
+    } else {
         const wrappedAudioHtml = wrapMediaWithControls(audioElement, 'audio');
-        if (typeof insertImageBlockAtCaret === 'function') {
-            insertImageBlockAtCaret(wrappedAudioHtml);
-        } else if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+        if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
             window.VisualEngine.insertBlockMedia(wrappedAudioHtml);
+        } else if (typeof insertImageBlockAtCaret === 'function') {
+            insertImageBlockAtCaret(wrappedAudioHtml);
+        } else if (typeof insertHtmlAtCaret === 'function') {
+            insertHtmlAtCaret(wrappedAudioHtml);
         } else {
             const ve = document.getElementById('contentVisual');
             if (ve) ve.insertAdjacentHTML('beforeend', wrappedAudioHtml);
         }
     }
 
-    saveToHistory();
+    if (typeof saveToHistory === 'function') saveToHistory();
     closeMediaDialog();
     showNotification('Аудио файл добавлен в статью', 'success');
 }
@@ -2253,11 +2322,16 @@ function deleteAudioFile(fileName) {
     showConfirm('Удалить аудио файл?').then(result => {
         if (!result) return;
 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        };
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
         fetch('delete_audio.php', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({ filename: fileName })
         })
             .then(response => response.json())
@@ -2266,7 +2340,7 @@ function deleteAudioFile(fileName) {
                     showNotification('Аудио файл удален', 'success');
                     loadAudioFilesList();
                 } else {
-                    showNotification('Ошибка: ' + data.error, 'error');
+                    showNotification('Ошибка: ' + (data.error || 'Не удалось удалить файл'), 'error');
                 }
             })
             .catch(error => {
@@ -2279,58 +2353,15 @@ function deleteAudioFile(fileName) {
 // Функции для работы с видео файлами
 function uploadVideoFile() {
     const fileInput = document.getElementById('videoFile');
-    const file = fileInput.files[0];
+    const file = fileInput ? fileInput.files[0] : null;
 
     if (!file) {
         showNotification('Пожалуйста, выберите видео файл', 'warning');
         return;
     }
 
-    // Проверяем тип файла
-    if (!file.type.startsWith('video/')) {
-        showNotification('Пожалуйста, выберите видео файл', 'warning');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('video', file);
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const headers = {
-        'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-    };
-    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
-
-    fetch('upload_video.php', {
-        method: 'POST',
-        headers: headers,
-        body: formData
-    })
-        .then(async response => {
-            const text = await response.text();
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-                throw new Error(clean || `HTTP ${response.status}`);
-            }
-            return data;
-        })
-        .then(data => {
-            if (data.success) {
-                showNotification('Видео файл загружен', 'success');
-                fileInput.value = '';
-                loadVideoFilesList();
-            } else {
-                showNotification('Ошибка: ' + (data.error || data.message || 'Не удалось загрузить видео'), 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка:', error);
-            showNotification('Ошибка загрузки видео: ' + error.message, 'error');
-        });
+    uploadVideoFileDirect(file);
+    fileInput.value = '';
 }
 
 function loadVideoFilesList() {
@@ -2338,54 +2369,75 @@ function loadVideoFilesList() {
         .then(response => response.json())
         .then(data => {
             const list = document.getElementById('videoFilesList');
+            if (!list) return;
 
-            if (data.success && data.files.length > 0) {
-                list.innerHTML = data.files.map(file => `
-                        <div style="padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" 
-                             onmouseover="this.style.background='rgba(128,128,128,0.06)'" onmouseout="this.style.background='transparent'"
-                             onclick="insertVideoFile('${file.path}', '${file.name}')">
-                            <div style="min-width: 0; flex: 1; padding-right: 10px;">
-                                <div style="color: var(--text-color); font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🎬 ${file.name}</div>
+            if (data.success && data.files && data.files.length > 0) {
+                list.innerHTML = data.files.map(file => {
+                    const safeName = (file.name || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const jsonPath = JSON.stringify(file.path || '');
+                    const jsonName = JSON.stringify(file.name || '');
+                    return `
+                        <div style="padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" 
+                             onmouseover="this.style.background='rgba(128,128,128,0.06)'" onmouseout="this.style.background='transparent'">
+                            <div style="min-width: 0; flex: 1; padding-right: 10px; cursor: pointer;" onclick='insertVideoFile(${jsonPath}, ${jsonName})'>
+                                <div style="color: var(--text-color); font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🎬 ${safeName}</div>
                                 <div style="color: var(--text-color); opacity: 0.6; font-size: 12px; margin-top: 2px;">${formatFileSize(file.size)}</div>
                             </div>
-                            <button onclick="event.stopPropagation(); deleteVideoFile('${file.name}')" 
-                                    style="padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid rgba(220, 53, 69, 0.4); background: transparent; color: #dc3545; cursor: pointer; transition: all 0.2s;"
-                                    onmouseover="this.style.background='rgba(220, 53, 69, 0.1)'; this.style.borderColor='#dc3545'"
-                                    onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(220, 53, 69, 0.4)'">
-                                Удалить
-                            </button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button type="button" class="modal-btn modal-btn-primary" style="padding: 5px 12px; font-size: 12px;" onclick='event.stopPropagation(); insertVideoFile(${jsonPath}, ${jsonName})'>
+                                    Вставить
+                                </button>
+                                <button type="button" class="modal-btn modal-btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick='event.stopPropagation(); deleteVideoFile(${jsonName})'>
+                                    Удалить
+                                </button>
+                            </div>
                         </div>
-                    `).join('');
+                    `;
+                }).join('');
             } else {
-                list.innerHTML = '<div style="color: var(--text-color); opacity: 0.6;">Нет загруженных видео файлов</div>';
+                list.innerHTML = '<div style="color: var(--text-color); opacity: 0.6; padding: 10px; text-align: center;">Нет загруженных видео файлов</div>';
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            document.getElementById('videoFilesList').innerHTML = '<div style="color: #f44336;">Ошибка загрузки списка</div>';
+            const list = document.getElementById('videoFilesList');
+            if (list) list.innerHTML = '<div style="color: #f44336; padding: 10px; text-align: center;">Ошибка загрузки списка</div>';
         });
 }
 
 function insertVideoFile(filePath, fileName) {
-    const videoElement = `<video controls style="width: 100%; min-width: 300px; max-width: 800px; margin: 10px 0;"><source src="${filePath}" type="video/mp4">Ваш браузер не поддерживает видео элемент.</video>`;
+    if (!filePath) return;
 
-    if (editorMode === 'code') {
+    let mimeType = 'video/mp4';
+    const ext = filePath.split(/[#?]/)[0].split('.').pop().toLowerCase();
+    if (ext === 'webm') mimeType = 'video/webm';
+    else if (ext === 'ogg' || ext === 'ogv') mimeType = 'video/ogg';
+    else if (ext === 'mov') mimeType = 'video/quicktime';
+    else if (ext === 'mkv') mimeType = 'video/x-matroska';
+
+    const videoElement = `<video controls playsinline preload="metadata" style="width: 100%; min-width: 280px; max-width: 800px; height: auto; display: block; margin: 10px auto; border-radius: 8px;"><source src="${filePath}" type="${mimeType}">Ваш браузер не поддерживает видео элемент.</video>`;
+
+    if (typeof editorMode !== 'undefined' && editorMode === 'code') {
         const ta = document.getElementById('content');
-        const cursorPos = ta.selectionStart;
-        ta.value = ta.value.substring(0, cursorPos) + videoElement + '\n' + ta.value.substring(cursorPos);
-        // Вставляем видео элемент через стандартный движок вставки блоков по каретке
+        if (ta) {
+            const cursorPos = (typeof window.mediaInsertStart === 'number') ? window.mediaInsertStart : (ta.selectionStart !== undefined ? ta.selectionStart : ta.value.length);
+            ta.value = ta.value.substring(0, cursorPos) + videoElement + '\n' + ta.value.substring(cursorPos);
+        }
+    } else {
         const wrappedVideoHtml = wrapMediaWithControls(videoElement, 'video');
-        if (typeof insertImageBlockAtCaret === 'function') {
-            insertImageBlockAtCaret(wrappedVideoHtml);
-        } else if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+        if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
             window.VisualEngine.insertBlockMedia(wrappedVideoHtml);
+        } else if (typeof insertImageBlockAtCaret === 'function') {
+            insertImageBlockAtCaret(wrappedVideoHtml);
+        } else if (typeof insertHtmlAtCaret === 'function') {
+            insertHtmlAtCaret(wrappedVideoHtml);
         } else {
             const ve = document.getElementById('contentVisual');
             if (ve) ve.insertAdjacentHTML('beforeend', wrappedVideoHtml);
         }
     }
 
-    saveToHistory();
+    if (typeof saveToHistory === 'function') saveToHistory();
     closeMediaDialog();
     showNotification('Видео файл добавлен в статью', 'success');
 }
@@ -2394,11 +2446,16 @@ function deleteVideoFile(fileName) {
     showConfirm('Удалить видео файл?').then(result => {
         if (!result) return;
 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        };
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
         fetch('delete_video.php', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({ filename: fileName })
         })
             .then(response => response.json())
@@ -2407,7 +2464,7 @@ function deleteVideoFile(fileName) {
                     showNotification('Видео файл удален', 'success');
                     loadVideoFilesList();
                 } else {
-                    showNotification('Ошибка: ' + data.error, 'error');
+                    showNotification('Ошибка: ' + (data.error || 'Не удалось удалить файл'), 'error');
                 }
             })
             .catch(error => {
@@ -2417,32 +2474,20 @@ function deleteVideoFile(fileName) {
     });
 }
 
-function deleteAudioFile(fileName) {
-    showConfirm('Удалить аудио файл?').then(result => {
-        if (!result) return;
-
-        fetch('delete_audio.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ filename: fileName })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification('Аудио файл удален', 'success');
-                    loadAudioFilesList();
-                } else {
-                    showNotification('Ошибка: ' + data.error, 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка:', error);
-                showNotification('Ошибка удаления файла', 'error');
-            });
-    });
-}
+// Экспорт функций в window
+window.insertVideoFile = insertVideoFile;
+window.insertAudioFile = insertAudioFile;
+window.deleteVideoFile = deleteVideoFile;
+window.deleteAudioFile = deleteAudioFile;
+window.showMediaDialog = showMediaDialog;
+window.closeMediaDialog = closeMediaDialog;
+window.insertMedia = insertMedia;
+window.uploadVideoFile = uploadVideoFile;
+window.uploadAudioFile = uploadAudioFile;
+window.uploadVideoFileDirect = uploadVideoFileDirect;
+window.uploadAudioFileDirect = uploadAudioFileDirect;
+window.loadVideoFilesList = loadVideoFilesList;
+window.loadAudioFilesList = loadAudioFilesList;
 
 // Вспомогательные функции для извлечения ID
 function extractYoutubeId(url) {

@@ -473,6 +473,102 @@
                 "required": [
                     "path"
                 ]
+            },
+            "FormulaRenderRequest": {
+                "type": "object",
+                "properties": {
+                    "tex": {
+                        "type": "string",
+                        "description": "Код математической формулы в синтаксисе LaTeX",
+                        "example": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}"
+                    },
+                    "latex": {
+                        "type": "string",
+                        "description": "Алиас для параметра tex"
+                    },
+                    "formula": {
+                        "type": "string",
+                        "description": "Алиас для параметра tex"
+                    },
+                    "display": {
+                        "type": "string",
+                        "enum": [
+                            "inline",
+                            "block"
+                        ],
+                        "default": "inline",
+                        "description": "Режим отображения: inline (в строке) или block (выносной центрированный блок)"
+                    },
+                    "size": {
+                        "type": "string",
+                        "enum": [
+                            "normal",
+                            "large",
+                            "huge"
+                        ],
+                        "default": "normal",
+                        "description": "Размер шрифта формулы"
+                    }
+                },
+                "required": [
+                    "tex"
+                ]
+            },
+            "FormulaRenderResponse": {
+                "type": "object",
+                "properties": {
+                    "tex": {
+                        "type": "string",
+                        "example": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}"
+                    },
+                    "display": {
+                        "type": "string",
+                        "example": "block"
+                    },
+                    "size": {
+                        "type": "string",
+                        "example": "normal"
+                    },
+                    "html": {
+                        "type": "string",
+                        "description": "Готовый монолитный HTML-элемент формулы NPBlog (span.npblog-formula или div.npblog-formula-block)",
+                        "example": "<div class=\"npblog-formula-block\" data-formula=\"...\" data-display=\"block\" data-size=\"normal\" contenteditable=\"false\">...</div>"
+                    },
+                    "rendered_katex": {
+                        "type": "string",
+                        "description": "Чистая отрендеренная KaTeX HTML разметка"
+                    },
+                    "is_valid": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                }
+            },
+            "FormulaValidateRequest": {
+                "type": "object",
+                "properties": {
+                    "tex": {
+                        "type": "string",
+                        "description": "Строка LaTeX для валидации",
+                        "example": "\\int_{0}^{\\infty} e^{-x}\\,dx"
+                    }
+                },
+                "required": [
+                    "tex"
+                ]
+            },
+            "FormulaConvertMarkdownRequest": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "Исходный текст статьи или Markdown с формулами $inline$ и $$block$$",
+                        "example": "Формула $E = mc^2$ в тексте."
+                    }
+                },
+                "required": [
+                    "content"
+                ]
             }
         },
         "parameters": {
@@ -2046,12 +2142,124 @@
                     }
                 }
             }
+        },
+        "/v1/formulas/render": {
+            "post": {
+                "tags": [
+                    "Formulas"
+                ],
+                "summary": "Рендеринг формулы LaTeX в монолитный KaTeX HTML и разметку NPBlog",
+                "description": "Преобразует строку TeX в готовый HTML-элемент (.npblog-formula или .npblog-formula-block) со стилями KaTeX для немедленной вставки в контент статьи.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FormulaRenderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Формула успешно отрендерена",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FormulaRenderResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Отсутствует параметр формулы"
+                    }
+                }
+            }
+        },
+        "/v1/formulas/validate": {
+            "post": {
+                "tags": [
+                    "Formulas"
+                ],
+                "summary": "Проверка синтаксиса формулы LaTeX на корректность",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FormulaValidateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Результат валидации (valid: true/false)"
+                    }
+                }
+            }
+        },
+        "/v1/formulas/presets": {
+            "get": {
+                "tags": [
+                    "Formulas"
+                ],
+                "summary": "Каталог математических шаблонов и пресетов формул",
+                "description": "Библиотека готовых формул по разделам (базовые, алгебра, анализ, геометрия, физика, матрицы)",
+                "responses": {
+                    "200": {
+                        "description": "Каталог формул"
+                    }
+                }
+            }
+        },
+        "/v1/formulas/symbols": {
+            "get": {
+                "tags": [
+                    "Formulas"
+                ],
+                "summary": "Каталог математических символов для экранных клавиатур",
+                "description": "Справочник символов с TeX-кодами (греческие буквы, операторы, отношения, стрелки, теория множеств)",
+                "responses": {
+                    "200": {
+                        "description": "Каталог символов"
+                    }
+                }
+            }
+        },
+        "/v1/formulas/convert-markdown": {
+            "post": {
+                "tags": [
+                    "Formulas"
+                ],
+                "summary": "Автоконвертация Markdown-формул ($...$ и $$...$$) в HTML формулы NPBlog",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FormulaConvertMarkdownRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Преобразованный контент"
+                    }
+                }
+            }
         }
     },
     "tags": [
         {
             "name": "Blogs",
             "description": "Управление множественными блогами (blog_paths, active_blog_path)"
+        },
+        {
+            "name": "Formulas",
+            "description": "Математические формулы KaTeX, проверка синтаксиса, пресеты и символы"
         }
     ]
 }

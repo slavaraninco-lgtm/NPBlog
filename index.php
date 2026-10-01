@@ -646,6 +646,9 @@ foreach ($editorJsFiles as $jsFile) {
 <!-- Модальное окно глобальных параметров -->
 <?php safe_include_editor_modal('global_settings_modal.php'); ?>
 
+<!-- Модальное окно создания блога -->
+<?php safe_include_editor_modal('create_blog_modal.php'); ?>
+
 <!-- Модальное окно пользовательских шрифтов -->
 <?php safe_include_editor_modal('custom_fonts_modal.php'); ?>
 
@@ -2313,7 +2316,26 @@ function renderCrossBlogNavItems() {
     });
 }
 
+function syncCrossBlogNavFromDOM() {
+    const container = document.getElementById('crossBlogNavItems');
+    if (!container) return;
+    const rows = container.children;
+    const items = [];
+    for (let i = 0; i < rows.length; i++) {
+        const inputs = rows[i].querySelectorAll('input');
+        if (inputs.length >= 2) {
+            const txt = inputs[0].value.trim();
+            const url = inputs[1].value.trim();
+            if (txt !== '' || url !== '') {
+                items.push({ text: txt, url: url });
+            }
+        }
+    }
+    currentCrossBlogNavItems = items;
+}
+
 function saveCrossBlogNav(action) {
+    syncCrossBlogNavFromDOM();
     const isEnabled = document.getElementById('enableCrossBlogNav').checked;
     const buttonsToSave = isEnabled ? currentCrossBlogNavItems : [];
     
@@ -2514,6 +2536,7 @@ function loadAndApplyAllSettings() {
                 }
                 window.allBlogPaths = blogPaths;
                 window.currentActiveBlogPath = settings.active_blog_path || blogPaths[0];
+                window.serverAppDir = settings.app_dir || '';
                 
                 renderBlogPathsInputs(blogPaths, window.currentActiveBlogPath);
                 updateBlogSelectorUI(blogPaths, window.currentActiveBlogPath);
@@ -2994,6 +3017,181 @@ function savePathsSettings() {
     .catch(err => {
         console.error('Ошибка сохранения путей:', err);
         showAlert(window.t ? window.t('notifications.paths_save_failed', 'Ошибка при сохранении путей') : 'Ошибка при сохранении путей');
+    });
+}
+
+// --- Создание нового блога ---
+let isNewBlogFolderManuallyEdited = false;
+
+function openCreateBlogModal() {
+    isNewBlogFolderManuallyEdited = false;
+    const titleInput = document.getElementById('createBlogTitleInput');
+    const folderInput = document.getElementById('createBlogFolderInput');
+    const activeCb = document.getElementById('createBlogMakeActiveCheckbox');
+    const submitBtn = document.getElementById('btnSubmitCreateBlog');
+    
+    if (titleInput) titleInput.value = '';
+    if (folderInput) folderInput.value = '';
+    if (activeCb) activeCb.checked = true;
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = window.t ? window.t('modals.create_blog_submit', '✨ Создать блог') : '✨ Создать блог';
+    }
+    
+    updateCreateBlogPathPreview('');
+    Modal.open('#createBlogModalOverlay');
+    if (titleInput) {
+        setTimeout(() => titleInput.focus(), 150);
+    }
+}
+
+function closeCreateBlogModal() {
+    Modal.close('#createBlogModalOverlay');
+}
+
+function transliterateToFolder(text) {
+    const ruToEn = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh',
+        'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+        'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
+        'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+    let res = '';
+    const lower = text.toLowerCase();
+    for (let i = 0; i < lower.length; i++) {
+        const ch = lower[i];
+        if (ruToEn[ch] !== undefined) {
+            res += ruToEn[ch];
+        } else if (/[a-z0-9]/.test(ch)) {
+            res += ch;
+        } else if (ch === ' ' || ch === '-' || ch === '_') {
+            res += '_';
+        }
+    }
+    return res.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function onNewBlogTitleInput(val) {
+    if (!isNewBlogFolderManuallyEdited) {
+        const slug = transliterateToFolder(val);
+        const folderName = slug ? 'data_' + slug : '';
+        const folderInput = document.getElementById('createBlogFolderInput');
+        if (folderInput) {
+            folderInput.value = folderName;
+        }
+        updateCreateBlogPathPreview(folderName);
+    }
+}
+
+function onNewBlogFolderInput(val) {
+    isNewBlogFolderManuallyEdited = (val.trim() !== '');
+    updateCreateBlogPathPreview(val.trim());
+}
+
+function updateCreateBlogPathPreview(folder) {
+    const previewEl = document.getElementById('createBlogPathPreview');
+    if (!previewEl) return;
+    if (!folder) {
+        previewEl.textContent = '—';
+        return;
+    }
+    const cleanFolder = folder.replace(/[\\/]/g, '');
+    const appDir = window.serverAppDir || (window.currentActiveBlogPath ? window.currentActiveBlogPath.replace(/[\\/][^\\/]+$/, '') : '');
+    const sep = (appDir && appDir.indexOf('\\') !== -1) ? '\\' : '/';
+    previewEl.textContent = appDir ? (appDir + sep + cleanFolder) : cleanFolder;
+}
+
+function submitCreateBlog() {
+    const titleInput = document.getElementById('createBlogTitleInput');
+    const folderInput = document.getElementById('createBlogFolderInput');
+    const activeCb = document.getElementById('createBlogMakeActiveCheckbox');
+    const submitBtn = document.getElementById('btnSubmitCreateBlog');
+    
+    const title = titleInput ? titleInput.value.trim() : '';
+    const folder = folderInput ? folderInput.value.trim() : '';
+    const makeActive = activeCb ? activeCb.checked : true;
+    
+    if (!folder) {
+        showAlert(window.t ? window.t('notifications.blog_create_folder_required', 'Укажите название папки для блога!') : 'Укажите название папки для блога!');
+        if (folderInput) folderInput.focus();
+        return;
+    }
+    
+    if (!/^[a-zA-Z0-9_\-]+$/.test(folder)) {
+        showAlert(window.t ? window.t('notifications.blog_create_folder_invalid', 'Название папки может содержать только латинские буквы, цифры, дефис и подчеркивание!') : 'Название папки может содержать только латинские буквы, цифры, дефис и подчеркивание!');
+        if (folderInput) folderInput.focus();
+        return;
+    }
+    
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = window.t ? window.t('modals.create_blog_creating', 'Создание блога...') : 'Создание блога...';
+    }
+    
+    fetch('create_blog.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: title || folder,
+            folder: folder,
+            make_active: makeActive
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeCreateBlogModal();
+            showAlert(window.t ? window.t('notifications.blog_created_success', 'Блог "' + data.title + '" успешно создан и добавлен в список путей!', { title: data.title }) : 'Блог "' + data.title + '" успешно создан и добавлен в список путей!');
+            
+            // Добавляем созданный путь в список DOM, если строки отображены
+            if (typeof addBlogPathRow === 'function') {
+                const existingInputs = document.querySelectorAll('.blog-path-input');
+                let alreadyInDom = false;
+                existingInputs.forEach(inp => {
+                    if (inp.value.trim().toLowerCase() === data.path.trim().toLowerCase()) {
+                        alreadyInDom = true;
+                    }
+                });
+                if (!alreadyInDom) {
+                    if (existingInputs.length === 1 && existingInputs[0].value.trim() === '') {
+                        existingInputs[0].value = data.path;
+                    } else {
+                        addBlogPathRow(data.path);
+                    }
+                }
+            }
+            
+            // Обновляем настройки редактора и список выбора блога
+            if (typeof loadAndApplyAllSettings === 'function') {
+                loadAndApplyAllSettings();
+            }
+            
+            // Если выбран режим сделать активным
+            if (data.make_active) {
+                window.currentActiveBlogPath = data.path;
+                if (typeof loadPosts === 'function') {
+                    loadPosts();
+                }
+                if (data.blogUrl) {
+                    const goToBlogBtn = document.getElementById('goToBlogBtn');
+                    if (goToBlogBtn) {
+                        goToBlogBtn.onclick = function() { window.location.href = data.blogUrl; };
+                    }
+                }
+            }
+        } else {
+            showAlert(window.t ? window.t('notifications.blog_create_error_param', 'Ошибка при создании блога: ' + data.error, { error: data.error }) : 'Ошибка при создании блога: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Ошибка создания блога:', err);
+        showAlert(window.t ? window.t('notifications.blog_create_failed', 'Произошла сетевая ошибка при создании блога.') : 'Произошла сетевая ошибка при создании блога.');
+    })
+    .finally(() => {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = window.t ? window.t('modals.create_blog_submit', '✨ Создать блог') : '✨ Создать блог';
+        }
     });
 }
 

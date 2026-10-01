@@ -49,11 +49,13 @@ if (file_exists($settingsFile)) {
     $merged['resolved_backup_path'] = getBackupPath();
     $merged['resolved_autosave_path'] = getAutosavePath();
     $merged['resolved_editor_backup_path'] = getEditorBackupPath();
+    $merged['app_dir'] = str_replace('/', DIRECTORY_SEPARATOR, __DIR__);
     echo json_encode(['success' => true, 'settings' => $merged]);
 } else {
     $defaults['resolved_backup_path'] = getBackupPath();
     $defaults['resolved_autosave_path'] = getAutosavePath();
     $defaults['resolved_editor_backup_path'] = getEditorBackupPath();
+    $defaults['app_dir'] = str_replace('/', DIRECTORY_SEPARATOR, __DIR__);
     echo json_encode([
         'success' => true, 
         'settings' => $defaults

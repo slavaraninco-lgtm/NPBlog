@@ -43,6 +43,7 @@ use NPBlog\Api\Controllers\MediaController;
 use NPBlog\Api\Controllers\TemplatesController;
 use NPBlog\Api\Controllers\SettingsController;
 use NPBlog\Api\Controllers\SystemController;
+use NPBlog\Api\Controllers\FormulasController;
 
 // Global exception and error handler
 set_exception_handler(function (\Throwable $e) {
@@ -128,6 +129,7 @@ $welcomeHandler = function () {
             'media' => '/api/v1/media',
             'templates' => '/api/v1/templates',
             'includes' => '/api/v1/includes',
+            'formulas' => '/api/v1/formulas/render',
             'settings' => '/api/v1/settings/editor',
             'system' => '/api/v1/system/status'
         ]
@@ -210,6 +212,13 @@ $router->get('/v1/includes', [TemplatesController::class, 'listIncludes']);
 $router->post('/v1/includes', [TemplatesController::class, 'saveInclude']);
 $router->get('/v1/includes/{name}', [TemplatesController::class, 'getInclude']);
 $router->delete('/v1/includes/{name}', [TemplatesController::class, 'deleteInclude']);
+
+// --- Formulas & Mathematics Routes ---
+$router->post('/v1/formulas/render', [FormulasController::class, 'render']);
+$router->post('/v1/formulas/validate', [FormulasController::class, 'validate']);
+$router->get('/v1/formulas/presets', [FormulasController::class, 'presets']);
+$router->get('/v1/formulas/symbols', [FormulasController::class, 'symbols']);
+$router->post('/v1/formulas/convert-markdown', [FormulasController::class, 'convertMarkdown']);
 
 // --- Settings Routes ---
 $router->get('/v1/settings/editor', [SettingsController::class, 'getEditorSettings']);

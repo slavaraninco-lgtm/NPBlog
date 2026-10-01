@@ -18,13 +18,14 @@ API предоставляет полный доступ ко всем функ�
 6. [Полный каталог эндпоинтов](#-полный-каталог-эндпоинтов)
    - [1. Аутентификация и безопасность (`/auth`)](#1-аутентификация-и-безопасность)
    - [2. Управление блогами (`/blogs`)](#2-управление-блогами)
-   - [3. Статьи и публикации (`/posts`)](#3-статьи-и-публикации)
+   - [3. Статьи и публикации (`/posts`), разделительные линии (`<hr>`)](#3-статьи-и-публикации)
    - [4. Черновики и автосохранения (`/drafts`, `/autosaves`)](#4-черновики-и-автосохранения)
    - [5. Резервные копии и версионирование (`/backups`)](#5-резервные-копии-и-версионирование)
    - [6. Медиафайлы, фоны, смайлы, шрифты (`/media`) и интеграция со сторонними редакторами](#6-медиафайлы-фоны-смайлы-шрифты-media-и-интеграция-со-сторонними-редакторами)
    - [7. Шаблоны и сниппеты (`/templates`, `/includes`)](#7-шаблоны-и-сниппеты)
-   - [8. Настройки редактора и блога (`/settings`)](#8-настройки-редактора-и-блога)
-   - [9. Системная диагностика и история (`/system`)](#9-системная-диагностика-и-история)
+   - [8. Математические формулы KaTeX и символы (`/formulas`)](#8-математические-формулы-katex-и-символы)
+   - [9. Настройки редактора и блога (`/settings`)](#9-настройки-редактора-и-блога)
+   - [10. Системная диагностика и история (`/system`)](#10-системная-диагностика-и-история)
 7. [Готовые примеры кода для мобильных платформ](#-готовые-примеры-кода-для-мобильных-платформ)
    - [Flutter / Dart](#flutter--dart)
    - [Swift / iOS (URLSession & Codable)](#swift--ios-urlsession--codable)
@@ -433,6 +434,60 @@ Content-Type: application/json
 
 ---
 
+#### 📏 Разделительная линия (`<hr>`) и форматирование контента
+
+Разделительная линия служит для визуального и логического разграничения смысловых блоков, глав и секций внутри публикации.
+
+##### 1. HTML-спецификация разделителя
+В контенте статей блога разделительная линия задается стандартным HTML-тегом:
+```html
+<hr>
+```
+Серверный процессор статей `PostsController` гарантирует автоматическую изоляцию тега `<hr>` — линия всегда сохраняется на отдельной строке с корректным отступом и никогда не «склеивается» с соседними параграфами.
+
+##### 2. Поддержка Markdown-разделителей
+Если клиент или сторонний редактор (Obsidian, мобильный Markdown-редактор) отправляет контент с классическими Markdown-разделителями на отдельной строке:
+```markdown
+Первый раздел статьи
+
+---
+
+Второй раздел статьи
+```
+Поддерживаются синтаксисы `---`, `***` и `___` (от 3 дефисов/звездочек/подчеркиваний на отдельной строке). Серверный API автоматически трансформирует их в канонический `<hr>` при сохранении статьи в `POST /v1/posts` и `PUT /v1/posts/{id}`.
+
+##### 3. Стилизация и тема оформления
+В стилях блога ([`data/blog/assets/blog-post.css`](file:///c:/xampp/htdocs/data/blog/assets/blog-post.css#L73-L83)) тег `<hr>` адаптирован ко всем темам оформления:
+```css
+.content hr {
+    display: block;
+    clear: both;
+    width: 100%;
+    height: 0;
+    border: none;
+    border-top: 1px solid var(--hr-color, rgba(128, 128, 128, 0.28));
+    margin: 12px 0;
+    box-sizing: border-box;
+}
+```
+- В светлой теме цвет линии определяется переменной `--hr-color: rgba(128, 128, 128, 0.28)`.
+- В тёмной теме `--hr-color: rgba(128, 128, 128, 0.35)`.
+- В AMOLED теме `--hr-color: rgba(255, 255, 255, 0.18)`.
+
+##### 4. Пример создания статьи с разделительными линиями через API
+```http
+POST /api/v1/posts HTTP/1.1
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "title": "Обзор архитектуры микросервисов",
+  "content": "<h2>1. Введение</h2><p>Текст вводной части...</p><hr><h2>2. Основная часть</h2><p>Детальный разбор компонентов...</p><hr><p>Заключительные выводы и резюме.</p>"
+}
+```
+
+---
+
 ### 4. Черновики и автосохранения
 
 #### `GET /v1/drafts` — Список черновиков
@@ -713,7 +768,203 @@ Future<void> insertImageFromGallery(HtmlEditorController controller) async {
 
 ---
 
-### 8. Настройки редактора и блога
+### 8. Математические формулы KaTeX и символы (`/formulas`)
+
+В NPBlog реализована первоклассная поддержка математических формул на базе движка **KaTeX**. Формулы могут быть как инлайновыми (внутри строки текста), так и выносными центрированными блоками.
+
+#### Спецификация хранения формул в статьях
+
+Каждая формула сохраняется в теле статьи как монолитный защищенный HTML-элемент:
+
+- **Инлайн-формула** (внутри строки):
+  ```html
+  <span class="npblog-formula" data-formula="E = mc^2" data-display="inline" data-size="normal" contenteditable="false" title="Формула (Двойной клик для редактирования)">
+    <span class="katex">...отрендеренная KaTeX разметка...</span>
+  </span>
+  ```
+- **Блочная формула** (отдельный центрированный блок с фоновой плашкой):
+  ```html
+  <div class="npblog-formula-block" data-formula="x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}" data-display="block" data-size="normal" contenteditable="false" title="Формула (Двойной клик для редактирования)">
+    <span class="katex-display"><span class="katex">...отрендеренная KaTeX разметка...</span></span>
+  </div>
+  ```
+
+##### Поддерживаемые атрибуты:
+| Атрибут | Значения | Назначение |
+|---|---|---|
+| `data-formula` | LaTeX строка (экранированная HTML-сущностями) | Исходный исходный код TeX, используемый для повторного редактирования формулы. |
+| `data-display` | `inline` или `block` | Режим отображения: внутристрочный либо центрированный блок. |
+| `data-size` | `normal` (100%), `large` (125%), `huge` (150%) | Масштаб отображения формулы. |
+| `contenteditable` | `false` | Защита от повреждения внутренней DOM-структуры KaTeX при вводе текста в визуальном редакторе. |
+
+---
+
+#### `POST /v1/formulas/render` — Рендеринг TeX формулы в KaTeX HTML
+Серверный процессор преобразует переданную LaTeX-строку в готовый монолитный HTML-элемент со всеми KaTeX-стилями и атрибутами для непосредственной вставки в контент статьи.
+
+- **Авторизация**: `Bearer <token>`
+- **Тело запроса**:
+  ```json
+  {
+    "tex": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+    "display": "block",
+    "size": "normal"
+  }
+  ```
+  *(Также поддерживаются имена полей `latex` или `formula`).*
+- **Параметры**:
+  - `tex` / `latex` / `formula` (string, обязательно) — код формулы в синтаксисе LaTeX.
+  - `display` (enum: `inline`, `block`, по умолчанию `inline`) — режим отображения.
+  - `size` (enum: `normal`, `large`, `huge`, по умолчанию `normal`) — размер формулы.
+- **Пример ответа (`200 OK`)**:
+  ```json
+  {
+    "success": true,
+    "status": 200,
+    "message": "Формула успешно отрендерена",
+    "data": {
+      "tex": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+      "display": "block",
+      "size": "normal",
+      "html": "<div class=\"npblog-formula-block\" data-formula=\"x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\" data-display=\"block\" data-size=\"normal\" contenteditable=\"false\" title=\"Формула (Двойной клик для редактирования)\"><span class=\"katex-display\">...</span></div>",
+      "rendered_katex": "<span class=\"katex-display\">...</span>",
+      "is_valid": true,
+      "error": null
+    }
+  }
+  ```
+
+---
+
+#### `POST /v1/formulas/validate` — Валидация синтаксиса LaTeX
+Позволяет мобильным и сторонним редакторам проверять корректность формулы на лету при вводе пользователем.
+
+- **Авторизация**: `Bearer <token>`
+- **Тело запроса**:
+  ```json
+  {
+    "tex": "\\int_{a}^{b} f(x)\\,dx"
+  }
+  ```
+- **Ответ при валидной формуле (`200 OK`)**:
+  ```json
+  {
+    "success": true,
+    "status": 200,
+    "message": "Синтаксис формулы валиден",
+    "data": {
+      "valid": true,
+      "tex": "\\int_{a}^{b} f(x)\\,dx"
+    }
+  }
+  ```
+- **Ответ при ошибке в синтаксисе TeX (`200 OK`)**:
+  ```json
+  {
+    "success": true,
+    "status": 200,
+    "message": "Синтаксис формулы содержит ошибки",
+    "data": {
+      "valid": false,
+      "tex": "\\int_{a}^{",
+      "error": "KaTeX parse error: Expected '}', got 'EOF' at end of input"
+    }
+  }
+  ```
+
+---
+
+#### `GET /v1/formulas/presets` — Каталог математических шаблонов
+Возвращает библиотеку готовых формул и математических конструкций, сгруппированных по разделам науки (базовые дроби, степени, интегралы, пределы, физика, геометрия, матрицы).
+
+- **Авторизация**: `Bearer <token>`
+- **Пример ответа**:
+  ```json
+  {
+    "success": true,
+    "status": 200,
+    "data": {
+      "categories": {
+        "basic": {
+          "title": "Базовые конструкции",
+          "items": [
+            { "title": "Дробь", "tex": "\\frac{a}{b}", "display": "inline", "description": "Простая дробь" },
+            { "title": "Квадратный корень", "tex": "\\sqrt{x}", "display": "inline", "description": "Корень из x" }
+          ]
+        },
+        "algebra": {
+          "title": "Алгебра",
+          "items": [
+            { "title": "Квадратное уравнение", "tex": "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}", "display": "block", "description": "Корни квадратного уравнения" }
+          ]
+        },
+        "calculus": { "title": "Математический анализ", "items": [...] },
+        "physics": { "title": "Физика", "items": [...] },
+        "geometry_trig": { "title": "Геометрия и тригонометрия", "items": [...] },
+        "matrices": { "title": "Матрицы и векторы", "items": [...] }
+      }
+    }
+  }
+  ```
+
+---
+
+#### `GET /v1/formulas/symbols` — Каталог математических символов
+Возвращает структурированный справочник символов для экранных математических клавиатур (греческий алфавит, операторы, отношения, стрелки, теория множеств, производные).
+
+- **Авторизация**: `Bearer <token>`
+- **Пример ответа**:
+  ```json
+  {
+    "success": true,
+    "status": 200,
+    "data": {
+      "symbols": {
+        "greek_lowercase": {
+          "title": "Греческий алфавит (строчные)",
+          "items": [
+            { "symbol": "α", "tex": "\\alpha", "name": "alpha" },
+            { "symbol": "β", "tex": "\\beta", "name": "beta" },
+            { "symbol": "π", "tex": "\\pi", "name": "pi" }
+          ]
+        },
+        "operators": { ... },
+        "relations": { ... },
+        "arrows": { ... },
+        "calculus_and_sets": { ... }
+      }
+    }
+  }
+  ```
+
+---
+
+#### `POST /v1/formulas/convert-markdown` — Конвертация Markdown формул в HTML
+Автоматически находит в переданном тексте конструкции `$inline$` и `$$block$$`, рендерит их через KaTeX и возвращает готовый контент с формулами NPBlog.
+
+- **Авторизация**: `Bearer <token>`
+- **Тело запроса**:
+  ```json
+  {
+    "content": "Энергия покоя равна $E = mc^2$, а уравнение окружности: $$x^2 + y^2 = R^2$$"
+  }
+  ```
+- **Пример ответа (`200 OK`)**:
+  ```json
+  {
+    "success": true,
+    "status": 200,
+    "message": "Преобразовано формул: 2",
+    "data": {
+      "content": "Энергия покоя равна <span class=\"npblog-formula\" ...>...</span>, а уравнение окружности:\n<div class=\"npblog-formula-block\" ...>...</div>\n",
+      "formulas_converted": 2
+    }
+  }
+  ```
+
+---
+
+### 9. Настройки редактора и блога
 
 #### `GET /v1/settings/editor` — Настройки редактора
 - Возвращает ширину контента (`contentWidth`), тему (`amoledTheme`), интервал автосохранения (`autosaveInterval`), язык (`language`), параметры RSS.
@@ -726,7 +977,7 @@ Future<void> insertImageFromGallery(HtmlEditorController controller) async {
 
 ---
 
-### 9. Системная диагностика и история
+### 10. Системная диагностика и история
 
 #### `GET /v1/system/status` — Диагностика сервера
 - Возвращает версию блога, версию PHP, используемую ОС, количество статей, файлов и черновиков, свободное и общее место на диске, статус доступности папок на запись.
@@ -825,7 +1076,17 @@ class NPBlogApiService {
     return response.data['data']['url'];
   }
 
-  /// 5. Выход из аккаунта
+  /// 5. Рендеринг математической формулы (KaTeX)
+  Future<String> renderFormula(String tex, {String display = 'inline', String size = 'normal'}) async {
+    final response = await _dio.post('/formulas/render', data: {
+      'tex': tex,
+      'display': display,
+      'size': size,
+    });
+    return response.data['data']['html'];
+  }
+
+  /// 6. Выход из аккаунта
   Future<void> logout() async {
     try {
       await _dio.post('/auth/logout');
@@ -902,6 +1163,21 @@ class NPBlogClient {
         let response = try JSONDecoder().decode(ApiResponse<[PostItem]>.self, from: data)
         return response.data ?? []
     }
+
+    // Рендеринг KaTeX формулы
+    func renderFormula(tex: String, isBlock: Bool = false) async throws -> String {
+        var request = URLRequest(url: baseURL.appendingPathComponent("formulas/render"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = self.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let body: [String: Any] = ["tex": tex, "display": isBlock ? "block" : "inline"]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(ApiResponse<[String: String]>.self, from: data)
+        return response.data?["html"] ?? ""
+    }
 }
 ```
 
@@ -940,6 +1216,9 @@ interface NPBlogApi {
 
     @POST("posts")
     suspend fun createPost(@Body req: Map<String, String>): ApiResponse<Map<String, Any>>
+
+    @POST("formulas/render")
+    suspend fun renderFormula(@Body req: Map<String, String>): ApiResponse<Map<String, Any>>
 }
 
 class ApiClient(private val tokenProvider: () -> String?) {
@@ -1004,6 +1283,11 @@ export const NPBlogService = {
   createPost: async (title: string, content: string) => {
     const res = await api.post('/posts', { title, content });
     return res.data.data;
+  },
+
+  renderFormula: async (tex: string, display: 'inline' | 'block' = 'inline', size = 'normal') => {
+    const res = await api.post('/formulas/render', { tex, display, size });
+    return res.data.data?.html;
   },
 
   logout: async () => {

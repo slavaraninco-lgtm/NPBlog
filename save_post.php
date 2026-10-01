@@ -10,7 +10,7 @@ if (!$data || !isset($data['title']) || !isset($data['content'])) {
     exit;
 }
 
-$allowedTags = '<b><i><u><s><sup><sub><h2><ul><li><a><p><br><img><pre><span><div><iframe><audio><source><center><details><summary><mark>';
+$allowedTags = '<b><i><u><s><sup><sub><h2><ul><li><a><p><br><img><pre><span><div><iframe><video><audio><source><center><details><summary><mark>';
 
 $content = $data['content'];
 
@@ -80,7 +80,7 @@ function formatArticleContent($html) {
     $sheltered .= substr($formatted, $offset);
     $formatted = $sheltered;
 
-    $blockTags = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'iframe', 'audio', 'center', 'details', 'summary', 'blockquote', 'hr'];
+    $blockTags = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'iframe', 'video', 'audio', 'center', 'details', 'summary', 'blockquote', 'hr'];
     $tagsRegex = implode('|', $blockTags);
     
     $formatted = preg_replace('/(<(?:' . $tagsRegex . ')(?:\s+[^>]*)?>)/i', "\n$1", $formatted);

@@ -727,7 +727,13 @@ class PostsController
         $sheltered .= substr($formatted, $offset);
         $formatted = $sheltered;
 
-        $blockTags = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'iframe', 'audio', 'center', 'details', 'summary', 'blockquote', 'hr'];
+        // Normalize markdown horizontal dividers (---, ***, ___) if passed in content
+        $formatted = preg_replace('/(?:\r?\n|^)\s*(\-{3,}|\*{3,}|_{3,})\s*(?:\r?\n|$)/', "\n<hr>\n", $formatted);
+
+        // Ensure horizontal rule tags are self-contained on their own lines
+        $formatted = preg_replace('/<hr(\s+[^>]*?)?\s*\/?>/i', "\n<hr$1>\n", $formatted);
+
+        $blockTags = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'iframe', 'video', 'audio', 'center', 'details', 'summary', 'blockquote', 'hr'];
         $tagsRegex = implode('|', $blockTags);
 
         $formatted = preg_replace('/(<(?:' . $tagsRegex . ')(?:\s+[^>]*)?>)/i', "\n$1", $formatted);
