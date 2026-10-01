@@ -281,6 +281,14 @@ if (!isset($availableLanguages)) {
                                 <input type="checkbox" id="enableMarkdown" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.exp_markdown">Использовать Markdown</span>
                             </label>
+                            
+                            <label style="display: flex; align-items: flex-start; cursor: pointer;">
+                                <input type="checkbox" id="enableApi" style="width: 18px; height: 18px; margin-right: 10px; margin-top: 2px; cursor: pointer;">
+                                <div>
+                                    <span style="color: var(--text-color); font-weight: 500; font-size: 14px; display: block;" data-i18n="settings.exp_enable_api">Включить REST API (мобильные приложения и сторонние редакторы)</span>
+                                    <span style="color: var(--text-color); font-size: 12px; opacity: 0.7; display: block; margin-top: 3px;" data-i18n="settings.exp_enable_api_desc">Разрешает доступ к эндпоинтам /api/v1/... Снимите флажок, чтобы полностью отключить API в целях безопасности.</span>
+                                </div>
+                            </label>
                         </div>
                         
                         <button type="button" onclick="saveExperimentalSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.exp_save_btn">Сохранить настройки</button>
@@ -421,9 +429,14 @@ if (!isset($availableLanguages)) {
                         <div id="blogPathsListContainer" style="margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;">
                             <!-- Динамически заполняется через JS -->
                         </div>
-                        <button type="button" onclick="addBlogPathRow()" class="modal-btn modal-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px;">
-                            <span>➕</span> <span data-i18n="settings.paths_add_btn">Добавить путь к блогу</span>
-                        </button>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" onclick="addBlogPathRow()" class="modal-btn modal-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px;">
+                                <span>➕</span> <span data-i18n="settings.paths_add_btn">Добавить путь к блогу</span>
+                            </button>
+                            <button type="button" onclick="openCreateBlogModal()" class="modal-btn modal-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px;">
+                                <span>✨</span> <span data-i18n="settings.paths_create_blog_btn">Создать блог</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Подсекция 2: Директория резервных копий статей (data_backup) -->

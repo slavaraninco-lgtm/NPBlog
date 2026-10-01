@@ -39,13 +39,14 @@ function initTemplatesSystem() {
         if(localStorage.getItem(\'theme\') === \'dark\') document.documentElement.setAttribute(\'data-theme\', \'dark\');
         if(/Android/i.test(navigator.userAgent)) document.documentElement.classList.add(\'is-android\');
     </script>
-    <link rel="stylesheet" href="assets/blog-post.css?v=1.0.6">
+    <link rel="stylesheet" href="assets/blog-post.css?v=1.0.8">
+    <link rel="stylesheet" href="assets/katex/katex.min.css">
     <style>
 {{CUSTOM_FONTS}}
     </style>
 </head>
 <body {{BODY_STYLE}}>
-    <button class="theme-toggle" onclick="toggleTheme()">🌓 Тема</button>
+    <button class="theme-toggle" onclick="toggleTheme()">Тема</button>
     {{CONTENT_WRAPPER_START}}
     <h1>{{TITLE}}</h1>
     <div class="date">📅 {{DATE}}</div>
@@ -70,6 +71,7 @@ function initTemplatesSystem() {
             <button class="image-modal-btn" onclick="downloadImage()" title="Скачать">⬇</button>
         </div>
     </div>
+    <script src="assets/katex/katex.min.js" defer></script>
     <script src="assets/blog-post.js" defer></script>
 </body>
 </html>';

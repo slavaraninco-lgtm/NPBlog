@@ -105,13 +105,13 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
                         </select>
                     </div>
                     <div class="modal-form-group" style="margin-bottom: 0;">
-                        <label class="modal-label modal-label-required" for="ftpModalServer" data-i18n="modals.ftp_server_label">Сервер / Хост *</label>
+                        <label class="modal-label modal-label-required" for="ftpModalServer" data-i18n="modals.ftp_server_label">Сервер / Хост</label>
                         <input type="text" id="ftpModalServer" class="modal-input" 
                                value="<?= htmlspecialchars($savedFtpCredentials['ftpServer'] ?? '') ?>" 
                                placeholder="ftp.example.com" data-i18n-placeholder="modals.ftp_server_ph" required autocomplete="off">
                     </div>
                     <div class="modal-form-group" style="margin-bottom: 0;">
-                        <label class="modal-label modal-label-required" for="ftpModalPort" data-i18n="modals.ftp_port_label">Порт *</label>
+                        <label class="modal-label modal-label-required" for="ftpModalPort" data-i18n="modals.ftp_port_label">Порт</label>
                         <input type="number" id="ftpModalPort" class="modal-input" min="1" max="65535"
                                value="<?= htmlspecialchars($savedFtpCredentials['ftpPort'] ?? (($savedFtpCredentials['ftpProtocol'] ?? '') === 'sftp' ? '22' : '21')) ?>" 
                                placeholder="21" data-i18n-placeholder="modals.ftp_port_ph" required>
@@ -121,13 +121,13 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
                 <!-- Сетка: Пользователь и Пароль -->
                 <div class="modal-grid-2" style="margin-bottom: 14px;">
                     <div class="modal-form-group" style="margin-bottom: 0;">
-                        <label class="modal-label modal-label-required" for="ftpModalUsername" data-i18n="modals.ftp_user_label">Имя пользователя *</label>
+                        <label class="modal-label modal-label-required" for="ftpModalUsername" data-i18n="modals.ftp_user_label">Имя пользователя</label>
                         <input type="text" id="ftpModalUsername" class="modal-input" 
                                value="<?= htmlspecialchars($savedFtpCredentials['ftpUsername'] ?? '') ?>" 
                                placeholder="username" data-i18n-placeholder="modals.ftp_user_ph" required autocomplete="off">
                     </div>
                     <div class="modal-form-group" style="margin-bottom: 0;">
-                        <label class="modal-label modal-label-required" for="ftpModalPassword" data-i18n="modals.ftp_password_label">Пароль *</label>
+                        <label class="modal-label modal-label-required" for="ftpModalPassword" data-i18n="modals.ftp_password_label">Пароль</label>
                         <div style="position: relative; display: flex; align-items: center;">
                             <input type="password" id="ftpModalPassword" class="modal-input" style="padding-right: 40px;"
                                    placeholder="••••••••" data-i18n-placeholder="modals.ftp_password_ph" required autocomplete="current-password">
@@ -138,7 +138,7 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
 
                 <!-- Корневая директория -->
                 <div class="modal-form-group" style="margin-bottom: 16px;">
-                    <label class="modal-label modal-label-required" for="ftpModalDirectory" data-i18n="modals.ftp_dir_label">Корневая директория сервера *</label>
+                    <label class="modal-label modal-label-required" for="ftpModalDirectory" data-i18n="modals.ftp_dir_label">Корневая директория сервера</label>
                     <input type="text" id="ftpModalDirectory" class="modal-input" 
                            value="<?= htmlspecialchars($savedFtpCredentials['ftpDirectory'] ?? '') ?>" 
                            placeholder="/public_html или /" data-i18n-placeholder="modals.ftp_dir_ph" required>

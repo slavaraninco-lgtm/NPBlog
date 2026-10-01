@@ -1,0 +1,91 @@
+# ==============================================================================
+# Конфигурация Nginx для NPBlog и REST API
+# ==============================================================================
+# Инструкция по установке на Ubuntu / Debian:
+# 1. Скопируйте этот файл в конфигурацию Nginx:
+#    sudo cp nginx.conf.example /etc/nginx/sites-available/npblog
+# 2. Отредактируйте server_name, root и сокет php-fpm под ваш сервер:
+#    sudo nano /etc/nginx/sites-available/npblog
+# 3. Активируйте сайт и перезапустите Nginx:
+#    sudo ln -s /etc/nginx/sites-available/npblog /etc/nginx/sites-enabled/
+#    sudo nginx -t && sudo systemctl reload nginx
+# ==============================================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-blog-domain.com; # Укажите ваш домен или IP-адрес сервера
+
+    root /var/www/html; # Укажите путь к папке блога на сервере
+    index index.php index.html index.htm;
+
+    # Максимальный размер загружаемых файлов (фото, видео, шрифты, резервные копии)
+    # По умолчанию в Nginx всего 1M, что вызывает ошибку 413 Request Entity Too Large.
+    client_max_body_size 64M;
+
+    charset utf-8;
+
+    # --------------------------------------------------------------------------
+    # 1. МАРШРУТИЗАЦИЯ REST API NPBLOG (ОБЯЗАТЕЛЬНО ДЛЯ КЛИЕНТОВ И РЕДАКТОРОВ)
+    # --------------------------------------------------------------------------
+    # Nginx не читает .htaccess! Без этого блока запросы к /api/v1/...
+    # возвращают ошибку "404 Not Found" (HTML от nginx)
+    location /api/ {
+        try_files $uri $uri/ /api/index.php?$query_string;
+    }
+
+    # --------------------------------------------------------------------------
+    # 2. ОСНОВНАЯ МАРШРУТИЗАЦИЯ БЛОГА И ВЕБ-РЕДАКТОРА
+    # --------------------------------------------------------------------------
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # --------------------------------------------------------------------------
+    # 3. ОБРАБОТКА PHP ЧЕРЕЗ FASTCGI (PHP-FPM)
+    # --------------------------------------------------------------------------
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        
+        # Укажите сокет вашей версии PHP (проверьте через: ls /var/run/php/)
+        # Например: php8.2-fpm.sock, php8.1-fpm.sock, php8.3-fpm.sock или php7.4-fpm.sock
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+
+        # Передача заголовка Authorization (критично для Bearer токенов API)
+        fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+    }
+
+    # --------------------------------------------------------------------------
+    # 4. БЕЗОПАСНОСТЬ: ЗАЩИТА СЛУЖЕБНЫХ ФАЙЛОВ И ТОКЕНОВ (АНАЛОГ ROOT .HTACCESS)
+    # --------------------------------------------------------------------------
+    # Запрет доступа к скрытым файлам (.git, .env, .htaccess и т.д.)
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Запрет прямого доступа к файлам токенов, настроек и системным логам
+    location ~* /(editor_settings\.json|allowed_ips\.txt|ftp\.json|version\.json|history\.json|backup-meta\.json|includes-meta\.json|login_lockouts\.json|api_tokens\.json|\.(bak|log|sql|dist|sh|bat|cmd|ini))$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Запрет доступа к служебным папкам резервных копий
+    location ~* ^/(data_backup|editor_backup|sys_update_tmp|rollback_tmp)/ {
+        deny all;
+    }
+
+    # --------------------------------------------------------------------------
+    # 5. ПРЯМАЯ РАЗДАЧА СТАТИЧЕСКИХ МЕДИАФАЙЛОВ ИЗ ПАПКИ /data/
+    # --------------------------------------------------------------------------
+    location ~* ^/data/.*\.(jpg|jpeg|png|gif|webp|svg|ico|mp4|webm|mp3|ogg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+        access_log off;
+    }
+}

@@ -106,6 +106,13 @@
             "row": 1
         },
         {
+            "id": "btn-hr",
+            "name": "Разделительная линия",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
             "id": "divider-align",
             "name": "divider-align",
             "visible": true,
@@ -169,6 +176,13 @@
             "row": 1
         },
         {
+            "id": "btn-formula",
+            "name": "Вставить формулу",
+            "visible": true,
+            "inDropdown": false,
+            "row": 1
+        },
+        {
             "id": "divider-fonts",
             "name": "divider-fonts",
             "visible": true,
@@ -215,12 +229,13 @@
     "headerTwoRows": false,
     "autosaveEnabled": true,
     "autosaveInterval": 60,
-    "data_path": "C:\\xampp\\htdocs\\data",
+    "data_path": "C:\\xampp\\htdocs\\data_klienty_npblog",
     "backup_path": "",
     "autosave_path": "",
     "editor_backup_path": "",
     "enableUndoRedo": false,
     "enableMarkdown": false,
+    "enableApi": true,
     "ip_whitelist_enabled": false,
     "password_hash": "",
     "failed_attempts": 0,

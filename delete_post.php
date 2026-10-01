@@ -125,12 +125,16 @@ function renumberPostsAfterDelete() {
         }
         
         // Обновляем метаданные статьи
-        $newMeta[] = [
+        $newMetaItem = [
             'id' => $newId,
             'title' => $post['title'],
             'date' => $post['date'],
             'filename' => 'post-' . $newId . '.html'
         ];
+        if (!empty($post['pinned'])) {
+            $newMetaItem['pinned'] = true;
+        }
+        $newMeta[] = $newMetaItem;
     }
     
     // Сохраняем обновленные метаданные

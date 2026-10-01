@@ -32,16 +32,23 @@
                     return;
                 }
 
-                // Сортировка
-                if (config.sortDescending) {
-                    posts.sort((a, b) => b.id - a.id);
-                } else {
-                    posts.sort((a, b) => a.id - b.id);
-                }
+                // Сортировка: закрепленные всегда сверху
+                posts.sort((a, b) => {
+                    const pinA = a.pinned ? 1 : 0;
+                    const pinB = b.pinned ? 1 : 0;
+                    if (pinA !== pinB) {
+                        return pinB - pinA;
+                    }
+                    return config.sortDescending ? ((b.id || 0) - (a.id || 0)) : ((a.id || 0) - (b.id || 0));
+                });
 
                 // Отрисовка гиперссылок друг под другом
                 container.innerHTML = posts.map(post => {
                     let labelParts = [];
+                    
+                    if (post.pinned) {
+                        labelParts.push('⭐');
+                    }
                     
                     if (config.showNumber) {
                         labelParts.push(`#${post.id}`);

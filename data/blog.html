@@ -61,20 +61,32 @@
             opacity: 0.7;
         }
 
-        .theme-toggle {
+        .top-nav-controls {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .theme-toggle {
+            padding: 10px 18px;
             background: var(--bg-color);
             color: var(--text-color);
             border: 2px solid var(--border-color);
-            border-radius: 0;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
-            z-index: 100;
+            white-space: nowrap;
+            height: 41px;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .theme-toggle:hover {
@@ -82,27 +94,126 @@
             color: var(--hover-text);
         }
 
-        .editor-link-btn {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            padding: 10px 20px;
+        /* Виджет поиска (кнопка с иконкой -> строка поиска) */
+        .search-widget {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            height: 41px;
+            width: 41px;
+            box-sizing: border-box;
             background: var(--bg-color);
             color: var(--text-color);
             border: 2px solid var(--border-color);
-            border-radius: 0;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            display: inline-block;
-            z-index: 100;
+            overflow: hidden;
+            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        background 0.2s ease,
+                        color 0.2s ease,
+                        border-color 0.2s ease;
         }
 
-        .editor-link-btn:hover {
+        .search-widget:not(.open):hover {
             background: var(--hover-bg);
             color: var(--hover-text);
+        }
+
+        .search-widget.open {
+            width: 250px;
+            cursor: default;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .search-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 37px;
+            height: 100%;
+            padding: 0;
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-family: inherit;
+            cursor: pointer;
+            flex-shrink: 0;
+            outline: none;
+            transition: width 0.2s ease, padding 0.2s ease;
+        }
+
+        .search-icon {
+            flex-shrink: 0;
+            width: 17px;
+            height: 17px;
+            stroke: currentColor;
+            display: block;
+        }
+
+        .search-widget.open .search-toggle-btn {
+            width: 34px;
+            padding-left: 10px;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .search-input {
+            flex: 1;
+            height: 100%;
+            min-width: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 14px;
+            padding: 0;
+            width: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease 0.1s;
+            box-sizing: border-box;
+        }
+
+        .search-widget.open .search-input {
+            width: 100%;
+            opacity: 1;
+            pointer-events: auto;
+            padding: 0 6px 0 8px;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-color);
+            opacity: 0.5;
+        }
+
+        .search-clear-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            margin-right: 6px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0.5;
+            transition: opacity 0.2s ease, background 0.2s ease;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .search-widget.open .search-clear-btn {
+            display: inline-flex;
+        }
+
+        .search-clear-btn:hover {
+            opacity: 1;
+            background: rgba(128, 128, 128, 0.2);
         }
 
         #posts-container {
@@ -112,9 +223,10 @@
         }
 
         .post-card {
+            position: relative;
             padding: 24px;
             border: 2px solid var(--border-color);
-            border-radius: 0;
+            border-radius: 12px;
             background: var(--card-bg);
             transition: all 0.2s ease;
             text-decoration: none;
@@ -122,14 +234,40 @@
             display: block;
         }
 
+        .post-card.is-pinned {
+            border-color: #f59e0b;
+        }
+
         .post-card:hover {
             background: var(--hover-bg);
             color: var(--hover-text);
         }
 
+        .post-card.is-pinned:hover {
+            border-color: #f59e0b;
+        }
+
+        .post-pin-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #f59e0b;
+            line-height: 1;
+            z-index: 2;
+            transition: transform 0.2s ease;
+        }
+
+        .post-card:hover .post-pin-badge {
+            transform: scale(1.15);
+        }
+
         .post-card h2 {
             font-size: 1.5em;
             margin-bottom: 10px;
+            padding-right: 32px;
             color: inherit;
             display: flex;
             align-items: center;
@@ -151,7 +289,7 @@
             background: var(--text-color);
             color: var(--bg-color);
             padding: 4px 12px;
-            border-radius: 0;
+            border-radius: 6px;
             font-size: 0.75em;
             font-weight: 600;
             min-width: 40px;
@@ -190,7 +328,7 @@
             color: var(--text-color);
             text-decoration: none;
             border: 2px solid var(--border-color);
-            border-radius: 0;
+            border-radius: 8px;
             transition: all 0.2s ease;
             font-weight: 500;
         }
@@ -224,54 +362,21 @@
                 font-size: 2em;
             }
             
-            .theme-toggle,
-            .editor-link-btn {
+            .top-nav-controls {
                 position: static;
-                margin: 10px auto;
-                display: block;
-                width: fit-content;
+                margin: 10px auto 20px;
+                display: flex;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .search-widget.open {
+                width: min(230px, calc(100vw - 140px));
             }
             
             header {
                 margin-bottom: 20px;
             }
-            
-            .search-box {
-                margin-bottom: 20px;
-            }
-        }
-        
-        /* Стили для поиска */
-        .search-box {
-            margin-bottom: 30px;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        
-        .search-input {
-            width: 100%;
-            padding: 14px 20px;
-            font-size: 16px;
-            border: 2px solid var(--border-color);
-            border-radius: 0;
-            background: var(--bg-color);
-            color: var(--text-color);
-            transition: all 0.2s ease;
-        }
-        
-        .search-input:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(0,0,0,0.1);
-        }
-        
-        [data-theme="dark"] .search-input:focus {
-            box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
-        }
-        
-        .search-input::placeholder {
-            color: var(--text-color);
-            opacity: 0.5;
         }
         
         .search-results-info {
@@ -284,17 +389,25 @@
     </style>
 </head>
 <body>
-    <button class="theme-toggle" onclick="toggleTheme()">Тема</button>
+    <div class="top-nav-controls">
+        <div class="search-widget" id="searchWidget">
+            <button class="search-toggle-btn" id="searchToggleBtn" onclick="toggleSearch(event)" title="Поиск по статьям" aria-label="Поиск">
+                <svg class="search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </button>
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по статьям..." oninput="filterPosts()" autocomplete="off">
+            <button class="search-clear-btn" id="searchClearBtn" onclick="closeOrClearSearch(event)" title="Закрыть поиск" aria-label="Закрыть">✕</button>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()">Тема</button>
+    </div>
     
     <header>
         <h1>Блог</h1>
         <p class="subtitle">Все статьи</p>
     </header>
 
-    <div class="search-box">
-        <input type="text" class="search-input" id="searchInput" placeholder="🔍 Поиск по статьям..." oninput="filterPosts()">
-    </div>
-    
     <div class="search-results-info" id="searchResultsInfo" style="display: none;"></div>
 
     <div id="posts-container">
@@ -382,7 +495,7 @@
                                 a.style.border = '1px solid var(--border-color)';
                                 a.style.textDecoration = 'none';
                                 a.style.fontSize = '14px';
-                                a.style.borderRadius = '4px';
+                                a.style.borderRadius = '8px';
                                 a.style.transition = 'all 0.2s';
                                 a.onmouseover = () => { a.style.background = 'var(--text-color)'; a.style.color = 'var(--bg-color)'; };
                                 a.onmouseout = () => { a.style.background = 'transparent'; a.style.color = 'var(--text-color)'; };
@@ -447,16 +560,29 @@
                     return;
                 }
                 
-                // Сортируем статьи по ID в обратном порядке (новые первыми)
-                posts.sort((a, b) => b.id - a.id);
+                // Сортируем статьи: сначала закрепленные, затем по ID в обратном порядке (новые первыми)
+                posts.sort((a, b) => {
+                    const pinA = a.pinned ? 1 : 0;
+                    const pinB = b.pinned ? 1 : 0;
+                    if (pinA !== pinB) {
+                        return pinB - pinA;
+                    }
+                    return (b.id || 0) - (a.id || 0);
+                });
                 
                 container.innerHTML = posts.map(post => `
-                    <a href="blog/${post.filename}" class="post-card">
+                    <a href="blog/${post.filename}" class="post-card ${post.pinned ? 'is-pinned' : ''}">
+                        ${post.pinned ? `
+                        <span class="post-pin-badge" title="Закрепленная статья" aria-label="Закрепленная статья">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                        </span>` : ''}
                         <h2>
                             <span class="post-number">#${post.id}</span>
                             ${escapeHtml(post.title)}
                         </h2>
-                        <div class="post-date"> ${escapeHtml(post.date)}</div>
+                        <div class="post-date">📅 ${escapeHtml(post.date)}</div>
                     </a>
                 `).join('');
                 
@@ -515,6 +641,71 @@
                 resultsInfo.style.display = 'none';
             }
         }
+
+        // Управление виджетом поиска (плавное открытие/закрытие)
+        function openSearch() {
+            const widget = document.getElementById('searchWidget');
+            const input = document.getElementById('searchInput');
+            if (widget && !widget.classList.contains('open')) {
+                widget.classList.add('open');
+                setTimeout(() => input.focus(), 120);
+            }
+        }
+
+        function closeSearch() {
+            const widget = document.getElementById('searchWidget');
+            const input = document.getElementById('searchInput');
+            if (widget && widget.classList.contains('open')) {
+                widget.classList.remove('open');
+                if (input && input.value !== '') {
+                    input.value = '';
+                    filterPosts();
+                }
+            }
+        }
+
+        function toggleSearch(event) {
+            if (event) event.stopPropagation();
+            const widget = document.getElementById('searchWidget');
+            if (widget && widget.classList.contains('open')) {
+                document.getElementById('searchInput').focus();
+            } else {
+                openSearch();
+            }
+        }
+
+        function closeOrClearSearch(event) {
+            if (event) event.stopPropagation();
+            const input = document.getElementById('searchInput');
+            if (input && input.value !== '') {
+                input.value = '';
+                filterPosts();
+                input.focus();
+            } else {
+                closeSearch();
+            }
+        }
+
+        document.getElementById('searchWidget')?.addEventListener('click', function(e) {
+            if (!this.classList.contains('open')) {
+                openSearch();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            const widget = document.getElementById('searchWidget');
+            const input = document.getElementById('searchInput');
+            if (!widget || !widget.classList.contains('open')) return;
+            if (!widget.contains(e.target) && !input.value.trim()) {
+                closeSearch();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeSearch();
+            }
+        });
 
         // Загружаем статьи при загрузке страницы
         loadPosts();

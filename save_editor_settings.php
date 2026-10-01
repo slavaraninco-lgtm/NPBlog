@@ -55,6 +55,10 @@ if (isset($data['enableMarkdown'])) {
     $existingSettings['enableMarkdown'] = (bool)$data['enableMarkdown'];
 }
 
+if (isset($data['enableApi'])) {
+    $existingSettings['enableApi'] = (bool)$data['enableApi'];
+}
+
 if (isset($data['autosaveEnabled'])) {
     $existingSettings['autosaveEnabled'] = (bool)$data['autosaveEnabled'];
 }

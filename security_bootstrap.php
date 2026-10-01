@@ -10,7 +10,7 @@ if (empty($_SESSION['csrf_token'])) {
 
 // Automatically validate CSRF token on POST requests (excluding CLI and login.php)
 $currentScript = basename($_SERVER['SCRIPT_NAME']);
-if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && $currentScript !== 'login.php') {
+if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && $currentScript !== 'login.php' && !defined('NPBLOG_API_REQUEST')) {
     $csrfHeader = isset($_SERVER['HTTP_X_CSRF_TOKEN']) ? $_SERVER['HTTP_X_CSRF_TOKEN'] : '';
     $sessionToken = isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : '';
     if (empty($sessionToken) || empty($csrfHeader) || !hash_equals($sessionToken, $csrfHeader)) {
@@ -167,17 +167,25 @@ function getDataPath($subpath = '') {
     }
     
     $activePath = '';
-    if (!empty($_SESSION['active_blog_path'])) {
-        $activePath = $_SESSION['active_blog_path'];
+    if (!empty($GLOBALS['NPBLOG_ACTIVE_BLOG_PATH'])) {
+        $activePath = $GLOBALS['NPBLOG_ACTIVE_BLOG_PATH'];
     } elseif (!empty($settings['active_blog_path'])) {
         $activePath = $settings['active_blog_path'];
-        $_SESSION['active_blog_path'] = $activePath;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['active_blog_path'] = $activePath;
+        }
+    } elseif (!empty($_SESSION['active_blog_path'])) {
+        $activePath = $_SESSION['active_blog_path'];
     } elseif (!empty($settings['blog_paths']) && is_array($settings['blog_paths']) && count($settings['blog_paths']) > 0) {
         $activePath = $settings['blog_paths'][0];
-        $_SESSION['active_blog_path'] = $activePath;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['active_blog_path'] = $activePath;
+        }
     } elseif (!empty($settings['data_path'])) {
         $activePath = $settings['data_path'];
-        $_SESSION['active_blog_path'] = $activePath;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['active_blog_path'] = $activePath;
+        }
     } else {
         $activePath = __DIR__ . '/data';
     }
@@ -234,11 +242,13 @@ if (!function_exists('getBackupPath')) {
         }
         
         $backupPath = '';
-        if (!empty($_SESSION['backup_path'])) {
-            $backupPath = $_SESSION['backup_path'];
-        } elseif (!empty($settings['backup_path'])) {
+        if (!empty($settings['backup_path'])) {
             $backupPath = $settings['backup_path'];
-            $_SESSION['backup_path'] = $backupPath;
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['backup_path'] = $backupPath;
+            }
+        } elseif (!empty($_SESSION['backup_path'])) {
+            $backupPath = $_SESSION['backup_path'];
         } else {
             $backupPath = __DIR__ . '/data_backup';
         }
@@ -278,11 +288,13 @@ if (!function_exists('getAutosavePath')) {
         }
         
         $autosavePath = '';
-        if (!empty($_SESSION['autosave_path'])) {
-            $autosavePath = $_SESSION['autosave_path'];
-        } elseif (!empty($settings['autosave_path'])) {
+        if (!empty($settings['autosave_path'])) {
             $autosavePath = $settings['autosave_path'];
-            $_SESSION['autosave_path'] = $autosavePath;
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['autosave_path'] = $autosavePath;
+            }
+        } elseif (!empty($_SESSION['autosave_path'])) {
+            $autosavePath = $_SESSION['autosave_path'];
         } else {
             $autosavePath = __DIR__ . '/autosave';
         }
@@ -322,11 +334,13 @@ if (!function_exists('getEditorBackupPath')) {
         }
         
         $editorBackupPath = '';
-        if (!empty($_SESSION['editor_backup_path'])) {
-            $editorBackupPath = $_SESSION['editor_backup_path'];
-        } elseif (!empty($settings['editor_backup_path'])) {
+        if (!empty($settings['editor_backup_path'])) {
             $editorBackupPath = $settings['editor_backup_path'];
-            $_SESSION['editor_backup_path'] = $editorBackupPath;
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['editor_backup_path'] = $editorBackupPath;
+            }
+        } elseif (!empty($_SESSION['editor_backup_path'])) {
+            $editorBackupPath = $_SESSION['editor_backup_path'];
         } else {
             $editorBackupPath = __DIR__ . '/editor_backup';
         }
@@ -365,10 +379,21 @@ function getDataUrl($subpath = '') {
     $dataDirClean = rtrim(str_replace('\\', '/', $dataDir), '/') . '/';
     $appDirClean = rtrim(str_replace('\\', '/', __DIR__), '/') . '/';
     
-    $scriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', $_SERVER['SCRIPT_NAME']) : '';
+    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']) : '';
+    $docRootClean = rtrim($docRoot, '/') . '/';
     $webRoot = '';
-    if (!empty($scriptName) && php_sapi_name() !== 'cli') {
-        $webRoot = rtrim(dirname($scriptName), '/\\');
+    
+    // Determine the base web root of the application (where NPBlog root is located)
+    if (!empty($docRoot) && strpos($appDirClean, $docRootClean) === 0) {
+        $relApp = trim(substr($appDirClean, strlen($docRootClean)), '/');
+        $webRoot = !empty($relApp) ? '/' . $relApp : '';
+    } else {
+        $scriptName = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', $_SERVER['SCRIPT_NAME']) : '';
+        if (!empty($scriptName) && php_sapi_name() !== 'cli') {
+            $webRoot = rtrim(dirname($scriptName), '/\\');
+            // If executed from /api or subdirectories, strip /api from web root
+            $webRoot = preg_replace('#/api(?:/.*)?$#i', '', $webRoot);
+        }
     }
     
     // 1. Check if dataDir is inside the application directory (__DIR__)
@@ -614,7 +639,7 @@ if (!empty($passwordHash) && php_sapi_name() !== 'cli') {
                     
     $currentScript = basename($_SERVER['SCRIPT_NAME']);
     
-    if (!$isAuthorized && $currentScript !== 'login.php' && $currentScript !== 'serve_data.php') {
+    if (!$isAuthorized && $currentScript !== 'login.php' && $currentScript !== 'serve_data.php' && !defined('NPBLOG_API_REQUEST')) {
         if ($currentScript === 'index.php') {
             // Render beautiful login page and exit
             renderLoginPage($settings);

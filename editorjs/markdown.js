@@ -67,6 +67,14 @@ function parseMarkdownToHtml(md) {
             continue;
         }
 
+        // Horizontal Rule
+        let hrMatch = line.match(/^(\*{3,}|-{3,}|_{3,})$/);
+        if (hrMatch) {
+            flushList();
+            newLines.push('<hr>');
+            continue;
+        }
+
         // Unordered List
         let ulMatch = line.match(/^[\*\-\+]\s+(.*)$/);
         if (ulMatch) {
@@ -143,7 +151,7 @@ function parseMarkdownToHtml(md) {
                 finalHtml += `<p>${pContent.join('<br>')}</p>\n`;
                 pContent = [];
             }
-        } else if (line.startsWith('<h') || line.startsWith('<pre') || line.startsWith('<blockquote') || line.startsWith('<ul') || line.startsWith('<ol') || line.startsWith('<table') || line.startsWith('<details')) {
+        } else if (line.startsWith('<h') || line.startsWith('<pre') || line.startsWith('<blockquote') || line.startsWith('<ul') || line.startsWith('<ol') || line.startsWith('<table') || line.startsWith('<details') || line.startsWith('<hr')) {
             if (pContent.length > 0) {
                 finalHtml += `<p>${pContent.join('<br>')}</p>\n`;
                 pContent = [];
@@ -296,6 +304,8 @@ function nodeToMarkdown(node) {
                 }
             }
             return tableMd + '\n';
+        case 'HR':
+            return '\n\n---\n\n';
         case 'DETAILS':
             const summaryEl = node.querySelector('summary');
             const summaryText = summaryEl ? summaryEl.textContent : 'Подробности';

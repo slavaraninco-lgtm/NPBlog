@@ -244,6 +244,11 @@ if (file_exists($versionFile)) {
         })();
     </script>
     <link rel="stylesheet" href="editor-style.css?v=<?php echo file_exists(__DIR__ . '/editor-style.css') ? filemtime(__DIR__ . '/editor-style.css') : time(); ?>">
+    <link rel="stylesheet" href="assets/katex/katex.min.css?v=<?php echo file_exists(__DIR__ . '/assets/katex/katex.min.css') ? filemtime(__DIR__ . '/assets/katex/katex.min.css') : time(); ?>">
+    <script src="assets/katex/katex.min.js?v=<?php echo file_exists(__DIR__ . '/assets/katex/katex.min.js') ? filemtime(__DIR__ . '/assets/katex/katex.min.js') : time(); ?>"></script>
+    <link rel="stylesheet" href="assets/mathlive/mathlive-static.css?v=<?php echo file_exists(__DIR__ . '/assets/mathlive/mathlive-static.css') ? filemtime(__DIR__ . '/assets/mathlive/mathlive-static.css') : time(); ?>">
+    <link rel="stylesheet" href="assets/mathlive/mathlive-fonts.css?v=<?php echo file_exists(__DIR__ . '/assets/mathlive/mathlive-fonts.css') ? filemtime(__DIR__ . '/assets/mathlive/mathlive-fonts.css') : time(); ?>">
+    <script src="assets/mathlive/mathlive.min.js?v=<?php echo file_exists(__DIR__ . '/assets/mathlive/mathlive.min.js') ? filemtime(__DIR__ . '/assets/mathlive/mathlive.min.js') : time(); ?>"></script>
     <link rel="stylesheet" href="modals/modal.css?v=<?php echo file_exists(__DIR__ . '/modals/modal.css') ? filemtime(__DIR__ . '/modals/modal.css') : time(); ?>">
     <link rel="stylesheet" id="customThemeStyleLink" href="data/custom_editor_theme.css?v=<?php echo $customCssExists ? filemtime(__DIR__ . '/data/custom_editor_theme.css') : '1'; ?>" <?php echo ($activeTheme === 'custom' && $customCssExists) ? '' : 'disabled'; ?>>
 </head>
@@ -332,9 +337,11 @@ if (file_exists($versionFile)) {
             <button type="button" id="btn-sub" class="format-btn" onclick="formatText('sub')" title="Нижний индекс" data-i18n-title="toolbar.sub"><span class="button-icon">X<sub>2</sub></span><span class="button-text" data-i18n="toolbar.sub">Нижний индекс</span></button>
             <button type="button" id="btn-h2" class="format-btn" onclick="formatText('h2')" title="Подзаголовок" data-i18n-title="toolbar.heading"><span class="button-icon"><b>H</b></span><span class="button-text" data-i18n="toolbar.heading">Подзаголовок</span></button>
             <button type="button" id="btn-table" class="format-btn" onclick="openTableDialog()" title="Вставить таблицу" data-i18n-title="toolbar.table"><span class="button-icon">⊞</span><span class="button-text" data-i18n="toolbar.table">Вставить таблицу</span></button>
+            <button type="button" id="btn-formula" class="format-btn" onclick="openFormulaDialog()" title="Вставить формулу" data-i18n-title="toolbar.formula"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M3 12h2.5l3.5 9 4-17H21"/><path d="M15 11l4 5"/><path d="M19 11l-4 5"/></svg></span><span class="button-text" data-i18n="toolbar.formula">Формула</span></button>
             <button type="button" id="btn-spoiler" class="format-btn" onclick="openSpoilerDialog()" title="Сворачиваемый блок" data-i18n-title="toolbar.spoiler"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display: block;"><path d="M3 7l9 10 9-10H3z" /></svg></span><span class="button-text" data-i18n="toolbar.spoiler">Сворачиваемый блок</span></button>
             <button type="button" id="btn-marker" class="format-btn" onclick="openMarkerDialog()" title="Маркер" data-i18n-title="toolbar.marker"><span class="button-icon">🖍</span><span class="button-text" data-i18n="toolbar.marker">Маркер</span></button>
             <button type="button" id="btn-anchor" class="format-btn" onclick="addAnchor()" title="Добавить якорь" data-i18n-title="toolbar.anchor"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="5" r="3" /><line x1="12" y1="8" x2="12" y2="22" /><path d="M5 12H2a10 10 0 0 0 20 0h-3" /></svg></span><span class="button-text" data-i18n="toolbar.anchor">Добавить якорь</span></button>
+            <button type="button" id="btn-hr" class="format-btn" onclick="insertHorizontalRule()" title="Разделительная линия" data-i18n-title="toolbar.hr"><span class="button-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><line x1="2" y1="12" x2="22" y2="12" stroke-width="3"></line><line x1="4" y1="5" x2="12" y2="5" stroke-width="2" opacity="0.4"></line><line x1="4" y1="19" x2="12" y2="19" stroke-width="2" opacity="0.4"></line></svg></span><span class="button-text" data-i18n="toolbar.hr">Разделительная линия</span></button>
             
             <span class="toolbar-divider" id="divider-align"></span>
             
@@ -434,6 +441,7 @@ if (file_exists($versionFile)) {
                     </button>
                     <button type="button" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
                     <button type="button" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
+                    <button type="button" class="more-menu-item" onclick="openFormulaDialog()" data-i18n="toolbar.formula">Вставить формулу</button>
                     <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
                     <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
                     <button type="button" class="more-menu-item has-submenu" onclick="toggleSmilesSubmenu(event)">
@@ -584,6 +592,9 @@ if (file_exists($versionFile)) {
     <!-- Модальное окно вставки таблицы -->
     <?php safe_include_editor_modal('table_modal.php'); ?>
 
+    <!-- Модальное окно конструктора формул -->
+    <?php safe_include_editor_modal('formula_modal.php'); ?>
+
 <!-- Модальное окно перекрашивания ячейки -->
 <?php safe_include_editor_modal('cell_color_modal.php'); ?>
 
@@ -615,7 +626,8 @@ $editorJsFiles = [
     'markdown.js',
     'templates.js',
     'smiles.js',
-    'custom-button.js'
+    'custom-button.js',
+    'formula.js'
 ];
 foreach ($editorJsFiles as $jsFile) {
     $v = file_exists(__DIR__ . '/editorjs/' . $jsFile) ? filemtime(__DIR__ . '/editorjs/' . $jsFile) : time();
@@ -633,6 +645,9 @@ foreach ($editorJsFiles as $jsFile) {
 
 <!-- Модальное окно глобальных параметров -->
 <?php safe_include_editor_modal('global_settings_modal.php'); ?>
+
+<!-- Модальное окно создания блога -->
+<?php safe_include_editor_modal('create_blog_modal.php'); ?>
 
 <!-- Модальное окно пользовательских шрифтов -->
 <?php safe_include_editor_modal('custom_fonts_modal.php'); ?>
@@ -2301,7 +2316,26 @@ function renderCrossBlogNavItems() {
     });
 }
 
+function syncCrossBlogNavFromDOM() {
+    const container = document.getElementById('crossBlogNavItems');
+    if (!container) return;
+    const rows = container.children;
+    const items = [];
+    for (let i = 0; i < rows.length; i++) {
+        const inputs = rows[i].querySelectorAll('input');
+        if (inputs.length >= 2) {
+            const txt = inputs[0].value.trim();
+            const url = inputs[1].value.trim();
+            if (txt !== '' || url !== '') {
+                items.push({ text: txt, url: url });
+            }
+        }
+    }
+    currentCrossBlogNavItems = items;
+}
+
 function saveCrossBlogNav(action) {
+    syncCrossBlogNavFromDOM();
     const isEnabled = document.getElementById('enableCrossBlogNav').checked;
     const buttonsToSave = isEnabled ? currentCrossBlogNavItems : [];
     
@@ -2365,6 +2399,7 @@ function loadAndApplyAllSettings() {
                 const smoothTyping = settings.smoothTyping || false;
                 const headerBottomPosition = settings.headerBottomPosition || false;
                 const enableMarkdown = settings.enableMarkdown || false;
+                const enableApi = settings.enableApi !== undefined ? settings.enableApi : true;
                 const contentWidth = settings.contentWidth || 920;
                 
                 const hideModeCheck = document.getElementById('hideEditorModeButtons');
@@ -2373,6 +2408,7 @@ function loadAndApplyAllSettings() {
                 const smoothTypingCheck = document.getElementById('smoothTyping');
                 const headerBottomCheck = document.getElementById('headerBottomPosition');
                 const enableMarkdownCheck = document.getElementById('enableMarkdown');
+                const enableApiCheck = document.getElementById('enableApi');
                 const contentWidthInput = document.getElementById('settingsContentWidth');
                 
                 if (hideModeCheck) hideModeCheck.checked = hideModeButtons;
@@ -2381,6 +2417,7 @@ function loadAndApplyAllSettings() {
                 if (smoothTypingCheck) smoothTypingCheck.checked = smoothTyping;
                 if (headerBottomCheck) headerBottomCheck.checked = headerBottomPosition;
                 if (enableMarkdownCheck) enableMarkdownCheck.checked = enableMarkdown;
+                if (enableApiCheck) enableApiCheck.checked = enableApi;
                 if (contentWidthInput) contentWidthInput.value = contentWidth;
 
                 // Apply content width dynamically
@@ -2499,6 +2536,7 @@ function loadAndApplyAllSettings() {
                 }
                 window.allBlogPaths = blogPaths;
                 window.currentActiveBlogPath = settings.active_blog_path || blogPaths[0];
+                window.serverAppDir = settings.app_dir || '';
                 
                 renderBlogPathsInputs(blogPaths, window.currentActiveBlogPath);
                 updateBlogSelectorUI(blogPaths, window.currentActiveBlogPath);
@@ -2647,6 +2685,7 @@ window.loadExperimentalSettings = loadExperimentalSettings;
 function saveExperimentalSettings() {
     const enableUndoRedo = document.getElementById('enableUndoRedo').checked;
     const enableMarkdown = document.getElementById('enableMarkdown').checked;
+    const enableApi = document.getElementById('enableApi') ? document.getElementById('enableApi').checked : true;
     
     fetch('save_editor_settings.php', {
         method: 'POST',
@@ -2655,7 +2694,8 @@ function saveExperimentalSettings() {
         },
         body: JSON.stringify({ 
             enableUndoRedo: enableUndoRedo,
-            enableMarkdown: enableMarkdown
+            enableMarkdown: enableMarkdown,
+            enableApi: enableApi
         })
     })
     .then(response => response.json())
@@ -2977,6 +3017,181 @@ function savePathsSettings() {
     .catch(err => {
         console.error('Ошибка сохранения путей:', err);
         showAlert(window.t ? window.t('notifications.paths_save_failed', 'Ошибка при сохранении путей') : 'Ошибка при сохранении путей');
+    });
+}
+
+// --- Создание нового блога ---
+let isNewBlogFolderManuallyEdited = false;
+
+function openCreateBlogModal() {
+    isNewBlogFolderManuallyEdited = false;
+    const titleInput = document.getElementById('createBlogTitleInput');
+    const folderInput = document.getElementById('createBlogFolderInput');
+    const activeCb = document.getElementById('createBlogMakeActiveCheckbox');
+    const submitBtn = document.getElementById('btnSubmitCreateBlog');
+    
+    if (titleInput) titleInput.value = '';
+    if (folderInput) folderInput.value = '';
+    if (activeCb) activeCb.checked = true;
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = window.t ? window.t('modals.create_blog_submit', '✨ Создать блог') : '✨ Создать блог';
+    }
+    
+    updateCreateBlogPathPreview('');
+    Modal.open('#createBlogModalOverlay');
+    if (titleInput) {
+        setTimeout(() => titleInput.focus(), 150);
+    }
+}
+
+function closeCreateBlogModal() {
+    Modal.close('#createBlogModalOverlay');
+}
+
+function transliterateToFolder(text) {
+    const ruToEn = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh',
+        'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+        'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
+        'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+    let res = '';
+    const lower = text.toLowerCase();
+    for (let i = 0; i < lower.length; i++) {
+        const ch = lower[i];
+        if (ruToEn[ch] !== undefined) {
+            res += ruToEn[ch];
+        } else if (/[a-z0-9]/.test(ch)) {
+            res += ch;
+        } else if (ch === ' ' || ch === '-' || ch === '_') {
+            res += '_';
+        }
+    }
+    return res.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function onNewBlogTitleInput(val) {
+    if (!isNewBlogFolderManuallyEdited) {
+        const slug = transliterateToFolder(val);
+        const folderName = slug ? 'data_' + slug : '';
+        const folderInput = document.getElementById('createBlogFolderInput');
+        if (folderInput) {
+            folderInput.value = folderName;
+        }
+        updateCreateBlogPathPreview(folderName);
+    }
+}
+
+function onNewBlogFolderInput(val) {
+    isNewBlogFolderManuallyEdited = (val.trim() !== '');
+    updateCreateBlogPathPreview(val.trim());
+}
+
+function updateCreateBlogPathPreview(folder) {
+    const previewEl = document.getElementById('createBlogPathPreview');
+    if (!previewEl) return;
+    if (!folder) {
+        previewEl.textContent = '—';
+        return;
+    }
+    const cleanFolder = folder.replace(/[\\/]/g, '');
+    const appDir = window.serverAppDir || (window.currentActiveBlogPath ? window.currentActiveBlogPath.replace(/[\\/][^\\/]+$/, '') : '');
+    const sep = (appDir && appDir.indexOf('\\') !== -1) ? '\\' : '/';
+    previewEl.textContent = appDir ? (appDir + sep + cleanFolder) : cleanFolder;
+}
+
+function submitCreateBlog() {
+    const titleInput = document.getElementById('createBlogTitleInput');
+    const folderInput = document.getElementById('createBlogFolderInput');
+    const activeCb = document.getElementById('createBlogMakeActiveCheckbox');
+    const submitBtn = document.getElementById('btnSubmitCreateBlog');
+    
+    const title = titleInput ? titleInput.value.trim() : '';
+    const folder = folderInput ? folderInput.value.trim() : '';
+    const makeActive = activeCb ? activeCb.checked : true;
+    
+    if (!folder) {
+        showAlert(window.t ? window.t('notifications.blog_create_folder_required', 'Укажите название папки для блога!') : 'Укажите название папки для блога!');
+        if (folderInput) folderInput.focus();
+        return;
+    }
+    
+    if (!/^[a-zA-Z0-9_\-]+$/.test(folder)) {
+        showAlert(window.t ? window.t('notifications.blog_create_folder_invalid', 'Название папки может содержать только латинские буквы, цифры, дефис и подчеркивание!') : 'Название папки может содержать только латинские буквы, цифры, дефис и подчеркивание!');
+        if (folderInput) folderInput.focus();
+        return;
+    }
+    
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = window.t ? window.t('modals.create_blog_creating', 'Создание блога...') : 'Создание блога...';
+    }
+    
+    fetch('create_blog.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: title || folder,
+            folder: folder,
+            make_active: makeActive
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeCreateBlogModal();
+            showAlert(window.t ? window.t('notifications.blog_created_success', 'Блог "' + data.title + '" успешно создан и добавлен в список путей!', { title: data.title }) : 'Блог "' + data.title + '" успешно создан и добавлен в список путей!');
+            
+            // Добавляем созданный путь в список DOM, если строки отображены
+            if (typeof addBlogPathRow === 'function') {
+                const existingInputs = document.querySelectorAll('.blog-path-input');
+                let alreadyInDom = false;
+                existingInputs.forEach(inp => {
+                    if (inp.value.trim().toLowerCase() === data.path.trim().toLowerCase()) {
+                        alreadyInDom = true;
+                    }
+                });
+                if (!alreadyInDom) {
+                    if (existingInputs.length === 1 && existingInputs[0].value.trim() === '') {
+                        existingInputs[0].value = data.path;
+                    } else {
+                        addBlogPathRow(data.path);
+                    }
+                }
+            }
+            
+            // Обновляем настройки редактора и список выбора блога
+            if (typeof loadAndApplyAllSettings === 'function') {
+                loadAndApplyAllSettings();
+            }
+            
+            // Если выбран режим сделать активным
+            if (data.make_active) {
+                window.currentActiveBlogPath = data.path;
+                if (typeof loadPosts === 'function') {
+                    loadPosts();
+                }
+                if (data.blogUrl) {
+                    const goToBlogBtn = document.getElementById('goToBlogBtn');
+                    if (goToBlogBtn) {
+                        goToBlogBtn.onclick = function() { window.location.href = data.blogUrl; };
+                    }
+                }
+            }
+        } else {
+            showAlert(window.t ? window.t('notifications.blog_create_error_param', 'Ошибка при создании блога: ' + data.error, { error: data.error }) : 'Ошибка при создании блога: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Ошибка создания блога:', err);
+        showAlert(window.t ? window.t('notifications.blog_create_failed', 'Произошла сетевая ошибка при создании блога.') : 'Произошла сетевая ошибка при создании блога.');
+    })
+    .finally(() => {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = window.t ? window.t('modals.create_blog_submit', '✨ Создать блог') : '✨ Создать блог';
+        }
     });
 }
 
@@ -3768,13 +3983,13 @@ function startSystemUpdateProcess() {
                             <span style="font-size: 16px;">✏️</span> <span data-i18n="modals.img_editor_tool_pencil">Карандаш</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="line" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">📏</span> <span data-i18n="modals.img_editor_tool_line">Прямая линия</span>
+                            <span style="font-size: 16px;">📏</span> <span data-i18n="modals.img_editor_tool_line">Линия</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="arrow" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
                             <span style="font-size: 16px;">↗️</span> <span data-i18n="modals.img_editor_tool_arrow">Стрелка</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="pixelate" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
-                            <span style="font-size: 16px;">⬛</span> <span data-i18n="modals.img_editor_tool_pixelate">Пикселизация</span>
+                            <span style="font-size: 16px;">▦</span> <span data-i18n="modals.img_editor_tool_pixelate">Пиксели</span>
                         </button>
                         <button type="button" class="img-editor-tool-btn" data-tool="text" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
                             <span style="font-size: 16px;">🔤</span> <span data-i18n="modals.img_editor_tool_text">Текст</span>
@@ -4338,9 +4553,11 @@ document.addEventListener('DOMContentLoaded', function() {
             'btn-sub',
             'btn-h2',
             'btn-table',
+            'btn-formula',
             'btn-spoiler',
             'btn-marker',
             'btn-anchor',
+            'btn-hr',
             'divider-align',
             'btn-align-left',
             'btn-align-center',

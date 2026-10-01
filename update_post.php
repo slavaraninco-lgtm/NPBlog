@@ -12,7 +12,7 @@ if (!$data || !isset($data['id']) || !isset($data['title']) || !isset($data['con
 
 $postId = intval($data['id']);
 
-$allowedTags = '<b><i><u><s><sup><sub><h2><ul><li><a><p><br><img><pre><span><div><iframe><audio><source><center><details><summary><mark>';
+$allowedTags = '<b><i><u><s><sup><sub><h2><ul><li><a><p><br><img><pre><span><div><iframe><video><audio><source><center><details><summary><mark>';
 
 $content = $data['content'];
 
@@ -20,10 +20,13 @@ $content = $data['content'];
 $dataDir = getDataPath();
 $dirName = basename(rtrim(str_replace('\\', '/', $dataDir), '/'));
 $staticPrefix = '/' . $dirName . '/';
+$content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?api\/' . preg_quote($dirName, '/') . '\//i', $staticPrefix, $content);
+$content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?api\/(uploads|files|fonts|smiles)\//i', $staticPrefix . '$1/', $content);
+$content = preg_replace('/https?:\/\/[^\/]+\/' . preg_quote($dirName, '/') . '\//i', $staticPrefix, $content);
 $content = preg_replace('/(?:https?:\/\/[^\/]+)?(?:\/)?serve_data.php\?file=/i', $staticPrefix, $content);
 $content = preg_replace('/(?:[?&]|&amp;)t=\d+/i', '', $content);
 
-// Функция для красивого форматирования HTML структуры с сохранением блоков <pre>
+// Функция для красивого форматирования HTML структуры с сохранением блоков <pre> и формул
 function formatArticleContent($html) {
     // 1. Извлекаем блоки <pre>, чтобы полностью сохранить их форматирование и пробелы
     $preBlocks = [];
@@ -32,7 +35,54 @@ function formatArticleContent($html) {
         return '___PRE_PLACEHOLDER_' . (count($preBlocks) - 1) . '___';
     }, $html);
 
-    $blockTags = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'iframe', 'audio', 'center', 'details', 'summary', 'blockquote', 'hr'];
+    // 2. Извлекаем формулы, чтобы сохранить их монолитную структуру без разрывов строк и отступов
+    $formulaBlocks = [];
+    $offset = 0;
+    $sheltered = '';
+    while (preg_match('/<(span|div)[^>]*\b(npblog-formula|npblog-formula-block|data-formula)\b[^>]*>/i', $formatted, $m, PREG_OFFSET_CAPTURE, $offset)) {
+        $matchTag = strtolower($m[1][0]);
+        $startPos = $m[0][1];
+        
+        $sheltered .= substr($formatted, $offset, $startPos - $offset);
+        
+        $openTag = '<' . $matchTag;
+        $closeTag = '</' . $matchTag . '>';
+        $depth = 1;
+        $currPos = $startPos + strlen($m[0][0]);
+        $len = strlen($formatted);
+        
+        while ($currPos < $len && $depth > 0) {
+            $nextOpen = stripos($formatted, $openTag, $currPos);
+            $nextClose = stripos($formatted, $closeTag, $currPos);
+            
+            if ($nextClose === false) {
+                $currPos = $len;
+                break;
+            }
+            
+            if ($nextOpen !== false && $nextOpen < $nextClose) {
+                $charAfter = substr($formatted, $nextOpen + strlen($openTag), 1);
+                if ($charAfter === ' ' || $charAfter === '>' || $charAfter === "\t" || $charAfter === "\n" || $charAfter === "\r") {
+                    $depth++;
+                }
+                $currPos = $nextOpen + strlen($openTag);
+            } else {
+                $depth--;
+                $currPos = $nextClose + strlen($closeTag);
+            }
+        }
+        
+        $formulaHtml = substr($formatted, $startPos, $currPos - $startPos);
+        $idx = count($formulaBlocks);
+        $formulaBlocks[] = $formulaHtml;
+        $sheltered .= '___FORMULA_PLACEHOLDER_' . $idx . '___';
+        
+        $offset = $currPos;
+    }
+    $sheltered .= substr($formatted, $offset);
+    $formatted = $sheltered;
+
+    $blockTags = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'iframe', 'video', 'audio', 'center', 'details', 'summary', 'blockquote', 'hr'];
     $tagsRegex = implode('|', $blockTags);
     
     $formatted = preg_replace('/(<(?:' . $tagsRegex . ')(?:\s+[^>]*)?>)/i', "\n$1", $formatted);
@@ -49,7 +99,12 @@ function formatArticleContent($html) {
     
     $finalHtml = "\n" . implode("\n", $cleanLines) . "\n    ";
 
-    // 2. Восстанавливаем блоки <pre> без каких-либо изменений
+    // 3. Восстанавливаем формулы без каких-либо изменений
+    foreach ($formulaBlocks as $index => $formulaBlock) {
+        $finalHtml = str_replace('___FORMULA_PLACEHOLDER_' . $index . '___', $formulaBlock, $finalHtml);
+    }
+
+    // 4. Восстанавливаем блоки <pre> без каких-либо изменений
     foreach ($preBlocks as $index => $preBlock) {
         $finalHtml = str_replace('___PRE_PLACEHOLDER_' . $index . '___', $preBlock, $finalHtml);
     }
