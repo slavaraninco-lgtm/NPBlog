@@ -1099,6 +1099,13 @@ function openGlobalSettings() {
         }
     }
     
+    // Синхронизируем видимость кнопки сохранения путей в подвале
+    const activeNavBtn = document.querySelector('.global-nav-btn.active');
+    const pathsSaveBtn = document.getElementById('globalPathsSaveBtn');
+    if (pathsSaveBtn) {
+        pathsSaveBtn.style.display = (activeNavBtn && activeNavBtn.dataset.section === 'paths') ? 'inline-flex' : 'none';
+    }
+
     checkTemplateAndToggleTabs().then(() => {
         loadGlobalBackground();
     });
@@ -1134,6 +1141,12 @@ function showGlobalSection(sectionName) {
         section.style.display = 'none';
     });
     document.getElementById('globalSection-' + sectionName).style.display = 'block';
+
+    // Управление видимостью кнопки сохранения путей в подвале
+    const pathsSaveBtn = document.getElementById('globalPathsSaveBtn');
+    if (pathsSaveBtn) {
+        pathsSaveBtn.style.display = (sectionName === 'paths') ? 'inline-flex' : 'none';
+    }
     
     // Обновляем заголовок
     const titles = {

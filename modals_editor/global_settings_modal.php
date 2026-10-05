@@ -497,14 +497,7 @@ if (!isset($availableLanguages)) {
                         </div>
                     </div>
 
-                    <!-- Кнопка сохранения -->
-                    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
-                        <button type="button" onclick="savePathsSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.paths_save_btn">
-                            Сохранить настройки путей
-                        </button>
-                    </div>
-                    
-                    <div style="padding: 14px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px;">
+                    <div style="padding: 14px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px; margin-bottom: 20px;">
                         <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;" data-i18n-html="settings.paths_hint">
                             💡 Укажите абсолютные или относительные пути к папкам данных, бэкапов статей, автосохранений и бэкапов системы на сервере. При изменении путей новые файлы будут автоматически сохраняться в указанные директории.
                         </p>
@@ -684,7 +677,12 @@ if (!isset($availableLanguages)) {
             <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn" title="Сбросить все настройки редактора к значениям по умолчанию">
                 Сбросить настройки
             </button>
-            <button type="button" onclick="closeGlobalSettings()" class="modal-btn modal-btn-ghost" data-modal-close data-i18n="common.close">Закрыть</button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" id="globalPathsSaveBtn" onclick="savePathsSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.paths_save_btn" style="display: none;">
+                    Сохранить настройки путей
+                </button>
+                <button type="button" onclick="closeGlobalSettings()" class="modal-btn modal-btn-ghost" data-modal-close data-i18n="common.close">Закрыть</button>
+            </div>
         </div>
     </div>
 </div>
