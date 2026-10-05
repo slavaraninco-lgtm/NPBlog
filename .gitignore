@@ -1,1 +1,60 @@
+# Active local configuration & whitelist
+editor_settings.json
+allowed_ips.txt
+
+# Editor undo/redo history & runtime state
+history.json
+*.log
+error_log
+
+# User content: autosaves & backups (keep .gitkeep)
+autosave/*
+!autosave/.gitkeep
+
+editor_backup/*
+!editor_backup/.gitkeep
+
+data_backup/*
+!data_backup/.gitkeep
+!data_backup/backup-meta.json
+
+# User drafts
+data/drafts/*
+!data/drafts/.gitkeep
+draft/*
+!draft/.gitkeep
+
+# User uploads & media
+data/uploads/*
+!data/uploads/.gitkeep
+data/files/*
+!data/files/.gitkeep
+data/backgrounds/*
+!data/backgrounds/.gitkeep
+data/smiles/*
+!data/smiles/.gitkeep
+
+# Generated blog articles & user runtime data
+data/blog/post-*.html
+data/login_lockouts.json
+data/feed.xml
+data/custom_editor_theme.css
+
+# Unit test artifacts & temporary test blogs
+test_unit_blog_*
+tests_runtime_*
+
+# IDE & OS files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
 .helm-diag

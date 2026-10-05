@@ -3,11 +3,7 @@
     "crossBlogNav": [
         {
             "url": "..\/data\/blog.html",
-            "text": "Блог 1"
-        },
-        {
-            "url": "..\/test_unit_blog_1790867402\/blog.html",
-            "text": "Блог 2"
+            "text": "Блог"
         }
     ]
 }

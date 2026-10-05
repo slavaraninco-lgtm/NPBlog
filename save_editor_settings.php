@@ -11,6 +11,36 @@ $data = json_decode($rawInput, true);
 
 $settingsFile = __DIR__ . '/editor_settings.json';
 
+// Обработка полного сброса настроек к шаблону
+if (!empty($data['reset_all_settings'])) {
+    $exampleFile = __DIR__ . '/editor_settings.example.json';
+    if (file_exists($exampleFile)) {
+        if (@copy($exampleFile, $settingsFile)) {
+            unset($_SESSION['active_blog_path']);
+            unset($_SESSION['backup_path']);
+            unset($_SESSION['autosave_path']);
+            unset($_SESSION['editor_backup_path']);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Настройки успешно сброшены к стандартным'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        } else {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Не удалось скопировать файл шаблона настроек'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    } else {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Файл шаблона editor_settings.example.json не найден'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+
 // Загружаем существующие настройки
 $existingSettings = [];
 if (file_exists($settingsFile)) {

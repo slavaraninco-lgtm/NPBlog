@@ -493,7 +493,7 @@ if (file_exists($versionFile)) {
             </div>
         </div>
     </header>
-<!-- тест2 -->
+
     <form id="blogForm">
         <input class="content228 editor-field" type="text" id="title" placeholder="Заголовок статьи" data-i18n-placeholder="header.placeholder_title" required>
         <textarea class="content228 editor-field" id="content" placeholder="Содержание статьи" data-i18n-placeholder="header.placeholder_content" style="display:none;"></textarea>
@@ -663,6 +663,9 @@ foreach ($editorJsFiles as $jsFile) {
 
 <!-- Модальное окно первоначальной настройки -->
 <?php safe_include_editor_modal('initial_setup_modal.php'); ?>
+
+<!-- Модальное окно предупреждения о пути к блогу (/CHANGE/ME) -->
+<?php safe_include_editor_modal('blog_path_warning_modal.php'); ?>
 
 <script>
 function openRestoreModal() {
@@ -2537,6 +2540,9 @@ function loadAndApplyAllSettings() {
                 window.allBlogPaths = blogPaths;
                 window.currentActiveBlogPath = settings.active_blog_path || blogPaths[0];
                 window.serverAppDir = settings.app_dir || '';
+                window.suggestedServerDataPath = settings.suggested_data_path || '';
+                
+                checkBlogPathWarning(window.currentActiveBlogPath, settings.initial_setup_completed);
                 
                 renderBlogPathsInputs(blogPaths, window.currentActiveBlogPath);
                 updateBlogSelectorUI(blogPaths, window.currentActiveBlogPath);
@@ -2633,6 +2639,152 @@ function loadAndApplyAllSettings() {
 // Функции для настроек внешнего вида
 function loadAppearanceSettings() {
     loadAndApplyAllSettings();
+}
+
+// Проверка и управление модальным окном предупреждения о дефолтном пути /CHANGE/ME
+function openBlogPathWarningModal() {
+    if (window.Modal) {
+        Modal.open('#blogPathWarningModal');
+    } else {
+        const modal = document.getElementById('blogPathWarningModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('is-active'), 10);
+        }
+    }
+}
+
+function closeBlogPathWarningModal() {
+    if (window.Modal) {
+        Modal.close('#blogPathWarningModal');
+    } else {
+        const modal = document.getElementById('blogPathWarningModal');
+        if (modal) {
+            modal.classList.remove('is-active');
+            setTimeout(() => modal.style.display = 'none', 200);
+        }
+    }
+}
+
+function checkBlogPathWarning(activeBlogPath, initialSetupCompleted) {
+    const isChangeMe = !activeBlogPath || 
+                       activeBlogPath === '/CHANGE/ME' || 
+                       activeBlogPath.trim() === '/CHANGE/ME' ||
+                       activeBlogPath.indexOf('CHANGE/ME') !== -1 ||
+                       activeBlogPath.indexOf('CHANGE\\ME') !== -1;
+    if (isChangeMe) {
+        // Если активен мастер первоначальной настройки, не перекрываем его
+        if (initialSetupCompleted === false) {
+            return;
+        }
+        setTimeout(() => {
+            openBlogPathWarningModal();
+        }, 350);
+    } else {
+        closeBlogPathWarningModal();
+    }
+}
+
+function autoFixBlogPath() {
+    const suggested = window.suggestedServerDataPath || (window.serverAppDir ? (window.serverAppDir + '/data') : 'data');
+    fetch('save_editor_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN || ''
+        },
+        body: JSON.stringify({
+            active_blog_path: suggested,
+            blog_paths: [suggested],
+            data_path: suggested
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof showNotification === 'function') {
+                showNotification('Путь к блогу успешно настроен: ' + suggested, 'success');
+            } else {
+                alert('Путь к блогу успешно настроен: ' + suggested);
+            }
+            closeBlogPathWarningModal();
+            if (typeof loadAppearanceSettings === 'function') {
+                loadAppearanceSettings();
+            }
+        } else {
+            const err = data.error || 'Не удалось сохранить путь';
+            if (typeof showNotification === 'function') {
+                showNotification('Ошибка: ' + err, 'error');
+            } else {
+                alert('Ошибка: ' + err);
+            }
+        }
+    })
+    .catch(err => {
+        if (typeof showNotification === 'function') {
+            showNotification('Ошибка сохранения: ' + err.message, 'error');
+        } else {
+            alert('Ошибка сохранения: ' + err.message);
+        }
+    });
+}
+
+function confirmResetAllSettings() {
+    const msg = (typeof t === 'function') 
+        ? t('settings.reset_all_confirm', 'Вы действительно хотите сбросить все настройки редактора к значениям по умолчанию? Все пользовательские параметры путей, темы и интерфейса будут сброшены.')
+        : 'Вы действительно хотите сбросить все настройки редактора к значениям по умолчанию? Все пользовательские параметры путей, темы и интерфейса будут сброшены.';
+        
+    if (window.Modal && typeof window.Modal.confirm === 'function') {
+        Modal.confirm({
+            title: (typeof t === 'function') ? t('settings.exp_reset_all_btn', 'Сброс всех настроек') : 'Сброс всех настроек',
+            message: msg,
+            danger: true,
+            confirmText: (typeof t === 'function') ? t('common.reset', 'Сбросить') : 'Сбросить',
+            cancelText: (typeof t === 'function') ? t('common.cancel', 'Отмена') : 'Отмена'
+        }).then(confirmed => {
+            if (confirmed) resetAllSettings();
+        });
+    } else if (confirm(msg)) {
+        resetAllSettings();
+    }
+}
+
+function resetAllSettings() {
+    fetch('save_editor_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN || ''
+        },
+        body: JSON.stringify({ reset_all_settings: true })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof showNotification === 'function') {
+                showNotification(data.message || 'Настройки успешно сброшены к стандартным', 'success');
+            } else {
+                alert(data.message || 'Настройки успешно сброшены к стандартным');
+            }
+            if (window.Modal) {
+                if (typeof closeGlobalSettings === 'function') closeGlobalSettings();
+                if (typeof closeBlogPathWarningModal === 'function') closeBlogPathWarningModal();
+            }
+            setTimeout(() => {
+                window.location.reload();
+            }, 600);
+        } else {
+            const err = data.error || 'Ошибка сброса настроек';
+            if (typeof showNotification === 'function') {
+                showNotification('Ошибка: ' + err, 'error');
+            } else {
+                alert('Ошибка: ' + err);
+            }
+        }
+    })
+    .catch(err => {
+        alert('Ошибка сети при сбросе настроек: ' + err.message);
+    });
 }
 
 function saveAppearanceSettings() {

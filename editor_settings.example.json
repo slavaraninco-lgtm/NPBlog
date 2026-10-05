@@ -1,11 +1,11 @@
 {
     "language": "ru",
-    "tutorialCompleted": true,
-    "initial_setup_completed": true,
+    "tutorialCompleted": false,
+    "initial_setup_completed": false,
     "blog_paths": [
-        "C:\\xampp\\htdocs\\data"
+        "/CHANGE/ME"
     ],
-    "active_blog_path": "C:\\xampp\\htdocs\\data",
+    "active_blog_path": "/CHANGE/ME",
     "headerLayout": [
         {
             "id": "logoDivider",
@@ -227,9 +227,9 @@
     ],
     "headerHeight": 64,
     "headerTwoRows": false,
-    "autosaveEnabled": true,
+    "autosaveEnabled": false,
     "autosaveInterval": 60,
-    "data_path": "C:\\xampp\\htdocs\\data_klienty_npblog",
+    "data_path": "/CHANGE/ME",
     "backup_path": "",
     "autosave_path": "",
     "editor_backup_path": "",

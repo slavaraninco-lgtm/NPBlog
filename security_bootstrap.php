@@ -57,6 +57,31 @@ if (!function_exists('mb_strcasecmp')) {
     }
 }
 
+// Automatically initialize config and whitelist from templates if missing
+if (!function_exists('ensureEditorSettingsFile')) {
+    function ensureEditorSettingsFile() {
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        $exampleFile = __DIR__ . '/editor_settings.example.json';
+        if (!file_exists($settingsFile) && file_exists($exampleFile)) {
+            @copy($exampleFile, $settingsFile);
+        }
+        return $settingsFile;
+    }
+}
+ensureEditorSettingsFile();
+
+if (!function_exists('ensureAllowedIpsFile')) {
+    function ensureAllowedIpsFile() {
+        $ipsFile = __DIR__ . '/allowed_ips.txt';
+        $exampleFile = __DIR__ . '/allowed_ips.example.txt';
+        if (!file_exists($ipsFile) && file_exists($exampleFile)) {
+            @copy($exampleFile, $ipsFile);
+        }
+        return $ipsFile;
+    }
+}
+ensureAllowedIpsFile();
+
 if (!function_exists('validateSafePath')) {
     function validateSafePath($baseDir, $filename) {
         $realBase = realpath($baseDir);
@@ -190,14 +215,19 @@ function getDataPath($subpath = '') {
         $activePath = __DIR__ . '/data';
     }
 
-    $dataDir = $activePath;
-    
-    // Normalize path: check if absolute or relative
-    $isAbsolute = (strpos($dataDir, '/') === 0) || 
-                  (strpos($dataDir, '\\') === 0) || 
-                  (strlen($dataDir) >= 2 && $dataDir[1] === ':');
-    if (!$isAbsolute) {
-        $dataDir = __DIR__ . '/' . ltrim($dataDir, '/\\');
+    // Safe fallback if path is placeholder /CHANGE/ME
+    if ($activePath === '/CHANGE/ME' || trim($activePath, '/\\') === 'CHANGE/ME' || trim($activePath, '/\\') === 'CHANGE\\ME') {
+        $dataDir = __DIR__ . '/data';
+    } else {
+        $dataDir = $activePath;
+        
+        // Normalize path: check if absolute or relative
+        $isAbsolute = (strpos($dataDir, '/') === 0) || 
+                      (strpos($dataDir, '\\') === 0) || 
+                      (strlen($dataDir) >= 2 && $dataDir[1] === ':');
+        if (!$isAbsolute) {
+            $dataDir = __DIR__ . '/' . ltrim($dataDir, '/\\');
+        }
     }
 
     if (!is_dir($dataDir)) {

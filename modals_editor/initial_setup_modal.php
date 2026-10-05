@@ -17,11 +17,16 @@ if (!isset($availableLanguages)) {
     $currentLanguage = getCurrentLanguage();
 }
 
+$detectedDataPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
 $defaultDataPath = '';
 if (function_exists('getDataPath')) {
-    $defaultDataPath = rtrim(str_replace('/', DIRECTORY_SEPARATOR, getDataPath()), DIRECTORY_SEPARATOR);
-} else {
-    $defaultDataPath = __DIR__ . DIRECTORY_SEPARATOR . 'data';
+    $curPath = getDataPath();
+    if (strpos($curPath, 'CHANGE/ME') === false && strpos($curPath, 'CHANGE\\ME') === false) {
+        $defaultDataPath = rtrim(str_replace('/', DIRECTORY_SEPARATOR, $curPath), DIRECTORY_SEPARATOR);
+    }
+}
+if (empty($defaultDataPath) || $defaultDataPath === DIRECTORY_SEPARATOR . 'CHANGE' . DIRECTORY_SEPARATOR . 'ME') {
+    $defaultDataPath = $detectedDataPath;
 }
 
 $defaultBlogTitle = 'Блог';
@@ -853,9 +858,11 @@ function openInitialSetupModal() {
                     const intInput = document.getElementById('setupAutosaveInterval');
                     if (intInput) intInput.value = s.autosaveInterval;
                 }
-                if (s.active_blog_path || s.data_path) {
-                    const pInput = document.getElementById('setupDataPath');
-                    if (pInput) pInput.value = s.active_blog_path || s.data_path;
+                const existingPath = s.active_blog_path || s.data_path || '';
+                const isPlaceholderPath = !existingPath || existingPath === '/CHANGE/ME' || existingPath.indexOf('CHANGE/ME') !== -1 || existingPath.indexOf('CHANGE\\ME') !== -1;
+                const pInput = document.getElementById('setupDataPath');
+                if (pInput) {
+                    pInput.value = isPlaceholderPath ? (s.suggested_data_path || window.setupDefaultDataPath || '') : existingPath;
                 }
                 
                 // Парсинг статуса пароля

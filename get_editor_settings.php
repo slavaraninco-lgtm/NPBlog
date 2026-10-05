@@ -21,8 +21,8 @@ $defaults = [
     'tutorialCompleted' => false,
     'initial_setup_completed' => false,
     'contentWidth' => 920,
-    'blog_paths' => [],
-    'active_blog_path' => '',
+    'blog_paths' => ['/CHANGE/ME'],
+    'active_blog_path' => '/CHANGE/ME',
     'backup_path' => '',
     'autosave_path' => '',
     'editor_backup_path' => '',
@@ -39,6 +39,8 @@ $defaults = [
     'password_enabled' => false
 ];
 
+$suggestedDataPath = str_replace('/', DIRECTORY_SEPARATOR, __DIR__ . '/data');
+
 if (file_exists($settingsFile)) {
     $settings = json_decode(file_get_contents($settingsFile), true) ?: [];
     $merged = array_merge($defaults, $settings);
@@ -50,12 +52,14 @@ if (file_exists($settingsFile)) {
     $merged['resolved_autosave_path'] = getAutosavePath();
     $merged['resolved_editor_backup_path'] = getEditorBackupPath();
     $merged['app_dir'] = str_replace('/', DIRECTORY_SEPARATOR, __DIR__);
+    $merged['suggested_data_path'] = $suggestedDataPath;
     echo json_encode(['success' => true, 'settings' => $merged]);
 } else {
     $defaults['resolved_backup_path'] = getBackupPath();
     $defaults['resolved_autosave_path'] = getAutosavePath();
     $defaults['resolved_editor_backup_path'] = getEditorBackupPath();
     $defaults['app_dir'] = str_replace('/', DIRECTORY_SEPARATOR, __DIR__);
+    $defaults['suggested_data_path'] = $suggestedDataPath;
     echo json_encode([
         'success' => true, 
         'settings' => $defaults

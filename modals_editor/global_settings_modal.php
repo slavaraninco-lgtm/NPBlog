@@ -303,6 +303,7 @@ if (!isset($availableLanguages)) {
                             <button type="button" onclick="closeGlobalSettings(); openInitialSetupModal();" class="modal-btn modal-btn-secondary" data-i18n="setup.rerun_setup_btn">🚀 Первоначальная настройка</button>
                             <button type="button" onclick="closeGlobalSettings(); enterSafeMode('Тестовый запуск Safe Mode (проверка интерфейса аварийного восстановления)');" class="modal-btn modal-btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">🛡️ Safe Mode</button>
                             <button type="button" onclick="deleteAllCustomTemplates()" class="modal-btn modal-btn-danger" data-i18n="settings.exp_delete_templates_btn">Удалить кастомные шаблоны</button>
+                            <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn">Сбросить все настройки</button>
                         </div>
                     </div>
                     
@@ -679,7 +680,10 @@ if (!isset($availableLanguages)) {
         </div>
 
         <!-- Подвал -->
-        <div class="modal-footer">
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn" title="Сбросить все настройки редактора к значениям по умолчанию">
+                Сбросить настройки
+            </button>
             <button type="button" onclick="closeGlobalSettings()" class="modal-btn modal-btn-ghost" data-modal-close data-i18n="common.close">Закрыть</button>
         </div>
     </div>

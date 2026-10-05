@@ -12,7 +12,13 @@ class BlogContext
      */
     public static function getSettingsFilePath(): string
     {
-        return (defined('NPBLOG_ROOT') ? NPBLOG_ROOT : dirname(__DIR__, 2)) . '/editor_settings.json';
+        $root = defined('NPBLOG_ROOT') ? NPBLOG_ROOT : dirname(__DIR__, 2);
+        $settingsFile = $root . '/editor_settings.json';
+        $exampleFile = $root . '/editor_settings.example.json';
+        if (!file_exists($settingsFile) && file_exists($exampleFile)) {
+            @copy($exampleFile, $settingsFile);
+        }
+        return $settingsFile;
     }
 
     /**
@@ -57,6 +63,9 @@ class BlogContext
     public static function normalizePath(string $path): string
     {
         $rootDir = defined('NPBLOG_ROOT') ? NPBLOG_ROOT : dirname(__DIR__, 2);
+        if (trim($path, '/\\') === 'CHANGE/ME' || $path === '/CHANGE/ME') {
+            return rtrim(str_replace('\\', '/', $rootDir), '/') . '/data';
+        }
         $clean = rtrim(str_replace('\\', '/', trim($path)), '/');
 
         $isAbsolute = (strpos($clean, '/') === 0) ||
