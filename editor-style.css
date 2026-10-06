@@ -1099,18 +1099,37 @@ textarea {
     position: absolute;
     top: 2px;
     right: 5px;
+    transform: translate(var(--code-scroll-x, 0px), var(--code-scroll-y, 0px));
     background: #fff;
     padding: 0 5px;
     font-size: 12px;
     color: #666;
     border: 1px solid #ddd;
     border-radius: 3px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.code-block:not([data-language])::before,
+.code-block[data-language=""]::before {
+    display: none;
 }
 
 [data-theme="dark"] .code-block::before {
     background: #000;
     color: #ccc;
     border-color: #444;
+}
+
+[data-theme="dark"][data-amoled="true"] .code-block {
+    background: #000000;
+    border-color: #333;
+}
+
+[data-theme="dark"][data-amoled="true"] .code-block::before {
+    background: #111111;
+    border-color: #333;
+    color: #ccc;
 }
 
 /* Стили для сворачиваемого блока (spoiler) */

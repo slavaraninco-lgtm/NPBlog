@@ -873,6 +873,9 @@ function wrapExistingEditorImages() {
 
         if (type === 'pre' || type === 'button') {
             img.setAttribute('contenteditable', 'false');
+            if (type === 'pre') {
+                updateCodeBlockBadgeScroll(img);
+            }
         }
     }
 }
@@ -1335,6 +1338,20 @@ document.addEventListener('click', function (e) {
 
 window.addEventListener('scroll', updateOverlayPosition, { capture: true, passive: true });
 window.addEventListener('resize', updateOverlayPosition);
+
+// Фиксация плашки с названием языка в блоках кода (.code-block) при скролле внутри редактора
+function updateCodeBlockBadgeScroll(el) {
+    if (!el) return;
+    el.style.setProperty('--code-scroll-x', el.scrollLeft + 'px');
+    el.style.setProperty('--code-scroll-y', el.scrollTop + 'px');
+}
+
+window.addEventListener('scroll', function (e) {
+    var target = e.target;
+    if (target && target.classList && target.classList.contains('code-block')) {
+        updateCodeBlockBadgeScroll(target);
+    }
+}, { capture: true, passive: true });
 
 initImageAlignmentHandlers();
 
@@ -2875,6 +2892,7 @@ function insertCodeBlock() {
         editingCodeBlockTarget.setAttribute('data-language', language);
         editingCodeBlockTarget.innerHTML = escapedCode;
         editingCodeBlockTarget.setAttribute('contenteditable', 'false');
+        updateCodeBlockBadgeScroll(editingCodeBlockTarget);
         const wrap = editingCodeBlockTarget.closest('.blog-image-wrap');
         if (wrap) {
             wrap.setAttribute('data-media-type', 'pre');

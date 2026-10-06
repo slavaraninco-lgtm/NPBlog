@@ -48,9 +48,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Инициализация формул (KaTeX)
     initBlogFormulas();
 
+    // Инициализация блоков кода (фиксация плашки языка при скролле)
+    initCodeBlocks();
+
     // Подгрузка глобального фона и шрифтов
     applyGlobalSettings();
 });
+
+// Фиксация плашки с названием языка в блоках кода (.code-block) при горизонтальной и вертикальной прокрутке
+function initCodeBlocks() {
+    function updateCodeBlockBadge(el) {
+        if (!el) return;
+        el.style.setProperty('--code-scroll-x', el.scrollLeft + 'px');
+        el.style.setProperty('--code-scroll-y', el.scrollTop + 'px');
+    }
+
+    document.addEventListener('scroll', function (e) {
+        var target = e.target;
+        if (target && target.classList && target.classList.contains('code-block')) {
+            updateCodeBlockBadge(target);
+        }
+    }, { capture: true, passive: true });
+
+    document.querySelectorAll('.code-block').forEach(updateCodeBlockBadge);
+}
 
 // Авто-рендеринг формул NPBlog (KaTeX)
 function initBlogFormulas() {
