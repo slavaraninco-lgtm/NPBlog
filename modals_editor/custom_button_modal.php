@@ -27,7 +27,7 @@
                 <button type="button" id="customButtonSubmitBtn" onclick="insertCustomButtonToEditor()" class="modal-btn modal-btn-primary" style="padding: 6px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
                     <span>💾</span> <span data-i18n="modals.btn_submit">Вставить кнопку</span>
                 </button>
-                <button type="button" class="modal-close-btn" onclick="closeCustomButtonDialog()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeCustomButtonDialog()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 

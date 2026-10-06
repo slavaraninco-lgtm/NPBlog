@@ -625,10 +625,12 @@ async function insertAnchorLink(id) {
         }
 
         if (!anchorText) {
-            anchorText = "Перейти к разделу";
+            anchorText = (window.t ? window.t('notifications.anchor_default_text', 'Перейти к разделу') : 'Перейти к разделу');
         }
 
-        text = await showPrompt("Введите текст для ссылки-якоря:", anchorText, "Ссылка-якорь");
+        const promptMsg = (window.t ? window.t('notifications.anchor_prompt_text', 'Введите текст для ссылки-якоря:') : 'Введите текст для ссылки-якоря:');
+        const promptTitle = (window.t ? window.t('notifications.anchor_prompt_title', 'Ссылка-якорь') : 'Ссылка-якорь');
+        text = await showPrompt(promptMsg, anchorText, promptTitle);
         if (text === null) return; // Отмена
         if (!text) text = anchorText;
     }

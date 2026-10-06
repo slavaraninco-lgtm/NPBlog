@@ -20,7 +20,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeSystemUpdateModal()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeSystemUpdateModal()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -67,7 +67,7 @@
 
             <!-- Шаг 3: Прогресс обновления -->
             <div id="updateProgressContainer" style="display: none; flex-direction: column; gap: 10px; margin-top: 16px;">
-                <p id="updateStatusText" class="modal-text" style="font-weight: 600; text-align: center; margin: 0;">Подготовка к обновлению...</p>
+                <p id="updateStatusText" class="modal-text" style="font-weight: 600; text-align: center; margin: 0;" data-i18n="modals.update_preparing">Подготовка к обновлению...</p>
                 <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.1); border-radius: 999px; overflow: hidden;">
                     <div id="updateProgressBar" style="width: 0%; height: 100%; background: #10b981; border-radius: 999px; transition: width 0.3s ease;"></div>
                 </div>
@@ -104,7 +104,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeRestoreModal()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeRestoreModal()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 

@@ -502,7 +502,7 @@ if (file_exists($settingsFile)) {
     <div class="setup-ambient-orb setup-ambient-orb-2"></div>
 
     <!-- Кнопка закрытия (доступна при повторном запуске из настроек) -->
-    <button type="button" id="initialSetupCloseBtn" onclick="closeInitialSetupModal()" class="setup-close-btn" title="Закрыть">×</button>
+    <button type="button" id="initialSetupCloseBtn" onclick="closeInitialSetupModal()" class="setup-close-btn" data-i18n-title="common.close" title="Закрыть">×</button>
 
     <!-- ====================================================================== -->
     <!-- СЛАЙД 0: ЭКРАН ПРИВЕТСТВИЯ -->
@@ -631,7 +631,7 @@ if (file_exists($settingsFile)) {
                     </label>
                     <div style="display: flex; gap: 8px; align-items: stretch;">
                         <input type="text" id="setupDataPath" class="modal-input" value="<?= htmlspecialchars($defaultDataPath) ?>" placeholder="C:\xampp\htdocs\data или data" data-i18n-placeholder="setup.data_path_ph" required autocomplete="off" style="font-family: monospace; font-size: 13px;" onkeydown="if(event.key==='Enter') goToSetupStep(2)">
-                        <button type="button" class="modal-btn modal-btn-secondary" onclick="resetSetupDataPathToDefault()" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" title="Восстановить путь по умолчанию" data-i18n="setup.default_btn_short">По умолч.</button>
+                        <button type="button" class="modal-btn modal-btn-secondary" onclick="resetSetupDataPathToDefault()" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n-title="modals.setup_restore_default_path" title="Восстановить путь по умолчанию" data-i18n="setup.default_btn_short">По умолч.</button>
                     </div>
                     <div class="modal-help-text" style="font-size: 11.5px; opacity: 0.7; margin-top: 5px;" data-i18n="setup.data_path_hint">Директория на сервере для хранения статей, файлов и настроек</div>
                 </div>
@@ -685,7 +685,7 @@ if (file_exists($settingsFile)) {
                             <label class="modal-label modal-label-required" for="setupChangeOldPassword" data-i18n="setup.sec_pwd_old_label" style="font-size: 12px; font-weight: 600;">Текущий (старый) пароль:</label>
                             <div style="position: relative;">
                                 <input type="password" id="setupChangeOldPassword" class="modal-input" placeholder="Введите текущий пароль" data-i18n-placeholder="setup.sec_pwd_old_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                             </div>
                         </div>
                         <div class="modal-grid-2" style="gap: 16px; margin-bottom: 8px;">
@@ -693,14 +693,14 @@ if (file_exists($settingsFile)) {
                                 <label class="modal-label modal-label-required" for="setupChangeNewPassword" data-i18n="setup.sec_pwd_new_label" style="font-size: 12px; font-weight: 600;">Новый пароль:</label>
                                 <div style="position: relative;">
                                     <input type="password" id="setupChangeNewPassword" class="modal-input" placeholder="Введите новый пароль" data-i18n-placeholder="setup.sec_pwd_new_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                                 </div>
                             </div>
                             <div class="modal-form-group" style="margin-bottom: 0;">
                                 <label class="modal-label modal-label-required" for="setupChangeConfirmPassword" data-i18n="setup.sec_pwd_confirm_label" style="font-size: 12px; font-weight: 600;">Подтверждение нового пароля:</label>
                                 <div style="position: relative;">
                                     <input type="password" id="setupChangeConfirmPassword" class="modal-input" placeholder="Повторите новый пароль" data-i18n-placeholder="setup.sec_pwd_confirm_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                                 </div>
                             </div>
                         </div>
@@ -716,7 +716,7 @@ if (file_exists($settingsFile)) {
                             <label class="modal-label modal-label-required" for="setupDisableOldPassword" data-i18n="setup.sec_pwd_current_to_disable" style="font-size: 12px; font-weight: 600;">Введите текущий пароль для подтверждения:</label>
                             <div style="position: relative;">
                                 <input type="password" id="setupDisableOldPassword" class="modal-input" placeholder="Введите текущий пароль" data-i18n-placeholder="setup.sec_pwd_old_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupDisableOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupDisableOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                             </div>
                         </div>
                     </div>
@@ -743,14 +743,14 @@ if (file_exists($settingsFile)) {
                                     <label class="modal-label modal-label-required" for="setupNewPassword" data-i18n="setup.sec_pwd_new_label" style="font-size: 12px; font-weight: 600;">Новый пароль:</label>
                                     <div style="position: relative;">
                                         <input type="password" id="setupNewPassword" class="modal-input" placeholder="Введите пароль для входа" data-i18n-placeholder="setup.sec_pwd_new_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                        <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                        <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                                     </div>
                                 </div>
                                 <div class="modal-form-group" style="margin-bottom: 0;">
                                     <label class="modal-label modal-label-required" for="setupConfirmPassword" data-i18n="setup.sec_pwd_confirm_label" style="font-size: 12px; font-weight: 600;">Подтверждение пароля:</label>
                                     <div style="position: relative;">
                                         <input type="password" id="setupConfirmPassword" class="modal-input" placeholder="Повторите пароль" data-i18n-placeholder="setup.sec_pwd_confirm_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                        <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                        <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                                     </div>
                                 </div>
                             </div>

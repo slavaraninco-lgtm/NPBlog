@@ -788,8 +788,14 @@
             for (var m = 0; m < phElements.length; m++) {
                 var pEl = phElements[m];
                 var pKey = pEl.getAttribute('data-i18n-placeholder');
-                var pDef = pEl.getAttribute('placeholder') || '';
-                pEl.setAttribute('placeholder', this.t(pKey, pDef));
+                var pDef = pEl.getAttribute('placeholder') || pEl.getAttribute('data-placeholder') || '';
+                var pVal = this.t(pKey, pDef);
+                if (pEl.hasAttribute('placeholder')) {
+                    pEl.setAttribute('placeholder', pVal);
+                }
+                if (pEl.hasAttribute('data-placeholder')) {
+                    pEl.setAttribute('data-placeholder', pVal);
+                }
             }
 
             // 5. Aria-label: data-i18n-aria

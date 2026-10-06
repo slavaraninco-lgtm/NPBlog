@@ -88,7 +88,7 @@ if (file_exists($versionFile)) {
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($currentLanguage); ?>"<?php echo $amoled ? ' data-amoled="true"' : ''; ?>>
 <head>
-    <title>Редактор</title>
+    <title data-i18n="header.editor_title">Редактор</title>
     <meta charset="utf-8">
     <meta name="csrf-token" content="<?php echo isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : ''; ?>">
     <script src="lang/i18n.js?v=<?php echo file_exists(__DIR__ . '/lang/i18n.js') ? filemtime(__DIR__ . '/lang/i18n.js') : time(); ?>"></script>
@@ -277,8 +277,8 @@ if (file_exists($versionFile)) {
         <div class="tutorial-spotlight" id="tutorialSpotlight"></div>
         <div class="tutorial-tooltip" id="tutorialTooltip">
             <div class="tutorial-header">
-                <span class="tutorial-step-badge" id="tutorialStepBadge">Шаг 1 из 17</span>
-                <button type="button" class="tutorial-close-btn" onclick="skipTutorial()" title="Закрыть (Esc)">×</button>
+                <span class="tutorial-step-badge" id="tutorialStepBadge" data-i18n="tutorial.step_counter">Шаг 1 из 17</span>
+                <button type="button" class="tutorial-close-btn" onclick="skipTutorial()" data-i18n-title="common.close_esc" title="Закрыть (Esc)">×</button>
             </div>
             <div class="tutorial-progress-bar">
                 <div class="tutorial-progress-fill" id="tutorialProgressFill"></div>
@@ -308,7 +308,7 @@ if (file_exists($versionFile)) {
     <!-- Фиксированный хеадер редактора -->
     <header class="editor-header">
         <div class="header-left">
-            <div id="toolbar-row-1" class="toolbar-row" data-placeholder="Ряд 1">
+            <div id="toolbar-row-1" class="toolbar-row" data-placeholder="Ряд 1" data-i18n-placeholder="header.row_1_ph">
                 <span class="header-logo">NPBlog</span>
             <span class="toolbar-divider" id="logoDivider"></span>
             
@@ -453,7 +453,7 @@ if (file_exists($versionFile)) {
                 </div>
             </div>
             </div>
-            <div id="toolbar-row-2" class="toolbar-row" data-placeholder="Ряд 2"></div>
+            <div id="toolbar-row-2" class="toolbar-row" data-placeholder="Ряд 2" data-i18n-placeholder="header.row_2_ph"></div>
         </div>
         
         <div class="header-right">
@@ -516,7 +516,7 @@ if (file_exists($versionFile)) {
         <div class="editor-bottom-bar-right">
             <!-- Таймер автосохранения (чисто текст, кликабельный для открытия менеджера) -->
             <div id="autosaveBadge" onclick="openAutosaveManager()" onmousedown="event.preventDefault()" style="display: none;" title="Менеджер автосохранений" data-i18n-title="header.menu_autosave_manager">
-                <span id="autosaveBadgeText">Автосохранение через 60с</span>
+                <span id="autosaveBadgeText" data-i18n="header.autosave_badge_timer">Автосохранение через 60с</span>
             </div>
         </div>
     </footer>
@@ -545,7 +545,7 @@ if (file_exists($versionFile)) {
         <div class="manage-posts" id="managePosts">
         <div class="manage-posts-header">
             <h2 data-i18n="header.manage_posts_title">Все статьи</h2>
-            <button type="button" class="close-manage" onclick="toggleManagePosts()" aria-label="Закрыть">×</button>
+            <button type="button" class="close-manage" onclick="toggleManagePosts()" data-i18n-aria="common.close" aria-label="Закрыть">×</button>
         </div>
         <div style="padding: 16px 16px 0;">
             <input type="text" id="postsSearchInput" class="posts-search-input" placeholder="🔍 Поиск по статьям..." data-i18n-placeholder="header.manage_posts_search" oninput="filterPosts()">
@@ -571,7 +571,7 @@ if (file_exists($versionFile)) {
 <div id="fontSizeDialog" class="dialog">
     <div class="dialog-content">
         <h3 data-i18n="toolbar.font_size">Указать размер шрифта</h3>
-        <input type="number" id="customFontSize" min="8" max="72" placeholder="Размер в px">
+        <input type="number" id="customFontSize" min="8" max="72" placeholder="Размер в px" data-i18n-placeholder="toolbar.font_size_px_ph">
         <div class="dialog-buttons">
             <button onclick="setCustomFontSize()" data-i18n="common.apply">Применить</button>
             <button onclick="closeFontSizeDialog()" data-i18n="common.cancel">Отмена</button>
@@ -1258,6 +1258,7 @@ function loadRssSection() {
     document.getElementById('rssHtmlCode').value = htmlCode;
     
     // 3. Генерируем чистый JS код без заготовленных стилей
+    var embedPrefix = window.t ? window.t('settings.rss_new_post_prefix', 'Вышла новая статья: ') : 'Вышла новая статья: ';
     var jsCode = '<script>\n' +
         '(function() {\n' +
         '    // Путь к вашей папке блога относительно главной страницы\n' +
@@ -1279,7 +1280,7 @@ function loadRssSection() {
         '            var link = document.createElement("a");\n' +
         '            link.href = blogPath + latestPost.filename;\n' +
         '            link.className = "npblog-rss-link";\n' +
-        '            link.textContent = "Вышла новая статья: " + latestPost.title;\n\n' +
+        '            link.textContent = ' + JSON.stringify(embedPrefix) + ' + latestPost.title;\n\n' +
         '            tickerContainer.appendChild(link);\n' +
         '        })\n' +
         '        .catch(function(err) {\n' +
@@ -1291,13 +1292,15 @@ function loadRssSection() {
     
     // 4. Отрисовываем чистый предпросмотр в админке
     var previewContainer = document.getElementById('rssLivePreviewContainer');
-    previewContainer.innerHTML = '<div style="font-size: 14px; color: var(--text-color); opacity: 0.6; font-style: italic;">Загрузка данных...</div>';
+    const loadingText = window.t ? window.t('settings.rss_preview_loading', 'Загрузка данных...') : 'Загрузка данных...';
+    previewContainer.innerHTML = '<div style="font-size: 14px; color: var(--text-color); opacity: 0.6; font-style: italic;">' + loadingText + '</div>';
     
     fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now())
         .then(response => response.json())
         .then(posts => {
             if (!posts || posts.length === 0) {
-                previewContainer.innerHTML = '<div style="font-size: 14px; color: #f44336; font-weight: 500;">Нет опубликованных статей для вывода в виджет</div>';
+                const emptyText = window.t ? window.t('settings.rss_preview_empty', 'Нет опубликованных статей для вывода в виджет') : 'Нет опубликованных статей для вывода в виджет';
+                previewContainer.innerHTML = '<div style="font-size: 14px; color: #f44336; font-weight: 500;">' + emptyText + '</div>';
                 return;
             }
             
@@ -1310,7 +1313,8 @@ function loadRssSection() {
             link.href = DATA_URL_PREFIX + 'blog/' + latestPost.filename;
             link.target = '_blank';
             link.className = 'npblog-rss-link';
-            link.textContent = 'Вышла новая статья: ' + latestPost.title;
+            const prefix = window.t ? window.t('settings.rss_new_post_prefix', 'Вышла новая статья: ') : 'Вышла новая статья: ';
+            link.textContent = prefix + latestPost.title;
             
             // Простые дефолтные стили ссылок браузера для чистого превью
             link.style.color = '#3b82f6';
@@ -1874,7 +1878,7 @@ function updateAutosaveBadge(statusText = null) {
     }
 
     if (typeof isEditorDirty !== 'undefined' && !isEditorDirty) {
-        badge.textContent = '✓ Сохранено';
+        badge.textContent = '✓ ' + (window.t ? window.t('header.autosave_badge_saved', 'Сохранено') : 'Сохранено');
         return;
     }
 
@@ -2323,10 +2327,13 @@ function renderCrossBlogNavItems() {
         div.style.marginBottom = '10px';
         div.style.alignItems = 'center';
         
+        const btnNamePh = window.t ? window.t('header.cross_nav_btn_name_ph', 'Название кнопки') : 'Название кнопки';
+        const btnUrlPh = window.t ? window.t('header.cross_nav_url_ph', 'URL (например: ../data2/blog.html)') : 'URL (например: ../data2/blog.html)';
+        const btnDeleteTitle = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
         div.innerHTML = `
-            <input type="text" value="${item.text.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'text', this.value)" placeholder="Название кнопки" style="flex: 1; min-width: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-            <input type="text" value="${item.url.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'url', this.value)" placeholder="URL (например: ../data2/blog.html)" style="flex: 2; min-width: 150px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-            <button type="button" onclick="removeCrossBlogNavItem(${index})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 18px; padding: 4px;" title="Удалить">✖</button>
+            <input type="text" value="${item.text.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'text', this.value)" placeholder="${btnNamePh}" data-i18n-placeholder="header.cross_nav_btn_name_ph" style="flex: 1; min-width: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
+            <input type="text" value="${item.url.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'url', this.value)" placeholder="${btnUrlPh}" data-i18n-placeholder="header.cross_nav_url_ph" style="flex: 2; min-width: 150px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
+            <button type="button" onclick="removeCrossBlogNavItem(${index})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 18px; padding: 4px;" data-i18n-title="common.delete" title="${btnDeleteTitle}">✖</button>
         `;
         container.appendChild(div);
     });
@@ -4186,7 +4193,7 @@ function startSystemUpdateProcess() {
                 <!-- Толщина -->
                 <div id="imgEditorSizeSection">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <h4 style="margin: 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" id="imgEditorSizeLabel">Толщина кисти</h4>
+                        <h4 style="margin: 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" id="imgEditorSizeLabel" data-i18n="modals.img_editor_brush_thickness">Толщина кисти</h4>
                         <span id="imgEditorSizeValue" style="color: var(--text-color); font-weight: bold; font-size: 12px;">5 px</span>
                     </div>
                     <input type="range" id="imgEditorSizeSlider" min="1" max="50" value="5" style="width: 100%; cursor: pointer;">
@@ -4195,15 +4202,15 @@ function startSystemUpdateProcess() {
                 <!-- Размер шрифта -->
                 <div id="imgEditorFontSizeSection" style="display: none;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <h4 style="margin: 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">Размер текста</h4>
+                        <h4 style="margin: 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_font_size">Размер текста</h4>
                         <span id="imgEditorFontSizeValue" style="color: var(--text-color); font-weight: bold; font-size: 12px;">30 px</span>
                     </div>
                     <input type="range" id="imgEditorFontSizeSlider" min="10" max="100" value="30" style="width: 100%; cursor: pointer;">
                 </div>
                 
                 <div style="margin-top: auto; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.03); font-size: 12px; color: var(--text-color); opacity: 0.8; border: 1px solid var(--border-color);">
-                    <strong>💡 Подсказка:</strong><br>
-                    <span id="imgEditorHelpText">Рисуйте мышкой на изображении зажав левую кнопку.</span>
+                    <strong data-i18n="modals.img_editor_tip">💡 Подсказка:</strong><br>
+                    <span id="imgEditorHelpText" data-i18n="modals.img_editor_help_pencil">Рисуйте мышкой на изображении зажав левую кнопку.</span>
                 </div>
             </div>
             
@@ -4318,19 +4325,19 @@ function setImgEditorTool(tool) {
         colorSection.style.display = 'block';
         sizeSection.style.display = 'none';
         fontSizeSection.style.display = 'block';
-        helpText.textContent = 'Кликните на изображение, чтобы добавить текст в эту точку.';
+        helpText.textContent = window.t ? window.t('modals.img_editor_help_text', 'Кликните на изображение, чтобы добавить текст в эту точку.') : 'Кликните на изображение, чтобы добавить текст в эту точку.';
     } else if (tool === 'pixelate') {
         colorSection.style.display = 'none';
         sizeSection.style.display = 'block';
         fontSizeSection.style.display = 'none';
-        sizeLabel.textContent = 'Размер кисти размытия';
-        helpText.textContent = 'Зажмите кнопку мыши и водите по областям, которые хотите размыть пикселями.';
+        sizeLabel.textContent = window.t ? window.t('modals.img_editor_blur_size', 'Размер кисти размытия') : 'Размер кисти размытия';
+        helpText.textContent = window.t ? window.t('modals.img_editor_help_pixelate', 'Зажмите кнопку мыши и водите по областям, которые хотите размыть пикселями.') : 'Зажмите кнопку мыши и водите по областям, которые хотите размыть пикселями.';
     } else {
         colorSection.style.display = 'block';
         sizeSection.style.display = 'block';
         fontSizeSection.style.display = 'none';
-        sizeLabel.textContent = 'Толщина кисти';
-        helpText.textContent = 'Зажмите кнопку мыши и рисуйте на изображении.';
+        sizeLabel.textContent = window.t ? window.t('modals.img_editor_brush_thickness', 'Толщина кисти') : 'Толщина кисти';
+        helpText.textContent = window.t ? window.t('modals.img_editor_help_draw', 'Зажмите кнопку мыши и рисуйте на изображении.') : 'Зажмите кнопку мыши и рисуйте на изображении.';
     }
 }
 
@@ -4936,11 +4943,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Обновляем пункт Скрыть/Показать / Удалить (для кастомных разделителей)
         const visibilityBtn = document.getElementById('ctxToggleVisibility');
         if (target.id.startsWith('divider-custom-')) {
-            visibilityBtn.innerText = 'Удалить';
+            visibilityBtn.innerText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
         } else if (target.classList.contains('customizer-hidden')) {
-            visibilityBtn.innerText = 'Показать';
+            visibilityBtn.innerText = window.t ? window.t('header.customizer_show', 'Показать') : 'Показать';
         } else {
-            visibilityBtn.innerText = 'Скрыть';
+            visibilityBtn.innerText = window.t ? window.t('header.customizer_hide', 'Скрыть') : 'Скрыть';
         }
         
         // Обновляем пункт Переместить в меню / Вернуть на панель
@@ -4951,9 +4958,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             positionBtn.style.display = 'block';
             if (target.parentNode === dropdown) {
-                positionBtn.innerText = 'Вернуть на панель';
+                positionBtn.innerText = window.t ? window.t('header.customizer_return_to_panel', 'Вернуть на панель') : 'Вернуть на панель';
             } else {
-                positionBtn.innerText = 'Перенести в "Прочее"';
+                positionBtn.innerText = window.t ? window.t('header.customizer_move_to_more', 'Перенести в "Прочее"') : 'Перенести в "Прочее"';
             }
         }
         
@@ -5294,24 +5301,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Панель управления кастомизацией хедера -->
 <div id="headerCustomizerBar" style="display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--bg-color); border: 2px solid var(--primary-color, #4CAF50); border-radius: 12px; padding: 16px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.35); z-index: 10005; align-items: center; gap: 16px; box-sizing: border-box; flex-wrap: wrap; justify-content: center;">
-    <span style="color: var(--text-color); font-weight: 600; font-size: 14px; margin-right: 8px;">Режим редактирования панели: перетаскивайте кнопки, ПКМ — меню опций.</span>
+    <span style="color: var(--text-color); font-weight: 600; font-size: 14px; margin-right: 8px;" data-i18n="header.customizer_mode_hint">Режим редактирования панели: перетаскивайте кнопки, ПКМ — меню опций.</span>
     <div style="display: flex; gap: 8px; align-items: center;">
         <div style="position: relative; display: inline-block;">
-            <button type="button" onclick="toggleDividerDropdown(event)" class="global-action-btn global-action-btn-accent" style="padding: 8px 16px; border-width: 1px;">+ Разделитель</button>
+            <button type="button" onclick="toggleDividerDropdown(event)" class="global-action-btn global-action-btn-accent" style="padding: 8px 16px; border-width: 1px;" data-i18n="header.customizer_add_divider">+ Разделитель</button>
             <div id="dividerDropdownMenu" class="customizer-dropdown-menu" style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.25); z-index: 10006; min-width: 180px; padding: 4px 0;">
-                <div class="customizer-dropdown-item" onclick="createCustomDivider('line')" style="padding: 10px 16px; cursor: pointer; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: left; transition: background 0.2s;">Обычный разделитель</div>
-                <div class="customizer-dropdown-item" onclick="createCustomDivider('spacer')" style="padding: 10px 16px; cursor: pointer; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: left; transition: background 0.2s;">Пустой разделитель</div>
+                <div class="customizer-dropdown-item" onclick="createCustomDivider('line')" style="padding: 10px 16px; cursor: pointer; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: left; transition: background 0.2s;" data-i18n="header.customizer_divider_line">Обычный разделитель</div>
+                <div class="customizer-dropdown-item" onclick="createCustomDivider('spacer')" style="padding: 10px 16px; cursor: pointer; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: left; transition: background 0.2s;" data-i18n="header.customizer_divider_spacer">Пустой разделитель</div>
             </div>
         </div>
-        <button type="button" onclick="saveHeaderCustomization()" class="global-action-btn global-action-btn-primary" style="padding: 8px 16px; border-width: 1px;">Применить</button>
-        <button type="button" onclick="cancelHeaderCustomization()" class="global-action-btn global-action-btn-secondary" style="padding: 8px 16px; border-width: 1px;">Отмена</button>
+        <button type="button" onclick="saveHeaderCustomization()" class="global-action-btn global-action-btn-primary" style="padding: 8px 16px; border-width: 1px;" data-i18n="common.apply">Применить</button>
+        <button type="button" onclick="cancelHeaderCustomization()" class="global-action-btn global-action-btn-secondary" style="padding: 8px 16px; border-width: 1px;" data-i18n="common.cancel">Отмена</button>
     </div>
 </div>
 
 <!-- Контекстное меню для кастомизации хедера -->
 <div id="customizerContextMenu" style="display: none; position: fixed; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 100007; min-width: 180px; padding: 4px 0;">
-    <button type="button" id="ctxToggleVisibility" class="context-menu-item" style="display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; font-weight: 500;">Скрыть</button>
-    <button type="button" id="ctxTogglePosition" class="context-menu-item" style="display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; font-weight: 500;">Перенести в "Прочее"</button>
+    <button type="button" id="ctxToggleVisibility" class="context-menu-item" style="display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; font-weight: 500;" data-i18n="header.customizer_hide">Скрыть</button>
+    <button type="button" id="ctxTogglePosition" class="context-menu-item" style="display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; font-weight: 500;" data-i18n="header.customizer_move_to_more">Перенести в "Прочее"</button>
 </div>
 
 <!-- Диалог восстановления сессии -->

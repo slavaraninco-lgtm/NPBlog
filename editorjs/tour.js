@@ -951,7 +951,7 @@ function nextTutorialStep() {
 }
 
 function skipTutorial() {
-    const confirmText = getTutorialText('tutorial_skip_confirm', 'Вы уверены, что хотите пропустить обучение?');
+    const confirmText = getTutorialText('tutorial.skip_confirm', 'Вы уверены, что хотите пропустить обучение?');
     if (window.Modal && typeof Modal.confirm === 'function') {
         Modal.confirm(confirmText).then(result => {
             if (result) completeTutorial();
@@ -1002,7 +1002,7 @@ function completeTutorial() {
 }
 
 function resetTutorial() {
-    const confirmText = getTutorialText('tutorial_reset_confirm', 'Вы уверены, что хотите сбросить обучение? Гайд появится снова при следующей загрузке страницы.');
+    const confirmText = getTutorialText('tutorial.reset_confirm', 'Вы уверены, что хотите сбросить обучение? Гайд появится снова при следующей загрузке страницы.');
     const onConfirm = () => {
         fetch('save_editor_settings.php', {
             method: 'POST',
@@ -1010,7 +1010,7 @@ function resetTutorial() {
             body: JSON.stringify({ tutorialCompleted: false })
         }).then(() => {
             if (typeof showNotification === 'function') {
-                const notice = getTutorialText('tutorial_reset_notice', 'Обучение сброшено. Запускаем гайд...');
+                const notice = getTutorialText('tutorial.reset_notice', 'Обучение сброшено. Запускаем гайд...');
                 showNotification(notice, 'success');
             }
             startTutorial(true);

@@ -37,7 +37,7 @@ if (!isset($availableLanguages)) {
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeGlobalSettings()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeGlobalSettings()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -143,7 +143,7 @@ if (!isset($availableLanguages)) {
                     
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <label class="modal-label" for="blogPageTitle" data-i18n="settings.blogview_page_title_label">Заголовок страницы:</label>
-                        <input type="text" id="blogPageTitle" placeholder="Блог" class="modal-input" style="margin-bottom: 14px;">
+                        <input type="text" id="blogPageTitle" data-i18n-placeholder="settings.blog_title_ph" placeholder="Блог" class="modal-input" style="margin-bottom: 14px;">
                         
                         <button type="button" onclick="saveBlogViewSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.blogview_save_btn">Сохранить настройки</button>
                     </div>
@@ -519,11 +519,11 @@ if (!isset($availableLanguages)) {
                             <div id="securityPasswordFields" style="display: none; margin-bottom: 18px; padding: 16px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02)); border: 1px solid var(--border-color); border-radius: 10px;">
                                 <div style="margin-bottom: 12px;">
                                     <label class="modal-label" for="settingsNewPassword" data-i18n="settings.sec_pwd_new">Новый пароль:</label>
-                                    <input type="password" id="settingsNewPassword" placeholder="Введите новый пароль" class="modal-input">
+                                    <input type="password" id="settingsNewPassword" data-i18n-placeholder="settings.new_password_ph" placeholder="Введите новый пароль" class="modal-input">
                                 </div>
                                 <div>
                                     <label class="modal-label" for="settingsConfirmPassword" data-i18n="settings.sec_pwd_confirm">Подтверждение пароля:</label>
-                                    <input type="password" id="settingsConfirmPassword" placeholder="Повторите новый пароль" class="modal-input">
+                                    <input type="password" id="settingsConfirmPassword" data-i18n-placeholder="settings.repeat_new_password_ph" placeholder="Повторите новый пароль" class="modal-input">
                                 </div>
                             </div>
                         </div>
@@ -544,15 +544,15 @@ if (!isset($availableLanguages)) {
                             <div id="changePasswordFormContainer" style="display: none; margin-bottom: 16px; padding: 16px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02)); border: 1px solid var(--border-color); border-radius: 10px;">
                                 <div style="margin-bottom: 12px;">
                                     <label class="modal-label" for="changeSettingsOldPassword" data-i18n="settings.sec_pwd_old">Старый пароль:</label>
-                                    <input type="password" id="changeSettingsOldPassword" placeholder="Введите старый пароль" class="modal-input">
+                                    <input type="password" id="changeSettingsOldPassword" data-i18n-placeholder="settings.old_password_ph" placeholder="Введите старый пароль" class="modal-input">
                                 </div>
                                 <div style="margin-bottom: 12px;">
                                     <label class="modal-label" for="changeSettingsNewPassword" data-i18n="settings.sec_pwd_new">Новый пароль:</label>
-                                    <input type="password" id="changeSettingsNewPassword" placeholder="Введите новый пароль" class="modal-input">
+                                    <input type="password" id="changeSettingsNewPassword" data-i18n-placeholder="settings.new_password_ph" placeholder="Введите новый пароль" class="modal-input">
                                 </div>
                                 <div>
                                     <label class="modal-label" for="changeSettingsConfirmPassword" data-i18n="settings.sec_pwd_confirm">Подтверждение нового пароля:</label>
-                                    <input type="password" id="changeSettingsConfirmPassword" placeholder="Повторите новый пароль" class="modal-input">
+                                    <input type="password" id="changeSettingsConfirmPassword" data-i18n-placeholder="settings.repeat_new_password_ph" placeholder="Повторите новый пароль" class="modal-input">
                                 </div>
                             </div>
 
@@ -560,7 +560,7 @@ if (!isset($availableLanguages)) {
                             <div id="disablePasswordFormContainer" style="display: none; margin-bottom: 16px; padding: 16px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02)); border: 1px solid var(--border-color); border-radius: 10px;">
                                 <div>
                                     <label class="modal-label" for="disableSettingsPassword" data-i18n="settings.sec_pwd_current_to_disable">Введите текущий пароль для отключения защиты:</label>
-                                    <input type="password" id="disableSettingsPassword" placeholder="Введите ваш текущий пароль" class="modal-input">
+                                    <input type="password" id="disableSettingsPassword" data-i18n-placeholder="settings.current_password_ph" placeholder="Введите ваш текущий пароль" class="modal-input">
                                 </div>
                             </div>
                         </div>
@@ -674,7 +674,7 @@ if (!isset($availableLanguages)) {
 
         <!-- Подвал -->
         <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn" title="Сбросить все настройки редактора к значениям по умолчанию">
+            <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn" data-i18n-title="settings.exp_reset_all_title" title="Сбросить все настройки редактора к значениям по умолчанию">
                 Сбросить настройки
             </button>
             <div style="display: flex; gap: 8px; align-items: center;">

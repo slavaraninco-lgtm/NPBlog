@@ -32,7 +32,7 @@
                     📥 Загрузить шаблон
                 </button>
                 <input type="file" id="templateFileInput" accept=".html,.htm,.zip" multiple style="display: none;" onchange="handleTemplateUpload(this)">
-                <button type="button" class="modal-close-btn" onclick="closeTemplateManager()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeTemplateManager()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -58,7 +58,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeTemplateInstructions()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeTemplateInstructions()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -118,12 +118,12 @@
             <pre style="background: #272822; color: #f8f8f2; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; margin-bottom: 15px; overflow-x: auto;">&lt;link rel="stylesheet" href="assets/blog-post.css?v=1.0.8"&gt;</pre>
             <p style="margin-bottom: 10px;" data-i18n="modals.tpl_css_req_custom">Если вы пишете свои стили с нуля, убедитесь, что реализовали оформление для следующих классов:</p>
             <ul style="padding-left: 20px; margin-bottom: 25px; display: flex; flex-direction: column; gap: 8px;">
-                <li><strong>Таблицы</strong> (классы `.content table`, `th`, `td`): границы, отступы, выравнивание текста влево.</li>
-                <li><strong>Спойлеры / Сворачиваемые списки</strong>: стилизация тегов `.spoiler-block`, `.spoiler-title` (курсор `pointer`, треугольный маркер) и `.spoiler-content` (анимация появления).</li>
-                <li><strong>Блоки кода</strong> (`.code-block`): фоновый цвет, monospace шрифт, горизонтальный скролл (`overflow-x: auto`), оформление плашки языка через псевдоэлемент `.code-block::before` с `content: attr(data-language)`.</li>
-                <li><strong>Кнопка скачивания файла</strong> (`.blog-file-button`, `.blog-file-icon`, `.blog-file-name`, `.blog-file-size`): гибкий флекс-контейнер со стилизованными текстами и иконкой.</li>
-                <li><strong>ASCII-арт</strong> (`.blog-ascii-wrap`, `.blog-ascii-art`): сохранение пробелов и переносов строк (`white-space: pre`), прокрутка.</li>
-                <li><strong>Маркеры / Текстовыделитель</strong> (`mark`): стили выделений (`[data-marker-style="rough"]`, wavy, zigzag, straight) и цвета маркера (желтый, зеленый, синий, розовый и др.).</li>
+                <li><strong data-i18n="modals.tpl_guide_tables_title">Таблицы</strong> <span data-i18n="modals.tpl_guide_tables_desc">(классы `.content table`, `th`, `td`): границы, отступы, выравнивание текста влево.</span></li>
+                <li><strong data-i18n="modals.tpl_guide_spoilers_title">Спойлеры / Сворачиваемые списки</strong><span data-i18n="modals.tpl_guide_spoilers_desc">: стилизация тегов `.spoiler-block`, `.spoiler-title` (курсор `pointer`, треугольный маркер) и `.spoiler-content` (анимация появления).</span></li>
+                <li><strong data-i18n="modals.tpl_guide_code_title">Блоки кода</strong> <span data-i18n="modals.tpl_guide_code_desc">(`.code-block`): фоновый цвет, monospace шрифт, горизонтальный скролл (`overflow-x: auto`), оформление плашки языка через псевдоэлемент `.code-block::before` с `content: attr(data-language)`.</span></li>
+                <li><strong data-i18n="modals.tpl_guide_file_btn_title">Кнопка скачивания файла</strong> <span data-i18n="modals.tpl_guide_file_btn_desc">(`.blog-file-button`, `.blog-file-icon`, `.blog-file-name`, `.blog-file-size`): гибкий флекс-контейнер со стилизованными текстами и иконкой.</span></li>
+                <li><strong data-i18n="modals.tpl_guide_ascii_title">ASCII-арт</strong> <span data-i18n="modals.tpl_guide_ascii_desc">(`.blog-ascii-wrap`, `.blog-ascii-art`): сохранение пробелов и переносов строк (`white-space: pre`), прокрутка.</span></li>
+                <li><strong data-i18n="modals.tpl_guide_markers_title">Маркеры / Текстовыделитель</strong> <span data-i18n="modals.tpl_guide_markers_desc">(`mark`): стили выделений (`[data-marker-style="rough"]`, wavy, zigzag, straight) и цвета маркера (желтый, зеленый, синий, розовый и др.).</span></li>
             </ul>
 
             <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 15px; font-weight: 600; color: var(--accent-color, #4CAF50);" data-i18n="modals.tpl_js_req_title">3. JS-требования (Интерактив)</h4>
@@ -181,7 +181,7 @@
                         </button>
                     </div>
                 </div>
-                <button type="button" class="modal-close-btn" onclick="closeTemplateDetails()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeTemplateDetails()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
         
@@ -230,7 +230,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeApplyToPostModal()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeApplyToPostModal()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 

@@ -22,7 +22,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" id="asciiEditorUndoBtn" onclick="undoAsciiState()" class="modal-btn modal-btn-ghost" style="padding: 6px 14px; font-size: 13px; display: flex; align-items: center; gap: 6px;" title="Отменить (Ctrl+Z)">
+                <button type="button" id="asciiEditorUndoBtn" onclick="undoAsciiState()" class="modal-btn modal-btn-ghost" style="padding: 6px 14px; font-size: 13px; display: flex; align-items: center; gap: 6px;" data-i18n-title="modals.ascii_undo_title" title="Отменить (Ctrl+Z)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
                         <path d="M3 7v6h6" />
                         <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
@@ -32,7 +32,7 @@
                 <button type="button" onclick="saveAsciiArt()" class="modal-btn modal-btn-primary" style="padding: 6px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
                     <span>💾</span> <span data-i18n="common.save">Сохранить</span>
                 </button>
-                <button type="button" class="modal-close-btn" onclick="closeAsciiEditor()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeAsciiEditor()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
         
@@ -53,10 +53,10 @@
                     </select>
                     
                     <div id="asciiCustomSizeContainer" style="display: none; gap: 6px; align-items: center; margin-top: 8px;">
-                        <input type="number" id="asciiCustomWidth" class="modal-input" min="5" max="120" value="40" style="width: 60px; text-align: center; padding: 6px;" title="Ширина (колонки)" onkeydown="if(event.key==='Enter')applyCustomAsciiGridSize()">
+                        <input type="number" id="asciiCustomWidth" class="modal-input" min="5" max="120" value="40" style="width: 60px; text-align: center; padding: 6px;" data-i18n-title="modals.ascii_col_width" title="Ширина (колонки)" onkeydown="if(event.key==='Enter')applyCustomAsciiGridSize()">
                         <span style="color: var(--text-color); opacity: 0.7;">×</span>
-                        <input type="number" id="asciiCustomHeight" class="modal-input" min="5" max="60" value="15" style="width: 60px; text-align: center; padding: 6px;" title="Высота (строки)" onkeydown="if(event.key==='Enter')applyCustomAsciiGridSize()">
-                        <button type="button" onclick="applyCustomAsciiGridSize()" class="modal-btn modal-btn-primary" style="flex: 1; padding: 6px; font-size: 12px;">ОК</button>
+                        <input type="number" id="asciiCustomHeight" class="modal-input" min="5" max="60" value="15" style="width: 60px; text-align: center; padding: 6px;" data-i18n-title="modals.ascii_row_height" title="Высота (строки)" onkeydown="if(event.key==='Enter')applyCustomAsciiGridSize()">
+                        <button type="button" onclick="applyCustomAsciiGridSize()" class="modal-btn modal-btn-primary" style="flex: 1; padding: 6px; font-size: 12px;" data-i18n="common.ok">ОК</button>
                     </div>
                 </div>
                 
@@ -81,9 +81,9 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <label class="modal-label" style="margin: 0;" data-i18n="modals.ascii_symbol_label">Символ:</label>
                         <div style="display: flex; gap: 4px; align-items: center;">
-                            <button type="button" onclick="prevAsciiPage()" class="ascii-pager-btn" id="asciiPrevPageBtn" title="Предыдущая группа">◀</button>
-                            <span id="asciiPageIndicator" style="color: var(--text-color); font-size: 11px; opacity: 0.8; font-weight: bold; min-width: 65px; text-align: center;">Блоки</span>
-                            <button type="button" onclick="nextAsciiPage()" class="ascii-pager-btn" id="asciiNextPageBtn" title="Следующая группа">▶</button>
+                            <button type="button" onclick="prevAsciiPage()" class="ascii-pager-btn" id="asciiPrevPageBtn" data-i18n-title="modals.ascii_prev_group" title="Предыдущая группа">◀</button>
+                            <span id="asciiPageIndicator" style="color: var(--text-color); font-size: 11px; opacity: 0.8; font-weight: bold; min-width: 65px; text-align: center;" data-i18n="modals.ascii_group_blocks">Блоки</span>
+                            <button type="button" onclick="nextAsciiPage()" class="ascii-pager-btn" id="asciiNextPageBtn" data-i18n-title="modals.ascii_next_group" title="Следующая группа">▶</button>
                         </div>
                     </div>
                     
@@ -92,7 +92,7 @@
                     </div>
                     
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" id="asciiCustomChar" class="modal-input" maxlength="1" placeholder="Свой" style="width: 50px; text-align: center; padding: 6px; font-family: monospace; font-size: 16px;">
+                        <input type="text" id="asciiCustomChar" class="modal-input" maxlength="1" data-i18n-placeholder="modals.ascii_custom_char" placeholder="Свой" style="width: 50px; text-align: center; padding: 6px; font-family: monospace; font-size: 16px;">
                         <button type="button" onclick="applyCustomAsciiChar()" class="modal-btn" style="flex: 1; padding: 6px; font-size: 12px;" data-i18n="common.apply">Применить</button>
                     </div>
                 </div>

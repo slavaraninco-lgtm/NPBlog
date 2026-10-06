@@ -334,7 +334,7 @@ function renderTemplatePostList() {
     container.innerHTML = '';
 
     if (postsList.length === 0) {
-        container.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px;">Нет статей</div>';
+        container.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px;">' + (window.t ? window.t('modals.tpl_no_posts', 'Нет статей') : 'Нет статей') + '</div>';
         return;
     }
 
@@ -345,14 +345,19 @@ function renderTemplatePostList() {
 
         // Check if this post currently uses this template
         const isAssigned = postTemplatesMeta[post.id] === currentTemplateName;
+        const dateText = window.t ? window.t('modals.tpl_post_date', `Дата: ${post.date}`, { date: post.date }) : `Дата: ${post.date}`;
+        const appliedBadge = isAssigned ? `• <span style="color:#10b981; font-weight:600;">${window.t ? window.t('modals.tpl_already_applied', 'Уже применен') : 'Уже применен'}</span>` : '';
+        const btnText = isAssigned 
+            ? (window.t ? window.t('modals.tpl_reapply', 'Переприменить') : 'Переприменить') 
+            : (window.t ? window.t('modals.tpl_select', 'Выбрать') : 'Выбрать');
 
         item.innerHTML = `
                 <div style="flex: 1; min-width: 0; padding-right: 10px;">
                     <div style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-color);">${post.title}</div>
-                    <div style="font-size: 11px; opacity: 0.6; margin-top: 2px;">Дата: ${post.date} ${isAssigned ? '• <span style="color:#10b981; font-weight:600;">Уже применен</span>' : ''}</div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-top: 2px;">${dateText} ${appliedBadge}</div>
                 </div>
                 <button type="button" onclick="applyTemplateToPost(${post.id})" style="padding: 6px 12px; background: ${isAssigned ? '#10b981' : 'var(--primary-color, #4CAF50)'}; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                    ${isAssigned ? 'Переприменить' : 'Выбрать'}
+                    ${btnText}
                 </button>
             `;
         container.appendChild(item);
@@ -428,17 +433,18 @@ function deleteCurrentTemplate() {
 
 function showTemplatePlaceholdersInfo(e) {
     e.preventDefault();
-    const info = `Обязательные плейсхолдеры в шаблоне:\n\n` +
-        `{{TITLE}} - заголовок статьи\n` +
-        `{{DATE}} - дата публикации\n` +
-        `{{POST_ID}} - ID статьи\n` +
-        `{{CONTENT}} - основной контент\n` +
-        `{{META_TAGS}} - метатеги SEO\n` +
-        `{{CUSTOM_FONTS}} - блок шрифтов\n` +
-        `{{BODY_STYLE}} - стили тела документа\n` +
-        `{{CONTENT_WRAPPER_START}} - начало обертки контента\n` +
-        `{{CONTENT_WRAPPER_END}} - конец обертки контента`;
-    showAlert(info, 'Теги шаблонов');
+    const t = window.t || function(k, d) { return d; };
+    const info = (t('modals.tpl_req_title', 'Обязательные плейсхолдеры в шаблоне:')) + '\n\n' +
+        `{{TITLE}} - ` + t('modals.tpl_ph_title_desc', 'заголовок статьи') + '\n' +
+        `{{DATE}} - ` + t('modals.tpl_ph_date_desc', 'дата публикации') + '\n' +
+        `{{POST_ID}} - ` + t('modals.tpl_ph_post_id_desc', 'ID статьи') + '\n' +
+        `{{CONTENT}} - ` + t('modals.tpl_ph_content_desc', 'основной контент статьи') + '\n' +
+        `{{META_TAGS}} - ` + t('modals.tpl_ph_meta_desc', 'SEO-метатеги') + '\n' +
+        `{{CUSTOM_FONTS}} - ` + t('modals.tpl_ph_fonts_desc', 'блок подключения шрифтов') + '\n' +
+        `{{BODY_STYLE}} - ` + t('modals.tpl_ph_body_desc', 'стили фона и цвета текста') + '\n' +
+        `{{CONTENT_WRAPPER_START}} - ` + t('modals.tpl_ph_wrap_start_desc', 'начало обертки контента') + '\n' +
+        `{{CONTENT_WRAPPER_END}} - ` + t('modals.tpl_ph_wrap_end_desc', 'конец обертки контента');
+    showAlert(info, t('modals.tpl_tags_title', 'Теги шаблонов'));
 }
 
 function showTemplateInstructions() {
