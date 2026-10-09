@@ -4956,9 +4956,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!menu) return;
         
         // Позиционируем и показываем кастомное меню
-        menu.style.left = e.clientX + 'px';
-        menu.style.top = e.clientY + 'px';
         menu.style.display = 'block';
+        let left = e.clientX;
+        let top = e.clientY;
+        const menuWidth = 200;
+        const menuHeight = 90;
+        if (left + menuWidth > window.innerWidth) {
+            left = Math.max(10, window.innerWidth - menuWidth - 10);
+        }
+        if (top + menuHeight > window.innerHeight) {
+            top = Math.max(10, window.innerHeight - menuHeight - 10);
+        }
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
         
         // Обновляем пункт Скрыть/Показать / Удалить (для кастомных разделителей)
         const visibilityBtn = document.getElementById('ctxToggleVisibility');
@@ -5320,25 +5330,28 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Панель управления кастомизацией хедера -->
-<div id="headerCustomizerBar" style="display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--bg-color); border: 2px solid var(--primary-color, #4CAF50); border-radius: 12px; padding: 16px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.35); z-index: 10005; align-items: center; gap: 16px; box-sizing: border-box; flex-wrap: wrap; justify-content: center;">
-    <span style="color: var(--text-color); font-weight: 600; font-size: 14px; margin-right: 8px;" data-i18n="header.customizer_mode_hint">Режим редактирования панели: перетаскивайте кнопки, ПКМ — меню опций.</span>
-    <div style="display: flex; gap: 8px; align-items: center;">
-        <div style="position: relative; display: inline-block;">
-            <button type="button" onclick="toggleDividerDropdown(event)" class="global-action-btn global-action-btn-accent" style="padding: 8px 16px; border-width: 1px;" data-i18n="header.customizer_add_divider">+ Разделитель</button>
-            <div id="dividerDropdownMenu" class="customizer-dropdown-menu" style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.25); z-index: 10006; min-width: 180px; padding: 4px 0;">
-                <div class="customizer-dropdown-item" onclick="createCustomDivider('line')" style="padding: 10px 16px; cursor: pointer; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: left; transition: background 0.2s;" data-i18n="header.customizer_divider_line">Обычный разделитель</div>
-                <div class="customizer-dropdown-item" onclick="createCustomDivider('spacer')" style="padding: 10px 16px; cursor: pointer; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: left; transition: background 0.2s;" data-i18n="header.customizer_divider_spacer">Пустой разделитель</div>
+<div id="headerCustomizerBar">
+    <div class="customizer-bar-hint">
+        <span class="customizer-bar-badge">🎨</span>
+        <span class="customizer-bar-text" data-i18n="header.customizer_mode_hint">Режим редактирования панели: перетаскивайте кнопки, ПКМ — меню опций.</span>
+    </div>
+    <div class="customizer-actions-wrap">
+        <div class="customizer-dropdown-wrap">
+            <button type="button" onclick="toggleDividerDropdown(event)" class="customizer-btn customizer-btn-accent" data-i18n="header.customizer_add_divider">+ Разделитель</button>
+            <div id="dividerDropdownMenu" class="customizer-dropdown-menu" style="display: none;">
+                <div class="customizer-dropdown-item" onclick="createCustomDivider('line')" data-i18n="header.customizer_divider_line">Обычный разделитель</div>
+                <div class="customizer-dropdown-item" onclick="createCustomDivider('spacer')" data-i18n="header.customizer_divider_spacer">Пустой разделитель</div>
             </div>
         </div>
-        <button type="button" onclick="saveHeaderCustomization()" class="global-action-btn global-action-btn-primary" style="padding: 8px 16px; border-width: 1px;" data-i18n="common.apply">Применить</button>
-        <button type="button" onclick="cancelHeaderCustomization()" class="global-action-btn global-action-btn-secondary" style="padding: 8px 16px; border-width: 1px;" data-i18n="common.cancel">Отмена</button>
+        <button type="button" onclick="saveHeaderCustomization()" class="customizer-btn customizer-btn-primary" data-i18n="common.apply">Применить</button>
+        <button type="button" onclick="cancelHeaderCustomization()" class="customizer-btn customizer-btn-ghost" data-i18n="common.cancel">Отмена</button>
     </div>
 </div>
 
 <!-- Контекстное меню для кастомизации хедера -->
-<div id="customizerContextMenu" style="display: none; position: fixed; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 100007; min-width: 180px; padding: 4px 0;">
-    <button type="button" id="ctxToggleVisibility" class="context-menu-item" style="display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; font-weight: 500;" data-i18n="header.customizer_hide">Скрыть</button>
-    <button type="button" id="ctxTogglePosition" class="context-menu-item" style="display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; font-weight: 500;" data-i18n="header.customizer_move_to_more">Перенести в "Прочее"</button>
+<div id="customizerContextMenu" style="display: none; position: fixed;">
+    <button type="button" id="ctxToggleVisibility" class="context-menu-item" data-i18n="header.customizer_hide">Скрыть</button>
+    <button type="button" id="ctxTogglePosition" class="context-menu-item" data-i18n="header.customizer_move_to_more">Перенести в "Прочее"</button>
 </div>
 
 <!-- Диалог восстановления сессии -->
