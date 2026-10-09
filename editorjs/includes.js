@@ -1,5 +1,6 @@
 // ——— Система includes ———
-function openSaveInclude() {
+function openSaveInclude(event) {
+    if (event) event.stopPropagation();
     const input = document.getElementById('includeNameInput');
     if (input) input.value = '';
 
@@ -13,6 +14,7 @@ function openSaveInclude() {
     // Закрываем меню "Прочее"
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
+    document.querySelectorAll('.more-menu-item.has-submenu').forEach(b => b.classList.remove('submenu-open'));
 
     if (input) setTimeout(() => input.focus(), 100);
 }
@@ -93,7 +95,8 @@ let articlesListLoaded = false;
 let draftsListLoaded = false;
 
 // Функции для работы с черновиками
-function saveDraft() {
+function saveDraft(event) {
+    if (event) event.stopPropagation();
     const title = document.getElementById('title').value.trim();
     let content = editorMode === 'visual'
         ? document.getElementById('contentVisual').innerHTML
@@ -139,6 +142,7 @@ function saveDraft() {
     // Закрываем меню
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
+    document.querySelectorAll('.more-menu-item.has-submenu').forEach(b => b.classList.remove('submenu-open'));
 }
 
 function toggleDraftsSubmenu(event) {
@@ -164,6 +168,7 @@ function toggleDraftsSubmenu(event) {
 async function loadDraftsList() {
     const submenu = document.getElementById('draftsSubmenu');
     if (!submenu) return;
+    const listContainer = document.getElementById('draftsSubmenuList') || submenu;
 
     try {
         const response = await fetch('get_drafts.php');
@@ -171,12 +176,12 @@ async function loadDraftsList() {
 
         if (data.success) {
             if (data.drafts.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
+                listContainer.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
             } else {
                 const untitledText = window.t ? window.t('more_menu.untitled', 'Без названия') : 'Без названия';
                 const delDraftText = window.t ? window.t('more_menu.delete_draft', 'Удалить черновик') : 'Удалить черновик';
                 const currentLocale = (window.NPBlogI18n && typeof window.NPBlogI18n.getLocale === 'function') ? window.NPBlogI18n.getLocale() : 'ru-RU';
-                submenu.innerHTML = data.drafts.map(draft => {
+                listContainer.innerHTML = data.drafts.map(draft => {
                     const displayTitle = draft.title || untitledText;
                     const date = new Date(draft.timestamp * 1000).toLocaleString(currentLocale, {
                         day: '2-digit',
@@ -198,7 +203,7 @@ async function loadDraftsList() {
         }
     } catch (error) {
         console.error('Ошибка загрузки черновиков:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
+        listContainer.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
     }
 }
 
@@ -336,11 +341,20 @@ function toggleIncludesSubmenu(event) {
     }
 }
 
+// Поддержка клавиатуры (Enter / Space) для подменю
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('has-submenu')) {
+        e.preventDefault();
+        e.target.click();
+    }
+});
+
 async function loadIncludesList() {
     if (includesListLoaded) return;
 
     const submenu = document.getElementById('includesSubmenu');
     if (!submenu) return;
+    const listContainer = document.getElementById('includesSubmenuList') || submenu;
 
     try {
         const response = await fetch('get_includes.php');
@@ -348,10 +362,10 @@ async function loadIncludesList() {
 
         if (data.success) {
             if (data.files.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
+                listContainer.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
             } else {
                 const delIncText = window.t ? window.t('more_menu.delete_include', 'Удалить include') : 'Удалить include';
-                submenu.innerHTML = data.files.map(file =>
+                listContainer.innerHTML = data.files.map(file =>
                     `<div class="draft-item-wrap">
                         <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${file.name}')" title="${escapeHtml(file.displayName)}">${escapeHtml(file.displayName)}</button>
                         <button type="button" class="draft-delete-btn" onclick="deleteInclude('${file.name}', event)" title="${delIncText}">×</button>
@@ -362,7 +376,7 @@ async function loadIncludesList() {
         }
     } catch (error) {
         console.error('Ошибка загрузки includes:', error);
-        submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
+        listContainer.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
     }
 }
 

@@ -413,43 +413,53 @@ if (file_exists($versionFile)) {
             <div class="more-menu-wrap" id="moreMenuWrap">
                 <button type="button" class="format-btn" title="Прочее" data-i18n-title="toolbar.more" onclick="toggleMoreMenu()">⋯</button>
                 <div class="more-menu-dropdown" id="moreMenuDropdown">
-                    <button type="button" class="more-menu-item" onclick="saveDraft()" data-i18n="more_menu.save_draft">Сохранить в черновик</button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleDraftsSubmenu(event)">
+                    <div class="more-menu-item has-submenu" id="draftsMenuItem" onclick="toggleDraftsSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.drafts">Черновики</span>
-                        <div class="more-submenu" id="draftsSubmenu">
-                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                        <div class="more-submenu" id="draftsSubmenu" onclick="event.stopPropagation()">
+                            <button type="button" class="more-submenu-item more-submenu-action" onclick="saveDraft(event)">
+                                <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_draft">Сохранить в черновик</span>
+                            </button>
+                            <div class="more-submenu-divider"></div>
+                            <div class="more-submenu-list" id="draftsSubmenuList">
+                                <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                            </div>
                         </div>
-                    </button>
-                    <button type="button" class="more-menu-item" onclick="openSaveInclude()" data-i18n="more_menu.save_include">Сохранить в includes</button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleIncludesSubmenu(event)">
+                    </div>
+                    <div class="more-menu-item has-submenu" id="includesMenuItem" onclick="toggleIncludesSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.insert_include">Вставить</span>
-                        <div class="more-submenu" id="includesSubmenu">
-                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                        <div class="more-submenu" id="includesSubmenu" onclick="event.stopPropagation()">
+                            <button type="button" class="more-submenu-item more-submenu-action" onclick="openSaveInclude(event)">
+                                <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_include">Сохранить в includes</span>
+                            </button>
+                            <div class="more-submenu-divider"></div>
+                            <div class="more-submenu-list" id="includesSubmenuList">
+                                <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                            </div>
                         </div>
-                    </button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleArticlesSubmenu(event)">
+                    </div>
+                    <div class="more-menu-item has-submenu" id="articlesMenuItem" onclick="toggleArticlesSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.insert_article_link">Вставить ссылку на статью</span>
                         <div class="more-submenu" id="articlesSubmenu">
                             <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
-                    </button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleTocSubmenu(event)">
+                    </div>
+                    <div class="more-menu-item has-submenu" id="tocMenuItem" onclick="toggleTocSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.toc">Содержание</span>
                         <div class="more-submenu" id="tocSubmenu">
                             <div class="more-submenu-empty" data-i18n="more_menu.no_anchors">Нет якорей в статье</div>
                         </div>
-                    </button>
+                    </div>
                     <button type="button" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
                     <button type="button" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
                     <button type="button" class="more-menu-item" onclick="openFormulaDialog()" data-i18n="toolbar.formula">Вставить формулу</button>
                     <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
                     <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleSmilesSubmenu(event)">
+                    <div class="more-menu-item has-submenu" id="smilesMenuItem" onclick="toggleSmilesSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.smiles">Смайлы</span>
                         <div class="more-submenu" id="smilesSubmenu">
                             <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
-                    </button>
+                    </div>
                 </div>
             </div>
             </div>

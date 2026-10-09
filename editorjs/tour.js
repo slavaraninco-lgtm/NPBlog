@@ -137,21 +137,21 @@ function getTutorialSteps() {
             title: getTutorialText('tutorial.step_more_drafts_title', 'Черновики и ревизии 📄'),
             text: getTutorialText('tutorial.step_more_drafts_text', 'Сохраняйте промежуточные версии статьи вручную в один клик. Подменю «Черновики» позволяет мгновенно просматривать и восстанавливать сохранённые ревизии.'),
             menu: 'moreMenu',
-            element: '#moreMenuDropdown button[onclick*="saveDraft"], #moreMenuDropdown .more-menu-item:nth-child(2)'
+            element: '#draftsMenuItem, #moreMenuDropdown button[onclick*="saveDraft"]'
         },
         // 22. More Menu: Includes
         {
             title: getTutorialText('tutorial.step_more_includes_title', 'Include-шаблоны и врезки 🧩'),
             text: getTutorialText('tutorial.step_more_includes_text', 'Сохраняйте повторяющиеся блоки (баннеры, плашки, контакты, виджеты) в папку includes/ и вставляйте их в любые статьи одной кнопкой.'),
             menu: 'moreMenu',
-            element: '#moreMenuDropdown button[onclick*="openSaveInclude"], #moreMenuDropdown .more-menu-item:nth-child(4)'
+            element: '#includesMenuItem, #moreMenuDropdown button[onclick*="openSaveInclude"]'
         },
         // 23. More Menu: Article Links & TOC
         {
             title: getTutorialText('tutorial.step_more_articles_toc_title', 'Ссылки на статьи и Оглавление 📑'),
             text: getTutorialText('tutorial.step_more_articles_toc_text', '«Вставить ссылку на статью» строит перекрёстную перелинковку между постами, а «Содержание» автоматически формирует кликабельное оглавление из заголовков H2.'),
             menu: 'moreMenu',
-            element: '#moreMenuDropdown .more-menu-item:nth-child(5), #moreMenuDropdown .more-menu-item:nth-child(6)'
+            element: '#articlesMenuItem, #tocMenuItem'
         },
         // 24. More Menu: Upload Files & Code Blocks
         {
@@ -165,7 +165,7 @@ function getTutorialSteps() {
             title: getTutorialText('tutorial.step_more_buttons_smiles_title', 'Кнопки призыва к действию и Смайлы 🔘'),
             text: getTutorialText('tutorial.step_more_buttons_smiles_text', 'Генератор стильных кнопок (Call to Action, Скачать, Купить) с градиентами и тенями, а также коллекция эмодзи и наборов графических стикеров.'),
             menu: 'moreMenu',
-            element: '#moreMenuDropdown button[onclick*="openInsertButtonDialog"], #moreMenuDropdown button[onclick*="openSmileSetsDialog"]'
+            element: '#moreMenuDropdown button[onclick*="openInsertButtonDialog"], #smilesMenuItem, #moreMenuDropdown button[onclick*="openSmileSetsDialog"]'
         },
         // 26. Autosave Badge
         {

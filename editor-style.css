@@ -3514,12 +3514,15 @@ button:hover {
     box-sizing: border-box;
 }
 
-.more-menu-item:hover {
+.more-menu-item:hover,
+.more-menu-item:focus-visible {
     background: rgba(0, 0, 0, 0.06);
     transform: translateX(2px);
+    outline: none;
 }
 
-[data-theme="dark"] .more-menu-item:hover {
+[data-theme="dark"] .more-menu-item:hover,
+[data-theme="dark"] .more-menu-item:focus-visible {
     background: rgba(255, 255, 255, 0.08);
 }
 
@@ -3528,6 +3531,7 @@ button:hover {
     align-items: center;
     justify-content: space-between;
     position: relative;
+    user-select: none;
 }
 
 .more-menu-item.has-submenu::after {
@@ -3601,6 +3605,42 @@ button:hover {
     font-size: 13px;
     color: var(--text-color);
     opacity: 0.6;
+}
+
+/* Кнопки действий вверху подменю (Сохранить в черновик, Сохранить в includes) */
+.more-submenu-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.more-submenu-action:hover {
+    color: var(--text-color);
+}
+
+.more-submenu-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 14px;
+    font-weight: bold;
+    opacity: 0.85;
+}
+
+.more-submenu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0 6px 0;
+    opacity: 0.7;
+}
+
+.more-submenu-list {
+    display: flex;
+    flex-direction: column;
 }
 
 /* Стили для черновиков */
