@@ -415,7 +415,7 @@ if (file_exists($versionFile)) {
                 <div class="more-menu-dropdown" id="moreMenuDropdown">
                     <div class="more-menu-item has-submenu" id="draftsMenuItem" onclick="toggleDraftsSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.drafts">Черновики</span>
-                        <div class="more-submenu" id="draftsSubmenu" onclick="event.stopPropagation()">
+                        <div class="more-submenu has-action-header" id="draftsSubmenu" onclick="event.stopPropagation()">
                             <button type="button" class="more-submenu-item more-submenu-action" onclick="saveDraft(event)">
                                 <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_draft">Сохранить в черновик</span>
                             </button>
@@ -427,7 +427,7 @@ if (file_exists($versionFile)) {
                     </div>
                     <div class="more-menu-item has-submenu" id="includesMenuItem" onclick="toggleIncludesSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.insert_include">Вставить</span>
-                        <div class="more-submenu" id="includesSubmenu" onclick="event.stopPropagation()">
+                        <div class="more-submenu has-action-header" id="includesSubmenu" onclick="event.stopPropagation()">
                             <button type="button" class="more-submenu-item more-submenu-action" onclick="openSaveInclude(event)">
                                 <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_include">Сохранить в includes</span>
                             </button>
