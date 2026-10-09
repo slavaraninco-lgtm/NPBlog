@@ -59,7 +59,7 @@
                     <div class="modal-file-picker" id="backgroundPicker" tabindex="0">
                         <input type="file" id="backgroundInput" accept="image/*" style="display: none;">
                         <button type="button" class="modal-btn modal-btn-secondary modal-file-picker-btn" tabindex="-1">
-                            <span class="modal-file-picker-icon">📁</span> <span data-i18n="common.browse">Обзор...</span>
+                            <span data-i18n="common.browse">Обзор...</span>
                         </button>
                         <div class="modal-file-picker-info">
                             <span class="modal-file-picker-text" data-i18n="common.no_file_chosen">Файл не выбран</span>

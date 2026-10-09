@@ -729,6 +729,15 @@ body.modal-is-dragging * {
     font-family: inherit;
 }
 
+.modal-input:not(textarea),
+.modal-select {
+    height: 42px;
+}
+
+.modal-select {
+    cursor: pointer;
+}
+
 .modal-input:focus,
 .modal-textarea:focus,
 .modal-select:focus {
@@ -887,10 +896,11 @@ body.modal-is-dragging * {
 .modal-file-picker {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
-    min-height: 44px;
-    padding: 6px 10px 6px 6px;
+    height: 42px;
+    min-height: 42px;
+    padding: 4px 10px 4px 4px;
     background-color: var(--modal-input-bg);
     border: 1px solid var(--modal-border);
     border-radius: var(--modal-radius-inner);
@@ -922,18 +932,19 @@ body.modal-is-dragging * {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
+    justify-content: center;
+    height: 32px;
+    padding: 0 14px;
     font-size: 0.85rem;
     font-weight: 500;
-    border-radius: var(--modal-radius-inner);
+    border-radius: calc(var(--modal-radius-inner) - 2px);
     border: 1px solid var(--modal-border);
     background: rgba(128, 128, 128, 0.08);
     color: var(--modal-text);
     cursor: pointer;
     transition: all var(--modal-transition-fast, 0.15s) ease;
     pointer-events: none;
-    line-height: 1.2;
+    line-height: 1;
     box-sizing: border-box;
 }
 
@@ -952,7 +963,7 @@ body.modal-is-dragging * {
 }
 
 .modal-file-picker-icon {
-    font-size: 16px;
+    font-size: 14px;
     flex-shrink: 0;
     opacity: 0.85;
 }
@@ -981,12 +992,14 @@ body.modal-is-dragging * {
 .modal-file-picker-clear {
     display: none;
     flex-shrink: 0;
+    width: 26px;
+    height: 26px;
     background: transparent;
     border: none;
     color: var(--modal-text-muted);
     cursor: pointer;
-    font-size: 15px;
-    padding: 4px 8px;
+    font-size: 14px;
+    padding: 0;
     border-radius: 4px;
     transition: all var(--modal-transition-fast, 0.15s) ease;
     line-height: 1;
@@ -1007,18 +1020,19 @@ body.modal-is-dragging * {
 .modal-input[type="file"] {
     display: inline-flex;
     align-items: center;
-    padding: 6px 10px;
+    padding: 4px 10px;
     cursor: pointer;
     font-size: 0.88rem;
     color: var(--modal-text-muted);
-    height: auto;
+    height: 42px;
     min-height: 42px;
 }
 
 .modal-input[type="file"]::file-selector-button {
     margin-right: 12px;
-    padding: 6px 14px;
-    border-radius: var(--modal-radius-inner);
+    height: 32px;
+    padding: 0 14px;
+    border-radius: calc(var(--modal-radius-inner) - 2px);
     border: 1px solid var(--modal-border);
     background-color: rgba(128, 128, 128, 0.08);
     color: var(--modal-text);
