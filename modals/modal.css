@@ -882,6 +882,159 @@ body.modal-is-dragging * {
 }
 
 /* ==============================================================================
+ * Custom File Picker Component (.modal-file-picker)
+ * ============================================================================== */
+.modal-file-picker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 6px 10px 6px 6px;
+    background-color: var(--modal-input-bg);
+    border: 1px solid var(--modal-border);
+    border-radius: var(--modal-radius-inner);
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: border-color var(--modal-transition-fast, 0.2s) ease, box-shadow var(--modal-transition-fast, 0.2s) ease, background-color var(--modal-transition-fast, 0.2s) ease;
+    position: relative;
+    user-select: none;
+    outline: none;
+}
+
+.modal-file-picker:hover {
+    border-color: var(--modal-text);
+}
+
+.modal-file-picker:focus-visible,
+.modal-file-picker.is-focused {
+    border-color: var(--modal-text);
+    box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.15);
+}
+
+.modal-file-picker.is-dragover {
+    border-color: var(--modal-color-info, #3b82f6);
+    background-color: rgba(59, 130, 246, 0.08);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.modal-file-picker-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: var(--modal-radius-inner);
+    border: 1px solid var(--modal-border);
+    background: rgba(128, 128, 128, 0.08);
+    color: var(--modal-text);
+    cursor: pointer;
+    transition: all var(--modal-transition-fast, 0.15s) ease;
+    pointer-events: none;
+    line-height: 1.2;
+    box-sizing: border-box;
+}
+
+.modal-file-picker:hover .modal-file-picker-btn {
+    background: rgba(128, 128, 128, 0.16);
+    border-color: var(--modal-text);
+}
+
+.modal-file-picker-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+}
+
+.modal-file-picker-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
+.modal-file-picker-text {
+    font-size: 0.88rem;
+    color: var(--modal-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color var(--modal-transition-fast, 0.15s) ease;
+}
+
+.modal-file-picker.has-file .modal-file-picker-text {
+    color: var(--modal-text);
+    font-weight: 500;
+}
+
+.modal-file-picker-size {
+    font-size: 0.78rem;
+    color: var(--modal-text-muted);
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
+.modal-file-picker-clear {
+    display: none;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: var(--modal-text-muted);
+    cursor: pointer;
+    font-size: 15px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all var(--modal-transition-fast, 0.15s) ease;
+    line-height: 1;
+}
+
+.modal-file-picker-clear:hover {
+    color: var(--modal-color-danger, #ef4444);
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.modal-file-picker.has-file .modal-file-picker-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Fallback/Native input[type="file"] styled with .modal-input */
+.modal-input[type="file"] {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--modal-text-muted);
+    height: auto;
+    min-height: 42px;
+}
+
+.modal-input[type="file"]::file-selector-button {
+    margin-right: 12px;
+    padding: 6px 14px;
+    border-radius: var(--modal-radius-inner);
+    border: 1px solid var(--modal-border);
+    background-color: rgba(128, 128, 128, 0.08);
+    color: var(--modal-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--modal-transition-fast, 0.2s) ease;
+    font-family: inherit;
+}
+
+.modal-input[type="file"]::file-selector-button:hover {
+    background-color: rgba(128, 128, 128, 0.16);
+    border-color: var(--modal-text);
+}
+
+/* ==============================================================================
  * Modal Footer & Action Buttons
  * ============================================================================== */
 .modal-footer {

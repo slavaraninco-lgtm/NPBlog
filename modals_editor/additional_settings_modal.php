@@ -56,7 +56,17 @@
                 
                 <div class="modal-form-group">
                     <label class="modal-label" for="backgroundInput" data-i18n="settings.bg_file_label">Файл изображения:</label>
-                    <input type="file" id="backgroundInput" accept="image/*" class="modal-input" style="padding: 8px 12px;">
+                    <div class="modal-file-picker" id="backgroundPicker" tabindex="0">
+                        <input type="file" id="backgroundInput" accept="image/*" style="display: none;">
+                        <button type="button" class="modal-btn modal-btn-secondary modal-file-picker-btn" tabindex="-1">
+                            <span class="modal-file-picker-icon">📁</span> <span data-i18n="common.browse">Обзор...</span>
+                        </button>
+                        <div class="modal-file-picker-info">
+                            <span class="modal-file-picker-text" data-i18n="common.no_file_chosen">Файл не выбран</span>
+                            <span class="modal-file-picker-size"></span>
+                        </div>
+                        <button type="button" class="modal-file-picker-clear" title="Сбросить выбор" data-i18n-title="common.clear_selection">✕</button>
+                    </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">

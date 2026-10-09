@@ -12,6 +12,8 @@
         "edit": "Edit",
         "upload": "Upload",
         "browse": "Browse...",
+        "no_file_chosen": "No file chosen",
+        "clear_selection": "Clear selection",
         "loading": "Loading...",
         "search": "Search...",
         "settings": "Settings",

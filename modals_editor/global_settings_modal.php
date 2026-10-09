@@ -102,7 +102,17 @@ if (!isset($availableLanguages)) {
                     
                     <div style="margin-bottom: 20px;">
                         <label class="modal-label" for="globalBackgroundInput" data-i18n="settings.bg_image_label">Фоновое изображение:</label>
-                        <input type="file" id="globalBackgroundInput" accept="image/*" class="modal-input" style="margin-bottom: 14px;">
+                        <div class="modal-file-picker" id="globalBackgroundPicker" tabindex="0" style="margin-bottom: 14px;">
+                            <input type="file" id="globalBackgroundInput" accept="image/*" style="display: none;">
+                            <button type="button" class="modal-btn modal-btn-secondary modal-file-picker-btn" tabindex="-1">
+                                <span class="modal-file-picker-icon">📁</span> <span data-i18n="common.browse">Обзор...</span>
+                            </button>
+                            <div class="modal-file-picker-info">
+                                <span class="modal-file-picker-text" data-i18n="common.no_file_chosen">Файл не выбран</span>
+                                <span class="modal-file-picker-size"></span>
+                            </div>
+                            <button type="button" class="modal-file-picker-clear" title="Сбросить выбор" data-i18n-title="common.clear_selection">✕</button>
+                        </div>
                         
                         <label class="modal-label" for="globalBackgroundMode" data-i18n="settings.bg_mode_label">Режим отображения:</label>
                         <select id="globalBackgroundMode" class="modal-select" style="margin-bottom: 14px;">
@@ -160,7 +170,17 @@ if (!isset($availableLanguages)) {
                         </div>
 
                         <label class="modal-label" for="blogBackgroundInput" data-i18n="settings.bg_image_label">Фоновое изображение:</label>
-                        <input type="file" id="blogBackgroundInput" accept="image/*" class="modal-input" style="margin-bottom: 14px;">
+                        <div class="modal-file-picker" id="blogBackgroundPicker" tabindex="0" style="margin-bottom: 14px;">
+                            <input type="file" id="blogBackgroundInput" accept="image/*" style="display: none;">
+                            <button type="button" class="modal-btn modal-btn-secondary modal-file-picker-btn" tabindex="-1">
+                                <span class="modal-file-picker-icon">📁</span> <span data-i18n="common.browse">Обзор...</span>
+                            </button>
+                            <div class="modal-file-picker-info">
+                                <span class="modal-file-picker-text" data-i18n="common.no_file_chosen">Файл не выбран</span>
+                                <span class="modal-file-picker-size"></span>
+                            </div>
+                            <button type="button" class="modal-file-picker-clear" title="Сбросить выбор" data-i18n-title="common.clear_selection">✕</button>
+                        </div>
                         
                         <label class="modal-label" for="blogBackgroundMode" data-i18n="settings.bg_mode_label">Режим отображения:</label>
                         <select id="blogBackgroundMode" class="modal-select" style="margin-bottom: 20px;">

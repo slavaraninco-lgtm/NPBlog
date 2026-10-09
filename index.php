@@ -888,7 +888,10 @@ function closeAdditionalSettings() {
         }
     }
     const bgInput = document.getElementById('backgroundInput');
-    if (bgInput) bgInput.value = '';
+    if (bgInput) {
+        bgInput.value = '';
+        if (window.resetModalFilePicker) resetModalFilePicker(bgInput);
+    }
     currentAdditionalPostId = null;
 }
 
@@ -918,6 +921,7 @@ function uploadBackground() {
         if (data.success) {
             showAlert(window.t ? window.t('notifications.bg_uploaded_alert', 'Фон успешно загружен') : 'Фон успешно загружен');
             fileInput.value = '';
+            if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
             
             // Обновляем отображение текущего фона
             const bgPreview = document.getElementById('currentBackgroundPreview');
@@ -1121,6 +1125,10 @@ function closeGlobalSettings() {
             setTimeout(() => modal.style.display = 'none', 300);
         }
     }
+    const gBg = document.getElementById('globalBackgroundInput');
+    if (gBg) { gBg.value = ''; if (window.resetModalFilePicker) resetModalFilePicker(gBg); }
+    const bBg = document.getElementById('blogBackgroundInput');
+    if (bBg) { bBg.value = ''; if (window.resetModalFilePicker) resetModalFilePicker(bBg); }
 }
 
 function showGlobalSection(sectionName) {
@@ -1445,6 +1453,7 @@ function uploadGlobalBackground() {
         if (data.success) {
             showAlert(window.t ? window.t('notifications.global_bg_applied_all', 'Глобальный фон успешно загружен и применен ко всем статьям') : 'Глобальный фон успешно загружен и применен ко всем статьям');
             fileInput.value = '';
+            if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
             loadGlobalBackground();
         } else {
             showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
@@ -1745,6 +1754,7 @@ function uploadBlogBackground() {
         if (data.success) {
             showAlert(window.t ? window.t('notifications.blog_bg_uploaded', 'Фон для blog.html успешно загружен и применен') : 'Фон для blog.html успешно загружен и применен');
             fileInput.value = '';
+            if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
             loadBlogViewSettings();
         } else {
             showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
@@ -5270,7 +5280,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const preview = document.getElementById(previewId);
             if (input && preview) {
                 input.addEventListener('change', function() {
-                    const file = this.files[0];
+                    const file = this.files && this.files[0];
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = function(e) {

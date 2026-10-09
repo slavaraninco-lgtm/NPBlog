@@ -583,6 +583,9 @@
             // Apply translations dynamically
             applySubtreeTranslations(this.overlay);
 
+            // Initialize custom file pickers inside this modal
+            initModalFilePickers(this.overlay);
+
             // Register in active stack
             activeModals.push(this);
             this.isOpen = true;
@@ -853,6 +856,164 @@
             }
         }
     });
+
+    /**
+     * ==============================================================================
+     * File Picker Component Support (.modal-file-picker)
+     * ==============================================================================
+     */
+
+    /**
+     * Format byte values to human readable string (KB, MB)
+     * @param {number} bytes
+     * @returns {string}
+     */
+    function formatFileSize(bytes) {
+        if (!bytes || bytes <= 0) return '';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    /**
+     * Initialize custom file pickers (.modal-file-picker)
+     * @param {HTMLElement|Document} root
+     */
+    function initModalFilePickers(root = document) {
+        if (!root || !root.querySelectorAll) return;
+        const pickers = root.querySelectorAll('.modal-file-picker');
+        pickers.forEach(picker => {
+            if (picker.dataset.pickerInitialized === 'true') return;
+            picker.dataset.pickerInitialized = 'true';
+
+            const input = picker.querySelector('input[type="file"]');
+            if (!input) return;
+
+            const textEl = picker.querySelector('.modal-file-picker-text');
+            const sizeEl = picker.querySelector('.modal-file-picker-size');
+            const clearBtn = picker.querySelector('.modal-file-picker-clear');
+
+            if (!picker.hasAttribute('tabindex')) {
+                picker.setAttribute('tabindex', '0');
+            }
+
+            const updateState = () => {
+                const file = input.files && input.files[0];
+                if (file) {
+                    picker.classList.add('has-file');
+                    if (textEl) {
+                        textEl.removeAttribute('data-i18n');
+                        textEl.textContent = file.name;
+                        textEl.title = file.name;
+                    }
+                    if (sizeEl) {
+                        sizeEl.textContent = `(${formatFileSize(file.size)})`;
+                    }
+                } else {
+                    picker.classList.remove('has-file');
+                    if (textEl) {
+                        textEl.setAttribute('data-i18n', 'common.no_file_chosen');
+                        textEl.textContent = translate('common.no_file_chosen', 'Файл не выбран');
+                        textEl.removeAttribute('title');
+                    }
+                    if (sizeEl) {
+                        sizeEl.textContent = '';
+                    }
+                }
+            };
+
+            input.addEventListener('change', updateState);
+
+            picker.addEventListener('click', (e) => {
+                if (e.target.closest('.modal-file-picker-clear')) return;
+                if (e.target === input) return;
+                input.click();
+            });
+
+            picker.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    if (!e.target.closest('.modal-file-picker-clear')) {
+                        e.preventDefault();
+                        input.click();
+                    }
+                }
+            });
+
+            input.addEventListener('focus', () => picker.classList.add('is-focused'));
+            input.addEventListener('blur', () => picker.classList.remove('is-focused'));
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    input.value = '';
+                    updateState();
+                    const changeEvent = new Event('change', { bubbles: true });
+                    input.dispatchEvent(changeEvent);
+                });
+            }
+
+            picker.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                picker.classList.add('is-dragover');
+            });
+
+            picker.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                picker.classList.remove('is-dragover');
+            });
+
+            picker.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                picker.classList.remove('is-dragover');
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    try {
+                        input.files = e.dataTransfer.files;
+                    } catch (err) {
+                        // DataTransfer assignment fallback
+                    }
+                    updateState();
+                    const changeEvent = new Event('change', { bubbles: true });
+                    input.dispatchEvent(changeEvent);
+                }
+            });
+
+            updateState();
+        });
+    }
+
+    /**
+     * Programmatically reset a custom file picker
+     * @param {HTMLElement|string} target
+     */
+    function resetModalFilePicker(target) {
+        if (!target) return;
+        let el = typeof target === 'string' ? (document.querySelector(target) || document.getElementById(target)) : target;
+        if (!el) return;
+
+        let input = el.tagName === 'INPUT' && el.type === 'file' ? el : el.querySelector('input[type="file"]');
+        if (!input) return;
+
+        input.value = '';
+        const picker = input.closest('.modal-file-picker');
+        if (picker) {
+            picker.classList.remove('has-file');
+            const textEl = picker.querySelector('.modal-file-picker-text');
+            const sizeEl = picker.querySelector('.modal-file-picker-size');
+            if (textEl) {
+                textEl.setAttribute('data-i18n', 'common.no_file_chosen');
+                textEl.textContent = translate('common.no_file_chosen', 'Файл не выбран');
+                textEl.removeAttribute('title');
+            }
+            if (sizeEl) {
+                sizeEl.textContent = '';
+            }
+        }
+    }
 
     /**
      * ==============================================================================
@@ -1144,12 +1305,33 @@
                     return modal.close();
                 }
             };
-        }
+        },
+
+        /**
+         * Initialize custom file pickers within a container
+         */
+        initFilePickers: initModalFilePickers,
+
+        /**
+         * Reset a custom file picker programmatically
+         */
+        resetFilePicker: resetModalFilePicker
     };
+
+    // Auto-initialize custom file pickers on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initModalFilePickers(document);
+        });
+    } else {
+        initModalFilePickers(document);
+    }
 
     // Expose globally
     window.Modal = Modal;
     window.NPModal = Modal;
     window.ModalFramework = Modal;
+    window.initModalFilePickers = initModalFilePickers;
+    window.resetModalFilePicker = resetModalFilePicker;
 
 })(window, document);
