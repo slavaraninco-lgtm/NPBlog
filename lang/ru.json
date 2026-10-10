@@ -103,7 +103,8 @@
         "row_2_ph": "Ряд 2",
         "cross_nav_btn_name_ph": "Название кнопки",
         "cross_nav_url_ph": "URL (например: ../data2/blog.html)",
-        "customizer_show": "Показать"
+        "customizer_show": "Показать",
+        "customize_panel": "Настроить панель"
     },
     "tabs": {
         "visual": "Визуально",

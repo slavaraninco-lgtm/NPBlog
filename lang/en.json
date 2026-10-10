@@ -103,7 +103,8 @@
         "row_2_ph": "Row 2",
         "cross_nav_btn_name_ph": "Button title",
         "cross_nav_url_ph": "URL (e.g.: ../data2/blog.html)",
-        "customizer_show": "Show"
+        "customizer_show": "Show",
+        "customize_panel": "Customize Panel"
     },
     "tabs": {
         "visual": "Visual",

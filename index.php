@@ -5557,7 +5557,68 @@ document.addEventListener('DOMContentLoaded', function() {
         setupBgPreview('globalBackgroundInput', 'currentGlobalBackgroundPreview');
         setupBgPreview('blogBackgroundInput', 'currentBlogBackgroundPreview');
         setupBottomBarCustomizer();
+        setupHeaderContextMenu();
     });
+
+    /**
+     * Инициализация контекстного меню верхней панели (хедера).
+     * Обрабатывает открытие кастомного контекстного меню по ПКМ на верхней панели для запуска режима редактирования.
+     */
+    function setupHeaderContextMenu() {
+        const header = document.querySelector('.editor-header');
+        if (!header) return;
+
+        header.addEventListener('contextmenu', function(e) {
+            // Если уже находимся в режиме кастомизации хедера, работает контекстное меню элементов (customizerContextMenu)
+            if (document.body.classList.contains('header-customizing')) {
+                return;
+            }
+
+            // Не перехватываем клики внутри открытого выпадающего меню редактора
+            if (e.target.closest('.editor-menu-dropdown')) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Закрываем контекстные меню нижней панели, редактора и кастомизатора
+            const customizerMenu = document.getElementById('customizerContextMenu');
+            if (customizerMenu) customizerMenu.style.display = 'none';
+            const editorMenu = document.getElementById('editorContextMenu');
+            if (editorMenu) editorMenu.style.display = 'none';
+            const dividerMenu = document.getElementById('dividerDropdownMenu');
+            if (dividerMenu) dividerMenu.style.display = 'none';
+            const bottomMenu = document.getElementById('bottomBarContextMenu');
+            if (bottomMenu) bottomMenu.style.display = 'none';
+
+            const menu = document.getElementById('headerContextMenu');
+            if (!menu) return;
+
+            menu.style.display = 'block';
+
+            let left = e.clientX;
+            let top = e.clientY;
+            const menuWidth = 200;
+            const menuHeight = 50;
+
+            if (left + menuWidth > window.innerWidth) {
+                left = Math.max(10, window.innerWidth - menuWidth - 10);
+            }
+            if (top + menuHeight > window.innerHeight) {
+                top = Math.max(10, window.innerHeight - menuHeight - 10);
+            }
+
+            menu.style.left = left + 'px';
+            menu.style.top = top + 'px';
+        });
+    }
+
+    function startHeaderCustomizationFromContextMenu() {
+        const menu = document.getElementById('headerContextMenu');
+        if (menu) menu.style.display = 'none';
+        startHeaderCustomization();
+    }
 
     /**
      * Инициализация кастомизации нижней панели (статус-бара).
@@ -5578,6 +5639,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (editorMenu) editorMenu.style.display = 'none';
             const dividerMenu = document.getElementById('dividerDropdownMenu');
             if (dividerMenu) dividerMenu.style.display = 'none';
+            const headerMenu = document.getElementById('headerContextMenu');
+            if (headerMenu) headerMenu.style.display = 'none';
 
             const menu = document.getElementById('bottomBarContextMenu');
             if (!menu) return;
@@ -5895,6 +5958,8 @@ document.addEventListener('DOMContentLoaded', function() {
     window.toggleBottomBarDrafts = toggleBottomBarDrafts;
     window.toggleBottomBarIncludes = toggleBottomBarIncludes;
     window.closeAllBottomBarDropdowns = closeAllBottomBarDropdowns;
+    window.setupHeaderContextMenu = setupHeaderContextMenu;
+    window.startHeaderCustomizationFromContextMenu = startHeaderCustomizationFromContextMenu;
 
     // Закрытие контекстных меню и выпадающих списков при клике в любое место
     document.addEventListener('click', function(e) {
@@ -5904,16 +5969,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dividerMenu) dividerMenu.style.display = 'none';
         const bottomMenu = document.getElementById('bottomBarContextMenu');
         if (bottomMenu) bottomMenu.style.display = 'none';
+        const headerMenu = document.getElementById('headerContextMenu');
+        if (headerMenu) headerMenu.style.display = 'none';
         if (!e.target.closest('.bottom-bar-dropdown')) {
             closeAllBottomBarDropdowns();
         }
     });
 
-    // Закрытие контекстного меню нижней панели при клике ПКМ вне нее
+    // Закрытие контекстных меню при клике ПКМ вне соответствующих панелей
     document.addEventListener('contextmenu', function(e) {
         if (!e.target.closest('#editorBottomBar')) {
             const bottomMenu = document.getElementById('bottomBarContextMenu');
             if (bottomMenu) bottomMenu.style.display = 'none';
+        }
+        if (!e.target.closest('.editor-header')) {
+            const headerMenu = document.getElementById('headerContextMenu');
+            if (headerMenu) headerMenu.style.display = 'none';
         }
     });
 
@@ -5923,6 +5994,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const bottomMenu = document.getElementById('bottomBarContextMenu');
             if (bottomMenu && bottomMenu.style.display !== 'none') {
                 bottomMenu.style.display = 'none';
+            }
+            const headerMenu = document.getElementById('headerContextMenu');
+            if (headerMenu && headerMenu.style.display !== 'none') {
+                headerMenu.style.display = 'none';
             }
             const drawer = document.getElementById('bottomBarCustomizerDrawer');
             if (drawer && drawer.classList.contains('open')) {
@@ -5952,7 +6027,12 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- Контекстное меню для кастомизации хедера -->
+<!-- Контекстное меню для верхней панели -->
+<div id="headerContextMenu" class="customizer-context-menu" style="display: none; position: fixed;">
+    <button type="button" class="context-menu-item" onclick="startHeaderCustomizationFromContextMenu()" data-i18n="header.customize_panel">Настроить панель</button>
+</div>
+
+<!-- Контекстное меню для элементов хедера в режиме кастомизации -->
 <div id="customizerContextMenu" style="display: none; position: fixed;">
     <button type="button" id="ctxToggleVisibility" class="context-menu-item" data-i18n="header.customizer_hide">Скрыть</button>
     <button type="button" id="ctxTogglePosition" class="context-menu-item" data-i18n="header.customizer_move_to_more">Перенести в "Прочее"</button>
