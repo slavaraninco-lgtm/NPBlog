@@ -245,11 +245,38 @@ function applyCustomFontFamily(wrapId) {
         if (tutOverlay && tutOverlay.classList.contains('show')) return;
         document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function (w) { w.classList.remove('is-open'); });
     }
+    function syncActiveItem(wrap) {
+        if (!wrap) return;
+        if (wrap.classList.contains('font-size-picker-wrap')) {
+            var btn = wrap.querySelector('.font-size-picker-btn');
+            var currentSize = btn ? parseInt(btn.textContent, 10) : null;
+            wrap.querySelectorAll('.font-size-item').forEach(function (item) {
+                var size = parseInt(item.getAttribute('data-size'), 10);
+                if (currentSize && size === currentSize) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        } else if (wrap.classList.contains('font-family-picker-wrap')) {
+            var btn = wrap.querySelector('.font-family-picker-btn');
+            var currentFont = btn ? btn.textContent.trim().toLowerCase() : '';
+            wrap.querySelectorAll('.font-family-item').forEach(function (item) {
+                var font = (item.getAttribute('data-font') || '').trim().toLowerCase();
+                if (currentFont && font === currentFont) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+    }
     function toggleWrap(wrap) {
         var isOpen = wrap.classList.contains('is-open');
         document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function (w) { w.classList.remove('is-open'); });
         if (!isOpen) {
             wrap.classList.add('is-open');
+            syncActiveItem(wrap);
         }
     }
     function openWrap(wrap, closeOthers) {
@@ -257,6 +284,7 @@ function applyCustomFontFamily(wrapId) {
             document.querySelectorAll('.font-size-picker-wrap.is-open, .font-family-picker-wrap.is-open').forEach(function (w) { if (w !== wrap) w.classList.remove('is-open'); });
         }
         wrap.classList.add('is-open');
+        syncActiveItem(wrap);
     }
 
     // Закрытие при клике вне меню
