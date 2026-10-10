@@ -54,13 +54,18 @@ if (isset($data['hideEditorModeButtons'])) {
 }
 
 if (isset($data['bottomBar']) && is_array($data['bottomBar'])) {
+    $currentBottomBar = isset($existingSettings['bottomBar']) && is_array($existingSettings['bottomBar']) ? $existingSettings['bottomBar'] : [];
     $existingSettings['bottomBar'] = [
-        'showModeToggle' => !empty($data['bottomBar']['showModeToggle']),
-        'showBlogSelector' => !empty($data['bottomBar']['showBlogSelector']),
-        'showWordCount' => !empty($data['bottomBar']['showWordCount']),
-        'showAutosaveBadge' => !empty($data['bottomBar']['showAutosaveBadge'])
+        'showModeToggle' => isset($data['bottomBar']['showModeToggle']) ? !empty($data['bottomBar']['showModeToggle']) : ($currentBottomBar['showModeToggle'] ?? true),
+        'showBlogSelector' => isset($data['bottomBar']['showBlogSelector']) ? !empty($data['bottomBar']['showBlogSelector']) : ($currentBottomBar['showBlogSelector'] ?? true),
+        'showDrafts' => isset($data['bottomBar']['showDrafts']) ? !empty($data['bottomBar']['showDrafts']) : ($currentBottomBar['showDrafts'] ?? false),
+        'showIncludes' => isset($data['bottomBar']['showIncludes']) ? !empty($data['bottomBar']['showIncludes']) : ($currentBottomBar['showIncludes'] ?? false),
+        'showWordCount' => isset($data['bottomBar']['showWordCount']) ? !empty($data['bottomBar']['showWordCount']) : ($currentBottomBar['showWordCount'] ?? false),
+        'showAutosaveBadge' => isset($data['bottomBar']['showAutosaveBadge']) ? !empty($data['bottomBar']['showAutosaveBadge']) : ($currentBottomBar['showAutosaveBadge'] ?? true)
     ];
-    $existingSettings['hideEditorModeButtons'] = empty($data['bottomBar']['showModeToggle']);
+    if (isset($data['bottomBar']['showModeToggle'])) {
+        $existingSettings['hideEditorModeButtons'] = empty($data['bottomBar']['showModeToggle']);
+    }
 }
 
 if (isset($data['language'])) {

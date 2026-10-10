@@ -449,17 +449,17 @@ if (file_exists($versionFile)) {
                             <div class="more-submenu-empty" data-i18n="more_menu.no_anchors">Нет якорей в статье</div>
                         </div>
                     </div>
-                    <button type="button" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
-                    <button type="button" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
-                    <button type="button" class="more-menu-item" onclick="openFormulaDialog()" data-i18n="toolbar.formula">Вставить формулу</button>
-                    <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
-                    <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
                     <div class="more-menu-item has-submenu" id="smilesMenuItem" onclick="toggleSmilesSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.smiles">Смайлы</span>
                         <div class="more-submenu" id="smilesSubmenu">
                             <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
                     </div>
+                    <button type="button" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
+                    <button type="button" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
+                    <button type="button" class="more-menu-item" onclick="openFormulaDialog()" data-i18n="toolbar.formula">Вставить формулу</button>
+                    <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
+                    <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
                 </div>
             </div>
             </div>
@@ -521,6 +521,38 @@ if (file_exists($versionFile)) {
                 <label for="blogSelector" class="bottom-bar-blog-label" data-i18n="header.manage_posts_blog_label">Блог:</label>
                 <select id="blogSelector" class="bottom-bar-blog-select" onchange="selectActiveBlog(this.value)">
                 </select>
+            </div>
+            <!-- Кнопка и выпадающий список Черновики в нижней панели -->
+            <div class="bottom-bar-dropdown" id="bottomBarDraftsContainer" style="display: none;">
+                <button type="button" class="bottom-bar-btn" id="bottomBarDraftsBtn" onclick="toggleBottomBarDrafts(event)" title="Черновики" data-i18n-title="more_menu.drafts">
+                    <span data-i18n="more_menu.drafts">Черновики</span>
+                    <span class="bottom-bar-btn-arrow">▾</span>
+                </button>
+                <div class="more-submenu has-action-header bottom-bar-submenu" id="bottomBarDraftsSubmenu" onclick="event.stopPropagation()">
+                    <button type="button" class="more-submenu-item more-submenu-action" onclick="saveDraft(event)">
+                        <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_draft">Сохранить в черновик</span>
+                    </button>
+                    <div class="more-submenu-divider"></div>
+                    <div class="more-submenu-list" id="bottomBarDraftsSubmenuList">
+                        <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Кнопка и выпадающий список Includes в нижней панели -->
+            <div class="bottom-bar-dropdown" id="bottomBarIncludesContainer" style="display: none;">
+                <button type="button" class="bottom-bar-btn" id="bottomBarIncludesBtn" onclick="toggleBottomBarIncludes(event)" title="Includes" data-i18n-title="bottom_bar.item_includes_title">
+                    <span data-i18n="bottom_bar.item_includes_title">Includes</span>
+                    <span class="bottom-bar-btn-arrow">▾</span>
+                </button>
+                <div class="more-submenu has-action-header bottom-bar-submenu" id="bottomBarIncludesSubmenu" onclick="event.stopPropagation()">
+                    <button type="button" class="more-submenu-item more-submenu-action" onclick="openSaveInclude(event)">
+                        <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_include">Сохранить в includes</span>
+                    </button>
+                    <div class="more-submenu-divider"></div>
+                    <div class="more-submenu-list" id="bottomBarIncludesSubmenuList">
+                        <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="editor-bottom-bar-right">
@@ -2537,6 +2569,8 @@ function loadAndApplyAllSettings() {
                     bottomBarSettings = {
                         showModeToggle: !hideModeButtons,
                         showBlogSelector: true,
+                        showDrafts: false,
+                        showIncludes: false,
                         showWordCount: false,
                         showAutosaveBadge: true
                     };
@@ -4747,6 +4781,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- КАСТОМИЗАЦИЯ ВЕРХНЕЙ ПАНЕЛИ ---
 
+    /**
+     * Организует элементы внутри меню "Прочее" (#moreMenuDropdown):
+     * выпадающие списки (подменю с .has-submenu) размещаются сверху,
+     * а обычные кнопки действий и перемещенные элементы — снизу.
+     */
+    function organizeMoreMenuDropdown() {
+        const dropdown = document.getElementById('moreMenuDropdown');
+        if (!dropdown) return;
+        const submenus = Array.from(dropdown.children).filter(el => el.classList.contains('has-submenu'));
+        const others = Array.from(dropdown.children).filter(el => !el.classList.contains('has-submenu'));
+        submenus.forEach(el => dropdown.appendChild(el));
+        others.forEach(el => dropdown.appendChild(el));
+    }
+    window.organizeMoreMenuDropdown = organizeMoreMenuDropdown;
+    document.addEventListener('DOMContentLoaded', organizeMoreMenuDropdown);
+
     // Применяет сохраненный порядок и видимость кнопок хедера
     function applyHeaderLayout(layout) {
         const container = document.querySelector('.header-left');
@@ -4843,6 +4893,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
+        organizeMoreMenuDropdown();
         adjustHeaderPadding();
     }
 
@@ -4958,6 +5009,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dropdown.querySelectorAll('*').forEach(item => {
                 item.style.opacity = '';
             });
+            organizeMoreMenuDropdown();
         }
         adjustHeaderPadding();
     }
@@ -5052,6 +5104,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Переносим в выпадающее меню
                 if (dropdown) {
                     dropdown.appendChild(target);
+                    organizeMoreMenuDropdown();
                     showNotification(window.t ? window.t('notifications.tb_item_moved_more', 'Элемент перенесен в меню "Прочее"') : 'Элемент перенесен в меню "Прочее"', 'info');
                 }
             }
@@ -5196,6 +5249,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (dropdown && originalDropdownHTML) {
             dropdown.innerHTML = originalDropdownHTML;
+            organizeMoreMenuDropdown();
         }
         
         // Загружаем сохраненный макет заново
@@ -5247,6 +5301,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (dropdown) {
+            organizeMoreMenuDropdown();
             dropdown.querySelectorAll('*').forEach(el => {
                 if (el.id && el.parentNode === dropdown) {
                     layout.push({
@@ -5402,11 +5457,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const toggleMode = document.getElementById('bottomBarToggleMode');
         const toggleBlog = document.getElementById('bottomBarToggleBlog');
+        const toggleDrafts = document.getElementById('bottomBarToggleDrafts');
+        const toggleIncludes = document.getElementById('bottomBarToggleIncludes');
         const toggleStats = document.getElementById('bottomBarToggleStats');
         const toggleAutosave = document.getElementById('bottomBarToggleAutosave');
 
         if (toggleMode) toggleMode.checked = settings.showModeToggle !== false;
         if (toggleBlog) toggleBlog.checked = settings.showBlogSelector !== false;
+        if (toggleDrafts) toggleDrafts.checked = settings.showDrafts === true;
+        if (toggleIncludes) toggleIncludes.checked = settings.showIncludes === true;
         if (toggleStats) toggleStats.checked = settings.showWordCount === true;
         if (toggleAutosave) toggleAutosave.checked = settings.showAutosaveBadge !== false;
 
@@ -5437,6 +5496,8 @@ document.addEventListener('DOMContentLoaded', function() {
             window.bottomBarSettings = {
                 showModeToggle: true,
                 showBlogSelector: true,
+                showDrafts: false,
+                showIncludes: false,
                 showWordCount: false,
                 showAutosaveBadge: true
             };
@@ -5467,6 +5528,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const settings = {
             showModeToggle: document.getElementById('bottomBarToggleMode') ? document.getElementById('bottomBarToggleMode').checked : true,
             showBlogSelector: document.getElementById('bottomBarToggleBlog') ? document.getElementById('bottomBarToggleBlog').checked : true,
+            showDrafts: document.getElementById('bottomBarToggleDrafts') ? document.getElementById('bottomBarToggleDrafts').checked : false,
+            showIncludes: document.getElementById('bottomBarToggleIncludes') ? document.getElementById('bottomBarToggleIncludes').checked : false,
             showWordCount: document.getElementById('bottomBarToggleStats') ? document.getElementById('bottomBarToggleStats').checked : false,
             showAutosaveBadge: document.getElementById('bottomBarToggleAutosave') ? document.getElementById('bottomBarToggleAutosave').checked : true
         };
@@ -5501,17 +5564,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const defaults = {
             showModeToggle: true,
             showBlogSelector: true,
+            showDrafts: false,
+            showIncludes: false,
             showWordCount: false,
             showAutosaveBadge: true
         };
 
         const toggleMode = document.getElementById('bottomBarToggleMode');
         const toggleBlog = document.getElementById('bottomBarToggleBlog');
+        const toggleDrafts = document.getElementById('bottomBarToggleDrafts');
+        const toggleIncludes = document.getElementById('bottomBarToggleIncludes');
         const toggleStats = document.getElementById('bottomBarToggleStats');
         const toggleAutosave = document.getElementById('bottomBarToggleAutosave');
 
         if (toggleMode) toggleMode.checked = defaults.showModeToggle;
         if (toggleBlog) toggleBlog.checked = defaults.showBlogSelector;
+        if (toggleDrafts) toggleDrafts.checked = defaults.showDrafts;
+        if (toggleIncludes) toggleIncludes.checked = defaults.showIncludes;
         if (toggleStats) toggleStats.checked = defaults.showWordCount;
         if (toggleAutosave) toggleAutosave.checked = defaults.showAutosaveBadge;
 
@@ -5573,6 +5642,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 autosaveBadge.style.display = 'inline-flex';
             }
         }
+
+        // 5. Черновики
+        const draftsContainer = document.getElementById('bottomBarDraftsContainer');
+        if (draftsContainer) {
+            draftsContainer.style.display = settings.showDrafts === true ? 'inline-flex' : 'none';
+        }
+
+        // 6. Includes
+        const includesContainer = document.getElementById('bottomBarIncludesContainer');
+        if (includesContainer) {
+            includesContainer.style.display = settings.showIncludes === true ? 'inline-flex' : 'none';
+        }
     }
 
     /**
@@ -5602,14 +5683,70 @@ document.addEventListener('DOMContentLoaded', function() {
         if (charsEl) charsEl.textContent = chars;
     }
 
-    // Закрытие контекстных меню при клике в любое место
-    document.addEventListener('click', function() {
+    /**
+     * Открывает/закрывает выпадающий список черновиков в нижней панели.
+     * @param {Event} [event]
+     */
+    function toggleBottomBarDrafts(event) {
+        if (event) event.stopPropagation();
+        const container = document.getElementById('bottomBarDraftsContainer');
+        if (!container) return;
+        const isOpen = container.classList.contains('is-open');
+
+        closeAllBottomBarDropdowns();
+
+        if (!isOpen) {
+            container.classList.add('is-open');
+            if (typeof loadDraftsList === 'function') {
+                loadDraftsList();
+            }
+        }
+    }
+
+    /**
+     * Открывает/закрывает выпадающий список includes в нижней панели.
+     * @param {Event} [event]
+     */
+    function toggleBottomBarIncludes(event) {
+        if (event) event.stopPropagation();
+        const container = document.getElementById('bottomBarIncludesContainer');
+        if (!container) return;
+        const isOpen = container.classList.contains('is-open');
+
+        closeAllBottomBarDropdowns();
+
+        if (!isOpen) {
+            container.classList.add('is-open');
+            if (typeof loadIncludesList === 'function') {
+                loadIncludesList();
+            }
+        }
+    }
+
+    /**
+     * Закрывает все открытые выпадающие списки на нижней панели.
+     */
+    function closeAllBottomBarDropdowns() {
+        document.querySelectorAll('.bottom-bar-dropdown.is-open').forEach(function(el) {
+            el.classList.remove('is-open');
+        });
+    }
+
+    window.toggleBottomBarDrafts = toggleBottomBarDrafts;
+    window.toggleBottomBarIncludes = toggleBottomBarIncludes;
+    window.closeAllBottomBarDropdowns = closeAllBottomBarDropdowns;
+
+    // Закрытие контекстных меню и выпадающих списков при клике в любое место
+    document.addEventListener('click', function(e) {
         const menu = document.getElementById('customizerContextMenu');
         if (menu) menu.style.display = 'none';
         const dividerMenu = document.getElementById('dividerDropdownMenu');
         if (dividerMenu) dividerMenu.style.display = 'none';
         const bottomMenu = document.getElementById('bottomBarContextMenu');
         if (bottomMenu) bottomMenu.style.display = 'none';
+        if (!e.target.closest('.bottom-bar-dropdown')) {
+            closeAllBottomBarDropdowns();
+        }
     });
 
     // Закрытие контекстного меню нижней панели при клике ПКМ вне нее
@@ -5620,7 +5757,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Закрытие меню и боковой панели по клавише Escape
+    // Закрытие меню, выпадающих списков и боковой панели по клавише Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             const bottomMenu = document.getElementById('bottomBarContextMenu');
@@ -5631,6 +5768,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (drawer && drawer.classList.contains('open')) {
                 closeBottomBarCustomizer();
             }
+            closeAllBottomBarDropdowns();
         }
     });
 </script>
@@ -5695,6 +5833,28 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="bottom-bar-switch">
                 <input type="checkbox" id="bottomBarToggleBlog" onchange="onBottomBarOptionChange('showBlogSelector', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleDrafts">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_drafts_title">Черновики</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_drafts_desc">Кнопка и всплывающий список сохранённых черновиков</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleDrafts" onchange="onBottomBarOptionChange('showDrafts', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleIncludes">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_includes_title">Includes</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_includes_desc">Кнопка и всплывающий список сохранённых блоков includes</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleIncludes" onchange="onBottomBarOptionChange('showIncludes', this.checked)">
                 <span class="bottom-bar-switch-slider"></span>
             </div>
         </label>

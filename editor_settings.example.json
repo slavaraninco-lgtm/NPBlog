@@ -248,6 +248,8 @@
     "bottomBar": {
         "showModeToggle": true,
         "showBlogSelector": true,
+        "showDrafts": false,
+        "showIncludes": false,
         "showWordCount": false,
         "showAutosaveBadge": true
     }

@@ -3549,18 +3549,18 @@ button:hover {
     background: rgba(255, 255, 255, 0.2);
 }
 
-.more-menu-dropdown > .more-menu-item:first-child {
-    border-top-left-radius: 11px;
-    border-top-right-radius: 11px;
+.more-menu-dropdown > :first-child {
+    border-top-left-radius: 11px !important;
+    border-top-right-radius: 11px !important;
 }
 
-.more-menu-dropdown > .more-menu-item:last-child {
-    border-bottom-left-radius: 11px;
-    border-bottom-right-radius: 11px;
+.more-menu-dropdown > :last-child {
+    border-bottom-left-radius: 11px !important;
+    border-bottom-right-radius: 11px !important;
 }
 
-.more-menu-dropdown > .more-menu-item:only-child {
-    border-radius: 11px;
+.more-menu-dropdown > :only-child {
+    border-radius: 11px !important;
 }
 
 .more-menu-item.has-submenu {
@@ -5599,6 +5599,138 @@ body {
 [data-theme="dark"][data-amoled="true"] .bottom-bar-blog-selector .custom-select-trigger {
     background: #111111;
     border-color: #262626;
+}
+
+/* Кнопки выпадающих списков в нижней панели (Черновики, Includes) */
+.bottom-bar-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bottom-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 22px;
+    color: var(--text-color);
+    background: rgba(128, 128, 128, 0.08);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    box-sizing: border-box;
+    white-space: nowrap;
+    opacity: 0.85;
+    transition: background-color var(--anim-dur-fast) var(--anim-ease-out),
+                border-color var(--anim-dur-fast) var(--anim-ease-out),
+                opacity var(--anim-dur-fast) var(--anim-ease-out),
+                transform 0.1s var(--anim-ease-out);
+}
+
+.bottom-bar-btn:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.14);
+    border-color: rgba(128, 128, 128, 0.35);
+}
+
+.bottom-bar-btn:active {
+    transform: scale(0.96);
+}
+
+.bottom-bar-dropdown.is-open .bottom-bar-btn {
+    opacity: 1;
+    background: var(--bg-color);
+    border-color: var(--text-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] .bottom-bar-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .bottom-bar-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .bottom-bar-dropdown.is-open .bottom-bar-btn {
+    background: #2a2a2a;
+    border-color: #555555;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-btn {
+    background: #111111;
+    border-color: #262626;
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-dropdown.is-open .bottom-bar-btn {
+    background: #222222;
+    border-color: #333333;
+    color: #ffffff;
+}
+
+.bottom-bar-btn-arrow {
+    font-size: 8px;
+    opacity: 0.6;
+    margin-left: 1px;
+    display: inline-block;
+    transition: transform var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.bottom-bar-dropdown.is-open .bottom-bar-btn-arrow {
+    transform: rotate(180deg);
+}
+
+/* Всплывающий список для кнопок нижней панели */
+.bottom-bar-submenu {
+    position: absolute;
+    bottom: calc(100% + 6px) !important;
+    left: 0 !important;
+    top: auto !important;
+    right: auto !important;
+    min-width: 240px;
+    max-width: 340px;
+    max-height: 380px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+    z-index: 10001;
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+    transition: opacity var(--anim-dur-normal) var(--anim-ease-out),
+                transform var(--anim-dur-normal) var(--anim-ease-out),
+                visibility var(--anim-dur-normal);
+}
+
+[data-theme="dark"] .bottom-bar-submenu {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-submenu {
+    background: #000000 !important;
+    border-color: #222222 !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.bottom-bar-dropdown.is-open .bottom-bar-submenu {
+    visibility: visible;
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .editor-bottom-bar-right {

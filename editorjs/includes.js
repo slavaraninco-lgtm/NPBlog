@@ -15,6 +15,7 @@ function openSaveInclude(event) {
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
     document.querySelectorAll('.more-menu-item.has-submenu').forEach(b => b.classList.remove('submenu-open'));
+    if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
 
     if (input) setTimeout(() => input.focus(), 100);
 }
@@ -143,10 +144,12 @@ function saveDraft(event) {
     const moreMenu = document.getElementById('moreMenuWrap');
     if (moreMenu) moreMenu.classList.remove('is-open');
     document.querySelectorAll('.more-menu-item.has-submenu').forEach(b => b.classList.remove('submenu-open'));
+    if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
 }
 
 function toggleDraftsSubmenu(event) {
     event.stopPropagation();
+    if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
 
     const button = event.currentTarget;
     const isOpen = button.classList.contains('submenu-open');
@@ -165,23 +168,33 @@ function toggleDraftsSubmenu(event) {
     }
 }
 
-async function loadDraftsList() {
-    const submenu = document.getElementById('draftsSubmenu');
-    if (!submenu) return;
-    const listContainer = document.getElementById('draftsSubmenuList') || submenu;
+async function loadDraftsList(force = false) {
+    const topContainer = document.getElementById('draftsSubmenuList');
+    const bottomContainer = document.getElementById('bottomBarDraftsSubmenuList');
+
+    if (draftsListLoaded && !force) {
+        if (bottomContainer && topContainer && (!bottomContainer.children.length || bottomContainer.querySelector('.more-submenu-empty'))) {
+            bottomContainer.innerHTML = topContainer.innerHTML;
+        }
+        return;
+    }
+
+    const containers = [topContainer, bottomContainer].filter(Boolean);
+    if (containers.length === 0) return;
 
     try {
         const response = await fetch('get_drafts.php');
         const data = await response.json();
 
         if (data.success) {
+            let htmlContent = '';
             if (data.drafts.length === 0) {
-                listContainer.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
+                htmlContent = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
             } else {
                 const untitledText = window.t ? window.t('more_menu.untitled', 'Без названия') : 'Без названия';
                 const delDraftText = window.t ? window.t('more_menu.delete_draft', 'Удалить черновик') : 'Удалить черновик';
                 const currentLocale = (window.NPBlogI18n && typeof window.NPBlogI18n.getLocale === 'function') ? window.NPBlogI18n.getLocale() : 'ru-RU';
-                listContainer.innerHTML = data.drafts.map(draft => {
+                htmlContent = data.drafts.map(draft => {
                     const displayTitle = draft.title || untitledText;
                     const date = new Date(draft.timestamp * 1000).toLocaleString(currentLocale, {
                         day: '2-digit',
@@ -199,11 +212,16 @@ async function loadDraftsList() {
                     </div>`;
                 }).join('');
             }
+            containers.forEach(container => {
+                container.innerHTML = htmlContent;
+            });
             draftsListLoaded = true;
         }
     } catch (error) {
         console.error('Ошибка загрузки черновиков:', error);
-        listContainer.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
+        containers.forEach(container => {
+            container.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
+        });
     }
 }
 
@@ -277,6 +295,7 @@ async function loadDraft(filename) {
                 // Закрываем меню
                 const moreMenu = document.getElementById('moreMenuWrap');
                 if (moreMenu) moreMenu.classList.remove('is-open');
+                if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
 
                 showNotification(window.t ? window.t('notifications.draft_loaded', 'Черновик загружен') : 'Черновик загружен', 'success');
             } else {
@@ -323,6 +342,7 @@ async function deleteDraft(filename, event) {
 
 function toggleIncludesSubmenu(event) {
     event.stopPropagation();
+    if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
 
     const button = event.currentTarget;
     const isOpen = button.classList.contains('submenu-open');
@@ -349,34 +369,47 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-async function loadIncludesList() {
-    if (includesListLoaded) return;
+async function loadIncludesList(force = false) {
+    const topContainer = document.getElementById('includesSubmenuList');
+    const bottomContainer = document.getElementById('bottomBarIncludesSubmenuList');
 
-    const submenu = document.getElementById('includesSubmenu');
-    if (!submenu) return;
-    const listContainer = document.getElementById('includesSubmenuList') || submenu;
+    if (includesListLoaded && !force) {
+        if (bottomContainer && topContainer && (!bottomContainer.children.length || bottomContainer.querySelector('.more-submenu-empty'))) {
+            bottomContainer.innerHTML = topContainer.innerHTML;
+        }
+        return;
+    }
+
+    const containers = [topContainer, bottomContainer].filter(Boolean);
+    if (containers.length === 0) return;
 
     try {
         const response = await fetch('get_includes.php');
         const data = await response.json();
 
         if (data.success) {
+            let htmlContent = '';
             if (data.files.length === 0) {
-                listContainer.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
+                htmlContent = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
             } else {
                 const delIncText = window.t ? window.t('more_menu.delete_include', 'Удалить include') : 'Удалить include';
-                listContainer.innerHTML = data.files.map(file =>
+                htmlContent = data.files.map(file =>
                     `<div class="draft-item-wrap">
                         <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${file.name}')" title="${escapeHtml(file.displayName)}">${escapeHtml(file.displayName)}</button>
                         <button type="button" class="draft-delete-btn" onclick="deleteInclude('${file.name}', event)" title="${delIncText}">×</button>
                     </div>`
                 ).join('');
             }
+            containers.forEach(container => {
+                container.innerHTML = htmlContent;
+            });
             includesListLoaded = true;
         }
     } catch (error) {
         console.error('Ошибка загрузки includes:', error);
-        listContainer.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
+        containers.forEach(container => {
+            container.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('common.load_error', 'Ошибка загрузки') : 'Ошибка загрузки') + '</div>';
+        });
     }
 }
 
@@ -439,6 +472,7 @@ async function insertInclude(filename) {
             // Закрываем меню
             const moreMenu = document.getElementById('moreMenuWrap');
             if (moreMenu) moreMenu.classList.remove('is-open');
+            if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
 
             showNotification(window.t ? window.t('notifications.include_inserted', 'Include вставлен') : 'Include вставлен', 'success');
         } else {

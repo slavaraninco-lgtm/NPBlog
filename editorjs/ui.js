@@ -141,6 +141,9 @@ function setTextColor(color) {
         });
 
         if (!isOpen) {
+            if (typeof window.organizeMoreMenuDropdown === 'function') {
+                window.organizeMoreMenuDropdown();
+            }
             wrap.classList.add('is-open');
         } else {
             wrap.classList.remove('is-open');
