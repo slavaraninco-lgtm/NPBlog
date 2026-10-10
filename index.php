@@ -411,7 +411,7 @@ if (file_exists($versionFile)) {
             <span class="toolbar-divider" id="divider-more"></span>
             
             <div class="more-menu-wrap" id="moreMenuWrap">
-                <button type="button" class="format-btn" title="Прочее" data-i18n-title="toolbar.more" onclick="toggleMoreMenu()">⋯</button>
+                <button type="button" class="format-btn more-menu-trigger" id="moreMenuBtn" title="Прочее" data-i18n-title="toolbar.more" onclick="toggleMoreMenu()"><span class="more-menu-dots">⋯</span></button>
                 <div class="more-menu-dropdown" id="moreMenuDropdown">
                     <div class="more-menu-item has-submenu" id="draftsMenuItem" onclick="toggleDraftsSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.drafts">Черновики</span>
