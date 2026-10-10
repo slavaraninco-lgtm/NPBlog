@@ -39,7 +39,7 @@
         <!-- Основная область -->
         <div class="modal-body" style="padding: 0; flex: 1; display: flex; overflow: hidden;">
             <!-- Левая панель инструментов -->
-            <div style="width: 260px; border-right: 1px solid var(--border-color); background: var(--modal-bg); display: flex; flex-direction: column; gap: 18px; padding: 20px; overflow-y: auto; box-sizing: border-box;">
+            <div style="width: 280px; border-right: 1px solid var(--border-color); background: var(--modal-bg); display: flex; flex-direction: column; gap: 18px; padding: 18px; overflow-y: auto; box-sizing: border-box;">
                 
                 <!-- Размер сетки -->
                 <div>
