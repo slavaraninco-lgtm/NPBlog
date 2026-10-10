@@ -102,6 +102,39 @@ if ($action === 'get_version') {
     exit;
 }
 
+if ($action === 'get_changelog') {
+    $currentVersion = 'Unknown';
+    $isDev = false;
+    $lastUpdated = '';
+    $changelog = [];
+    if (file_exists('version.json')) {
+        $currData = @json_decode(file_get_contents('version.json'), true);
+        if ($currData) {
+            $isDev = !empty($currData['dev']) && ($currData['dev'] === true || $currData['dev'] === 'true');
+            $currentVersion = $currData['version'] ?? ($isDev ? 'dev' : 'Unknown');
+            $lastUpdated = $currData['last_updated'] ?? '';
+            if (!empty($currData['changelog']) && is_array($currData['changelog'])) {
+                $changelog = $currData['changelog'];
+            }
+        }
+    }
+    // Если в version.json нет changelog, попробуем поискать changelog.json
+    if (empty($changelog) && file_exists('changelog.json')) {
+        $clData = @json_decode(file_get_contents('changelog.json'), true);
+        if ($clData && is_array($clData)) {
+            $changelog = $clData;
+        }
+    }
+    echo json_encode([
+        'success' => true,
+        'version' => $currentVersion,
+        'dev' => $isDev,
+        'last_updated' => $lastUpdated,
+        'changelog' => $changelog
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if ($action === 'preview') {
     if (!isset($_FILES['updateFile'])) {
         echo json_encode(['success' => false, 'error' => 'Файл не передан']);
@@ -407,7 +440,10 @@ elseif ($action === 'update') {
             'dev' => isset($newVersionData['dev']) ? (bool)$newVersionData['dev'] : false,
             'last_updated' => date('Y-m-d\TH:i:s\Z')
         ];
-        file_put_contents('version.json', json_encode($verPayload, JSON_PRETTY_PRINT));
+        if (!empty($newVersionData['changelog']) && is_array($newVersionData['changelog'])) {
+            $verPayload['changelog'] = $newVersionData['changelog'];
+        }
+        file_put_contents('version.json', json_encode($verPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
     
     // Очистка

@@ -30,6 +30,7 @@
 | [`save_include_modal.php`](save_include_modal.php) | `saveIncludeOverlay` | Диалог быстрого сохранения контента в блок includes | ✅ Переписано на фреймворк |
 | [`numbering_check_modal.php`](numbering_check_modal.php) | `numberingCheckOverlay` | Окно проверки и исправления сквозной нумерации статей | ✅ Переписано на фреймворк |
 | [`system_update_modal.php`](system_update_modal.php) | `systemUpdateModal`, `restoreSystemModal` | Обновление и откат (Rollback) ядра блога NPBlog | ✅ Переписано на фреймворк |
+| [`update_success_modal.php`](update_success_modal.php) | `updateSuccessNoticeModal` | Уведомление об успешном обновлении NPBlog и просмотр списка изменений | ✅ Написано на фреймворке |
 | [`custom_fonts_modal.php`](custom_fonts_modal.php) | `customFontsModal` | Управление и выбор пользовательских шрифтов (.ttf, .otf, .woff, .woff2) | ✅ Переписано на фреймворк |
 | [`additional_settings_modal.php`](additional_settings_modal.php) | `additionalSettingsModal` | Дополнительные настройки статьи (индивидуальный фон, область, подложка) | ✅ Переписано на фреймворк |
 | [`cell_color_modal.php`](cell_color_modal.php) | `cellColorDialog` | Выбор цвета заливки ячейки таблицы (палитра и кастомный цвет) | ✅ Переписано на фреймворк |

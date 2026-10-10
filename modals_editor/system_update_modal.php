@@ -77,7 +77,7 @@
             <div id="updateSuccessContainer" style="display: none; flex-direction: column; gap: 14px; align-items: center; text-align: center; padding: 20px 0;">
                 <div style="font-size: 40px;">🎉</div>
                 <p style="color: #10b981; font-weight: 700; font-size: 18px; margin: 0;" data-i18n="modals.sys_success">Обновление успешно завершено!</p>
-                <button type="button" onclick="window.location.reload()" class="modal-btn modal-btn-primary" style="padding: 10px 24px;" data-i18n="modals.sys_reload_page">
+                <button type="button" onclick="try { localStorage.setItem('npblog_just_updated', 'true'); } catch(e){} window.location.reload();" class="modal-btn modal-btn-primary" style="padding: 10px 24px;" data-i18n="modals.sys_reload_page">
                     🔄 Обновить страницу
                 </button>
             </div>

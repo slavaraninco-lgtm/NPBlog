@@ -705,6 +705,7 @@ foreach ($editorJsFiles as $jsFile) {
 
 <!-- Модальные окна обновления и отката системы -->
 <?php safe_include_editor_modal('system_update_modal.php'); ?>
+<?php safe_include_editor_modal('update_success_modal.php'); ?>
 
 <!-- Модальное окно публикации и загрузки по FTP -->
 <?php safe_include_editor_modal('ftp_upload_modal.php'); ?>
@@ -4175,6 +4176,11 @@ function startSystemUpdateProcess() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            try {
+                localStorage.setItem('npblog_just_updated', 'true');
+            } catch (e) {
+                console.warn('localStorage error:', e);
+            }
             document.getElementById('updateProgressBar').style.width = '100%';
             document.getElementById('updateProgressContainer').style.display = 'none';
             document.getElementById('updateSuccessContainer').style.display = 'flex';
@@ -4191,6 +4197,146 @@ function startSystemUpdateProcess() {
         showNotification(window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении', 'error');
     });
 }
+
+/**
+ * ==============================================================================
+ * Уведомление об успешном обновлении NPBlog и просмотр списка изменений
+ * ==============================================================================
+ */
+let updateSuccessChangelogVisible = false;
+
+function openUpdateSuccessNoticeModal(versionOverride) {
+    if (window.Modal) {
+        Modal.open('#updateSuccessNoticeModal');
+    } else {
+        const modal = document.getElementById('updateSuccessNoticeModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+    }
+
+    loadUpdateSuccessChangelog(versionOverride);
+}
+
+function closeUpdateSuccessNoticeModal() {
+    if (window.Modal) {
+        Modal.close('#updateSuccessNoticeModal');
+    } else {
+        const modal = document.getElementById('updateSuccessNoticeModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+    }
+}
+
+function openUpdateChangelogModal(versionOverride) {
+    if (window.Modal) {
+        Modal.open('#updateChangelogModal');
+    } else {
+        const modal = document.getElementById('updateChangelogModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+    }
+
+    loadUpdateSuccessChangelog(versionOverride);
+}
+
+function closeUpdateChangelogModal() {
+    if (window.Modal) {
+        Modal.close('#updateChangelogModal');
+    } else {
+        const modal = document.getElementById('updateChangelogModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+    }
+}
+
+function openChangelogModalFromNotice() {
+    closeUpdateSuccessNoticeModal();
+    setTimeout(() => {
+        openUpdateChangelogModal();
+    }, 150);
+}
+
+function loadUpdateSuccessChangelog(versionOverride) {
+    const versionEl = document.getElementById('updateSuccessNoticeVersion');
+    const modalVersionEl = document.getElementById('updateChangelogModalVersion');
+    const listContainer = document.getElementById('updateSuccessChangelogList');
+    
+    const formattedOverride = versionOverride ? versionOverride.replace(/^v/, '') : null;
+    if (formattedOverride) {
+        if (versionEl) versionEl.textContent = formattedOverride;
+        if (modalVersionEl) modalVersionEl.textContent = formattedOverride;
+    }
+
+    if (listContainer) {
+        listContainer.innerHTML = '<div style="opacity: 0.6; font-size: 13px;">' + 
+            (window.t ? window.t('modals.update_changelog_loading', 'Загрузка списка изменений...') : 'Загрузка списка изменений...') + 
+            '</div>';
+    }
+
+    fetch('update_system.php?action=get_changelog&t=' + Date.now())
+        .then(response => {
+            if (!response.ok) throw new Error('Network error');
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.success) {
+                if (!formattedOverride) {
+                    let displayVer = '2.305';
+                    if (data.dev === true || data.dev === 'true' || data.version === 'dev') {
+                        displayVer = (data.version && data.version !== 'dev') ? data.version + ' (dev)' : 'dev';
+                    } else if (data.version && data.version !== 'Unknown') {
+                        displayVer = data.version.replace(/^v/, '');
+                    }
+                    if (versionEl) versionEl.textContent = displayVer;
+                    if (modalVersionEl) modalVersionEl.textContent = displayVer;
+                }
+
+                if (listContainer) {
+                    if (Array.isArray(data.changelog) && data.changelog.length > 0) {
+                        const ul = document.createElement('ul');
+                        ul.style.cssText = 'margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.6; color: var(--modal-text);';
+                        data.changelog.forEach(item => {
+                            const li = document.createElement('li');
+                            li.style.cssText = 'margin-bottom: 6px;';
+                            li.textContent = item;
+                            ul.appendChild(li);
+                        });
+                        listContainer.innerHTML = '';
+                        listContainer.appendChild(ul);
+                    } else {
+                        const emptyMsg = window.t ? window.t('modals.update_changelog_empty', 'Список изменений для этой версии не указан.') : 'Список изменений для этой версии не указан.';
+                        listContainer.innerHTML = '<div style="opacity: 0.7; font-size: 13px; color: var(--modal-text);">' + emptyMsg + '</div>';
+                    }
+                }
+            } else {
+                if (listContainer) {
+                    const emptyMsg = window.t ? window.t('modals.update_changelog_empty', 'Список изменений для этой версии не указан.') : 'Список изменений для этой версии не указан.';
+                    listContainer.innerHTML = '<div style="opacity: 0.7; font-size: 13px; color: var(--modal-text);">' + emptyMsg + '</div>';
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Error loading changelog:', err);
+            if (listContainer) {
+                const emptyMsg = window.t ? window.t('modals.update_changelog_empty', 'Список изменений для этой версии не указан.') : 'Список изменений для этой версии не указан.';
+                listContainer.innerHTML = '<div style="opacity: 0.7; font-size: 13px; color: var(--modal-text);">' + emptyMsg + '</div>';
+            }
+        });
+}
+
+window.openUpdateSuccessNoticeModal = openUpdateSuccessNoticeModal;
+window.closeUpdateSuccessNoticeModal = closeUpdateSuccessNoticeModal;
+window.openUpdateChangelogModal = openUpdateChangelogModal;
+window.closeUpdateChangelogModal = closeUpdateChangelogModal;
+window.openChangelogModalFromNotice = openChangelogModalFromNotice;
 </script>
 
 <!-- Модальное окно Редактора изображений -->
@@ -4636,6 +4782,20 @@ function saveImgEditorChanges() {
 // Инициализация обработчиков холста редактора и применение настроек
 document.addEventListener('DOMContentLoaded', function() {
     loadAndApplyAllSettings();
+    
+    // Проверка показа модального окна успешного обновления после перезагрузки страницы
+    try {
+        if (localStorage.getItem('npblog_just_updated') === 'true') {
+            localStorage.removeItem('npblog_just_updated');
+            setTimeout(function() {
+                if (typeof openUpdateSuccessNoticeModal === 'function') {
+                    openUpdateSuccessNoticeModal();
+                }
+            }, 350);
+        }
+    } catch (e) {
+        console.warn('Update notice check error:', e);
+    }
     
     const canvas = document.getElementById('imgEditorCanvas');
     if (!canvas) return;
