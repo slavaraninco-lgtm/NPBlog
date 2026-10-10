@@ -1921,7 +1921,7 @@ button:hover {
     background: var(--bg-color);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 8px 0;
+    padding: 0;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
     opacity: 0;
     visibility: hidden;
@@ -1959,21 +1959,74 @@ button:hover {
     text-align: left;
     background: none;
     border: none;
+    border-radius: 0;
     color: var(--text-color);
     font-size: 14px;
     cursor: pointer;
-    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
+    transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease;
     text-decoration: none;
     box-sizing: border-box;
+    margin: 0;
+    transform: none;
 }
 
-.editor-menu-item:hover {
+.editor-menu-item:hover,
+.editor-menu-item:focus-visible {
     background: rgba(0, 0, 0, 0.06);
-    transform: translateX(2px);
+    transform: none;
+    outline: none;
 }
 
-[data-theme="dark"] .editor-menu-item:hover {
+[data-theme="dark"] .editor-menu-item:hover,
+[data-theme="dark"] .editor-menu-item:focus-visible {
     background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"][data-amoled="true"] .editor-menu-item:hover,
+[data-theme="dark"][data-amoled="true"] .editor-menu-item:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.editor-menu-item:active {
+    background: rgba(0, 0, 0, 0.1);
+    transform: none;
+}
+
+[data-theme="dark"] .editor-menu-item:active {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="dark"][data-amoled="true"] .editor-menu-item:active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Скругления для элементов главного меню: первый сверху, последний снизу */
+.editor-menu-dropdown > .editor-menu-item:first-child {
+    border-top-left-radius: 11px;
+    border-top-right-radius: 11px;
+}
+
+.editor-menu-dropdown > .editor-menu-item:last-child {
+    border-bottom-left-radius: 11px;
+    border-bottom-right-radius: 11px;
+}
+
+.editor-menu-dropdown > .editor-menu-item:only-child {
+    border-radius: 11px;
+}
+
+.editor-menu-item.editor-menu-item-lock {
+    color: #ef4444 !important;
+    font-weight: 600;
+    border-top: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .editor-menu-item.editor-menu-item-lock {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"][data-amoled="true"] .editor-menu-item.editor-menu-item-lock {
+    border-top-color: #222222;
 }
 
 .editor-menu-item a {
@@ -2020,12 +2073,19 @@ button:hover {
     font-size: 12px;
     color: var(--text-color);
     opacity: 0.6;
-    border-top: 1px solid #ffffff;
-    margin-top: 4px;
+    border-top: 1px solid var(--border-color);
+    margin: 0;
+    border-bottom-left-radius: 11px;
+    border-bottom-right-radius: 11px;
+    box-sizing: border-box;
 }
 
 [data-theme="dark"] .editor-menu-version {
-    border-top-color: #ffffff;
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"][data-amoled="true"] .editor-menu-version {
+    border-top-color: #222222;
 }
 
 /* Параметры */

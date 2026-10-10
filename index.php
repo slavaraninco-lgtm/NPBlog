@@ -484,7 +484,7 @@ if (file_exists($versionFile)) {
                     <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='<?php echo getDataUrl('blog.html'); ?>'" data-i18n="header.menu_go_to_blog">Перейти к Blog.html</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openSystemUpdateModal()" data-i18n="header.menu_update_npblog">Обновить NPBlog</button>
                     <?php if (!empty($passwordHash)): ?>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="lockEditor()" style="color: #ef4444; font-weight: 600; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;" data-i18n="header.menu_lock">Заблокировать</button>
+                    <button type="button" class="editor-menu-item editor-menu-item-lock" role="menuitem" onclick="lockEditor()" data-i18n="header.menu_lock">Заблокировать</button>
                     <?php endif; ?>
                     <?php
                     $editorVersion = 'unknown';
