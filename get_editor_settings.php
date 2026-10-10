@@ -36,7 +36,13 @@ $defaults = [
     'customThemeCss' => '',
     'language' => $defaultLang,
     'password_set' => false,
-    'password_enabled' => false
+    'password_enabled' => false,
+    'bottomBar' => [
+        'showModeToggle' => true,
+        'showBlogSelector' => true,
+        'showWordCount' => false,
+        'showAutosaveBadge' => true
+    ]
 ];
 
 $suggestedDataPath = str_replace('/', DIRECTORY_SEPARATOR, __DIR__ . '/data');

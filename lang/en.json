@@ -187,6 +187,24 @@
         "color_cell": "Color Cell",
         "delete_table": "Delete Table"
     },
+    "bottom_bar": {
+        "customize": "Customize Bar",
+        "drawer_title": "Bottom Bar Settings",
+        "drawer_subtitle": "Choose elements to display in the status bar",
+        "item_mode_toggle_title": "Editor Modes (Visual / Code)",
+        "item_mode_toggle_desc": "Toggle between visual editor and code view",
+        "item_blog_selector_title": "Blog Selector",
+        "item_blog_selector_desc": "Dropdown for active blog selection",
+        "item_word_count_title": "Word & Character Count",
+        "item_word_count_desc": "Text volume statistics for the current post",
+        "item_autosave_title": "Autosave Indicator",
+        "item_autosave_desc": "Countdown timer and post save status",
+        "reset_defaults": "Default",
+        "saved_notification": "Bottom bar settings saved",
+        "words_count": "Words",
+        "chars_count": "Chars",
+        "stats_tooltip": "Text statistics"
+    },
     "settings": {
         "title": "Settings",
         "subtitle": "Global blog, interface, security, and integration settings",

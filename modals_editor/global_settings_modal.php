@@ -276,6 +276,7 @@ if (!isset($availableLanguages)) {
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
                             <button type="button" onclick="saveAppearanceSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.app_save_btn">Сохранить настройки</button>
                             <button type="button" onclick="startHeaderCustomization()" class="modal-btn modal-btn-secondary" data-i18n="settings.app_customize_header_btn">Кастомизация верхней панели</button>
+                            <button type="button" onclick="closeGlobalSettings(); openBottomBarCustomizer();" class="modal-btn modal-btn-secondary" data-i18n="bottom_bar.customize">Настроить панель</button>
                         </div>
                     </div>
                     

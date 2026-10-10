@@ -244,5 +244,11 @@
     "amoledTheme": false,
     "smoothTyping": false,
     "headerBottomPosition": false,
-    "contentWidth": 920
+    "contentWidth": 920,
+    "bottomBar": {
+        "showModeToggle": true,
+        "showBlogSelector": true,
+        "showWordCount": false,
+        "showAutosaveBadge": true
+    }
 }

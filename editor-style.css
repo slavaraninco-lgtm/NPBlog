@@ -5651,6 +5651,377 @@ body {
     display: inline;
 }
 
+/* --- Счётчик слов и символов на нижней панели --- */
+.bottom-bar-stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--text-color);
+    opacity: 0.65;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    user-select: none;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.bottom-bar-stats:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.08);
+}
+
+[data-theme="dark"] .bottom-bar-stats:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.bottom-bar-stat-item strong {
+    font-weight: 600;
+    margin-left: 2px;
+}
+
+.bottom-bar-stat-sep {
+    opacity: 0.35;
+    font-size: 9px;
+}
+
+/* --- Боковая панель кастомизации нижней панели (Drawer) --- */
+.bottom-bar-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 100005;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bottom-bar-drawer-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.bottom-bar-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 360px;
+    max-width: 92vw;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.2);
+    z-index: 100006;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+    user-select: none;
+}
+
+[data-theme="dark"] .bottom-bar-drawer {
+    background-color: #161619;
+    border-left-color: rgba(255, 255, 255, 0.1);
+    box-shadow: -10px 0 44px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-drawer {
+    background-color: #000000;
+    border-left-color: #222222;
+    box-shadow: -10px 0 48px rgba(0, 0, 0, 0.9);
+}
+
+.bottom-bar-drawer.open {
+    transform: translateX(0);
+}
+
+/* Шапка панели кастомизации */
+.bottom-bar-drawer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 22px 22px 18px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    background: var(--bg-color);
+    position: relative;
+}
+
+[data-theme="dark"] .bottom-bar-drawer-header {
+    background: #161619;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-drawer-header {
+    background: #000000;
+    border-bottom-color: #222222;
+}
+
+.bottom-bar-drawer-titles {
+    flex: 1;
+    min-width: 0;
+    padding-right: 12px;
+}
+
+.bottom-bar-drawer-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--text-color);
+}
+
+.bottom-bar-drawer-subtitle {
+    margin: 5px 0 0 0;
+    font-size: 12px;
+    opacity: 0.7;
+    line-height: 1.45;
+    color: var(--text-color);
+}
+
+.bottom-bar-drawer-close {
+    border: none;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-color);
+    opacity: 0.6;
+    padding: 4px 8px;
+    margin: -4px -6px 0 0;
+    border-radius: 6px;
+    transition: opacity var(--anim-dur-fast) ease, background var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.bottom-bar-drawer-close:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.12);
+    transform: scale(1.05);
+}
+
+.bottom-bar-drawer-close:active {
+    transform: scale(0.95);
+}
+
+/* Тело панели кастомизации */
+.bottom-bar-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Карточки опций с переключателями */
+.bottom-bar-option-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: rgba(128, 128, 128, 0.04);
+    cursor: pointer;
+    transition: background 0.16s ease, border-color 0.16s ease, transform 0.14s ease, box-shadow 0.16s ease;
+}
+
+.bottom-bar-option-card:hover {
+    background: rgba(128, 128, 128, 0.08);
+    border-color: rgba(128, 128, 128, 0.35);
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .bottom-bar-option-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .bottom-bar-option-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-option-card {
+    background: #09090b;
+    border-color: #222222;
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-option-card:hover {
+    background: #111114;
+    border-color: #333333;
+}
+
+.bottom-bar-option-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.bottom-bar-option-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+}
+
+.bottom-bar-option-desc {
+    font-size: 11.5px;
+    opacity: 0.68;
+    margin-top: 3px;
+    line-height: 1.38;
+    color: var(--text-color);
+}
+
+/* Тумблер переключатель (Switch) */
+.bottom-bar-switch {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.bottom-bar-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.bottom-bar-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(128, 128, 128, 0.28);
+    border-radius: 24px;
+    transition: background-color 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-bar-switch-slider::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-bar-switch input:checked + .bottom-bar-switch-slider {
+    background-color: var(--text-color, #111111);
+}
+
+.bottom-bar-switch input:checked + .bottom-bar-switch-slider::before {
+    transform: translateX(18px);
+    background-color: var(--bg-color, #ffffff);
+}
+
+[data-theme="dark"] .bottom-bar-switch-slider {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .bottom-bar-switch input:checked + .bottom-bar-switch-slider {
+    background-color: #ffffff;
+}
+
+[data-theme="dark"] .bottom-bar-switch input:checked + .bottom-bar-switch-slider::before {
+    background-color: #121212;
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-switch-slider {
+    background: #2b2b2b;
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-switch input:checked + .bottom-bar-switch-slider {
+    background-color: #ffffff;
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-switch input:checked + .bottom-bar-switch-slider::before {
+    background-color: #000000;
+}
+
+/* Футер панели кастомизации */
+.bottom-bar-drawer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 16px 22px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+    background: var(--bg-color);
+}
+
+[data-theme="dark"] .bottom-bar-drawer-footer {
+    background: #161619;
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-drawer-footer {
+    background: #000000;
+    border-top-color: #222222;
+}
+
+.bottom-bar-drawer-btn {
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all var(--anim-dur-fast) var(--anim-ease-out);
+    border: 1px solid transparent;
+}
+
+.bottom-bar-drawer-btn-ghost {
+    background: transparent;
+    color: var(--text-color);
+    border-color: var(--border-color);
+    opacity: 0.85;
+}
+
+.bottom-bar-drawer-btn-ghost:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.1);
+}
+
+.bottom-bar-drawer-btn-primary {
+    background: var(--text-color, #111111);
+    color: var(--bg-color, #ffffff);
+    border-color: var(--text-color, #111111);
+}
+
+.bottom-bar-drawer-btn-primary:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.bottom-bar-drawer-btn:active {
+    transform: scale(0.97);
+}
+
+[data-theme="dark"] .bottom-bar-drawer-btn-primary {
+    background: #ffffff;
+    color: #111111;
+    border-color: #ffffff;
+}
+
+[data-theme="dark"][data-amoled="true"] .bottom-bar-drawer-btn-primary {
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
+}
+
 body.header-bottom .editor-bottom-bar {
     bottom: 64px;
 }
@@ -7008,6 +7379,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
     animation: dialogScaleIn var(--anim-dur-fast) var(--anim-ease-out);
 }
 
+.customizer-context-menu,
 #customizerContextMenu {
     display: none;
     position: fixed !important;
@@ -7025,6 +7397,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 }
 
 [data-theme="dark"] #dividerDropdownMenu,
+[data-theme="dark"] .customizer-context-menu,
 [data-theme="dark"] #customizerContextMenu {
     background: #181818;
     border-color: rgba(255, 255, 255, 0.12);
@@ -7032,6 +7405,7 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 }
 
 [data-theme="dark"][data-amoled="true"] #dividerDropdownMenu,
+[data-theme="dark"][data-amoled="true"] .customizer-context-menu,
 [data-theme="dark"][data-amoled="true"] #customizerContextMenu {
     background: #000000;
     border-color: #282828;
@@ -7039,7 +7413,9 @@ body.header-customizing .toolbar-spacer .spacer-resize-handle:hover {
 
 .customizer-dropdown-item,
 .context-menu-item {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: 100%;
     padding: 9px 14px;
     border: none;

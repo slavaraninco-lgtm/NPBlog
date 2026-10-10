@@ -524,6 +524,12 @@ if (file_exists($versionFile)) {
             </div>
         </div>
         <div class="editor-bottom-bar-right">
+            <!-- Счётчик слов и символов -->
+            <div id="bottomBarStats" class="bottom-bar-stats" style="display: none;" title="Статистика текста" data-i18n-title="bottom_bar.stats_tooltip">
+                <span class="bottom-bar-stat-item"><span data-i18n="bottom_bar.words_count">Слов</span>: <strong id="bottomBarWordCount">0</strong></span>
+                <span class="bottom-bar-stat-sep">•</span>
+                <span class="bottom-bar-stat-item"><span data-i18n="bottom_bar.chars_count">Символов</span>: <strong id="bottomBarCharCount">0</strong></span>
+            </div>
             <!-- Таймер автосохранения (чисто текст, кликабельный для открытия менеджера) -->
             <div id="autosaveBadge" onclick="openAutosaveManager()" onmousedown="event.preventDefault()" style="display: none;" title="Менеджер автосохранений" data-i18n-title="header.menu_autosave_manager">
                 <span id="autosaveBadgeText" data-i18n="header.autosave_badge_timer">Автосохранение через 60с</span>
@@ -1945,7 +1951,11 @@ function startAutosave() {
     
     const badgeContainer = document.getElementById('autosaveBadge');
     if (badgeContainer) {
-        badgeContainer.style.display = 'inline-flex';
+        if (window.bottomBarSettings && window.bottomBarSettings.showAutosaveBadge === false) {
+            badgeContainer.style.display = 'none';
+        } else {
+            badgeContainer.style.display = 'inline-flex';
+        }
     }
 }
 
@@ -2028,6 +2038,7 @@ document.addEventListener('DOMContentLoaded', () => {
         titleEl.addEventListener('input', () => {
             if (typeof markEditorDirty === 'function') markEditorDirty();
             updateAutosaveBadge();
+            if (typeof updateBottomBarStats === 'function') updateBottomBarStats();
         });
     }
 
@@ -2036,6 +2047,16 @@ document.addEventListener('DOMContentLoaded', () => {
         contentEl.addEventListener('input', () => {
             if (typeof markEditorDirty === 'function') markEditorDirty();
             updateAutosaveBadge();
+            if (typeof updateBottomBarStats === 'function') updateBottomBarStats();
+        });
+    }
+
+    const visualEl = document.getElementById('contentVisual');
+    if (visualEl) {
+        visualEl.addEventListener('input', () => {
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            updateAutosaveBadge();
+            if (typeof updateBottomBarStats === 'function') updateBottomBarStats();
         });
     }
 });
@@ -2510,17 +2531,19 @@ function loadAndApplyAllSettings() {
                     updateAmoledState();
                 }
                 
-                // Переключение отображения переключателя режимов
-                const modeToggle = document.getElementById('bottomModeToggle') || document.getElementById('headerModeToggle');
-                if (modeToggle) {
-                    if (hideModeButtons) {
-                        modeToggle.style.display = 'none';
-                        if (typeof setMode === 'function') {
-                            setMode('visual');
-                        }
-                    } else {
-                        modeToggle.style.display = 'inline-flex';
-                    }
+                // Переключение отображения переключателя режимов и статус-бара
+                let bottomBarSettings = settings.bottomBar;
+                if (!bottomBarSettings) {
+                    bottomBarSettings = {
+                        showModeToggle: !hideModeButtons,
+                        showBlogSelector: true,
+                        showWordCount: false,
+                        showAutosaveBadge: true
+                    };
+                }
+                window.bottomBarSettings = bottomBarSettings;
+                if (typeof applyBottomBarSettings === 'function') {
+                    applyBottomBarSettings(bottomBarSettings);
                 }
                 
                 // Переключение отображения кнопок истории (undo/redo)
@@ -3410,7 +3433,7 @@ function updateBlogSelectorUI(paths, activePath) {
     const selector = document.getElementById('blogSelector');
     if (!container || !selector) return;
     
-    if (!Array.isArray(paths) || paths.length <= 1) {
+    if (!Array.isArray(paths) || paths.length <= 1 || (window.bottomBarSettings && window.bottomBarSettings.showBlogSelector === false)) {
         container.style.display = 'none';
         return;
     }
@@ -5318,7 +5341,266 @@ document.addEventListener('DOMContentLoaded', function() {
         setupBgPreview('backgroundInput', 'currentBackgroundPreview', 'currentBackgroundInfo');
         setupBgPreview('globalBackgroundInput', 'currentGlobalBackgroundPreview');
         setupBgPreview('blogBackgroundInput', 'currentBlogBackgroundPreview');
+        setupBottomBarCustomizer();
     });
+
+    /**
+     * Инициализация кастомизации нижней панели (статус-бара).
+     * Обрабатывает открытие кастомного контекстного меню по ПКМ на строке состояния.
+     */
+    function setupBottomBarCustomizer() {
+        const bottomBar = document.getElementById('editorBottomBar');
+        if (!bottomBar) return;
+
+        bottomBar.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Закрываем контекстные меню хедера и редактора
+            const customizerMenu = document.getElementById('customizerContextMenu');
+            if (customizerMenu) customizerMenu.style.display = 'none';
+            const editorMenu = document.getElementById('editorContextMenu');
+            if (editorMenu) editorMenu.style.display = 'none';
+            const dividerMenu = document.getElementById('dividerDropdownMenu');
+            if (dividerMenu) dividerMenu.style.display = 'none';
+
+            const menu = document.getElementById('bottomBarContextMenu');
+            if (!menu) return;
+
+            menu.style.display = 'block';
+
+            let left = e.clientX;
+            let top = e.clientY;
+            const menuWidth = 200;
+            const menuHeight = 50;
+
+            if (left + menuWidth > window.innerWidth) {
+                left = Math.max(10, window.innerWidth - menuWidth - 10);
+            }
+            if (top + menuHeight > window.innerHeight) {
+                top = Math.max(10, window.innerHeight - menuHeight - 10);
+            }
+
+            menu.style.left = left + 'px';
+            menu.style.top = top + 'px';
+        });
+    }
+
+    /**
+     * Открывает боковую панель кастомизации нижней панели (справа).
+     */
+    function openBottomBarCustomizer() {
+        const menu = document.getElementById('bottomBarContextMenu');
+        if (menu) menu.style.display = 'none';
+
+        const settings = window.bottomBarSettings || {
+            showModeToggle: true,
+            showBlogSelector: true,
+            showWordCount: false,
+            showAutosaveBadge: true
+        };
+
+        const toggleMode = document.getElementById('bottomBarToggleMode');
+        const toggleBlog = document.getElementById('bottomBarToggleBlog');
+        const toggleStats = document.getElementById('bottomBarToggleStats');
+        const toggleAutosave = document.getElementById('bottomBarToggleAutosave');
+
+        if (toggleMode) toggleMode.checked = settings.showModeToggle !== false;
+        if (toggleBlog) toggleBlog.checked = settings.showBlogSelector !== false;
+        if (toggleStats) toggleStats.checked = settings.showWordCount === true;
+        if (toggleAutosave) toggleAutosave.checked = settings.showAutosaveBadge !== false;
+
+        const drawer = document.getElementById('bottomBarCustomizerDrawer');
+        const backdrop = document.getElementById('bottomBarDrawerBackdrop');
+        if (drawer) drawer.classList.add('open');
+        if (backdrop) backdrop.classList.add('open');
+    }
+
+    /**
+     * Закрывает боковую панель кастомизации нижней панели.
+     */
+    function closeBottomBarCustomizer() {
+        const drawer = document.getElementById('bottomBarCustomizerDrawer');
+        const backdrop = document.getElementById('bottomBarDrawerBackdrop');
+        if (drawer) drawer.classList.remove('open');
+        if (backdrop) backdrop.classList.remove('open');
+    }
+
+    /**
+     * Обработчик переключения чекбокса в боковой панели.
+     * Мгновенно применяет изменения в UI и сохраняет их на сервере.
+     * @param {string} key Имя параметра
+     * @param {boolean} value Значение чекбокса
+     */
+    function onBottomBarOptionChange(key, value) {
+        if (!window.bottomBarSettings) {
+            window.bottomBarSettings = {
+                showModeToggle: true,
+                showBlogSelector: true,
+                showWordCount: false,
+                showAutosaveBadge: true
+            };
+        }
+        window.bottomBarSettings[key] = !!value;
+        applyBottomBarSettings(window.bottomBarSettings);
+        persistBottomBarSettings(window.bottomBarSettings);
+    }
+
+    /**
+     * Сохраняет настройки нижней панели на сервере в фоновом режиме.
+     * @param {Object} settings Объект настроек нижней панели
+     */
+    function persistBottomBarSettings(settings) {
+        fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bottomBar: settings })
+        }).catch(err => {
+            console.error('Ошибка сохранения настроек нижней панели:', err);
+        });
+    }
+
+    /**
+     * Обработчик кнопки «Сохранить» в боковой панели.
+     */
+    function saveBottomBarCustomizer() {
+        const settings = {
+            showModeToggle: document.getElementById('bottomBarToggleMode') ? document.getElementById('bottomBarToggleMode').checked : true,
+            showBlogSelector: document.getElementById('bottomBarToggleBlog') ? document.getElementById('bottomBarToggleBlog').checked : true,
+            showWordCount: document.getElementById('bottomBarToggleStats') ? document.getElementById('bottomBarToggleStats').checked : false,
+            showAutosaveBadge: document.getElementById('bottomBarToggleAutosave') ? document.getElementById('bottomBarToggleAutosave').checked : true
+        };
+
+        window.bottomBarSettings = settings;
+        applyBottomBarSettings(settings);
+
+        fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bottomBar: settings })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof showNotification === 'function') {
+                    showNotification(window.t ? window.t('bottom_bar.saved_notification', 'Настройки нижней панели сохранены') : 'Настройки нижней панели сохранены', 'success');
+                }
+                closeBottomBarCustomizer();
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка сохранения настроек нижней панели:', err);
+            closeBottomBarCustomizer();
+        });
+    }
+
+    /**
+     * Сбрасывает настройки нижней панели к значениям по умолчанию.
+     */
+    function resetBottomBarSettings() {
+        const defaults = {
+            showModeToggle: true,
+            showBlogSelector: true,
+            showWordCount: false,
+            showAutosaveBadge: true
+        };
+
+        const toggleMode = document.getElementById('bottomBarToggleMode');
+        const toggleBlog = document.getElementById('bottomBarToggleBlog');
+        const toggleStats = document.getElementById('bottomBarToggleStats');
+        const toggleAutosave = document.getElementById('bottomBarToggleAutosave');
+
+        if (toggleMode) toggleMode.checked = defaults.showModeToggle;
+        if (toggleBlog) toggleBlog.checked = defaults.showBlogSelector;
+        if (toggleStats) toggleStats.checked = defaults.showWordCount;
+        if (toggleAutosave) toggleAutosave.checked = defaults.showAutosaveBadge;
+
+        window.bottomBarSettings = defaults;
+        applyBottomBarSettings(defaults);
+        persistBottomBarSettings(defaults);
+
+        if (typeof showNotification === 'function') {
+            showNotification(window.t ? window.t('bottom_bar.saved_notification', 'Настройки нижней панели сохранены') : 'Настройки нижней панели сохранены', 'info');
+        }
+    }
+
+    /**
+     * Применяет настройки видимости элементов на нижней панели.
+     * @param {Object} settings
+     */
+    function applyBottomBarSettings(settings) {
+        if (!settings) return;
+
+        // 1. Режимы редактора («Визуально» / «Код»)
+        const modeToggle = document.getElementById('bottomModeToggle') || document.getElementById('headerModeToggle');
+        if (modeToggle) {
+            if (settings.showModeToggle === false) {
+                modeToggle.style.display = 'none';
+                if (typeof setMode === 'function') setMode('visual');
+            } else {
+                modeToggle.style.display = 'inline-flex';
+            }
+        }
+
+        // 2. Селектор блога
+        const blogSelectorContainer = document.getElementById('blogSelectorContainer');
+        const blogSelector = document.getElementById('blogSelector');
+        if (blogSelectorContainer) {
+            if (settings.showBlogSelector === false) {
+                blogSelectorContainer.style.display = 'none';
+            } else if (blogSelector && blogSelector.options.length > 1) {
+                blogSelectorContainer.style.display = 'inline-flex';
+            }
+        }
+
+        // 3. Счётчик слов и символов
+        const statsEl = document.getElementById('bottomBarStats');
+        if (statsEl) {
+            if (settings.showWordCount === true) {
+                statsEl.style.display = 'inline-flex';
+                updateBottomBarStats();
+            } else {
+                statsEl.style.display = 'none';
+            }
+        }
+
+        // 4. Индикатор автосохранения
+        const autosaveBadge = document.getElementById('autosaveBadge');
+        if (autosaveBadge) {
+            if (settings.showAutosaveBadge === false) {
+                autosaveBadge.style.display = 'none';
+            } else if (typeof autosaveEnabled !== 'undefined' && autosaveEnabled) {
+                autosaveBadge.style.display = 'inline-flex';
+            }
+        }
+    }
+
+    /**
+     * Пересчитывает и обновляет количество слов и символов на нижней панели.
+     */
+    function updateBottomBarStats() {
+        const statsEl = document.getElementById('bottomBarStats');
+        if (!statsEl || statsEl.style.display === 'none') return;
+
+        let text = '';
+        const isVisual = !document.body.classList.contains('code-mode');
+        if (isVisual) {
+            const visual = document.getElementById('contentVisual');
+            text = visual ? (visual.innerText || visual.textContent || '') : '';
+        } else {
+            const code = document.getElementById('content');
+            text = code ? code.value : '';
+        }
+
+        const trimmed = text.trim();
+        const words = trimmed ? (trimmed.match(/\S+/g) || []).length : 0;
+        const chars = text.length;
+
+        const wordsEl = document.getElementById('bottomBarWordCount');
+        const charsEl = document.getElementById('bottomBarCharCount');
+        if (wordsEl) wordsEl.textContent = words;
+        if (charsEl) charsEl.textContent = chars;
+    }
 
     // Закрытие контекстных меню при клике в любое место
     document.addEventListener('click', function() {
@@ -5326,6 +5608,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (menu) menu.style.display = 'none';
         const dividerMenu = document.getElementById('dividerDropdownMenu');
         if (dividerMenu) dividerMenu.style.display = 'none';
+        const bottomMenu = document.getElementById('bottomBarContextMenu');
+        if (bottomMenu) bottomMenu.style.display = 'none';
+    });
+
+    // Закрытие контекстного меню нижней панели при клике ПКМ вне нее
+    document.addEventListener('contextmenu', function(e) {
+        if (!e.target.closest('#editorBottomBar')) {
+            const bottomMenu = document.getElementById('bottomBarContextMenu');
+            if (bottomMenu) bottomMenu.style.display = 'none';
+        }
+    });
+
+    // Закрытие меню и боковой панели по клавише Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const bottomMenu = document.getElementById('bottomBarContextMenu');
+            if (bottomMenu && bottomMenu.style.display !== 'none') {
+                bottomMenu.style.display = 'none';
+            }
+            const drawer = document.getElementById('bottomBarCustomizerDrawer');
+            if (drawer && drawer.classList.contains('open')) {
+                closeBottomBarCustomizer();
+            }
+        }
     });
 </script>
 
@@ -5353,6 +5659,74 @@ document.addEventListener('DOMContentLoaded', function() {
     <button type="button" id="ctxToggleVisibility" class="context-menu-item" data-i18n="header.customizer_hide">Скрыть</button>
     <button type="button" id="ctxTogglePosition" class="context-menu-item" data-i18n="header.customizer_move_to_more">Перенести в "Прочее"</button>
 </div>
+
+<!-- Контекстное меню для нижней панели -->
+<div id="bottomBarContextMenu" class="customizer-context-menu" style="display: none; position: fixed;">
+    <button type="button" class="context-menu-item" onclick="openBottomBarCustomizer()" data-i18n="bottom_bar.customize">Настроить панель</button>
+</div>
+
+<!-- Оверлей и боковая панель кастомизации нижней панели (Drawer) -->
+<div id="bottomBarDrawerBackdrop" class="bottom-bar-drawer-backdrop" onclick="closeBottomBarCustomizer()"></div>
+<aside id="bottomBarCustomizerDrawer" class="bottom-bar-drawer" role="dialog" aria-modal="true" aria-label="Настройка нижней панели">
+    <div class="bottom-bar-drawer-header">
+        <div class="bottom-bar-drawer-titles">
+            <h3 class="bottom-bar-drawer-title" data-i18n="bottom_bar.drawer_title">Настройка нижней панели</h3>
+            <p class="bottom-bar-drawer-subtitle" data-i18n="bottom_bar.drawer_subtitle">Выберите элементы для отображения в строке состояния</p>
+        </div>
+        <button type="button" class="bottom-bar-drawer-close" onclick="closeBottomBarCustomizer()" data-i18n-aria="common.close" aria-label="Закрыть">×</button>
+    </div>
+
+    <div class="bottom-bar-drawer-body">
+        <label class="bottom-bar-option-card" for="bottomBarToggleMode">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_mode_toggle_title">Режимы («Визуально» / «Код»)</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_mode_toggle_desc">Переключение между визуальным редактором и кодом</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleMode" onchange="onBottomBarOptionChange('showModeToggle', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleBlog">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_blog_selector_title">Выбор блога</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_blog_selector_desc">Выпадающий список активного блога</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleBlog" onchange="onBottomBarOptionChange('showBlogSelector', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleStats">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_word_count_title">Счётчик слов и символов</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_word_count_desc">Статистика объёма текста текущей статьи</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleStats" onchange="onBottomBarOptionChange('showWordCount', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleAutosave">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_autosave_title">Индикатор автосохранения</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_autosave_desc">Таймер обратного отсчёта и статус сохранения</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleAutosave" onchange="onBottomBarOptionChange('showAutosaveBadge', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+    </div>
+
+    <div class="bottom-bar-drawer-footer">
+        <button type="button" class="bottom-bar-drawer-btn bottom-bar-drawer-btn-ghost" onclick="resetBottomBarSettings()" data-i18n="bottom_bar.reset_defaults">По умолчанию</button>
+        <button type="button" class="bottom-bar-drawer-btn bottom-bar-drawer-btn-primary" onclick="saveBottomBarCustomizer()" data-i18n="common.save">Сохранить</button>
+    </div>
+</aside>
 
 <!-- Диалог восстановления сессии -->
 <?php safe_include_editor_modal('session_expired_modal.php'); ?>

@@ -187,6 +187,24 @@
         "color_cell": "Перекрасить ячейку",
         "delete_table": "Удалить таблицу"
     },
+    "bottom_bar": {
+        "customize": "Настроить панель",
+        "drawer_title": "Настройка нижней панели",
+        "drawer_subtitle": "Выберите элементы для отображения в строке состояния",
+        "item_mode_toggle_title": "Режимы («Визуально» / «Код»)",
+        "item_mode_toggle_desc": "Переключение между визуальным редактором и кодом",
+        "item_blog_selector_title": "Выбор блога",
+        "item_blog_selector_desc": "Выпадающий список активного блога",
+        "item_word_count_title": "Счётчик слов и символов",
+        "item_word_count_desc": "Статистика объёма текста текущей статьи",
+        "item_autosave_title": "Индикатор автосохранения",
+        "item_autosave_desc": "Таймер обратного отсчёта и статус сохранения",
+        "reset_defaults": "По умолчанию",
+        "saved_notification": "Настройки нижней панели сохранены",
+        "words_count": "Слов",
+        "chars_count": "Символов",
+        "stats_tooltip": "Статистика текста"
+    },
     "settings": {
         "title": "Параметры",
         "subtitle": "Глобальные настройки блога, интерфейса, безопасности и интеграций",

@@ -1958,6 +1958,9 @@
         if (typeof updateAutosaveBadge === 'function') {
             updateAutosaveBadge();
         }
+        if (typeof updateBottomBarStats === 'function') {
+            updateBottomBarStats();
+        }
     };
 
     // --- Keyboard & Selection Event Listeners ---

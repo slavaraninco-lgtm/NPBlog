@@ -53,6 +53,16 @@ if (isset($data['hideEditorModeButtons'])) {
     $existingSettings['hideEditorModeButtons'] = (bool)$data['hideEditorModeButtons'];
 }
 
+if (isset($data['bottomBar']) && is_array($data['bottomBar'])) {
+    $existingSettings['bottomBar'] = [
+        'showModeToggle' => !empty($data['bottomBar']['showModeToggle']),
+        'showBlogSelector' => !empty($data['bottomBar']['showBlogSelector']),
+        'showWordCount' => !empty($data['bottomBar']['showWordCount']),
+        'showAutosaveBadge' => !empty($data['bottomBar']['showAutosaveBadge'])
+    ];
+    $existingSettings['hideEditorModeButtons'] = empty($data['bottomBar']['showModeToggle']);
+}
+
 if (isset($data['language'])) {
     $lang = strtolower(trim($data['language']));
     if (isValidLanguageCode($lang)) {
