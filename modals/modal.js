@@ -766,7 +766,7 @@
             // Play Web Animations API flyout entrance
             if (typeof this.dialog.animate === 'function') {
                 const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                const duration = prefersReducedMotion ? 1 : 400;
+                const duration = prefersReducedMotion ? 1 : 340;
 
                 const startTransform = `translate3d(${fly.x}px, ${fly.y}px, 0) scale(${fly.scaleX}, ${fly.scaleY})`;
                 const targetTransform = 'translate3d(0, 0, 0) scale(1, 1)';
@@ -784,7 +784,7 @@
                     }
                 ], {
                     duration: duration,
-                    easing: 'cubic-bezier(0.175, 0.885, 0.32, 1.12)',
+                    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
                     fill: 'both'
                 });
 

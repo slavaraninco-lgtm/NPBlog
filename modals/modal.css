@@ -16,7 +16,7 @@
     --modal-radius: 14px;
     --modal-radius-inner: 10px;
     --modal-transition-speed: 0.28s;
-    --modal-transition-ease: cubic-bezier(0.175, 0.885, 0.32, 1.12);
+    --modal-transition-ease: cubic-bezier(0.16, 1, 0.3, 1);
     --modal-transition-fast: 0.2s;
     
     /* Colors fallback if not defined in editor */
