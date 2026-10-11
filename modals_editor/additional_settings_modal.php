@@ -98,8 +98,11 @@
                 <div class="modal-section-title" style="margin-bottom: 12px; font-weight: 600; font-size: 14px;" data-i18n="settings.bg_overlay_section">Подложка под статью</div>
 
                 <div class="modal-form-group" style="margin-bottom: 12px;">
-                    <label class="modal-checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
-                        <input type="checkbox" id="overlayEnabled" onchange="toggleOverlaySettings()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; margin-bottom: 0;">
+                        <div class="modal-switch-control">
+                            <input type="checkbox" id="overlayEnabled" onchange="toggleOverlaySettings()">
+                            <span class="modal-switch-slider"></span>
+                        </div>
                         <span data-i18n="settings.bg_overlay_enable">Включить подложку под статью</span>
                     </label>
                 </div>

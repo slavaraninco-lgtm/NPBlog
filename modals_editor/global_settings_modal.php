@@ -134,9 +134,12 @@ if (!isset($availableLanguages)) {
                     </div>
                     
                     <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); margin-bottom: 20px;">
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
-                            <input type="checkbox" id="hidePoweredByCheckbox" onchange="savePoweredBySetting(this.checked)" style="width: 18px; height: 18px; cursor: pointer;">
-                            <span style="color: var(--text-color); font-weight: 500; font-size: 13px;" data-i18n="settings.bg_hide_powered_by">Скрыть надпись "Powered by NPBlog" в статьях</span>
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="hidePoweredByCheckbox" onchange="savePoweredBySetting(this.checked)">
+                                <span class="modal-switch-slider"></span>
+                            </div>
+                            <span style="color: var(--text-color); font-weight: 500; font-size: 13.5px;" data-i18n="settings.bg_hide_powered_by">Скрыть надпись "Powered by NPBlog" в статьях</span>
                         </label>
                     </div>
                     
@@ -203,8 +206,11 @@ if (!isset($availableLanguages)) {
                         </div>
 
                         <div id="crossBlogNavEditor" style="display: none;">
-                            <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                                <input type="checkbox" id="enableCrossBlogNav" onchange="toggleCrossBlogNavUI()" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px; cursor: pointer;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="enableCrossBlogNav" onchange="toggleCrossBlogNavUI()">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.blogview_crossblog_enable">Кнопки к разным блогам</span>
                             </label>
                             
@@ -227,8 +233,11 @@ if (!isset($availableLanguages)) {
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.autosave_desc">Настройте автоматическое сохранение статей во время редактирования.</p>
                     
                     <div style="margin-bottom: 20px;">
-                        <label style="display: flex; align-items: center; margin-bottom: 18px; cursor: pointer;">
-                            <input type="checkbox" id="autosaveEnabled" onchange="toggleAutosavePreview()" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; margin-bottom: 18px; cursor: pointer;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="autosaveEnabled" onchange="toggleAutosavePreview()">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.autosave_enable">Включить автосохранение</span>
                         </label>
                         
@@ -253,18 +262,27 @@ if (!isset($availableLanguages)) {
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.appearance_desc">Настройте внешний вид редактора статей.</p>
                     
                     <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="amoledTheme" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="amoledTheme">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.app_amoled">Включить абсолютно черный фон (для AMOLED дисплеев)</span>
                         </label>
                         
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="smoothTyping" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="smoothTyping">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.app_smooth_typing">Включить плавную печать текста (мягкий курсор)</span>
                         </label>
                         
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="headerBottomPosition" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="headerBottomPosition">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.app_header_bottom">Переместить панель управления в низ экрана</span>
                         </label>
 
@@ -293,18 +311,27 @@ if (!isset($availableLanguages)) {
                     
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px;">
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" id="enableUndoRedo" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="enableUndoRedo">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.exp_undo_redo">Включить Undo/Redo (отмена/возврат изменений)</span>
                             </label>
                             
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" id="enableMarkdown" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="enableMarkdown">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.exp_markdown">Использовать Markdown</span>
                             </label>
                             
-                            <label style="display: flex; align-items: flex-start; cursor: pointer;">
-                                <input type="checkbox" id="enableApi" style="width: 18px; height: 18px; margin-right: 10px; margin-top: 2px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                                <div class="modal-switch-control" style="margin-top: 2px;">
+                                    <input type="checkbox" id="enableApi">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <div>
                                     <span style="color: var(--text-color); font-weight: 500; font-size: 14px; display: block;" data-i18n="settings.exp_enable_api">Включить REST API (мобильные приложения и сторонние редакторы)</span>
                                     <span style="color: var(--text-color); font-size: 12px; opacity: 0.7; display: block; margin-top: 3px;" data-i18n="settings.exp_enable_api_desc">Разрешает доступ к эндпоинтам /api/v1/... Снимите флажок, чтобы полностью отключить API в целях безопасности.</span>
@@ -383,11 +410,14 @@ if (!isset($availableLanguages)) {
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.rss_feed_desc">Настройте автоматическую генерацию RSS ленты (XML-файла) для вашего блога.</p>
                     
                     <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="rssFeedEnabled" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 8px;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="rssFeedEnabled">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.rss_feed_enable">Включить автоматическую генерацию RSS</span>
                         </label>
-                        <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin-top: 8px;" data-i18n-html="settings.rss_feed_enable_hint">
+                        <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin: 0; padding-left: 52px;" data-i18n-html="settings.rss_feed_enable_hint">
                             Если включено, файл <code>feed.xml</code> будет создаваться и обновляться автоматически в корне папки <code>data</code> при сохранении/редактировании/удалении статей.
                         </p>
                     </div>
@@ -412,11 +442,14 @@ if (!isset($availableLanguages)) {
                         </div>
                         
                         <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" id="rssFeedUseFirstLine" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 6px;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="rssFeedUseFirstLine">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.rss_feed_first_line">Брать только первую строку статьи в описание</span>
                             </label>
-                            <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin-top: 6px;" data-i18n="settings.rss_feed_first_line_hint">
+                            <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin: 0; padding-left: 52px;" data-i18n="settings.rss_feed_first_line_hint">
                                 Если включено, в содержание поста для RSS будет попадать только первая текстовая строка. Если выключено — будет передаваться весь HTML-код содержимого статьи.
                             </p>
                         </div>
@@ -533,8 +566,11 @@ if (!isset($availableLanguages)) {
                     <div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border-color);">
                         <!-- Вариант 1: Пароль не установлен -->
                         <div id="securityPasswordNotSet" style="display: block;">
-                            <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                                <input type="checkbox" id="settingsPasswordEnabled" onchange="togglePasswordFieldsVisibility()" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px; cursor: pointer;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="settingsPasswordEnabled" onchange="togglePasswordFieldsVisibility()">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.sec_pwd_enable">Включить защиту паролем</span>
                             </label>
                             
@@ -589,11 +625,14 @@ if (!isset($availableLanguages)) {
                     </div>
                     
                     <div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border-color);">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="settingsIpWhitelistEnabled" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 6px;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="settingsIpWhitelistEnabled">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.sec_ip_enable">Ограничить доступ по списку IP (allowed_ips.txt)</span>
                         </label>
-                        <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin-top: 6px;" data-i18n-html="settings.sec_ip_hint">
+                        <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin: 0; padding-left: 52px;" data-i18n-html="settings.sec_ip_hint">
                             Если включено, доступ к редактору и всем его функциям будет разрешен только с IP-адресов, перечисленных в файле <code>allowed_ips.txt</code> в корне проекта. При включении ваш текущий IP-адрес будет автоматически добавлен в список, чтобы вы не потеряли доступ.
                         </p>
                     </div>

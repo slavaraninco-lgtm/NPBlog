@@ -872,17 +872,31 @@ body.modal-is-dragging * {
     left: 3px;
     bottom: 3px;
     background-color: white;
-    transition: .24s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform .24s cubic-bezier(0.16, 1, 0.3, 1), background-color .2s ease;
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.modal-switch-control:hover .modal-switch-slider {
+    background-color: rgba(128, 128, 128, 0.4);
+}
+
+.modal-switch-control input:focus-visible + .modal-switch-slider {
+    outline: 2px solid var(--modal-color-primary);
+    outline-offset: 2px;
 }
 
 .modal-switch-control input:checked + .modal-switch-slider {
     background-color: var(--modal-color-primary);
 }
 
+.modal-switch-control:hover input:checked + .modal-switch-slider {
+    background-color: var(--modal-color-primary-hover, var(--modal-color-primary));
+}
+
 .modal-switch-control input:checked + .modal-switch-slider:before {
     transform: translateX(18px);
+    background-color: var(--modal-color-primary-text, #ffffff);
 }
 
 /* File Dropzone Area */
