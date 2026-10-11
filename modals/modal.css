@@ -15,8 +15,8 @@
     --modal-z-index-base: 10000;
     --modal-radius: 14px;
     --modal-radius-inner: 10px;
-    --modal-transition-speed: 0.36s;
-    --modal-transition-ease: cubic-bezier(0.2, 0.9, 0.3, 1);
+    --modal-transition-speed: 0.28s;
+    --modal-transition-ease: cubic-bezier(0.175, 0.885, 0.32, 1.12);
     --modal-transition-fast: 0.2s;
     
     /* Colors fallback if not defined in editor */
@@ -189,7 +189,7 @@ body.modal-open {
     overflow-x: hidden;
     overflow-y: auto;
     opacity: 0;
-    transition: opacity var(--modal-transition-speed) ease;
+    opacity: 0;
 }
 
 .modal-overlay.is-active,
@@ -197,14 +197,14 @@ body.modal-open {
 .np-modal-overlay.is-active {
     display: flex;
     opacity: 1;
-    animation: modalBackdropFadeIn var(--modal-transition-speed) ease forwards;
+    animation: modalBackdropFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .modal-overlay.is-closing,
 .modal-backdrop.is-closing,
 .np-modal-overlay.is-closing {
     opacity: 0;
-    animation: modalBackdropFadeOut var(--modal-transition-speed) ease forwards;
+    animation: modalBackdropFadeOut 0.24s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     pointer-events: none;
 }
 
@@ -230,15 +230,33 @@ body.modal-open {
     box-sizing: border-box;
     overflow: hidden;
     transform-origin: center center;
-    opacity: 0;
-    animation: modalZoomIn var(--modal-transition-speed) var(--modal-transition-ease) forwards;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, width 0.2s ease, max-width 0.2s ease;
+
+    /* Base resting state (Web Animations API drives dynamic flyout entrance & exit) */
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    opacity: 1;
+    transition: box-shadow 0.2s ease,
+        border-color 0.2s ease,
+        width 0.2s ease,
+        max-width 0.2s ease;
+    will-change: transform, opacity;
 }
 
+/* Active State */
+.modal-overlay.is-active:not(.is-closing) .modal-dialog,
+.modal-overlay.is-active:not(.is-closing) .modal-window,
+.modal-overlay.is-active:not(.is-closing) .modal-container,
+.modal-overlay.is-active:not(.is-closing) .np-modal-dialog {
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    opacity: 1;
+    border-radius: var(--modal-radius);
+}
+
+/* Closing State */
 .modal-overlay.is-closing .modal-dialog,
 .modal-overlay.is-closing .modal-window,
+.modal-overlay.is-closing .modal-container,
 .modal-backdrop.is-closing .modal-dialog {
-    animation: modalZoomOut var(--modal-transition-speed) ease forwards;
+    pointer-events: none;
 }
 
 /* Shake feedback animation */
@@ -248,12 +266,12 @@ body.modal-open {
 }
 
 /* Slide animation variants */
-.modal-slide-down .modal-dialog {
-    animation-name: modalSlideDown;
+.modal-slide-down.is-active:not(.is-closing) .modal-dialog {
+    animation: modalSlideDown 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.modal-slide-up .modal-dialog {
-    animation-name: modalSlideUp;
+.modal-slide-up.is-active:not(.is-closing) .modal-dialog {
+    animation: modalSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ==============================================================================

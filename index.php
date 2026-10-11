@@ -4469,9 +4469,15 @@ function openImageEditorModal(imgElement) {
     imgEditorCanvas = document.getElementById('imgEditorCanvas');
     imgEditorCtx = imgEditorCanvas.getContext('2d');
     
-    const modal = document.getElementById('imageEditorModal');
-    modal.style.display = 'flex';
-    modal.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#imageEditorModal', { trigger: imgElement });
+    } else {
+        const modal = document.getElementById('imageEditorModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+        }
+    }
     
     const tempImg = new Image();
     tempImg.crossOrigin = 'anonymous'; 
@@ -4491,9 +4497,15 @@ function openImageEditorModal(imgElement) {
 }
 
 function closeImgEditorModal() {
-    const modal = document.getElementById('imageEditorModal');
-    modal.style.display = 'none';
-    modal.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#imageEditorModal');
+    } else {
+        const modal = document.getElementById('imageEditorModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+        }
+    }
     imgEditorTargetImg = null;
 }
 
