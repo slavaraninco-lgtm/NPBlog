@@ -70,6 +70,13 @@ h1 {
     overflow-wrap: break-word;
 }
 
+.content::after,
+.post-content::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
 .content hr {
     display: block;
     clear: both;
@@ -111,6 +118,64 @@ h1 {
     width: 100%;
     clear: both;
     position: relative;
+    box-sizing: border-box;
+}
+
+.blog-image-align-wrap.align-left {
+    display: block;
+    text-align: left;
+    margin: 14px 0;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-center {
+    display: block;
+    text-align: center;
+    margin: 14px auto;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-right {
+    display: block;
+    text-align: right;
+    margin: 14px 0;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-float-left {
+    display: block;
+    float: left;
+    clear: none;
+    width: auto;
+    max-width: 70%;
+    margin: 6px 20px 14px 0;
+    text-align: left;
+}
+
+.blog-image-align-wrap.align-float-right {
+    display: block;
+    float: right;
+    clear: none;
+    width: auto;
+    max-width: 70%;
+    margin: 6px 0 14px 20px;
+    text-align: right;
+}
+
+@media (max-width: 640px) {
+    .blog-image-align-wrap.align-float-left,
+    .blog-image-align-wrap.align-float-right {
+        float: none !important;
+        max-width: 100% !important;
+        margin: 14px auto !important;
+        clear: both !important;
+    }
 }
 .blog-image-wrap {
     position: relative;

@@ -52,5 +52,17 @@
         ],
         "deleted": true,
         "deletedAt": "17.10.2026 20:29"
+    },
+    "4": {
+        "postId": 4,
+        "postTitle": "тест обтекания текста",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "4-1.html",
+                "date": "18.10.2026 00:02",
+                "title": "тест обтекания текста"
+            }
+        ]
     }
 }

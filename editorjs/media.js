@@ -245,6 +245,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const forbidden = temp.querySelectorAll('script, style, link, meta, base, xml, object, embed, applet, iframe, form, input, button, select, textarea, o\\:p');
         forbidden.forEach(el => el.remove());
 
+        // Очищаем специфический мусор Википедии: сноски-ссылки ([1], [2]), кнопки [править] и скрытые элементы
+        const wikiNoise = temp.querySelectorAll('sup.reference, sup.mw-ref, span.mw-editsection, .noprint, .mw-cite-backlink');
+        wikiNoise.forEach(el => el.remove());
+
         // Удаляем HTML-комментарии (например от Word <!--[if ...]-->)
         const removeComments = function (element) {
             for (let i = element.childNodes.length - 1; i >= 0; i--) {
@@ -258,6 +262,21 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         removeComments(temp);
 
+        // Разворачиваем гиперссылки (<a>), сохраняя их текст и внутреннее форматирование (жирный, курсив и т.д.)
+        const links = Array.from(temp.querySelectorAll('a'));
+        links.forEach(link => {
+            // Сохраняем специальные кнопки-виджеты блога (.custom-blog-btn)
+            if (link.classList.contains('custom-blog-btn')) {
+                return;
+            }
+            const parent = link.parentNode;
+            if (!parent) return;
+            while (link.firstChild) {
+                parent.insertBefore(link.firstChild, link);
+            }
+            parent.removeChild(link);
+        });
+
         // Очищаем атрибуты и инлайн-стили
         const allNodes = temp.querySelectorAll('*');
         allNodes.forEach(node => {
@@ -269,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 // Очищаем классы от стилей Word/сторонних библиотек
                 if (name === 'class') {
-                    const safeClasses = Array.from(node.classList).filter(c => c.startsWith('blog-') || c === 'content' || c === 'table-container');
+                    const safeClasses = Array.from(node.classList).filter(c => c.startsWith('blog-') || c === 'content' || c === 'table-container' || c === 'custom-blog-btn');
                     if (safeClasses.length) {
                         node.className = safeClasses.join(' ');
                     } else {
@@ -300,10 +319,12 @@ document.addEventListener('DOMContentLoaded', function () {
             // Разворачиваем устаревшие теги <font>
             if (node.tagName === 'FONT') {
                 const parent = node.parentNode;
-                while (node.firstChild) {
-                    parent.insertBefore(node.firstChild, node);
+                if (parent) {
+                    while (node.firstChild) {
+                        parent.insertBefore(node.firstChild, node);
+                    }
+                    parent.removeChild(node);
                 }
-                parent.removeChild(node);
             }
         });
 
@@ -363,14 +384,23 @@ document.addEventListener('DOMContentLoaded', function () {
         // Smart Paste Sanitization for Visual Mode
         if (editorMode === 'visual') {
             const html = clipboardData.getData('text/html');
-            if (html && (html.includes('MsoNormal') || html.includes('style=') || html.includes('<!--[if') || html.includes('<font') || html.includes('<span'))) {
+            if (html) {
                 e.preventDefault();
                 const cleanHtml = sanitizePastedHtml(html);
                 if (cleanHtml) {
-                    document.execCommand('insertHTML', false, cleanHtml);
+                    let inserted = false;
+                    try {
+                        inserted = document.execCommand('insertHTML', false, cleanHtml);
+                    } catch (err) { }
+                    if (!inserted && typeof VisualEngine !== 'undefined' && typeof VisualEngine.insertHTML === 'function') {
+                        VisualEngine.insertHTML(cleanHtml);
+                    }
                 } else {
                     const text = clipboardData.getData('text/plain');
                     if (text) document.execCommand('insertText', false, text);
+                }
+                if (typeof wrapExistingEditorImages === 'function') {
+                    wrapExistingEditorImages();
                 }
                 markEditorDirty();
                 saveToHistory();
@@ -1175,6 +1205,100 @@ function wrapMediaWithControls(mediaHtml, type = 'video') {
         '<div class="blog-image-wrap" style="position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;" data-media-type="' + type + '">' + mediaHtml + '</div></div>';
 }
 
+function getMediaAlignment(alignWrap) {
+    if (!alignWrap) return 'left';
+    var dataAlign = alignWrap.getAttribute('data-align');
+    if (dataAlign) return dataAlign;
+
+    if (alignWrap.classList.contains('align-float-left') || alignWrap.style.float === 'left') {
+        return 'float-left';
+    }
+    if (alignWrap.classList.contains('align-float-right') || alignWrap.style.float === 'right') {
+        return 'float-right';
+    }
+    if (alignWrap.classList.contains('align-center') || alignWrap.style.textAlign === 'center') {
+        return 'center';
+    }
+    if (alignWrap.classList.contains('align-right') || alignWrap.style.textAlign === 'right') {
+        return 'right';
+    }
+    return 'left';
+}
+window.getMediaAlignment = getMediaAlignment;
+
+function applyMediaAlignment(alignWrap, align) {
+    if (!alignWrap) return;
+
+    alignWrap.classList.remove('align-float-left', 'align-float-right', 'align-center', 'align-left', 'align-right');
+    alignWrap.setAttribute('data-align', align);
+
+    if (align === 'float-left') {
+        alignWrap.classList.add('align-float-left');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'left';
+        alignWrap.style.clear = 'none';
+        alignWrap.style.width = 'auto';
+        alignWrap.style.maxWidth = '70%';
+        alignWrap.style.margin = '6px 20px 14px 0';
+        alignWrap.style.textAlign = 'left';
+        alignWrap.style.position = 'relative';
+
+        if (!alignWrap.nextElementSibling || alignWrap.nextElementSibling.classList.contains('blog-image-align-wrap')) {
+            var p = document.createElement('p');
+            p.innerHTML = '<br>';
+            alignWrap.parentNode.insertBefore(p, alignWrap.nextSibling);
+        }
+    } else if (align === 'float-right') {
+        alignWrap.classList.add('align-float-right');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'right';
+        alignWrap.style.clear = 'none';
+        alignWrap.style.width = 'auto';
+        alignWrap.style.maxWidth = '70%';
+        alignWrap.style.margin = '6px 0 14px 20px';
+        alignWrap.style.textAlign = 'right';
+        alignWrap.style.position = 'relative';
+
+        if (!alignWrap.nextElementSibling || alignWrap.nextElementSibling.classList.contains('blog-image-align-wrap')) {
+            var p = document.createElement('p');
+            p.innerHTML = '<br>';
+            alignWrap.parentNode.insertBefore(p, alignWrap.nextSibling);
+        }
+    } else if (align === 'center') {
+        alignWrap.classList.add('align-center');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'none';
+        alignWrap.style.clear = 'both';
+        alignWrap.style.width = '100%';
+        alignWrap.style.maxWidth = '';
+        alignWrap.style.margin = '14px auto';
+        alignWrap.style.textAlign = 'center';
+        alignWrap.style.position = 'relative';
+    } else if (align === 'right') {
+        alignWrap.classList.add('align-right');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'none';
+        alignWrap.style.clear = 'both';
+        alignWrap.style.width = '100%';
+        alignWrap.style.maxWidth = '';
+        alignWrap.style.margin = '14px 0';
+        alignWrap.style.textAlign = 'right';
+        alignWrap.style.position = 'relative';
+    } else {
+        alignWrap.classList.add('align-left');
+        alignWrap.setAttribute('data-align', 'left');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'none';
+        alignWrap.style.clear = 'both';
+        alignWrap.style.width = '100%';
+        alignWrap.style.maxWidth = '';
+        alignWrap.style.margin = '14px 0';
+        alignWrap.style.textAlign = 'left';
+        alignWrap.style.position = 'relative';
+    }
+}
+window.applyMediaAlignment = applyMediaAlignment;
+
 function wrapExistingEditorImages() {
     var ve = document.getElementById('contentVisual');
     if (!ve || ve.style.display === 'none') return;
@@ -1211,17 +1335,14 @@ function wrapExistingEditorImages() {
         if (!alignWrap) {
             alignWrap = document.createElement('div');
             alignWrap.className = 'blog-image-align-wrap';
-            alignWrap.style.textAlign = 'left';
             alignWrap.setAttribute('data-image-id', 'gallery-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
             wrap.parentNode.insertBefore(alignWrap, wrap);
             alignWrap.appendChild(wrap);
+            applyMediaAlignment(alignWrap, 'left');
+        } else {
+            var currentAlign = getMediaAlignment(alignWrap);
+            applyMediaAlignment(alignWrap, currentAlign);
         }
-
-        alignWrap.style.display = 'block';
-        alignWrap.style.margin = '14px 0';
-        alignWrap.style.width = '100%';
-        alignWrap.style.clear = 'both';
-        alignWrap.style.position = 'relative';
     });
 
     var imgs = ve.querySelectorAll('img.blog-image, img[src], video, audio, iframe, pre.code-block, a.custom-blog-btn');
@@ -1269,16 +1390,14 @@ function wrapExistingEditorImages() {
         if (!alignWrap) {
             alignWrap = document.createElement('div');
             alignWrap.className = 'blog-image-align-wrap';
-            alignWrap.style.textAlign = 'left';
             alignWrap.setAttribute('data-image-id', type + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
             wrap.parentNode.insertBefore(alignWrap, wrap);
             alignWrap.appendChild(wrap);
+            applyMediaAlignment(alignWrap, 'left');
+        } else {
+            var currentAlign = getMediaAlignment(alignWrap);
+            applyMediaAlignment(alignWrap, currentAlign);
         }
-        alignWrap.style.display = 'block';
-        alignWrap.style.margin = '14px 0';
-        alignWrap.style.width = '100%';
-        alignWrap.style.clear = 'both';
-        alignWrap.style.position = 'relative';
 
         if (type === 'img') {
             img.style.display = 'block';
@@ -1347,7 +1466,7 @@ function showGlobalMediaOverlay(mediaWrap) {
     resizeHandles.forEach(h => h.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'block');
 
     var alignWrap = mediaWrap.closest('.blog-image-align-wrap');
-    var align = alignWrap ? (alignWrap.style.textAlign || 'left') : 'left';
+    var align = getMediaAlignment(alignWrap);
     overlay.querySelectorAll('.image-align-option').forEach(function (opt) {
         if (opt.getAttribute('data-align') === align) {
             opt.classList.add('active');
@@ -1357,7 +1476,10 @@ function showGlobalMediaOverlay(mediaWrap) {
     });
 
     var dropdown = overlay.querySelector('.image-align-dropdown');
-    if (dropdown) dropdown.style.display = 'none';
+    if (dropdown) {
+        dropdown.style.display = 'none';
+        dropdown.classList.remove('show');
+    }
     var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
     if (alignBtn) alignBtn.classList.remove('active');
 }
@@ -1366,6 +1488,13 @@ function hideGlobalMediaOverlay() {
     var overlay = document.getElementById('editorGlobalMediaOverlay');
     if (overlay) {
         overlay.style.display = 'none';
+        var dropdown = overlay.querySelector('.image-align-dropdown');
+        if (dropdown) {
+            dropdown.style.display = 'none';
+            dropdown.classList.remove('show');
+        }
+        var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
+        if (alignBtn) alignBtn.classList.remove('active');
     }
     activeTarget = null;
 }
@@ -1462,6 +1591,12 @@ function initGlobalMediaOverlayDOM() {
     overlay.className = 'editor-global-media-overlay';
     overlay.style.cssText = 'display: none; position: absolute; pointer-events: none; z-index: 990;';
 
+    var tFloatLeft = (typeof window.t === 'function') ? window.t('toolbar.align_float_left', 'Обтекание слева') : 'Обтекание слева';
+    var tFloatRight = (typeof window.t === 'function') ? window.t('toolbar.align_float_right', 'Обтекание справа') : 'Обтекание справа';
+    var tCenter = (typeof window.t === 'function') ? window.t('toolbar.align_center', 'По центру') : 'По центру';
+    var tLeft = (typeof window.t === 'function') ? window.t('toolbar.align_left', 'По левому краю') : 'По левому краю';
+    var tRight = (typeof window.t === 'function') ? window.t('toolbar.align_right', 'По правому краю') : 'По правому краю';
+
     overlay.innerHTML =
         '<div class="media-overlay-outline" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; box-shadow: 0 0 0 2px var(--primary-color, #4CAF50); pointer-events: none; border-radius: 8px;"></div>' +
         '<div class="image-toolbar" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); padding: 6px; border-radius: 10px; z-index: 10; pointer-events: auto;">' +
@@ -1470,10 +1605,12 @@ function initGlobalMediaOverlayDOM() {
         '    <button type="button" class="image-toolbar-btn" data-action="edit" title="Редактировать">✏️</button>' +
         '    <button type="button" class="image-toolbar-btn" data-action="delete" title="Удалить">🗑</button>' +
         '</div>' +
-        '<div class="image-align-dropdown" style="position: absolute; top: 48px; right: 8px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); border-radius: 10px; padding: 6px; display: none; flex-direction: column; gap: 4px; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 20; pointer-events: auto;">' +
-        '    <button type="button" class="image-align-option" data-align="left"><span>◄</span> По левому краю</button>' +
-        '    <button type="button" class="image-align-option" data-align="center"><span>≡</span> По центру</button>' +
-        '    <button type="button" class="image-align-option" data-align="right"><span>►</span> По правому краю</button>' +
+        '<div class="image-align-dropdown" style="position: absolute; top: 48px; right: 8px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); border-radius: 10px; padding: 6px; display: none; flex-direction: column; gap: 4px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 20; pointer-events: auto;">' +
+        '    <button type="button" class="image-align-option" data-align="float-left" title="Картинка слева, текст справа"><span>◧</span> ' + tFloatLeft + '</button>' +
+        '    <button type="button" class="image-align-option" data-align="float-right" title="Картинка справа, текст слева"><span>◨</span> ' + tFloatRight + '</button>' +
+        '    <button type="button" class="image-align-option" data-align="center" title="По центру (без обтекания)"><span>≡</span> ' + tCenter + '</button>' +
+        '    <button type="button" class="image-align-option" data-align="left" title="По левому краю (без обтекания)"><span>◄</span> ' + tLeft + '</button>' +
+        '    <button type="button" class="image-align-option" data-align="right" title="По правому краю (без обтекания)"><span>►</span> ' + tRight + '</button>' +
         '</div>' +
         '<div class="image-size-indicator" style="position: absolute; bottom: 8px; left: 8px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-family: monospace; pointer-events: none;"></div>' +
         '<div class="image-resize-handle bottom-right" style="position: absolute; width: 12px; height: 12px; background: var(--primary-color, #4CAF50); border: 2px solid #fff; border-radius: 50%; cursor: nwse-resize; z-index: 11; bottom: -6px; right: -6px; pointer-events: auto;"></div>' +
@@ -1514,12 +1651,24 @@ function initGlobalMediaOverlayDOM() {
 
             if (action === 'align') {
                 if (dropdown) {
-                    var isOpen = dropdown.style.display === 'flex';
-                    dropdown.style.display = isOpen ? 'none' : 'flex';
-                    if (!isOpen) {
-                        toolbarBtn.classList.add('active');
-                    } else {
+                    var isOpen = dropdown.classList.contains('show') || dropdown.style.display === 'flex';
+                    if (isOpen) {
+                        dropdown.style.display = 'none';
+                        dropdown.classList.remove('show');
                         toolbarBtn.classList.remove('active');
+                    } else {
+                        dropdown.style.display = 'flex';
+                        dropdown.classList.add('show');
+                        toolbarBtn.classList.add('active');
+
+                        var dRect = dropdown.getBoundingClientRect();
+                        if (dRect.left < 8) {
+                            dropdown.style.left = '8px';
+                            dropdown.style.right = 'auto';
+                        } else {
+                            dropdown.style.left = 'auto';
+                            dropdown.style.right = '8px';
+                        }
                     }
                 }
             } else if (action === 'resize') {
@@ -1594,7 +1743,7 @@ function initGlobalMediaOverlayDOM() {
             var align = alignOption.getAttribute('data-align');
             var alignWrap = activeTarget ? activeTarget.closest('.blog-image-align-wrap') : null;
             if (alignWrap) {
-                alignWrap.style.textAlign = align;
+                applyMediaAlignment(alignWrap, align);
 
                 overlay.querySelectorAll('.image-align-option').forEach(function (opt) {
                     opt.classList.remove('active');
@@ -1602,11 +1751,20 @@ function initGlobalMediaOverlayDOM() {
                 alignOption.classList.add('active');
 
                 var dropdown = overlay.querySelector('.image-align-dropdown');
-                if (dropdown) dropdown.style.display = 'none';
+                if (dropdown) {
+                    dropdown.style.display = 'none';
+                    dropdown.classList.remove('show');
+                }
                 var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
                 if (alignBtn) alignBtn.classList.remove('active');
 
                 updateOverlayPosition();
+                if (typeof saveToHistory === 'function') {
+                    saveToHistory();
+                }
+                if (typeof markEditorDirty === 'function') {
+                    markEditorDirty();
+                }
             }
         }
     });
@@ -2004,14 +2162,17 @@ initImageAlignmentHandlers();
         contentTa.addEventListener('keydown', onUndoRedoShortcut);
     }
 
-    // Позволяет кликнуть по пустому пространству редактора ниже последнего блока для продолжения ввода
+    // Позволяет кликнуть по пустому пространству редактора ниже последнего блока или сбоку от обтекаемого элемента для продолжения ввода
     contentVisual.addEventListener('click', function (e) {
         if (e.target !== contentVisual) return;
         const lastEl = contentVisual.lastElementChild;
         if (!lastEl) return;
         const rect = lastEl.getBoundingClientRect();
-        if (e.clientY > rect.bottom) {
-            // Кликнули ниже всех элементов редактора
+        const isFloated = lastEl.classList.contains('align-float-left') || lastEl.classList.contains('align-float-right');
+        const clickedBelow = e.clientY > rect.bottom;
+        const clickedBeside = isFloated && (e.clientY >= rect.top && e.clientY <= rect.bottom);
+
+        if (clickedBelow || clickedBeside) {
             if (lastEl.tagName === 'P' && typeof VisualEngine !== 'undefined' && VisualEngine.isEmpty(lastEl)) {
                 VisualEngine.setCursorToEnd(lastEl);
                 VisualEngine.saveSelection();

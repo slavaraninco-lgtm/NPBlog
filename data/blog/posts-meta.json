@@ -16,5 +16,11 @@
         "title": "NPBlog 2.xxx",
         "date": "17.10.2026 10:13",
         "filename": "post-3.html"
+    },
+    {
+        "id": 4,
+        "title": "тест обтекания текста",
+        "date": "18.10.2026 00:02",
+        "filename": "post-4.html"
     }
 ]

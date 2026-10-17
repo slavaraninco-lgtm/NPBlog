@@ -633,6 +633,64 @@ textarea {
     width: 100%;
     clear: both;
     position: relative;
+    box-sizing: border-box;
+}
+
+.blog-image-align-wrap.align-left {
+    display: block;
+    text-align: left;
+    margin: 14px 0;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-center {
+    display: block;
+    text-align: center;
+    margin: 14px auto;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-right {
+    display: block;
+    text-align: right;
+    margin: 14px 0;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-float-left {
+    display: block;
+    float: left;
+    clear: none;
+    width: auto;
+    max-width: 70%;
+    margin: 6px 20px 14px 0;
+    text-align: left;
+}
+
+.blog-image-align-wrap.align-float-right {
+    display: block;
+    float: right;
+    clear: none;
+    width: auto;
+    max-width: 70%;
+    margin: 6px 0 14px 20px;
+    text-align: right;
+}
+
+@media (max-width: 640px) {
+    .blog-image-align-wrap.align-float-left,
+    .blog-image-align-wrap.align-float-right {
+        float: none !important;
+        max-width: 100% !important;
+        margin: 14px auto !important;
+        clear: both !important;
+    }
 }
 
 .blog-image-wrap {
@@ -882,7 +940,8 @@ textarea {
     text-align: left;
 }
 
-.image-align-dropdown.show .image-align-option {
+.image-align-dropdown.show .image-align-option,
+.image-align-dropdown[style*="display: flex"] .image-align-option {
     opacity: 1;
     transform: translateY(0);
     transition: opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1) 0.06s,
@@ -3713,6 +3772,12 @@ button:hover {
     min-height: 200px;
     line-height: 1.6;
     padding-bottom: 24px;
+}
+
+#contentVisual::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 /* Drag and Drop Media in Editor Fields */

@@ -671,12 +671,12 @@ Authorization: Bearer <access_token>
 
 #### Интерактивный оверлей масштабирования (Resize Handles):
 - При выборе картинки в визуальном редакторе поверх нее отображается рамка с угловыми маркерами (`nw`, `ne`, `sw`, `se`).
-- Панель выравнивания позволяет переключать стили родительского `.blog-image-align-wrap`:
-  - `text-align: left`
-  - `text-align: center`
-  - `text-align: right`
-  - Обтекание текстом слева: `float: left; margin: 0 16px 14px 0;`
-  - Обтекание текстом справа: `float: right; margin: 0 0 14px 16px;`
+- Панель выравнивания позволяет переключать стили и классы родительского `.blog-image-align-wrap`:
+  - `data-align="left"`, класс `.align-left`: `text-align: left; display: block; clear: both;`
+  - `data-align="center"`, класс `.align-center`: `text-align: center; display: block; clear: both; margin: 14px auto;`
+  - `data-align="right"`, класс `.align-right`: `text-align: right; display: block; clear: both;`
+  - `data-align="float-left"`, класс `.align-float-left`: Обтекание текстом слева (`float: left; width: auto; max-width: 70%; margin: 6px 20px 14px 0; clear: none;`)
+  - `data-align="float-right"`, класс `.align-float-right`: Обтекание текстом справа (`float: right; width: auto; max-width: 70%; margin: 6px 0 14px 20px; clear: none;`)
 
 #### Сетки изображений (Image Grids):
 ```html

@@ -678,10 +678,20 @@
 
                     // If previous sibling is an atomic media wrapper or HR
                     if (prevSibling.classList.contains('blog-image-align-wrap') || prevSibling.tagName === 'HR') {
-                        if (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
-                            block.parentNode.removeChild(block);
+                        const isCurrentEmpty = (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe'));
+                        if (!isCurrentEmpty) {
+                            // Do not delete media wrapper if current block has text!
+                            const beforeMedia = prevSibling.previousElementSibling;
+                            if (beforeMedia) {
+                                this.setCursorToEnd(beforeMedia);
+                                this.saveSelection();
+                            }
+                            return;
                         }
-                        prevSibling.parentNode.removeChild(prevSibling);
+                        block.parentNode.removeChild(block);
+                        if (!prevSibling.classList.contains('align-float-left') && !prevSibling.classList.contains('align-float-right')) {
+                            prevSibling.parentNode.removeChild(prevSibling);
+                        }
                         this.normalizeDOM(editor);
                         this.saveSelection();
                         if (typeof saveToHistory === 'function') saveToHistory();
@@ -1017,7 +1027,11 @@
             const block = this.getClosestBlock(range.startContainer);
 
             if (block && block.id !== 'contentVisual') {
-                block.style.textAlign = side;
+                if (block.classList.contains('blog-image-align-wrap') && typeof applyMediaAlignment === 'function') {
+                    applyMediaAlignment(block, side);
+                } else {
+                    block.style.textAlign = side;
+                }
             } else {
                 const div = document.createElement('div');
                 div.style.textAlign = side;

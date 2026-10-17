@@ -127,6 +127,8 @@
         "align_left": "Align Left",
         "align_center": "Align Center",
         "align_right": "Align Right",
+        "align_float_left": "Wrap Left",
+        "align_float_right": "Wrap Right",
         "link": "Link",
         "image": "Add Image",
         "media": "Add Media",
