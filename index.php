@@ -807,6 +807,34 @@ function openAdditionalSettings(postId, postTitle) {
     currentAdditionalPostId = postId;
     document.getElementById('additionalSettingsPostTitle').textContent = (window.t ? window.t('modals.post_label', 'Статья: ') : 'Статья: ') + postTitle;
     
+    // Сброс и загрузка превью статьи
+    const previewInput = document.getElementById('postPreviewInput');
+    if (previewInput) {
+        previewInput.value = '';
+        if (window.resetModalFilePicker) resetModalFilePicker(previewInput);
+    }
+    const previewUrlInput = document.getElementById('postPreviewUrlInput');
+    if (previewUrlInput) previewUrlInput.value = '';
+    const currentPreviewInfo = document.getElementById('currentPostPreviewInfo');
+    if (currentPreviewInfo) currentPreviewInfo.style.display = 'none';
+
+    fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now())
+        .then(response => response.ok ? response.json() : [])
+        .then(posts => {
+            const currentPost = Array.isArray(posts) ? posts.find(p => p.id === postId) : null;
+            if (currentPost && currentPost.preview && currentPreviewInfo) {
+                const previewImg = document.getElementById('currentPostPreviewImg');
+                const previewPath = document.getElementById('currentPostPreviewPath');
+                const isAbs = /^(?:https?:\/\/|\/)/i.test(currentPost.preview);
+                const src = isAbs ? currentPost.preview : ('serve_data.php?file=' + encodeURIComponent(currentPost.preview) + '&t=' + Date.now());
+                if (previewImg) previewImg.src = src;
+                if (previewPath) previewPath.textContent = currentPost.preview;
+                if (previewUrlInput) previewUrlInput.value = currentPost.preview;
+                currentPreviewInfo.style.display = 'block';
+            }
+        })
+        .catch(err => console.warn('Could not load post preview:', err));
+    
     // Загружаем настройки из post_backgrounds.json
     fetch('get_post_backgrounds.php?postId=' + postId)
         .then(response => response.json())
@@ -941,6 +969,13 @@ function closeAdditionalSettings() {
         bgInput.value = '';
         if (window.resetModalFilePicker) resetModalFilePicker(bgInput);
     }
+    const previewInput = document.getElementById('postPreviewInput');
+    if (previewInput) {
+        previewInput.value = '';
+        if (window.resetModalFilePicker) resetModalFilePicker(previewInput);
+    }
+    const previewUrlInput = document.getElementById('postPreviewUrlInput');
+    if (previewUrlInput) previewUrlInput.value = '';
     currentAdditionalPostId = null;
 }
 
@@ -1089,6 +1124,119 @@ function saveOverlaySettings() {
     .catch(error => {
         console.error('Ошибка:', error);
         showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+    });
+}
+
+function savePostPreview() {
+    if (!currentAdditionalPostId) return;
+    
+    const fileInput = document.getElementById('postPreviewInput');
+    const urlInput = document.getElementById('postPreviewUrlInput');
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+    const url = urlInput ? urlInput.value.trim() : '';
+    
+    if (file) {
+        const formData = new FormData();
+        formData.append('action', 'upload');
+        formData.append('postId', currentAdditionalPostId);
+        formData.append('preview', file);
+        
+        fetch('save_post_preview.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(window.t ? window.t('notifications.post_preview_saved', 'Превью статьи успешно сохранено!') : 'Превью статьи успешно сохранено!');
+                fileInput.value = '';
+                if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
+                
+                const previewImg = document.getElementById('currentPostPreviewImg');
+                const previewPath = document.getElementById('currentPostPreviewPath');
+                const currentPreviewInfo = document.getElementById('currentPostPreviewInfo');
+                if (previewImg) previewImg.src = 'serve_data.php?file=' + encodeURIComponent(data.preview) + '&t=' + Date.now();
+                if (previewPath) previewPath.textContent = data.preview;
+                if (urlInput) urlInput.value = data.preview;
+                if (currentPreviewInfo) currentPreviewInfo.style.display = 'block';
+            } else {
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка:', err);
+            showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+        });
+    } else if (url) {
+        fetch('save_post_preview.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'set_url',
+                postId: currentAdditionalPostId,
+                url: url
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(window.t ? window.t('notifications.post_preview_saved', 'Превью статьи успешно сохранено!') : 'Превью статьи успешно сохранено!');
+                const previewImg = document.getElementById('currentPostPreviewImg');
+                const previewPath = document.getElementById('currentPostPreviewPath');
+                const currentPreviewInfo = document.getElementById('currentPostPreviewInfo');
+                const isAbs = /^(?:https?:\/\/|\/)/i.test(data.preview);
+                const src = isAbs ? data.preview : ('serve_data.php?file=' + encodeURIComponent(data.preview) + '&t=' + Date.now());
+                if (previewImg) previewImg.src = src;
+                if (previewPath) previewPath.textContent = data.preview;
+                if (currentPreviewInfo) currentPreviewInfo.style.display = 'block';
+            } else {
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка:', err);
+            showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+        });
+    } else {
+        showAlert(window.t ? window.t('settings.post_preview_select_first', 'Выберите файл или укажите ссылку на изображение') : 'Выберите файл или укажите ссылку на изображение');
+    }
+}
+
+function removePostPreview() {
+    if (!currentAdditionalPostId) return;
+    
+    showConfirm(window.t ? window.t('settings.post_preview_delete_confirm', 'Удалить изображение превью для этой статьи?') : 'Удалить изображение превью для этой статьи?').then(result => {
+        if (!result) return;
+        
+        fetch('save_post_preview.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'remove',
+                postId: currentAdditionalPostId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(window.t ? window.t('notifications.post_preview_removed', 'Превью статьи удалено!') : 'Превью статьи удалено!');
+                const currentPreviewInfo = document.getElementById('currentPostPreviewInfo');
+                if (currentPreviewInfo) currentPreviewInfo.style.display = 'none';
+                const urlInput = document.getElementById('postPreviewUrlInput');
+                if (urlInput) urlInput.value = '';
+                const fileInput = document.getElementById('postPreviewInput');
+                if (fileInput) {
+                    fileInput.value = '';
+                    if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
+                }
+            } else {
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка:', err);
+            showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+        });
     });
 }
 
@@ -1756,6 +1904,11 @@ function loadBlogViewSettings() {
         .then(settings => {
             document.getElementById('blogPageTitle').value = settings.title || 'Блог';
             
+            const layoutSelect = document.getElementById('blogPostsLayout');
+            if (layoutSelect) {
+                layoutSelect.value = settings.layout || 'list';
+            }
+            
             // Загружаем инфо о текущем фоне
             const bgInfo = document.getElementById('currentBlogBackgroundInfo');
             if (settings.background) {
@@ -1776,6 +1929,10 @@ function loadBlogViewSettings() {
         })
         .catch(() => {
             document.getElementById('blogPageTitle').value = 'Блог';
+            const layoutSelect = document.getElementById('blogPostsLayout');
+            if (layoutSelect) {
+                layoutSelect.value = 'list';
+            }
             document.getElementById('currentBlogBackgroundInfo').style.display = 'none';
         });
 }
@@ -2325,13 +2482,14 @@ function deleteAutosaveById(id) {
 
 function saveBlogViewSettings() {
     const title = document.getElementById('blogPageTitle').value.trim() || 'Блог';
+    const layout = document.getElementById('blogPostsLayout') ? document.getElementById('blogPostsLayout').value : 'list';
     
     fetch('save_blog_view_settings.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ title: title })
+        body: JSON.stringify({ action: 'save', title: title, layout: layout })
     })
     .then(response => response.json())
     .then(data => {
@@ -2339,6 +2497,35 @@ function saveBlogViewSettings() {
             showAlert(window.t ? window.t('notifications.blogview_saved_notice', 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.') : 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
         } else {
             showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+    });
+}
+
+function saveBlogViewLayout(action) {
+    const layout = (document.getElementById('blogPostsLayout') && document.getElementById('blogPostsLayout').value) || 'list';
+    
+    fetch('save_blog_view_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: action || 'save', layout: layout })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (action === 'apply_all') {
+                const count = data.updated_count || 1;
+                showAlert(window.t ? window.t('notifications.blogview_layout_applied_all', 'Вид успешно применен для всех блогов ({count})!', { count: count }) : ('Вид успешно применен для всех блогов (' + count + ')!'));
+            } else {
+                showAlert(window.t ? window.t('notifications.blogview_layout_saved', 'Вид отображения успешно сохранен для текущего блога!') : 'Вид отображения успешно сохранен для текущего блога!');
+            }
+        } else {
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
         }
     })
     .catch(error => {

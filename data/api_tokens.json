@@ -1,1 +1,12 @@
-[]
+[
+    {
+        "id": "tok_4b0553c03faa021a",
+        "hash": "d8d889db76756d5f5b4af5a4df4b8a2e2a773b1abc65d502c0c1445c309278c0",
+        "device_name": "WinUI Test",
+        "ip_created": "127.0.0.1",
+        "user_agent": "Mozilla\/5.0 (Windows NT; Windows NT 10.0; ru-RU) WindowsPowerShell\/5.1.26100.9549",
+        "created_at": 1791716715,
+        "expires_at": 1794308715,
+        "last_used_at": 1791716715
+    }
+]

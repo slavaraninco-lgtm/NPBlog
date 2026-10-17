@@ -1,9 +1,5 @@
 {
     "title": "Мой новый блог",
-    "crossBlogNav": [
-        {
-            "url": "..\/data\/blog.html",
-            "text": "Блог"
-        }
-    ]
+    "crossBlogNav": [],
+    "layout": "grid"
 }

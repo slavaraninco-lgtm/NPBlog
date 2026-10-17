@@ -93,6 +93,49 @@
                 </div>
             </div>
 
+            <!-- Секция превью статьи (для карточки в blog.html) -->
+            <div class="modal-section-card" style="padding: 16px;">
+                <div class="modal-section-title" style="margin-bottom: 12px; font-weight: 600; font-size: 14px;" data-i18n="settings.post_preview_section">Изображение для карточки (превью)</div>
+                
+                <!-- Текущее превью статьи -->
+                <div id="currentPostPreviewInfo" style="display: none; margin-bottom: 14px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02));">
+                    <p style="color: var(--text-color); font-weight: 600; margin: 0 0 10px 0; font-size: 13px;" data-i18n="settings.post_preview_current">Текущее превью:</p>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <img id="currentPostPreviewImg" src="" alt="Превью" style="width: 100px; height: 65px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); flex-shrink: 0;">
+                        <div style="min-width: 0; flex: 1;">
+                            <p id="currentPostPreviewPath" style="color: var(--text-color); font-size: 12px; margin: 0 0 8px 0; word-break: break-all; font-family: monospace;"></p>
+                            <button type="button" onclick="removePostPreview()" class="modal-btn modal-btn-danger" style="font-size: 12px; padding: 4px 10px;" data-i18n="settings.post_preview_remove_btn">Удалить превью</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Загрузка нового файла превью -->
+                <div class="modal-form-group">
+                    <label class="modal-label" for="postPreviewInput" data-i18n="settings.post_preview_file_label">Загрузить файл изображения:</label>
+                    <div class="modal-file-picker" id="postPreviewPicker" tabindex="0">
+                        <input type="file" id="postPreviewInput" accept="image/*" style="display: none;">
+                        <button type="button" class="modal-btn modal-btn-secondary modal-file-picker-btn" tabindex="-1">
+                            <span data-i18n="common.browse">Обзор...</span>
+                        </button>
+                        <div class="modal-file-picker-info">
+                            <span class="modal-file-picker-text" data-i18n="common.no_file_chosen">Файл не выбран</span>
+                            <span class="modal-file-picker-size"></span>
+                        </div>
+                        <button type="button" class="modal-file-picker-clear" title="Сбросить выбор" data-i18n-title="common.clear_selection">✕</button>
+                    </div>
+                </div>
+
+                <!-- Или указать ссылку на изображение -->
+                <div class="modal-form-group" style="margin-bottom: 14px;">
+                    <label class="modal-label" for="postPreviewUrlInput" data-i18n="settings.post_preview_url_label">Или укажите ссылку на изображение:</label>
+                    <input type="text" id="postPreviewUrlInput" class="modal-input" placeholder="https://example.com/image.jpg или uploads/image.jpg" data-i18n-placeholder="settings.post_preview_url_ph">
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" onclick="savePostPreview()" class="modal-btn modal-btn-primary" data-i18n="settings.post_preview_save_btn">Сохранить превью</button>
+                </div>
+            </div>
+
             <!-- Секция подложки под статью -->
             <div class="modal-section-card" style="padding: 16px;">
                 <div class="modal-section-title" style="margin-bottom: 12px; font-weight: 600; font-size: 14px;" data-i18n="settings.bg_overlay_section">Подложка под статью</div>

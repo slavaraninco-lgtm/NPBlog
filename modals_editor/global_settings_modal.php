@@ -161,6 +161,21 @@ if (!isset($availableLanguages)) {
                         <button type="button" onclick="saveBlogViewSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.blogview_save_btn">Сохранить настройки</button>
                     </div>
 
+                    <!-- Отображение списка статей (Сетка / Список) -->
+                    <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                        <h4 style="margin: 0 0 14px 0; color: var(--text-color); font-size: 15px; font-weight: 600;" data-i18n="settings.blogview_layout_title">Отображение списка статей</h4>
+                        <label class="modal-label" for="blogPostsLayout" data-i18n="settings.blogview_layout_label">Вид списка статей:</label>
+                        <select id="blogPostsLayout" class="modal-select" style="margin-bottom: 14px;">
+                            <option value="list" data-i18n="settings.blogview_layout_list">📋 Списком (по умолчанию)</option>
+                            <option value="grid" data-i18n="settings.blogview_layout_grid">⊞ Сеткой (карточки с превью)</option>
+                        </select>
+                        
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" onclick="saveBlogViewLayout('save')" class="modal-btn modal-btn-primary" data-i18n="settings.blogview_save_layout_current">Сохранить для текущего блога</button>
+                            <button type="button" onclick="saveBlogViewLayout('apply_all')" class="modal-btn modal-btn-secondary" data-i18n="settings.blogview_apply_layout_all">Применить во всех блогах</button>
+                        </div>
+                    </div>
+
                     <div style="margin-bottom: 20px;">
                         <h4 style="margin: 0 0 14px 0; color: var(--text-color); font-size: 15px; font-weight: 600;" data-i18n="settings.blogview_bg_title">Фон страницы списка статей (blog.html)</h4>
                         
