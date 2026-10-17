@@ -1420,13 +1420,13 @@ function selectLanguageOption(lang, autoSave) {
     cards.forEach(function(c) {
         var cLang = c.getAttribute('data-lang-code');
         var radio = document.getElementById('langRadio-' + cLang);
+        c.style.borderColor = '';
+        c.style.background = '';
         if (cLang === lang) {
-            c.style.borderColor = 'var(--primary-color, #4CAF50)';
-            c.style.background = 'rgba(76, 175, 80, 0.08)';
+            c.classList.add('is-selected');
             if (radio) radio.checked = true;
         } else {
-            c.style.borderColor = 'var(--border-color)';
-            c.style.background = 'transparent';
+            c.classList.remove('is-selected');
             if (radio) radio.checked = false;
         }
     });

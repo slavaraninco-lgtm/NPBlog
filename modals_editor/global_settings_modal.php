@@ -708,35 +708,56 @@ if (!isset($availableLanguages)) {
                 <div id="globalSection-language" class="global-section" style="display: none;">
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.lang_desc">Выберите язык интерфейса редактора NPBlog.</p>
                     
-                    <div style="margin-bottom: 16px;">
-                        <input type="text" id="langSearchInput" onkeyup="filterLanguages()" placeholder="Поиск языка..." data-i18n-placeholder="settings.lang_search" class="modal-input" style="width: 100%;">
+                    <div class="lang-search-wrap">
+                        <svg class="lang-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="langSearchInput" onkeyup="filterLanguages()" placeholder="Поиск языка..." data-i18n-placeholder="settings.lang_search" class="lang-search-input">
                     </div>
 
-                    <div id="languageCardsContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; padding-right: 8px;">
-                        <?php foreach ($availableLanguages as $l): 
+                    <div id="languageCardsContainer" class="language-cards-container">
+                        <?php 
+                        $subnames = [
+                            'ru' => 'Russian',
+                            'en' => 'English',
+                            'uk' => 'Ukrainian',
+                            'lv' => 'Latvian',
+                        ];
+                        foreach ($availableLanguages as $l): 
                             $isSel = ($l['code'] === $currentLanguage);
-                            $borderStyle = $isSel ? 'var(--primary-color, #4CAF50)' : 'var(--border-color)';
-                            $bgStyle = $isSel ? 'rgba(76, 175, 80, 0.08)' : 'var(--modal-bg-subtle, rgba(0,0,0,0.02))';
+                            $selectedClass = $isSel ? ' is-selected' : '';
                             $nameStr = (string)$l['name'];
                             $langNameLower = htmlspecialchars(function_exists('mb_strtolower') ? mb_strtolower($nameStr, 'UTF-8') : strtolower($nameStr));
+                            $codeUpper = strtoupper((string)$l['code']);
+                            $subName = isset($subnames[$l['code']]) ? $subnames[$l['code']] : $codeUpper;
                         ?>
-                        <div id="langCard-<?php echo htmlspecialchars($l['code']); ?>" data-lang-code="<?php echo htmlspecialchars($l['code']); ?>" data-lang-name="<?php echo $langNameLower; ?>" class="lang-selection-card" onclick="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" style="border: 1px solid <?php echo $borderStyle; ?>; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: <?php echo $bgStyle; ?>; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-size: 18px; line-height: 1;"><?php echo htmlspecialchars($l['smile']); ?></span>
-                                <span style="font-size: 14px; font-weight: 500; color: var(--text-color);"><?php echo htmlspecialchars($l['name']); ?></span>
+                        <div id="langCard-<?php echo htmlspecialchars($l['code']); ?>" data-lang-code="<?php echo htmlspecialchars($l['code']); ?>" data-lang-name="<?php echo $langNameLower; ?>" class="lang-selection-card<?php echo $selectedClass; ?>" onclick="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)">
+                            <div class="lang-card-left">
+                                <div class="lang-code-badge"><?php echo htmlspecialchars($codeUpper); ?></div>
+                                <div class="lang-text-group">
+                                    <span class="lang-name"><?php echo htmlspecialchars($l['name']); ?></span>
+                                    <span class="lang-subname"><?php echo htmlspecialchars($subName); ?></span>
+                                </div>
                             </div>
-                            <input type="radio" name="editor_lang_radio" id="langRadio-<?php echo htmlspecialchars($l['code']); ?>" value="<?php echo htmlspecialchars($l['code']); ?>" style="cursor: pointer; width: 14px; height: 14px; margin: 0;" onchange="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" <?php echo $isSel ? 'checked' : ''; ?>>
+                            <div class="lang-check-indicator">
+                                <svg class="lang-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <input type="radio" name="editor_lang_radio" id="langRadio-<?php echo htmlspecialchars($l['code']); ?>" value="<?php echo htmlspecialchars($l['code']); ?>" class="lang-radio-hidden" <?php echo $isSel ? 'checked' : ''; ?> tabindex="-1" aria-hidden="true">
                         </div>
                         <?php endforeach; ?>
                     </div>
                     
                     <script>
                     function filterLanguages() {
-                        let input = document.getElementById('langSearchInput').value.toLowerCase();
+                        let input = document.getElementById('langSearchInput').value.toLowerCase().trim();
                         let cards = document.querySelectorAll('.lang-selection-card');
                         cards.forEach(card => {
                             let name = card.getAttribute('data-lang-name') || '';
-                            if (name.includes(input)) {
+                            let code = card.getAttribute('data-lang-code') || '';
+                            if (name.includes(input) || code.includes(input)) {
                                 card.style.display = 'flex';
                             } else {
                                 card.style.display = 'none';
