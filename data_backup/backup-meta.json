@@ -1,1 +1,42 @@
-[]
+{
+    "deleted_3_1792222530": {
+        "postId": "deleted_3_1792222530",
+        "postTitle": "[УДАЛЕНО] тест",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "3-1.html",
+                "date": "17.10.2026 09:35",
+                "title": "тест"
+            }
+        ],
+        "deleted": true,
+        "deletedAt": "17.10.2026 09:35"
+    },
+    "deleted_4_1792222529": {
+        "postId": "deleted_4_1792222529",
+        "postTitle": "[УДАЛЕНО] вапап",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "4-1.html",
+                "date": "17.10.2026 09:35",
+                "title": "вапап"
+            }
+        ],
+        "deleted": true,
+        "deletedAt": "17.10.2026 09:35"
+    },
+    "3": {
+        "postId": 3,
+        "postTitle": "NPBlog 2.xxx",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "3-1.html",
+                "date": "17.10.2026 10:13",
+                "title": "NPBlog 2.xxx"
+            }
+        ]
+    }
+}
