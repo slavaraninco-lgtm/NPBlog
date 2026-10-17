@@ -214,7 +214,8 @@ body.modal-open {
 .modal-dialog,
 .modal-window,
 .modal-container,
-.np-modal-dialog {
+.np-modal-dialog,
+.modal-content {
     position: relative;
     width: 100%;
     max-width: 540px;
@@ -245,7 +246,8 @@ body.modal-open {
 .modal-overlay.is-active:not(.is-closing) .modal-dialog,
 .modal-overlay.is-active:not(.is-closing) .modal-window,
 .modal-overlay.is-active:not(.is-closing) .modal-container,
-.modal-overlay.is-active:not(.is-closing) .np-modal-dialog {
+.modal-overlay.is-active:not(.is-closing) .np-modal-dialog,
+.modal-overlay.is-active:not(.is-closing) .modal-content {
     transform: translate3d(0, 0, 0) scale(1, 1);
     opacity: 1;
     border-radius: var(--modal-radius);

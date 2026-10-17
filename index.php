@@ -4537,39 +4537,46 @@ window.openChangelogModalFromNotice = openChangelogModalFromNotice;
 </script>
 
 <!-- Модальное окно Редактора изображений -->
-<div id="imageEditorModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 10005; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); border-radius: 16px; max-width: 95vw; width: 1200px; height: 90vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-color);">
+<div id="imageEditorModal" class="modal-overlay" data-size="xl">
+    <div class="modal-dialog modal-xl" style="max-width: 95vw; width: 1200px; height: 90vh; max-height: 90vh; display: flex; flex-direction: column;">
         <!-- Заголовок -->
-        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-                <h3 style="margin: 0; color: var(--text-color); font-size: 18px; display: flex; align-items: center; gap: 10px;">
-                    <span>🎨</span> <span data-i18n="modals.img_editor_title">Редактор изображений</span>
-                </h3>
-                <p class="modal-subtitle" style="margin: 0; font-size: 12px; opacity: 0.7; color: var(--text-color);" data-i18n="modals.img_editor_subtitle">Рисование, аннотации, стрелки и обрезка</p>
+        <div class="modal-header">
+            <div class="modal-header-start">
+                <div class="modal-titles">
+                    <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+                        <span>🎨</span> <span data-i18n="modals.img_editor_title">Редактор изображений</span>
+                    </h3>
+                    <p class="modal-subtitle" data-i18n="modals.img_editor_subtitle">Рисование, аннотации, стрелки и обрезка</p>
+                </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" id="imgEditorUndoBtn" onclick="undoImgEditorState()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px;" title="Отменить последнее действие (Ctrl+Z)" data-i18n-title="modals.img_editor_undo_title">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+            <div class="modal-header-actions" style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" id="imgEditorUndoBtn" onclick="undoImgEditorState()" class="modal-btn modal-btn-ghost" style="padding: 6px 14px; font-size: 13px; display: flex; align-items: center; gap: 6px;" title="Отменить последнее действие (Ctrl+Z)" data-i18n-title="modals.img_editor_undo_title">
+                    <svg class="modal-btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 7v6h6" />
                         <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
                     </svg>
-                    <span data-i18n="modals.ascii_undo">Отменить</span>
+                    <span class="btn-text" data-i18n="modals.ascii_undo">Отменить</span>
                 </button>
-                <button type="button" onclick="saveImgEditorChanges()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color); color: #fff; border: none; font-weight: bold; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
-                    <span>💾</span> <span data-i18n="common.save">Сохранить</span>
+                <button type="button" onclick="saveImgEditorChanges()" class="modal-btn modal-btn-primary" style="padding: 6px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                    <svg class="modal-btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    <span class="btn-text" data-i18n="common.save">Сохранить</span>
                 </button>
-                <button type="button" onclick="closeImgEditorModal()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;" title="Закрыть" data-i18n-title="common.close">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeImgEditorModal()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
         
         <!-- Основная область -->
-        <div style="flex: 1; display: flex; overflow: hidden; background: rgba(0,0,0,0.05);">
+        <div class="modal-body" style="padding: 0; flex: 1; display: flex; overflow: hidden;">
             <!-- Левая панель инструментов -->
-            <div style="width: 260px; border-right: 2px solid var(--border-color); background: var(--bg-color); display: flex; flex-direction: column; gap: 20px; padding: 25px; overflow-y: auto;">
+            <div style="width: 260px; border-right: 1px solid var(--border-color); background: var(--modal-bg); display: flex; flex-direction: column; gap: 20px; padding: 20px; overflow-y: auto; box-sizing: border-box;">
                 
                 <!-- Инструменты -->
                 <div>
-                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_tools">Инструменты</h4>
+                    <h4 style="margin: 0 0 12px 0; color: var(--modal-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_tools">Инструменты</h4>
                     <div style="display: flex; flex-direction: column; gap: 8px;" id="imgEditorToolsContainer">
                         <button type="button" class="img-editor-tool-btn active" data-tool="pencil" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
                             <span style="font-size: 16px;">✏️</span> <span data-i18n="modals.img_editor_tool_pencil">Карандаш</span>
@@ -4591,7 +4598,7 @@ window.openChangelogModalFromNotice = openChangelogModalFromNotice;
                 
                 <!-- Цвет -->
                 <div id="imgEditorColorSection">
-                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_color">Цвет</h4>
+                    <h4 style="margin: 0 0 12px 0; color: var(--modal-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_color">Цвет</h4>
                     <div style="display: flex; flex-direction: column; gap: 10px;">
                         <input type="color" id="imgEditorColorPicker" value="#ff0000" style="width: 100%; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; padding: 2px; cursor: pointer; background: transparent;">
                         <!-- Пресеты -->
@@ -4613,8 +4620,8 @@ window.openChangelogModalFromNotice = openChangelogModalFromNotice;
                 <!-- Толщина -->
                 <div id="imgEditorSizeSection">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <h4 style="margin: 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" id="imgEditorSizeLabel" data-i18n="modals.img_editor_brush_thickness">Толщина кисти</h4>
-                        <span id="imgEditorSizeValue" style="color: var(--text-color); font-weight: bold; font-size: 12px;">5 px</span>
+                        <h4 style="margin: 0; color: var(--modal-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" id="imgEditorSizeLabel" data-i18n="modals.img_editor_brush_thickness">Толщина кисти</h4>
+                        <span id="imgEditorSizeValue" style="color: var(--modal-text); font-weight: bold; font-size: 12px;">5 px</span>
                     </div>
                     <input type="range" id="imgEditorSizeSlider" min="1" max="50" value="5" style="width: 100%; cursor: pointer;">
                 </div>
@@ -4622,20 +4629,20 @@ window.openChangelogModalFromNotice = openChangelogModalFromNotice;
                 <!-- Размер шрифта -->
                 <div id="imgEditorFontSizeSection" style="display: none;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <h4 style="margin: 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_font_size">Размер текста</h4>
-                        <span id="imgEditorFontSizeValue" style="color: var(--text-color); font-weight: bold; font-size: 12px;">30 px</span>
+                        <h4 style="margin: 0; color: var(--modal-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_font_size">Размер текста</h4>
+                        <span id="imgEditorFontSizeValue" style="color: var(--modal-text); font-weight: bold; font-size: 12px;">30 px</span>
                     </div>
                     <input type="range" id="imgEditorFontSizeSlider" min="10" max="100" value="30" style="width: 100%; cursor: pointer;">
                 </div>
                 
-                <div style="margin-top: auto; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.03); font-size: 12px; color: var(--text-color); opacity: 0.8; border: 1px solid var(--border-color);">
+                <div style="margin-top: auto; padding: 12px; border-radius: 8px; background: rgba(128,128,128,0.06); font-size: 12px; color: var(--modal-text); opacity: 0.8; border: 1px solid var(--border-color);">
                     <strong data-i18n="modals.img_editor_tip">💡 Подсказка:</strong><br>
                     <span id="imgEditorHelpText" data-i18n="modals.img_editor_help_pencil">Рисуйте мышкой на изображении зажав левую кнопку.</span>
                 </div>
             </div>
             
             <!-- Центральная область холста -->
-            <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 30px; overflow: auto; position: relative;" id="imgEditorCanvasContainer">
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow: auto; position: relative;" id="imgEditorCanvasContainer">
                 <canvas id="imgEditorCanvas" style="box-shadow: 0 4px 30px rgba(0,0,0,0.15); max-width: 100%; max-height: 100%; object-fit: contain; cursor: crosshair; background-image: radial-gradient(var(--border-color) 15%, transparent 16%), radial-gradient(var(--border-color) 15%, transparent 16%); background-size: 16px 16px; background-position: 0 0, 8px 8px; background-color: var(--bg-color); border: 1px dashed var(--border-color);"></canvas>
             </div>
         </div>
@@ -4662,8 +4669,10 @@ let imgEditorStartX = 0;
 let imgEditorStartY = 0;
 
 function openImageEditorModal(imgElement) {
+    if (!imgElement) return;
     imgEditorTargetImg = imgElement;
     imgEditorCanvas = document.getElementById('imgEditorCanvas');
+    if (!imgEditorCanvas) return;
     imgEditorCtx = imgEditorCanvas.getContext('2d');
     
     if (window.Modal) {
@@ -4672,25 +4681,52 @@ function openImageEditorModal(imgElement) {
         const modal = document.getElementById('imageEditorModal');
         if (modal) {
             modal.style.display = 'flex';
+            modal.classList.add('is-active');
             modal.classList.add('show');
         }
+    }
+    
+    const cleanSrc = (imgElement.src || '').replace(/[?&]t=\d+/, '');
+    
+    function loadIntoCanvas(source) {
+        if (!source || !imgEditorCanvas || !imgEditorCtx) return;
+        const w = source.naturalWidth || source.width || 800;
+        const h = source.naturalHeight || source.height || 600;
+        imgEditorCanvas.width = w;
+        imgEditorCanvas.height = h;
+        
+        imgEditorCtx.clearRect(0, 0, w, h);
+        imgEditorCtx.drawImage(source, 0, 0);
+        
+        try {
+            imgEditorHistory = [imgEditorCtx.getImageData(0, 0, w, h)];
+        } catch (e) {
+            console.warn('Canvas getImageData tainted or failed:', e);
+            imgEditorHistory = [];
+        }
+        updateImgEditorUndoBtnState();
+        setImgEditorTool('pencil');
     }
     
     const tempImg = new Image();
     tempImg.crossOrigin = 'anonymous'; 
     tempImg.onload = function() {
-        imgEditorCanvas.width = tempImg.naturalWidth;
-        imgEditorCanvas.height = tempImg.naturalHeight;
-        
-        imgEditorCtx.clearRect(0, 0, imgEditorCanvas.width, imgEditorCanvas.height);
-        imgEditorCtx.drawImage(tempImg, 0, 0);
-        
-        imgEditorHistory = [imgEditorCtx.getImageData(0, 0, imgEditorCanvas.width, imgEditorCanvas.height)];
-        updateImgEditorUndoBtnState();
-        
-        setImgEditorTool('pencil');
+        loadIntoCanvas(tempImg);
     };
-    tempImg.src = imgElement.src.replace(/[?&]t=\d+/, '');
+    tempImg.onerror = function() {
+        // Fallback without crossOrigin (for same-origin or local paths)
+        const fallbackImg = new Image();
+        fallbackImg.onload = function() {
+            loadIntoCanvas(fallbackImg);
+        };
+        fallbackImg.onerror = function() {
+            if (imgElement.complete && imgElement.naturalWidth > 0) {
+                loadIntoCanvas(imgElement);
+            }
+        };
+        fallbackImg.src = cleanSrc;
+    };
+    tempImg.src = cleanSrc;
 }
 
 function closeImgEditorModal() {
@@ -4700,6 +4736,7 @@ function closeImgEditorModal() {
         const modal = document.getElementById('imageEditorModal');
         if (modal) {
             modal.style.display = 'none';
+            modal.classList.remove('is-active');
             modal.classList.remove('show');
         }
     }
@@ -5064,7 +5101,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('keydown', function(e) {
         const modal = document.getElementById('imageEditorModal');
-        if (modal && modal.style.display === 'flex') {
+        if (modal && (modal.classList.contains('is-active') || modal.style.display === 'flex')) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 undoImgEditorState();

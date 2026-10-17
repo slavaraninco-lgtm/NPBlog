@@ -2686,7 +2686,8 @@ button:hover {
     transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.modal-overlay.show .modal-content {
+.modal-overlay.show .modal-content,
+.modal-overlay.is-active .modal-content {
     transform: scale(1) translateY(0);
     opacity: 1;
 }
@@ -5743,8 +5744,10 @@ button:hover {
     transition: transform 0.3s ease;
 }
 
-.modal-overlay.show .modal-content {
+.modal-overlay.show .modal-content,
+.modal-overlay.is-active .modal-content {
     transform: scale(1);
+    opacity: 1;
 }
 
 /* Стили для модального окна загрузки файлов */
