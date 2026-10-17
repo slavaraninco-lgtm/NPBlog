@@ -436,6 +436,11 @@ function handleSubmit(e) {
     const titleInput = document.getElementById('title');
     const title = titleInput.value.trim();
 
+    if (window.activeMediaUploadsCount && window.activeMediaUploadsCount > 0) {
+        showNotification(window.t ? window.t('notifications.drag_drop_wait_uploads', 'Пожалуйста, дождитесь завершения загрузки файлов перед сохранением') : 'Пожалуйста, дождитесь завершения загрузки файлов перед сохранением', 'warning');
+        return;
+    }
+
     if (!title) {
         showNotification('Пожалуйста, введите заголовок статьи', 'error');
         titleInput.focus();

@@ -2171,6 +2171,7 @@ function stopAutosave() {
 }
 
 function performAutosave() {
+    if (window.activeMediaUploadsCount && window.activeMediaUploadsCount > 0) return;
     const title = document.getElementById('title')?.value?.trim() || '';
     const ve = document.getElementById('contentVisual');
     const ta = document.getElementById('content');

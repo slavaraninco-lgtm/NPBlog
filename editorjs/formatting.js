@@ -1458,7 +1458,7 @@
             // Remove runtime UI elements
             const elementsToRemove = temp.querySelectorAll(
                 '.image-toolbar, .image-align-dropdown, .image-size-indicator, ' +
-                '.image-resize-handle, .blog-image-overlay, .column-resizer, #customCaret'
+                '.image-resize-handle, .blog-image-overlay, .column-resizer, #customCaret, .media-upload-placeholder'
             );
             elementsToRemove.forEach(el => el.parentNode && el.parentNode.removeChild(el));
 

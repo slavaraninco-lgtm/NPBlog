@@ -386,7 +386,434 @@ document.addEventListener('DOMContentLoaded', function () {
     if (codeEditor) {
         codeEditor.addEventListener('paste', handlePaste);
     }
+
+    // Initialize media Drag & Drop into editor fields
+    initEditorMediaDragDrop();
 });
+
+// --- Drag and Drop Медиа (Фото и Видео) в поле статьи ---
+
+/**
+ * Инициализирует возможность вставки фото и видео файлов в статью путем drag & drop
+ */
+function initEditorMediaDragDrop() {
+    const visualEditor = document.getElementById('contentVisual');
+    const codeEditor = document.getElementById('content');
+    const blogForm = document.getElementById('blogForm');
+
+    if (!visualEditor && !codeEditor) return;
+
+    function hasFiles(e) {
+        if (!e.dataTransfer || !e.dataTransfer.types) return false;
+        for (let i = 0; i < e.dataTransfer.types.length; i++) {
+            if (e.dataTransfer.types[i] === 'Files') return true;
+        }
+        return false;
+    }
+
+    function isImageFile(file) {
+        if (file.type && file.type.startsWith('image/')) return true;
+        const ext = (file.name || '').split('.').pop().toLowerCase();
+        return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].indexOf(ext) !== -1;
+    }
+
+    function isVideoFile(file) {
+        if (file.type && file.type.startsWith('video/')) return true;
+        const ext = (file.name || '').split('.').pop().toLowerCase();
+        return ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi'].indexOf(ext) !== -1;
+    }
+
+    function getCaretRangeFromPoint(clientX, clientY) {
+        if (document.caretRangeFromPoint) {
+            return document.caretRangeFromPoint(clientX, clientY);
+        } else if (document.caretPositionFromPoint) {
+            const pos = document.caretPositionFromPoint(clientX, clientY);
+            if (pos && pos.offsetNode) {
+                const range = document.createRange();
+                range.setStart(pos.offsetNode, pos.offset);
+                range.collapse(true);
+                return range;
+            }
+        }
+        return null;
+    }
+
+    // Защита от случайного сброса файлов мимо редактора (браузер по умолчанию переходит по ссылке на файл)
+    window.addEventListener('dragover', function (e) {
+        if (hasFiles(e)) {
+            e.preventDefault();
+        }
+    }, false);
+
+    window.addEventListener('drop', function (e) {
+        if (hasFiles(e)) {
+            if (!e.target.closest('#contentVisual, #content, .file-dropzone, #smileDropzone, #videoDropzone, #audioDropzone')) {
+                e.preventDefault();
+            }
+        }
+    }, false);
+
+    // 1. Визуальный редактор (#contentVisual)
+    let visualDragCounter = 0;
+    if (visualEditor) {
+        visualEditor.addEventListener('dragenter', function (e) {
+            if (!hasFiles(e)) return;
+            visualDragCounter++;
+            visualEditor.classList.add('drag-over-media');
+        });
+
+        visualEditor.addEventListener('dragover', function (e) {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+
+            // Живой курсор в месте вставки
+            const range = getCaretRangeFromPoint(e.clientX, e.clientY);
+            if (range && visualEditor.contains(range.commonAncestorContainer)) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        });
+
+        visualEditor.addEventListener('dragleave', function (e) {
+            if (!hasFiles(e)) return;
+            visualDragCounter--;
+            if (visualDragCounter <= 0) {
+                visualDragCounter = 0;
+                visualEditor.classList.remove('drag-over-media');
+            }
+        });
+
+        visualEditor.addEventListener('drop', function (e) {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            visualDragCounter = 0;
+            visualEditor.classList.remove('drag-over-media');
+
+            const files = Array.from(e.dataTransfer.files || []);
+            if (!files.length) return;
+
+            let dropRange = getCaretRangeFromPoint(e.clientX, e.clientY);
+            if (dropRange && !visualEditor.contains(dropRange.commonAncestorContainer)) {
+                dropRange = null;
+            }
+
+            handleDroppedMediaFiles(files, 'visual', dropRange);
+        });
+    }
+
+    // 2. Редактор исходного кода (#content)
+    let codeDragCounter = 0;
+    if (codeEditor) {
+        codeEditor.addEventListener('dragenter', function (e) {
+            if (!hasFiles(e)) return;
+            codeDragCounter++;
+            codeEditor.classList.add('drag-over-media');
+        });
+
+        codeEditor.addEventListener('dragover', function (e) {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        codeEditor.addEventListener('dragleave', function (e) {
+            if (!hasFiles(e)) return;
+            codeDragCounter--;
+            if (codeDragCounter <= 0) {
+                codeDragCounter = 0;
+                codeEditor.classList.remove('drag-over-media');
+            }
+        });
+
+        codeEditor.addEventListener('drop', function (e) {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            codeDragCounter = 0;
+            codeEditor.classList.remove('drag-over-media');
+
+            const files = Array.from(e.dataTransfer.files || []);
+            if (!files.length) return;
+
+            handleDroppedMediaFiles(files, 'code', null);
+        });
+    }
+
+    // 3. Форма статьи (#blogForm) — если перетащили в поле формы за пределами текстовых областей
+    if (blogForm) {
+        blogForm.addEventListener('dragover', function (e) {
+            if (!hasFiles(e)) return;
+            if (e.target && e.target.id === 'title') return;
+            e.preventDefault();
+        });
+
+        blogForm.addEventListener('drop', function (e) {
+            if (!hasFiles(e)) return;
+            if (e.target && e.target.id === 'title') return;
+            if (e.target === visualEditor || visualEditor?.contains(e.target) || e.target === codeEditor) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            if (visualEditor) visualEditor.classList.remove('drag-over-media');
+            if (codeEditor) codeEditor.classList.remove('drag-over-media');
+
+            const files = Array.from(e.dataTransfer.files || []);
+            if (!files.length) return;
+
+            const mode = (typeof editorMode !== 'undefined' && editorMode === 'code') ? 'code' : 'visual';
+            handleDroppedMediaFiles(files, mode, null);
+        });
+    }
+
+    /**
+     * Обработка сброшенных медиа файлов
+     */
+    function handleDroppedMediaFiles(files, mode, dropRange) {
+        const mediaFiles = [];
+        files.forEach(function (file) {
+            if (isImageFile(file) || isVideoFile(file)) {
+                mediaFiles.push(file);
+            } else {
+                const warnMsg = window.t
+                    ? window.t('notifications.drag_drop_unsupported_file', 'Формат файла "{filename}" не поддерживается (разрешены только фото и видео)', { filename: file.name })
+                    : 'Формат файла "' + file.name + '" не поддерживается (разрешены только фото и видео)';
+                showNotification(warnMsg, 'warning');
+            }
+        });
+
+        if (!mediaFiles.length) return;
+
+        if (mode === 'visual') {
+            const itemsToUpload = [];
+            let currentRange = dropRange;
+
+            mediaFiles.forEach(function (file) {
+                const uploadId = 'media-upload-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                const isVid = isVideoFile(file);
+                const icon = isVid ? '🎬' : '🖼️';
+                const safeName = typeof escapeHtml === 'function' ? escapeHtml(file.name) : file.name;
+                const placeholderHtml = '<div class="blog-image-align-wrap media-upload-placeholder" data-upload-id="' + uploadId + '" contenteditable="false" style="text-align: center; margin: 14px 0; width: 100%; clear: both;">' +
+                    '<div class="media-upload-card">' +
+                        '<div class="media-upload-spinner"></div>' +
+                        '<div class="media-upload-info">' +
+                            '<span class="media-upload-icon">' + icon + '</span>' +
+                            '<span class="media-upload-text">' + safeName + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+
+                if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+                    window.VisualEngine.insertBlockMedia(placeholderHtml, currentRange);
+                    // После вставки первого плейсхолдера курсор уже стоит сразу за ним
+                    currentRange = null;
+                } else if (typeof insertImageBlockAtCaret === 'function') {
+                    insertImageBlockAtCaret(placeholderHtml);
+                } else if (visualEditor) {
+                    visualEditor.insertAdjacentHTML('beforeend', placeholderHtml);
+                }
+
+                itemsToUpload.push({ file: file, uploadId: uploadId, isVideo: isVid });
+            });
+
+            // Запускаем загрузку каждого файла параллельно
+            itemsToUpload.forEach(function (item) {
+                uploadDroppedMediaFile(item.file, 'visual', item.uploadId, item.isVideo);
+            });
+        } else {
+            // В режиме кода загружаем файлы последовательно, сохраняя порядок вставки
+            (async function () {
+                for (const file of mediaFiles) {
+                    await uploadDroppedMediaFile(file, 'code', null, isVideoFile(file));
+                }
+            })();
+        }
+    }
+
+    /**
+     * Загрузка отдельного медиа файла (фото или видео) на сервер
+     */
+    async function uploadDroppedMediaFile(file, mode, uploadId, isVideo) {
+        const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+        const MAX_IMG_SIZE = 25 * 1024 * 1024;    // 25 MB
+
+        if (isVideo && file.size > MAX_VIDEO_SIZE) {
+            removeUploadPlaceholder(uploadId);
+            const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+            const msg = window.t
+                ? window.t('notifications.video_too_big_param', 'Видео файл слишком большой ({size} МБ). Максимальный размер: 100 МБ.', { size: sizeMb })
+                : 'Видео файл слишком большой (' + sizeMb + ' МБ). Максимальный размер: 100 МБ.';
+            showNotification(msg, 'error');
+            return;
+        }
+
+        if (!isVideo && file.size > MAX_IMG_SIZE) {
+            removeUploadPlaceholder(uploadId);
+            const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+            const msg = window.t
+                ? window.t('notifications.file_too_big_param', 'Файл "{filename}" слишком большой ({size} МБ). Максимум 25 МБ.', { filename: file.name, size: sizeMb })
+                : 'Файл "' + file.name + '" слишком большой (' + sizeMb + ' МБ). Максимум 25 МБ.';
+            showNotification(msg, 'error');
+            return;
+        }
+
+        window.activeMediaUploadsCount = (window.activeMediaUploadsCount || 0) + 1;
+
+        if (mode === 'code') {
+            const startMsg = window.t
+                ? window.t('notifications.drag_drop_uploading', 'Загрузка: {filename}...', { filename: file.name })
+                : 'Загрузка: ' + file.name + '...';
+            showNotification(startMsg, 'info');
+        }
+
+        const formData = new FormData();
+        const endpoint = isVideo ? 'upload_video.php' : 'upload_image.php';
+        if (isVideo) {
+            formData.append('video', file);
+        } else {
+            formData.append('image', file);
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || (window.CSRF_TOKEN || '');
+        const headers = {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        };
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: headers,
+                body: formData
+            });
+
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (jsonErr) {
+                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                throw new Error(clean || ('HTTP ' + response.status));
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || (isVideo ? 'Не удалось загрузить видео' : 'Не удалось загрузить изображение'));
+            }
+
+            if (isVideo) {
+                const videoPath = data.path || ('data/files/videos/' + (data.filename || file.name));
+                const fileName = data.filename || file.name;
+                insertUploadedMediaContent(videoPath, fileName, 'video', mode, uploadId);
+                const successMsg = window.t
+                    ? window.t('notifications.drag_drop_video_success', 'Видео "{filename}" успешно добавлено', { filename: file.name })
+                    : 'Видео "' + file.name + '" успешно добавлено';
+                showNotification(successMsg, 'success');
+                if (typeof loadVideoFilesList === 'function') loadVideoFilesList();
+            } else {
+                const imgUrl = data.url;
+                insertUploadedMediaContent(imgUrl, file.name, 'image', mode, uploadId);
+                const successMsg = window.t
+                    ? window.t('notifications.drag_drop_image_success', 'Изображение "{filename}" успешно добавлено', { filename: file.name })
+                    : 'Изображение "' + file.name + '" успешно добавлено';
+                showNotification(successMsg, 'success');
+            }
+        } catch (err) {
+            console.error('Drag & Drop media upload error:', err);
+            removeUploadPlaceholder(uploadId);
+            const errMsg = window.t
+                ? window.t('notifications.error_with_param', 'Ошибка: {error}', { error: err.message || 'Ошибка сети' })
+                : 'Ошибка: ' + (err.message || 'Ошибка сети');
+            showNotification(errMsg, 'error');
+        } finally {
+            window.activeMediaUploadsCount = Math.max(0, (window.activeMediaUploadsCount || 1) - 1);
+        }
+    }
+
+    function removeUploadPlaceholder(uploadId) {
+        if (!uploadId) return;
+        const ph = document.querySelector('[data-upload-id="' + uploadId + '"]');
+        if (ph && ph.parentNode) ph.parentNode.removeChild(ph);
+    }
+
+    /**
+     * Вставляет загруженное медиа в статью (заменяя плейсхолдер или добавляя в textarea)
+     */
+    function insertUploadedMediaContent(url, fileName, type, mode, uploadId) {
+        const isVid = (type === 'video');
+        const noBorderRadius = localStorage.getItem('noBorderRadius') === 'true';
+
+        let videoElement = '';
+        let mediaHtml = '';
+
+        if (isVid) {
+            let mimeType = 'video/mp4';
+            const ext = (url || fileName).split(/[#?]/)[0].split('.').pop().toLowerCase();
+            if (ext === 'webm') mimeType = 'video/webm';
+            else if (ext === 'ogg' || ext === 'ogv') mimeType = 'video/ogg';
+            else if (ext === 'mov') mimeType = 'video/quicktime';
+            else if (ext === 'mkv') mimeType = 'video/x-matroska';
+
+            videoElement = '<video controls playsinline preload="metadata" style="width: 100%; min-width: 280px; max-width: 800px; height: auto; display: block; margin: 10px auto; border-radius: 8px;"><source src="' + url + '" type="' + mimeType + '">Ваш браузер не поддерживает видео элемент.</video>';
+            mediaHtml = wrapMediaWithControls(videoElement, 'video');
+        } else {
+            const radiusStyle = noBorderRadius ? 'border-radius: 0px !important;' : 'border-radius: 8px;';
+            const imgStyle = 'width: 100%; max-width: 100%; height: auto; display: block; margin: 0; ' + radiusStyle;
+            const classAttr = 'blog-image' + (noBorderRadius ? ' no-radius' : '');
+            const imgTag = '<img src="' + url + '" style="' + imgStyle + '" class="' + classAttr + '">';
+            mediaHtml = wrapImageWithHint(imgTag, '');
+        }
+
+        const isVisualMode = (mode === 'visual' || (typeof editorMode !== 'undefined' && editorMode === 'visual'));
+
+        if (isVisualMode) {
+            const vEditor = document.getElementById('contentVisual');
+            let placeholder = uploadId ? vEditor?.querySelector('[data-upload-id="' + uploadId + '"]') : null;
+
+            if (placeholder && placeholder.parentNode) {
+                placeholder.insertAdjacentHTML('beforebegin', mediaHtml);
+                placeholder.parentNode.removeChild(placeholder);
+            } else {
+                if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+                    window.VisualEngine.insertBlockMedia(mediaHtml);
+                } else if (typeof insertImageBlockAtCaret === 'function') {
+                    insertImageBlockAtCaret(mediaHtml);
+                } else if (vEditor) {
+                    vEditor.insertAdjacentHTML('beforeend', mediaHtml);
+                }
+            }
+
+            if (typeof wrapExistingEditorImages === 'function') wrapExistingEditorImages();
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            if (typeof saveToHistory === 'function') saveToHistory();
+        } else {
+            // Code mode
+            const ta = document.getElementById('content');
+            if (ta) {
+                let codeSnippet = '';
+                if (window.enableMarkdown) {
+                    if (isVid) {
+                        codeSnippet = '\n' + videoElement + '\n';
+                    } else {
+                        codeSnippet = '\n![' + (fileName || 'Изображение') + '](' + url + ')\n';
+                    }
+                } else {
+                    codeSnippet = '\n' + (isVid ? videoElement : mediaHtml) + '\n';
+                }
+
+                const cursorPos = (typeof ta.selectionStart === 'number') ? ta.selectionStart : ta.value.length;
+                ta.value = ta.value.substring(0, cursorPos) + codeSnippet + ta.value.substring(cursorPos);
+                ta.selectionStart = ta.selectionEnd = cursorPos + codeSnippet.length;
+
+                if (typeof markEditorDirty === 'function') markEditorDirty();
+                if (typeof saveToHistory === 'function') saveToHistory();
+            }
+        }
+    }
+}
 
 function renderGridPreview() {
     const gridLayout = document.getElementById('gridLayout').value;

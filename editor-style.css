@@ -3714,6 +3714,94 @@ button:hover {
     padding-bottom: 24px;
 }
 
+/* Drag and Drop Media in Editor Fields */
+.editor-field.drag-over-media {
+    outline: 2px dashed var(--text-color) !important;
+    outline-offset: -4px;
+    background-color: rgba(128, 128, 128, 0.08) !important;
+    border-radius: 8px;
+    transition: outline var(--anim-dur-fast) var(--anim-ease-out),
+                background-color var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+[data-theme="dark"] .editor-field.drag-over-media {
+    outline-color: var(--text-color) !important;
+    background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="dark"][data-amoled="true"] .editor-field.drag-over-media {
+    outline-color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Media Upload Placeholder in Visual Mode */
+.media-upload-placeholder {
+    display: block;
+    margin: 14px 0;
+    width: 100%;
+    clear: both;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.media-upload-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border: 1px dashed var(--border-color);
+    border-radius: 10px;
+    background: rgba(128, 128, 128, 0.04);
+    color: var(--text-color);
+    font-size: 14px;
+    box-sizing: border-box;
+    max-width: 100%;
+    transition: all var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.media-upload-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(128, 128, 128, 0.25);
+    border-top: 2px solid var(--text-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+.media-upload-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.media-upload-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.media-upload-text {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.9;
+}
+
+[data-theme="dark"] .media-upload-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"][data-amoled="true"] .media-upload-card {
+    background: #080808;
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
 #contentVisual.editor-field p {
     margin-top: 0;
     margin-bottom: 0;
