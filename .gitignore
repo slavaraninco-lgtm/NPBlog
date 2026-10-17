@@ -1,6 +1,7 @@
 # Active local configuration & whitelist
 editor_settings.json
 allowed_ips.txt
+api_tokens.json
 
 # Editor undo/redo history & runtime state
 history.json

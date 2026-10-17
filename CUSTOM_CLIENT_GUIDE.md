@@ -67,6 +67,9 @@ CMS NPBlog функционирует **полностью без реляцио
 
 ```
 c:\xampp\htdocs\ (Корень блога)
+├── editor_settings.json     <-- Конфигурация редактора и пароль
+├── allowed_ips.txt          <-- Белый список IP-адресов
+├── api_tokens.json          <-- Хранилище активных Bearer-токенов
 ├── data\
 │   ├── blog\
 │   │   ├── posts-meta.json      <-- Реестр метаданных статей (ID, заголовок, дата, файл)
@@ -82,8 +85,7 @@ c:\xampp\htdocs\ (Корень блога)
 │   │   └── anime\
 │   ├── drafts\                  <-- Серверные черновики (.json)
 │   ├── fonts\                   <-- Пользовательские шрифты (.ttf, .otf, .woff2)
-│   ├── backgrounds.json         <-- Метаданные индивидуальных фонов статей
-│   └── api_tokens.json          <-- Хранилище активных Bearer-токенов
+│   └── backgrounds.json         <-- Метаданные индивидуальных фонов статей
 ├── autosave\                    <-- Временные файлы серверных автосохранений (autosave_1.json)
 ├── data_backup\                 <-- Инкрементные ревизии статей (1/1-1.html, 1/1-2.html...)
 └── api\                         <-- REST API v1
@@ -116,7 +118,7 @@ sequenceDiagram
     actor Author as Автор
     participant App as Сторонний Редактор
     participant API as NPBlog REST API
-    participant DB as data/api_tokens.json
+    participant DB as api_tokens.json
 
     Author->App: Ввод пароля блога
     App->>API: POST /api/v1/auth/login { password, device_name }
