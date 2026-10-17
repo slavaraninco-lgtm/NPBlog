@@ -37,7 +37,7 @@
             <div style="width: 320px; border-right: 1px solid var(--border-color); background: var(--modal-bg); display: flex; flex-direction: column; gap: 16px; padding: 20px; overflow-y: auto; box-sizing: border-box;">
                 
                 <!-- Переключатель вкладок -->
-                <div class="modal-tabs" style="margin: 0; width: 100%; display: flex; box-sizing: border-box;">
+                <div class="modal-tabs" style="margin: 0;">
                     <button type="button" id="btnTabGui" onclick="switchBtnTab('gui')" class="modal-tab-btn active" style="flex: 1; justify-content: center;" data-i18n="modals.btn_tab_gui">🎨 Конструктор</button>
                     <button type="button" id="btnTabCode" onclick="switchBtnTab('code')" class="modal-tab-btn" style="flex: 1; justify-content: center;" data-i18n="modals.btn_tab_code">💻 Код</button>
                 </div>

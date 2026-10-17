@@ -28,7 +28,7 @@
         <!-- Тело окна -->
         <div class="modal-body">
             <!-- Переключатель типов медиа -->
-            <div class="modal-tabs">
+            <div class="modal-tabs" style="margin: -20px -20px 18px -20px; padding: 0 16px; background: rgba(128,128,128,0.04); display: flex; flex-wrap: wrap;">
                 <label class="modal-tab-btn is-active" style="cursor: pointer; user-select: none;">
                     <input type="radio" name="mediaType" value="video-url" checked style="display: none;">
                     <span>📺 <span data-i18n="modals.media_video_url">Видео (URL)</span></span>

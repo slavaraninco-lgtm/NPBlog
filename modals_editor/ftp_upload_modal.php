@@ -205,14 +205,35 @@ $ftpActiveBlog = isset($_SESSION['active_blog_path']) ? $_SESSION['active_blog_p
         </div>
 
         <!-- Подвал окна -->
-        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <button type="button" id="ftpModalResetBtn" onclick="resetFtpModalSettings()" class="modal-btn modal-btn-danger" style="display: <?= $savedFtpCredentials ? 'inline-flex' : 'none' ?>;" data-i18n="modals.ftp_btn_reset">🗑️ Сбросить настройки</button>
+        <div class="modal-footer modal-footer-between">
+            <div class="modal-footer-start">
+                <button type="button" id="ftpModalResetBtn" onclick="resetFtpModalSettings()" class="modal-btn modal-btn-ghost-danger" style="display: <?= $savedFtpCredentials ? 'inline-flex' : 'none' ?>;">
+                    <svg class="modal-btn-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                    <span class="btn-text" data-i18n="modals.ftp_btn_reset">Сбросить настройки</span>
+                </button>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" class="modal-btn modal-btn-ghost" onclick="closeFtpModal()" data-modal-close data-i18n="common.close">Закрыть</button>
-                <button type="button" id="ftpModalSaveBtn" onclick="saveFtpModalSettingsOnly()" class="modal-btn modal-btn-secondary" data-i18n="modals.ftp_btn_save">💾 Сохранить параметры</button>
-                <button type="button" id="ftpModalStartBtn" onclick="startFtpModalUpload()" class="modal-btn modal-btn-primary" data-i18n="modals.ftp_btn_start">🚀 Начать загрузку</button>
+            <div class="modal-footer-end" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button type="button" id="ftpModalSaveBtn" onclick="saveFtpModalSettingsOnly()" class="modal-btn modal-btn-secondary">
+                    <svg class="modal-btn-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    <span class="btn-text" data-i18n="modals.ftp_btn_save">Сохранить параметры</span>
+                </button>
+                <button type="button" id="ftpModalStartBtn" onclick="startFtpModalUpload()" class="modal-btn modal-btn-primary">
+                    <svg class="modal-btn-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span class="btn-text" data-i18n="modals.ftp_btn_start">Начать загрузку</span>
+                </button>
             </div>
         </div>
     </div>
@@ -532,7 +553,13 @@ function startFtpModalUpload() {
     if (startBtn) {
         startBtn.disabled = true;
         startBtn.classList.add('is-loading');
-        startBtn.textContent = '⏳ Передача...';
+        const textSpan = startBtn.querySelector('.btn-text');
+        const uploadingText = window.t ? window.t('modals.ftp_btn_uploading', 'Передача...') : 'Передача...';
+        if (textSpan) {
+            textSpan.textContent = uploadingText;
+        } else {
+            startBtn.textContent = uploadingText;
+        }
     }
     if (saveBtn) saveBtn.disabled = true;
     if (resetBtn) resetBtn.disabled = true;
@@ -679,7 +706,13 @@ function startFtpModalUpload() {
         if (startBtn) {
             startBtn.disabled = false;
             startBtn.classList.remove('is-loading');
-            startBtn.textContent = window.t ? window.t('modals.ftp_btn_start', '🚀 Начать загрузку') : '🚀 Начать загрузку';
+            const textSpan = startBtn.querySelector('.btn-text');
+            const idleText = window.t ? window.t('modals.ftp_btn_start', 'Начать загрузку') : 'Начать загрузку';
+            if (textSpan) {
+                textSpan.textContent = idleText;
+            } else {
+                startBtn.textContent = idleText;
+            }
         }
         if (saveBtn) saveBtn.disabled = false;
         if (resetBtn) resetBtn.disabled = false;
