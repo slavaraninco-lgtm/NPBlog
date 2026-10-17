@@ -13,7 +13,7 @@
 
 :root {
     --modal-z-index-base: 10000;
-    --modal-radius: 14px;
+    --modal-radius: 16px;
     --modal-radius-inner: 10px;
     --modal-transition-speed: 0.28s;
     --modal-transition-ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -25,8 +25,8 @@
     --modal-text-muted: rgba(120, 120, 120, 0.85);
     --modal-border: var(--border-color, rgba(128, 128, 128, 0.22));
     --modal-border-subtle: rgba(128, 128, 128, 0.12);
-    --modal-header-bg: rgba(0, 0, 0, 0.02);
-    --modal-footer-bg: rgba(0, 0, 0, 0.015);
+    --modal-header-bg: transparent;
+    --modal-footer-bg: transparent;
     --modal-input-bg: var(--bg-color, #ffffff);
     
     /* Shadows */
@@ -67,8 +67,8 @@
     --modal-text-muted: rgba(180, 180, 180, 0.75);
     --modal-border: var(--border-color, rgba(255, 255, 255, 0.12));
     --modal-border-subtle: rgba(255, 255, 255, 0.06);
-    --modal-header-bg: rgba(255, 255, 255, 0.025);
-    --modal-footer-bg: rgba(255, 255, 255, 0.015);
+    --modal-header-bg: transparent;
+    --modal-footer-bg: transparent;
     --modal-input-bg: rgba(255, 255, 255, 0.04);
     --modal-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.45);
     --modal-backdrop-bg: rgba(0, 0, 0, 0.65);
@@ -81,8 +81,8 @@
 /* AMOLED Dark Theme */
 [data-theme="dark"][data-amoled="true"] {
     --modal-bg: #000000 !important;
-    --modal-header-bg: #000000 !important;
-    --modal-footer-bg: #000000 !important;
+    --modal-header-bg: transparent !important;
+    --modal-footer-bg: transparent !important;
     --modal-input-bg: #09090b;
     --modal-border: #222222 !important;
     --modal-border-subtle: #18181b;
@@ -313,9 +313,9 @@ body.modal-open {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--modal-border-subtle);
-    background-color: var(--modal-header-bg);
+    padding: 22px 24px 10px 24px;
+    border-bottom: none;
+    background-color: var(--modal-header-bg, transparent);
     flex-shrink: 0;
     user-select: none;
     gap: 12px;
@@ -486,79 +486,140 @@ body.modal-is-dragging * {
 }
 
 /* ==============================================================================
- * Modal Tabs Navigation
+ * Modal Tabs Navigation (Modern Segmented Pill Control)
  * ============================================================================== */
 .modal-tabs {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 0 16px;
-    border-bottom: 1px solid var(--modal-border-subtle);
-    background: rgba(128, 128, 128, 0.03);
+    gap: 3px;
+    padding: 3px;
+    margin: 0 24px 14px 24px;
+    background: rgba(128, 128, 128, 0.08);
+    border: 1px solid var(--modal-border-subtle, rgba(128, 128, 128, 0.12));
+    border-radius: 10px;
     overflow-x: auto;
     scrollbar-width: none;
     flex-shrink: 0;
     position: relative;
+    box-sizing: border-box;
+    align-self: flex-start;
+    max-width: calc(100% - 48px);
 }
+
+[data-theme="dark"] .modal-tabs {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme="dark"][data-amoled="true"] .modal-tabs {
+    background: #141414 !important;
+    border: 1px solid #242424 !important;
+}
+
 .modal-tabs::-webkit-scrollbar {
     display: none;
+}
+
+/* Tabs inside modal body */
+.modal-body > .modal-tabs:first-child {
+    margin: 0 0 16px 0;
+    max-width: 100%;
+}
+
+/* Full width option if required */
+.modal-tabs.is-fullwidth,
+.modal-tabs.modal-tabs-fullwidth {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    align-self: stretch;
+}
+
+.modal-tabs.is-fullwidth .modal-tab-btn,
+.modal-tabs.modal-tabs-fullwidth .modal-tab-btn {
+    flex: 1;
+    justify-content: center;
 }
 
 .modal-tab-btn {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 14px;
-    font-size: 0.88rem;
-    font-weight: 600;
+    justify-content: center;
+    gap: 7px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    font-weight: 500;
     color: var(--modal-text);
     background: transparent;
     border: none;
-    border-radius: 6px 6px 0 0;
+    border-radius: 7px;
     cursor: pointer;
     white-space: nowrap;
     user-select: none;
     text-decoration: none;
-    opacity: 0.65;
-    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    margin-bottom: 0;
+    opacity: 0.7;
+    transition: background-color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+        color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.12s ease;
+    margin: 0;
+    line-height: 1.25;
+    box-sizing: border-box;
 }
 
 .modal-tab-btn:hover {
-    opacity: 0.9;
-    background: rgba(128, 128, 128, 0.07);
+    opacity: 0.95;
+    background: rgba(128, 128, 128, 0.09);
+    color: var(--modal-text);
 }
 
+.modal-tab-btn:active {
+    transform: scale(0.98);
+}
+
+/* Active Segmented Pill Button */
 .modal-tab-btn.is-active,
 .modal-tab-btn.active,
-.modal-tab-btn[aria-selected="true"] {
+.modal-tab-btn[aria-selected="true"],
+.modal-tab-btn:has(input:checked) {
     opacity: 1;
-    background: transparent;
+    font-weight: 600;
+    background: var(--bg-color, #ffffff);
+    color: var(--text-color, #111111);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 1px rgba(0, 0, 0, 0.04);
 }
 
-/* Плавный индикатор активной вкладки снизу (без дергания и сдвига текста) */
+[data-theme="dark"] .modal-tab-btn.is-active,
+[data-theme="dark"] .modal-tab-btn.active,
+[data-theme="dark"] .modal-tab-btn[aria-selected="true"],
+[data-theme="dark"] .modal-tab-btn:has(input:checked) {
+    background: #27272a;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"][data-amoled="true"] .modal-tab-btn.is-active,
+[data-theme="dark"][data-amoled="true"] .modal-tab-btn.active,
+[data-theme="dark"][data-amoled="true"] .modal-tab-btn[aria-selected="true"],
+[data-theme="dark"][data-amoled="true"] .modal-tab-btn:has(input:checked) {
+    background: #1f1f1f !important;
+    border: 1px solid #333333 !important;
+    color: #ffffff !important;
+    box-shadow: none;
+}
+
+/* Disable old underline animation */
 .modal-tab-btn::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--modal-color-primary, currentColor);
-    border-radius: 2px 2px 0 0;
-    transform: scaleX(0);
-    opacity: 0;
-    transform-origin: center bottom;
-    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.24s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
+    display: none !important;
 }
 
-.modal-tab-btn.is-active::after,
-.modal-tab-btn.active::after,
-.modal-tab-btn[aria-selected="true"]::after {
-    transform: scaleX(1);
-    opacity: 1;
+.modal-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    opacity: 0.9;
 }
 
 .modal-tab-pane {
@@ -586,7 +647,7 @@ body.modal-is-dragging * {
  * Modal Body
  * ============================================================================== */
 .modal-body {
-    padding: 20px;
+    padding: 10px 24px 16px 24px;
     overflow-y: auto;
     overflow-x: hidden;
     flex: 1;
@@ -596,6 +657,14 @@ body.modal-is-dragging * {
     box-sizing: border-box;
     scrollbar-width: thin;
     scrollbar-color: rgba(128, 128, 128, 0.35) transparent;
+}
+
+.modal-dialog > .modal-body:first-child {
+    padding-top: 24px;
+}
+
+.modal-dialog > .modal-body:last-child {
+    padding-bottom: 24px;
 }
 
 .modal-body::-webkit-scrollbar {
@@ -1088,9 +1157,9 @@ body.modal-is-dragging * {
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
-    padding: 14px 20px;
-    border-top: 1px solid var(--modal-border-subtle);
-    background-color: var(--modal-footer-bg);
+    padding: 10px 24px 22px 24px;
+    border-top: none;
+    background-color: var(--modal-footer-bg, transparent);
     flex-shrink: 0;
     box-sizing: border-box;
 }
@@ -1308,15 +1377,20 @@ body.modal-is-dragging * {
     }
 
     .modal-header {
-        padding: 14px 16px;
+        padding: 18px 18px 8px 18px;
+    }
+
+    .modal-tabs {
+        margin: 0 16px 12px 16px;
+        max-width: calc(100% - 32px);
     }
 
     .modal-body {
-        padding: 16px;
+        padding: 8px 18px 14px 18px;
     }
 
     .modal-footer {
-        padding: 12px 16px;
+        padding: 8px 18px 18px 18px;
         flex-direction: column-reverse;
         gap: 8px;
     }

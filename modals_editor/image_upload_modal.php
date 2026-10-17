@@ -28,7 +28,7 @@
         <!-- Тело окна -->
         <div class="modal-body">
             <!-- Переключатель источника (Файл / Ссылка) -->
-            <div class="modal-tabs" style="margin: -20px -20px 18px -20px; padding: 0 20px; background: rgba(128,128,128,0.04);">
+            <div class="modal-tabs">
                 <label class="modal-tab-btn is-active" style="cursor: pointer; user-select: none;">
                     <input type="radio" name="imageSource" value="file" checked style="display: none;">
                     <span data-i18n="modals.image_tab_file">📁 Загрузить файл</span>
