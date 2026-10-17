@@ -109,7 +109,6 @@ function showDraftRestoreToast(draft, timeFormatted) {
     const closeBtnTitle = window.t ? window.t('common.close', 'Закрыть') : 'Закрыть';
 
     toast.innerHTML = `
-        <div class="notification-icon">📝</div>
         <div class="notification-content">
             <div class="notification-title">${toastTitle}</div>
             <div class="draft-toast-meta">
@@ -120,7 +119,12 @@ function showDraftRestoreToast(draft, timeFormatted) {
         </div>
         <div class="draft-actions">
             <button type="button" class="draft-btn-restore">${restoreBtnText}</button>
-            <button type="button" class="notification-close" title="${closeBtnTitle}">×</button>
+            <button type="button" class="notification-close" title="${closeBtnTitle}" aria-label="${closeBtnTitle}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
         </div>
     `;
 
