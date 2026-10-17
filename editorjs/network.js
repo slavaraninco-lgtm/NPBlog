@@ -8,11 +8,8 @@ function toggleManagePosts() {
         }
         loadPosts();
     } else {
-        // Очищаем поле поиска при закрытии панели
-        const searchInput = document.getElementById('postsSearchInput');
-        if (searchInput) {
-            searchInput.value = '';
-        }
+        // Очищаем и сворачиваем поиск при закрытии панели
+        closePostsSearch();
     }
 }
 
@@ -218,6 +215,87 @@ function editPost(postId) {
 }
 
 let deletePostId = null;
+
+/**
+ * Управление виджетом поиска статей в панели управления (раскрывающийся как в blog.html)
+ */
+function openPostsSearch() {
+    const widget = document.getElementById('postsSearchWidget');
+    const input = document.getElementById('postsSearchInput');
+    if (widget && !widget.classList.contains('open')) {
+        widget.classList.add('open');
+        setTimeout(() => {
+            if (input) input.focus();
+        }, 120);
+    }
+}
+
+function closePostsSearch() {
+    const widget = document.getElementById('postsSearchWidget');
+    const input = document.getElementById('postsSearchInput');
+    if (widget && widget.classList.contains('open')) {
+        widget.classList.remove('open');
+        if (input && input.value !== '') {
+            input.value = '';
+            filterPosts();
+        }
+    } else if (input && input.value !== '') {
+        input.value = '';
+        filterPosts();
+    }
+}
+
+function togglePostsSearch(event) {
+    if (event) event.stopPropagation();
+    const widget = document.getElementById('postsSearchWidget');
+    if (widget && widget.classList.contains('open')) {
+        const input = document.getElementById('postsSearchInput');
+        if (input) input.focus();
+    } else {
+        openPostsSearch();
+    }
+}
+
+function closeOrClearPostsSearch(event) {
+    if (event) event.stopPropagation();
+    const input = document.getElementById('postsSearchInput');
+    if (input && input.value !== '') {
+        input.value = '';
+        filterPosts();
+        input.focus();
+    } else {
+        closePostsSearch();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const postsSearchWidget = document.getElementById('postsSearchWidget');
+    if (postsSearchWidget) {
+        postsSearchWidget.addEventListener('click', function (e) {
+            if (!this.classList.contains('open')) {
+                openPostsSearch();
+            }
+        });
+    }
+});
+
+document.addEventListener('click', function (e) {
+    const widget = document.getElementById('postsSearchWidget');
+    const input = document.getElementById('postsSearchInput');
+    if (!widget || !widget.classList.contains('open')) return;
+    if (!widget.contains(e.target) && (!input || !input.value.trim())) {
+        closePostsSearch();
+    }
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        const widget = document.getElementById('postsSearchWidget');
+        if (widget && widget.classList.contains('open')) {
+            closePostsSearch();
+        }
+    }
+});
 
 function filterPosts() {
     const searchInput = document.getElementById('postsSearchInput');

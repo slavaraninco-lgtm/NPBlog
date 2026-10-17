@@ -85,6 +85,18 @@
 
 [data-theme="dark"][data-amoled="true"] .manage-posts {
     border-left: 1px solid #222222 !important;
+    border-top: 1px solid #222222 !important;
+    border-bottom: 1px solid #222222 !important;
+    border-right: none !important;
+}
+
+[data-theme="dark"][data-amoled="true"] .posts-search-widget {
+    background: #000000 !important;
+    border: 1px solid #282828 !important;
+}
+
+[data-theme="dark"][data-amoled="true"] .posts-search-widget:not(.open):hover {
+    background: #111111 !important;
 }
 
 /* Анимации редактора (Unified Motion System) */
@@ -209,7 +221,12 @@ textarea {
     max-width: 95vw;
     background-color: var(--bg-color);
     color: var(--text-color);
-    border-left: 1px solid #ffffff;
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+    border-left: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    border-right: none;
     padding: 0;
     overflow-y: auto;
     transform: translateX(100%);
@@ -229,14 +246,19 @@ textarea {
 .manage-posts-header {
     position: sticky;
     top: 0;
-    z-index: 1;
-    padding: 20px 20px 16px;
+    z-index: 2;
+    padding: 16px 16px 14px 20px;
     background: var(--bg-color);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    border-top-left-radius: 20px;
+    border-bottom: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 [data-theme="dark"] .manage-posts-header {
-    border-bottom-color: rgba(255, 255, 255, 0.08);
+    border-bottom: none;
 }
 
 .manage-posts h2 {
@@ -244,12 +266,24 @@ textarea {
     font-size: 1.25rem;
     font-weight: 600;
     letter-spacing: -0.02em;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.manage-posts-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .manage-posts .close-manage {
-    position: absolute;
-    top: 16px;
-    right: 16px;
+    position: static;
+    top: auto;
+    right: auto;
     width: 36px;
     height: 36px;
     padding: 0;
@@ -265,6 +299,7 @@ textarea {
     color: var(--text-color);
     opacity: 0.7;
     transition: opacity var(--anim-dur-fast) ease, background-color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
+    flex-shrink: 0;
 }
 
 .manage-posts .close-manage:hover {
@@ -462,30 +497,132 @@ textarea {
     opacity: 0.7;
 }
 
-.posts-search-input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
-    font-size: 14px;
+/* Виджет поиска в панели управления статьями (раскрывающийся как в blog.html) */
+.posts-search-widget {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    width: 36px;
+    box-sizing: border-box;
     background: var(--bg-color);
     color: var(--text-color);
-    box-sizing: border-box;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                background 0.2s ease,
+                color 0.2s ease,
+                border-color 0.2s ease;
+    flex-shrink: 0;
 }
 
-.posts-search-input:focus {
+.posts-search-widget:not(.open):hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .posts-search-widget:not(.open):hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.posts-search-widget.open {
+    width: 195px;
+    cursor: default;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+.posts-search-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-family: inherit;
+    cursor: pointer;
+    flex-shrink: 0;
     outline: none;
-    border-color: var(--text-color);
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+    transition: width 0.2s ease, padding 0.2s ease;
 }
 
-[data-theme="dark"] .posts-search-input {
-    border-color: rgba(255, 255, 255, 0.1);
+.posts-search-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    display: block;
 }
 
-[data-theme="dark"] .posts-search-input:focus {
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+.posts-search-widget.open .posts-search-toggle-btn {
+    width: 30px;
+    padding-left: 8px;
+    cursor: default;
+    pointer-events: none;
+}
+
+.posts-search-input {
+    flex: 1;
+    height: 100%;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 0;
+    width: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease 0.1s;
+    box-sizing: border-box;
+}
+
+.posts-search-widget.open .posts-search-input {
+    width: 100%;
+    opacity: 1;
+    pointer-events: auto;
+    padding: 0 4px 0 6px;
+}
+
+.posts-search-input::placeholder {
+    color: var(--text-color);
+    opacity: 0.5;
+}
+
+.posts-search-clear-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 6px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 13px;
+    opacity: 0.5;
+    transition: opacity 0.2s ease, background 0.2s ease;
+    flex-shrink: 0;
+    line-height: 1;
+    padding: 0;
+}
+
+.posts-search-widget.open .posts-search-clear-btn {
+    display: inline-flex;
+}
+
+.posts-search-clear-btn:hover {
+    opacity: 1;
+    background: rgba(128, 128, 128, 0.2);
 }
 
 /* Улучшенная система управления изображениями в редакторе */

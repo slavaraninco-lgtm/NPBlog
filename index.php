@@ -590,13 +590,22 @@ if (file_exists($versionFile)) {
 
     <!-- -->
 
-        <div class="manage-posts" id="managePosts">
+    <div class="manage-posts" id="managePosts">
         <div class="manage-posts-header">
             <h2 data-i18n="header.manage_posts_title">Все статьи</h2>
-            <button type="button" class="close-manage" onclick="toggleManagePosts()" data-i18n-aria="common.close" aria-label="Закрыть">×</button>
-        </div>
-        <div style="padding: 16px 16px 0;">
-            <input type="text" id="postsSearchInput" class="posts-search-input" placeholder="🔍 Поиск по статьям..." data-i18n-placeholder="header.manage_posts_search" oninput="filterPosts()">
+            <div class="manage-posts-actions">
+                <div class="posts-search-widget" id="postsSearchWidget">
+                    <button type="button" class="posts-search-toggle-btn" id="postsSearchToggleBtn" onclick="togglePostsSearch(event)" data-i18n-title="header.manage_posts_search" title="Поиск статей" data-i18n-aria="header.manage_posts_search" aria-label="Поиск статей">
+                        <svg class="posts-search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </button>
+                    <input type="text" class="posts-search-input" id="postsSearchInput" placeholder="Поиск статей..." data-i18n-placeholder="header.manage_posts_search_ph" oninput="filterPosts()" autocomplete="off">
+                    <button type="button" class="posts-search-clear-btn" id="postsSearchClearBtn" onclick="closeOrClearPostsSearch(event)" data-i18n-title="common.close" title="Закрыть" data-i18n-aria="common.close" aria-label="Закрыть">×</button>
+                </div>
+                <button type="button" class="close-manage" onclick="toggleManagePosts()" data-i18n-aria="common.close" aria-label="Закрыть">×</button>
+            </div>
         </div>
         <div id="postsList"></div>
     </div>
