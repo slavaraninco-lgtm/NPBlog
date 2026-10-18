@@ -5,6 +5,16 @@ function saveToHistory(force = true, markDirty = true) {
     const ta = document.getElementById('content');
     if (!ve || !ta) return;
 
+    // Сбрасываем промежуточные анимации обтекания перед созданием снимка состояния
+    const animating = ve.querySelectorAll('[data-wrap-animating="true"]');
+    if (animating.length > 0) {
+        animating.forEach(el => {
+            if (typeof el._wrapAnimCleanup === 'function') {
+                el._wrapAnimCleanup();
+            }
+        });
+    }
+
     const currentState = {
         visual: ve.innerHTML,
         code: ta.value,
@@ -93,6 +103,17 @@ function restoreHistoryState(state) {
 
     const ve = document.getElementById('contentVisual');
     const ta = document.getElementById('content');
+
+    if (ve) {
+        const animating = ve.querySelectorAll('[data-wrap-animating="true"]');
+        if (animating.length > 0) {
+            animating.forEach(el => {
+                if (typeof el._wrapAnimCleanup === 'function') {
+                    el._wrapAnimCleanup();
+                }
+            });
+        }
+    }
 
     if (ve && state.visual !== undefined) ve.innerHTML = state.visual;
     if (ta && state.code !== undefined) ta.value = state.code;

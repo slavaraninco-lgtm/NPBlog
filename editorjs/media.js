@@ -1226,7 +1226,12 @@ function getMediaAlignment(alignWrap) {
 }
 window.getMediaAlignment = getMediaAlignment;
 
-function applyMediaAlignment(alignWrap, align) {
+function getElementReflowRect(el) {
+    if (!el || typeof el.getBoundingClientRect !== 'function') return null;
+    return el.getBoundingClientRect();
+}
+
+function applyAlignmentStylesDirect(alignWrap, align) {
     if (!alignWrap) return;
 
     alignWrap.classList.remove('align-float-left', 'align-float-right', 'align-center', 'align-left', 'align-right');
@@ -1295,6 +1300,260 @@ function applyMediaAlignment(alignWrap, align) {
         alignWrap.style.margin = '14px 0';
         alignWrap.style.textAlign = 'left';
         alignWrap.style.position = 'relative';
+    }
+}
+
+function animateMediaAlignment(alignWrap, align, onComplete) {
+    if (!alignWrap) {
+        if (typeof onComplete === 'function') onComplete();
+        return;
+    }
+
+    var currentAlign = getMediaAlignment(alignWrap);
+    if (currentAlign === align) {
+        if (typeof onComplete === 'function') onComplete();
+        return;
+    }
+
+    var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+        applyAlignmentStylesDirect(alignWrap, align);
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+        if (typeof onComplete === 'function') {
+            onComplete();
+        }
+        return;
+    }
+
+    // Сбрасываем незавершённые анимации, если пользователь быстро переключает опции
+    var ve = document.getElementById('contentVisual');
+    if (ve) {
+        var running = ve.querySelectorAll('[data-wrap-animating="true"]');
+        for (var r = 0; r < running.length; r++) {
+            if (typeof running[r]._wrapAnimCleanup === 'function') {
+                running[r]._wrapAnimCleanup();
+            }
+        }
+    }
+    if (typeof alignWrap._wrapAnimCleanup === 'function') {
+        alignWrap._wrapAnimCleanup();
+    }
+
+    // 1. FIRST: Запоминаем исходные координаты изображения и следующих элементов
+    var imgRectBefore = alignWrap.getBoundingClientRect();
+
+    var siblingsToWatch = [];
+    var sib = alignWrap.nextElementSibling;
+    var count = 0;
+    while (sib && count < 15) {
+        if (sib.nodeType === Node.ELEMENT_NODE &&
+            !sib.classList.contains('image-toolbar') &&
+            !sib.classList.contains('image-align-dropdown') &&
+            sib.id !== 'editorGlobalMediaOverlay') {
+            siblingsToWatch.push(sib);
+            count++;
+        }
+        sib = sib.nextElementSibling;
+    }
+
+    var beforeData = [];
+    for (var i = 0; i < siblingsToWatch.length; i++) {
+        var sEl = siblingsToWatch[i];
+        beforeData.push({
+            el: sEl,
+            rect: getElementReflowRect(sEl)
+        });
+    }
+
+    // 2. Применяем стили нового выравнивания (DOM мгновенно перестраивается)
+    applyAlignmentStylesDirect(alignWrap, align);
+
+    // 3. LAST: Считываем новые координаты после reflow
+    var imgRectAfter = alignWrap.getBoundingClientRect();
+    var imgDx = imgRectBefore.left - imgRectAfter.left;
+    var imgDy = imgRectBefore.top - imgRectAfter.top;
+
+    var containerRect = ve ? ve.getBoundingClientRect() : null;
+
+    // Гарантируем, что картинка не выходит за пределы поля редактора
+    if (containerRect && (Math.abs(imgDx) > 1)) {
+        if (imgRectAfter.left + imgDx < containerRect.left + 8) {
+            imgDx = (containerRect.left + 8) - imgRectAfter.left;
+        }
+        if (imgRectAfter.right + imgDx > containerRect.right - 8) {
+            imgDx = (containerRect.right - 8) - imgRectAfter.right;
+        }
+    }
+
+    var siblingAnimations = [];
+    for (var j = 0; j < beforeData.length; j++) {
+        var item = beforeData[j];
+        var rectAfter = getElementReflowRect(item.el);
+        if (!item.rect || !rectAfter) continue;
+
+        var dx = item.rect.left - rectAfter.left;
+        var dy = item.rect.top - rectAfter.top;
+
+        // Для полноразмерных блочных элементов (параграфы p, div, h1-h6, списки, цитаты)
+        // горизонтальный сдвиг строго 0, чтобы текст никогда не вылетал за границы статьи.
+        // Перемещение происходит строго по вертикали (dy) из позиции под картинкой в бок от картинки.
+        if (!containerRect || item.el.offsetWidth >= containerRect.width - 60 || /^(P|DIV|H[1-6]|BLOCKQUOTE|UL|OL)$/i.test(item.el.tagName)) {
+            dx = 0;
+        } else if (Math.abs(dx) > 1) {
+            if (rectAfter.left + dx < containerRect.left + 8) {
+                dx = (containerRect.left + 8) - rectAfter.left;
+            }
+            if (rectAfter.right + dx > containerRect.right - 8) {
+                dx = (containerRect.right - 8) - rectAfter.right;
+            }
+        }
+
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+            siblingAnimations.push({
+                el: item.el,
+                dx: dx,
+                dy: dy
+            });
+        }
+    }
+
+    var imgMoved = Math.abs(imgDx) > 1 || Math.abs(imgDy) > 1;
+
+    // Если ничего не сдвинулось, сразу вызываем колбэк
+    if (!imgMoved && siblingAnimations.length === 0) {
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+        if (typeof onComplete === 'function') {
+            onComplete();
+        }
+        return;
+    }
+
+    // 4. INVERT: Перемещаем элементы обратно на их начальные визуальные координаты
+    var animatedElements = [];
+
+    if (imgMoved) {
+        alignWrap.style.willChange = 'transform';
+        alignWrap.style.transition = 'none';
+        alignWrap.style.transform = 'translate3d(' + imgDx + 'px, ' + imgDy + 'px, 0)';
+        alignWrap.setAttribute('data-wrap-animating', 'true');
+        animatedElements.push(alignWrap);
+    }
+
+    for (var k = 0; k < siblingAnimations.length; k++) {
+        var sAnim = siblingAnimations[k];
+        sAnim.el.style.willChange = 'transform';
+        sAnim.el.style.transition = 'none';
+        sAnim.el.style.transform = 'translate3d(' + sAnim.dx + 'px, ' + sAnim.dy + 'px, 0)';
+        sAnim.el.setAttribute('data-wrap-animating', 'true');
+        animatedElements.push(sAnim.el);
+    }
+
+    // Принудительный reflow для регистрации браузером начальных transform
+    alignWrap.getBoundingClientRect();
+
+    var animFrameId = null;
+    var cleanupTimeout = null;
+
+    function cleanup() {
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
+        if (cleanupTimeout) {
+            clearTimeout(cleanupTimeout);
+            cleanupTimeout = null;
+        }
+
+        if (alignWrap) {
+            alignWrap.style.transition = '';
+            alignWrap.style.transform = '';
+            alignWrap.style.willChange = '';
+            alignWrap.removeAttribute('data-wrap-animating');
+            delete alignWrap._wrapAnimCleanup;
+        }
+
+        for (var m = 0; m < animatedElements.length; m++) {
+            var el = animatedElements[m];
+            if (el) {
+                el.style.transition = '';
+                el.style.transform = '';
+                el.style.willChange = '';
+                el.removeAttribute('data-wrap-animating');
+                delete el._wrapAnimCleanup;
+                if (el.getAttribute('style') === '') {
+                    el.removeAttribute('style');
+                }
+            }
+        }
+
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+
+        if (typeof onComplete === 'function') {
+            var cb = onComplete;
+            onComplete = null;
+            cb();
+        }
+    }
+
+    alignWrap._wrapAnimCleanup = cleanup;
+    for (var n = 0; n < animatedElements.length; n++) {
+        animatedElements[n]._wrapAnimCleanup = cleanup;
+    }
+
+    // 5. PLAY: Плавно анимируем к естественным координатам translate3d(0, 0, 0)
+    var duration = 380;
+    var easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+    requestAnimationFrame(function () {
+        if (imgMoved) {
+            alignWrap.style.transition = 'transform ' + duration + 'ms ' + easing;
+            alignWrap.style.transform = 'translate3d(0, 0, 0)';
+        }
+
+        for (var p = 0; p < siblingAnimations.length; p++) {
+            var target = siblingAnimations[p];
+            var delay = Math.min(p * 25, 120);
+            target.el.style.transition = 'transform ' + duration + 'ms ' + easing + ' ' + delay + 'ms';
+            target.el.style.transform = 'translate3d(0, 0, 0)';
+        }
+    });
+
+    // Синхронное слежение рамки оверлея за перемещающимся изображением
+    var animStartTime = performance.now();
+    var animTotalDuration = duration + Math.min(siblingAnimations.length * 25, 120) + 40;
+
+    function trackOverlayLoop() {
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+        if (performance.now() - animStartTime < animTotalDuration) {
+            animFrameId = requestAnimationFrame(trackOverlayLoop);
+        }
+    }
+    animFrameId = requestAnimationFrame(trackOverlayLoop);
+
+    cleanupTimeout = setTimeout(cleanup, animTotalDuration);
+}
+
+function applyMediaAlignment(alignWrap, align, animate, onComplete) {
+    if (!alignWrap) return;
+
+    if (animate === true) {
+        animateMediaAlignment(alignWrap, align, onComplete);
+    } else {
+        applyAlignmentStylesDirect(alignWrap, align);
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+        if (typeof onComplete === 'function') {
+            onComplete();
+        }
     }
 }
 window.applyMediaAlignment = applyMediaAlignment;
@@ -1743,8 +2002,6 @@ function initGlobalMediaOverlayDOM() {
             var align = alignOption.getAttribute('data-align');
             var alignWrap = activeTarget ? activeTarget.closest('.blog-image-align-wrap') : null;
             if (alignWrap) {
-                applyMediaAlignment(alignWrap, align);
-
                 overlay.querySelectorAll('.image-align-option').forEach(function (opt) {
                     opt.classList.remove('active');
                 });
@@ -1758,13 +2015,14 @@ function initGlobalMediaOverlayDOM() {
                 var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
                 if (alignBtn) alignBtn.classList.remove('active');
 
-                updateOverlayPosition();
-                if (typeof saveToHistory === 'function') {
-                    saveToHistory();
-                }
-                if (typeof markEditorDirty === 'function') {
-                    markEditorDirty();
-                }
+                applyMediaAlignment(alignWrap, align, true, function () {
+                    if (typeof saveToHistory === 'function') {
+                        saveToHistory();
+                    }
+                    if (typeof markEditorDirty === 'function') {
+                        markEditorDirty();
+                    }
+                });
             }
         }
     });

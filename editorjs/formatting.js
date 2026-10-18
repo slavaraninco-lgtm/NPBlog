@@ -1028,7 +1028,10 @@
 
             if (block && block.id !== 'contentVisual') {
                 if (block.classList.contains('blog-image-align-wrap') && typeof applyMediaAlignment === 'function') {
-                    applyMediaAlignment(block, side);
+                    applyMediaAlignment(block, side, true, () => {
+                        if (typeof saveToHistory === 'function') saveToHistory();
+                    });
+                    return;
                 } else {
                     block.style.textAlign = side;
                 }
@@ -1477,12 +1480,24 @@
             elementsToRemove.forEach(el => el.parentNode && el.parentNode.removeChild(el));
 
             // Remove runtime data attributes
-            const widgets = temp.querySelectorAll('[data-image-id], [data-media-id], [data-media-type], table[data-resizers-added]');
+            const widgets = temp.querySelectorAll('[data-image-id], [data-media-id], [data-media-type], table[data-resizers-added], [data-wrap-animating]');
             widgets.forEach(el => {
                 el.removeAttribute('data-image-id');
                 el.removeAttribute('data-media-id');
                 el.removeAttribute('data-media-type');
                 el.removeAttribute('data-resizers-added');
+                el.removeAttribute('data-wrap-animating');
+            });
+
+            // Strip any temporary animation transform/transition inline styles
+            temp.querySelectorAll('[style*="transform"], [style*="transition"], [style*="will-change"]').forEach(el => {
+                el.style.transform = '';
+                el.style.transition = '';
+                el.style.willChange = '';
+                const styleAttr = el.getAttribute('style');
+                if (styleAttr !== null && styleAttr.trim() === '') {
+                    el.removeAttribute('style');
+                }
             });
 
             // Remove contenteditable attributes from cells or blocks, but preserve on non-editable widgets
