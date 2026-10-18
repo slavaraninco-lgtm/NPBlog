@@ -1341,8 +1341,16 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
         alignWrap._wrapAnimCleanup();
     }
 
+    // Определяем целевой медиа-элемент (.blog-image-wrap внутри alignWrap).
+    // При выравнивании по левому/правому краю или центру alignWrap имеет width: 100%,
+    // а реально перемещается именно внутренний блок .blog-image-wrap за счёт text-align.
+    var mediaTarget = alignWrap.querySelector('.blog-image-wrap') || alignWrap;
+    if (typeof mediaTarget._wrapAnimCleanup === 'function') {
+        mediaTarget._wrapAnimCleanup();
+    }
+
     // 1. FIRST: Запоминаем исходные координаты изображения и следующих элементов
-    var imgRectBefore = alignWrap.getBoundingClientRect();
+    var imgRectBefore = mediaTarget.getBoundingClientRect();
 
     var siblingsToWatch = [];
     var sib = alignWrap.nextElementSibling;
@@ -1371,7 +1379,7 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
     applyAlignmentStylesDirect(alignWrap, align);
 
     // 3. LAST: Считываем новые координаты после reflow
-    var imgRectAfter = alignWrap.getBoundingClientRect();
+    var imgRectAfter = mediaTarget.getBoundingClientRect();
     var imgDx = imgRectBefore.left - imgRectAfter.left;
     var imgDy = imgRectBefore.top - imgRectAfter.top;
 
@@ -1436,11 +1444,11 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
     var animatedElements = [];
 
     if (imgMoved) {
-        alignWrap.style.willChange = 'transform';
-        alignWrap.style.transition = 'none';
-        alignWrap.style.transform = 'translate3d(' + imgDx + 'px, ' + imgDy + 'px, 0)';
-        alignWrap.setAttribute('data-wrap-animating', 'true');
-        animatedElements.push(alignWrap);
+        mediaTarget.style.willChange = 'transform';
+        mediaTarget.style.transition = 'none';
+        mediaTarget.style.transform = 'translate3d(' + imgDx + 'px, ' + imgDy + 'px, 0)';
+        mediaTarget.setAttribute('data-wrap-animating', 'true');
+        animatedElements.push(mediaTarget);
     }
 
     for (var k = 0; k < siblingAnimations.length; k++) {
@@ -1453,7 +1461,7 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
     }
 
     // Принудительный reflow для регистрации браузером начальных transform
-    alignWrap.getBoundingClientRect();
+    mediaTarget.getBoundingClientRect();
 
     var animFrameId = null;
     var cleanupTimeout = null;
@@ -1468,7 +1476,18 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
             cleanupTimeout = null;
         }
 
-        if (alignWrap) {
+        if (mediaTarget) {
+            mediaTarget.style.transition = '';
+            mediaTarget.style.transform = '';
+            mediaTarget.style.willChange = '';
+            mediaTarget.removeAttribute('data-wrap-animating');
+            delete mediaTarget._wrapAnimCleanup;
+            if (mediaTarget.getAttribute('style') === '') {
+                mediaTarget.removeAttribute('style');
+            }
+        }
+
+        if (alignWrap && alignWrap !== mediaTarget) {
             alignWrap.style.transition = '';
             alignWrap.style.transform = '';
             alignWrap.style.willChange = '';
@@ -1478,7 +1497,7 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
 
         for (var m = 0; m < animatedElements.length; m++) {
             var el = animatedElements[m];
-            if (el) {
+            if (el && el !== mediaTarget && el !== alignWrap) {
                 el.style.transition = '';
                 el.style.transform = '';
                 el.style.willChange = '';
@@ -1501,6 +1520,7 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
         }
     }
 
+    mediaTarget._wrapAnimCleanup = cleanup;
     alignWrap._wrapAnimCleanup = cleanup;
     for (var n = 0; n < animatedElements.length; n++) {
         animatedElements[n]._wrapAnimCleanup = cleanup;
@@ -1512,8 +1532,8 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
 
     requestAnimationFrame(function () {
         if (imgMoved) {
-            alignWrap.style.transition = 'transform ' + duration + 'ms ' + easing;
-            alignWrap.style.transform = 'translate3d(0, 0, 0)';
+            mediaTarget.style.transition = 'transform ' + duration + 'ms ' + easing;
+            mediaTarget.style.transform = 'translate3d(0, 0, 0)';
         }
 
         for (var p = 0; p < siblingAnimations.length; p++) {

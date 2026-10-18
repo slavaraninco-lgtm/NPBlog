@@ -1019,6 +1019,17 @@
                 return;
             }
 
+            // Если активно глобальное выделение медиа-элемента, выравниваем его с анимацией
+            if (typeof activeTarget !== 'undefined' && activeTarget && typeof applyMediaAlignment === 'function') {
+                const mediaAlignWrap = activeTarget.closest('.blog-image-align-wrap');
+                if (mediaAlignWrap) {
+                    applyMediaAlignment(mediaAlignWrap, side, true, () => {
+                        if (typeof saveToHistory === 'function') saveToHistory();
+                    });
+                    return;
+                }
+            }
+
             if (!this.restoreFocus()) return;
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return;
@@ -1027,8 +1038,12 @@
             const block = this.getClosestBlock(range.startContainer);
 
             if (block && block.id !== 'contentVisual') {
-                if (block.classList.contains('blog-image-align-wrap') && typeof applyMediaAlignment === 'function') {
-                    applyMediaAlignment(block, side, true, () => {
+                const alignWrap = block.classList.contains('blog-image-align-wrap')
+                    ? block
+                    : (block.closest ? block.closest('.blog-image-align-wrap') : null);
+
+                if (alignWrap && typeof applyMediaAlignment === 'function') {
+                    applyMediaAlignment(alignWrap, side, true, () => {
                         if (typeof saveToHistory === 'function') saveToHistory();
                     });
                     return;
