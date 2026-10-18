@@ -1315,7 +1315,7 @@ function animateMediaAlignment(alignWrap, align, onComplete) {
         return;
     }
 
-    var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var prefersReducedMotion = (window.disableAnimations === true) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     if (prefersReducedMotion) {
         applyAlignmentStylesDirect(alignWrap, align);
         if (typeof updateOverlayPosition === 'function') {

@@ -243,6 +243,7 @@
     "hideEditorModeButtons": false,
     "amoledTheme": false,
     "smoothTyping": false,
+    "disableAnimations": false,
     "headerBottomPosition": false,
     "contentWidth": 920,
     "bottomBar": {

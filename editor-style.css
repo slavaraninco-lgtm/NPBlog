@@ -10227,5 +10227,21 @@ math-field.formula-visual-field:focus-within {
     cursor: pointer;
 }
 
-
-
+/* ==============================================================================
+ * Отключение всех анимаций в редакторе (data-disable-animations="true")
+ * ============================================================================== */
+html[data-disable-animations="true"],
+body[data-disable-animations="true"],
+html[data-disable-animations="true"] *,
+html[data-disable-animations="true"] *::before,
+html[data-disable-animations="true"] *::after,
+body[data-disable-animations="true"] *,
+body[data-disable-animations="true"] *::before,
+body[data-disable-animations="true"] *::after {
+    animation-duration: 0.001s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+}

@@ -13,6 +13,7 @@ $defaults = [
     'amoledTheme' => false,
     'enableUndoRedo' => false,
     'smoothTyping' => false,
+    'disableAnimations' => false,
     'headerBottomPosition' => false,
     'enableMarkdown' => false,
     'enableApi' => true,

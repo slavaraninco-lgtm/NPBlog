@@ -57,12 +57,16 @@ $availableCodes = getAvailableLanguageCodes();
 $defaultLang = !empty($availableCodes) ? $availableCodes[0] : 'ru';
 $settingsFile = 'editor_settings.json';
 $amoled = false;
+$disableAnimations = false;
 $activeTheme = 'dark';
 $currentLanguage = $defaultLang;
 if (file_exists($settingsFile)) {
     $settings = json_decode(file_get_contents($settingsFile), true);
     if (!empty($settings['amoledTheme'])) {
         $amoled = true;
+    }
+    if (!empty($settings['disableAnimations'])) {
+        $disableAnimations = true;
     }
     if (!empty($settings['activeTheme'])) {
         $activeTheme = $settings['activeTheme'];
@@ -86,7 +90,7 @@ if (file_exists($versionFile)) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars($currentLanguage); ?>"<?php echo $amoled ? ' data-amoled="true"' : ''; ?>>
+<html lang="<?php echo htmlspecialchars($currentLanguage); ?>"<?php echo $amoled ? ' data-amoled="true"' : ''; ?><?php echo $disableAnimations ? ' data-disable-animations="true"' : ''; ?>>
 <head>
     <title data-i18n="header.editor_title">Редактор</title>
     <meta charset="utf-8">
@@ -95,6 +99,7 @@ if (file_exists($versionFile)) {
     <script>
         window.NPBLOG_AVAILABLE_LANGUAGES = <?php echo json_encode($availableLanguages, JSON_UNESCAPED_UNICODE); ?>;
         window.NPBLOG_LANG = '<?php echo htmlspecialchars($currentLanguage); ?>';
+        window.disableAnimations = <?php echo $disableAnimations ? 'true' : 'false'; ?>;
         const savedTheme = localStorage.getItem('theme') || '<?php echo $activeTheme; ?>';
         if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -2691,6 +2696,7 @@ function loadAndApplyAllSettings() {
                 const amoledTheme = settings.amoledTheme || false;
                 const enableUndoRedo = settings.enableUndoRedo || false;
                 const smoothTyping = settings.smoothTyping || false;
+                const disableAnimations = settings.disableAnimations || false;
                 const headerBottomPosition = settings.headerBottomPosition || false;
                 const enableMarkdown = settings.enableMarkdown || false;
                 const enableApi = settings.enableApi !== undefined ? settings.enableApi : true;
@@ -2700,6 +2706,7 @@ function loadAndApplyAllSettings() {
                 const amoledCheck = document.getElementById('amoledTheme');
                 const enableUndoRedoCheck = document.getElementById('enableUndoRedo');
                 const smoothTypingCheck = document.getElementById('smoothTyping');
+                const disableAnimationsCheck = document.getElementById('disableAnimations');
                 const headerBottomCheck = document.getElementById('headerBottomPosition');
                 const enableMarkdownCheck = document.getElementById('enableMarkdown');
                 const enableApiCheck = document.getElementById('enableApi');
@@ -2709,10 +2716,21 @@ function loadAndApplyAllSettings() {
                 if (amoledCheck) amoledCheck.checked = amoledTheme;
                 if (enableUndoRedoCheck) enableUndoRedoCheck.checked = enableUndoRedo;
                 if (smoothTypingCheck) smoothTypingCheck.checked = smoothTyping;
+                if (disableAnimationsCheck) disableAnimationsCheck.checked = disableAnimations;
                 if (headerBottomCheck) headerBottomCheck.checked = headerBottomPosition;
                 if (enableMarkdownCheck) enableMarkdownCheck.checked = enableMarkdown;
                 if (enableApiCheck) enableApiCheck.checked = enableApi;
                 if (contentWidthInput) contentWidthInput.value = contentWidth;
+
+                // Apply disable animations state
+                window.disableAnimations = disableAnimations;
+                if (disableAnimations) {
+                    document.documentElement.setAttribute('data-disable-animations', 'true');
+                    document.body.setAttribute('data-disable-animations', 'true');
+                } else {
+                    document.documentElement.removeAttribute('data-disable-animations');
+                    document.body.removeAttribute('data-disable-animations');
+                }
 
                 // Apply content width dynamically
                 window.editorContentWidth = contentWidth;
@@ -3085,10 +3103,16 @@ function resetAllSettings() {
 function saveAppearanceSettings() {
     const hideModeCheck = document.getElementById('hideEditorModeButtons');
     const hideButtons = hideModeCheck ? hideModeCheck.checked : false;
-    const amoled = document.getElementById('amoledTheme').checked;
-    const smooth = document.getElementById('smoothTyping').checked;
-    const headerBottom = document.getElementById('headerBottomPosition').checked;
-    const contentWidth = parseInt(document.getElementById('settingsContentWidth').value) || 920;
+    const amoledCheck = document.getElementById('amoledTheme');
+    const amoled = amoledCheck ? amoledCheck.checked : false;
+    const smoothCheck = document.getElementById('smoothTyping');
+    const smooth = smoothCheck ? smoothCheck.checked : false;
+    const disableAnimationsCheck = document.getElementById('disableAnimations');
+    const disableAnimations = disableAnimationsCheck ? disableAnimationsCheck.checked : false;
+    const headerBottomCheck = document.getElementById('headerBottomPosition');
+    const headerBottom = headerBottomCheck ? headerBottomCheck.checked : false;
+    const contentWidthInput = document.getElementById('settingsContentWidth');
+    const contentWidth = contentWidthInput ? (parseInt(contentWidthInput.value) || 920) : 920;
     
     fetch('save_editor_settings.php', {
         method: 'POST',
@@ -3099,6 +3123,7 @@ function saveAppearanceSettings() {
             hideEditorModeButtons: hideButtons,
             amoledTheme: amoled,
             smoothTyping: smooth,
+            disableAnimations: disableAnimations,
             headerBottomPosition: headerBottom,
             contentWidth: contentWidth
         })

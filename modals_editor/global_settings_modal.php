@@ -295,6 +295,14 @@ if (!isset($availableLanguages)) {
                         
                         <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
                             <div class="modal-switch-control">
+                                <input type="checkbox" id="disableAnimations">
+                                <span class="modal-switch-slider"></span>
+                            </div>
+                            <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.app_disable_animations">Отключить все анимации в редакторе</span>
+                        </label>
+                        
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
                                 <input type="checkbox" id="headerBottomPosition">
                                 <span class="modal-switch-slider"></span>
                             </div>

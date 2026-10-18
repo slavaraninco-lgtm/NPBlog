@@ -273,6 +273,7 @@
         "appearance_desc": "Configure the appearance and behavior of the article editor.",
         "app_amoled": "Enable pitch black background (for AMOLED displays)",
         "app_smooth_typing": "Enable smooth text typing (soft cursor)",
+        "app_disable_animations": "Disable all animations in the editor",
         "app_header_bottom": "Move toolbar to bottom of the screen",
         "app_content_width": "Content width (in pixels):",
         "app_save_btn": "Save Settings",

@@ -88,6 +88,10 @@ if (isset($data['smoothTyping'])) {
     $existingSettings['smoothTyping'] = (bool)$data['smoothTyping'];
 }
 
+if (isset($data['disableAnimations'])) {
+    $existingSettings['disableAnimations'] = (bool)$data['disableAnimations'];
+}
+
 if (isset($data['headerBottomPosition'])) {
     $existingSettings['headerBottomPosition'] = (bool)$data['headerBottomPosition'];
 }

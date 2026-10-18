@@ -765,7 +765,7 @@
 
             // Play Web Animations API flyout entrance
             if (typeof this.dialog.animate === 'function') {
-                const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                const prefersReducedMotion = (window.disableAnimations === true) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
                 const duration = prefersReducedMotion ? 1 : 340;
 
                 const startTransform = `translate3d(${fly.x}px, ${fly.y}px, 0) scale(${fly.scaleX}, ${fly.scaleY})`;
@@ -851,7 +851,7 @@
 
             const fly = (this.activeTrigger ? this.calculateFlyout(this.activeTrigger) : null) || this._lastFly || this.calculateFlyout(resolveRecentTrigger());
 
-            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const prefersReducedMotion = (window.disableAnimations === true) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
             const closeDuration = prefersReducedMotion ? 1 : 260;
 
             if (typeof this.dialog.animate === 'function') {

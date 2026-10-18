@@ -8,7 +8,7 @@ function applySmoothTypingState() {
 
     let caret = document.getElementById('customCaret');
 
-    if (window.smoothTypingEnabled) {
+    if (window.smoothTypingEnabled && !window.disableAnimations) {
         editor.classList.add('smooth-typing');
 
         if (!caret) {

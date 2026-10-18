@@ -1396,3 +1396,20 @@ body.modal-is-dragging * {
     z-index: 100000 !important;
 }
 
+/* ==============================================================================
+ * Отключение анимаций модальных окон при data-disable-animations="true"
+ * ============================================================================== */
+html[data-disable-animations="true"],
+body[data-disable-animations="true"],
+[data-disable-animations="true"] .modal-overlay,
+[data-disable-animations="true"] .modal-dialog,
+[data-disable-animations="true"] .modal-backdrop,
+[data-disable-animations="true"] .modal-window,
+[data-disable-animations="true"] .modal-btn {
+    --modal-transition-speed: 0.001s !important;
+    --modal-transition-fast: 0.001s !important;
+    animation-duration: 0.001s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001s !important;
+    transition-delay: 0s !important;
+}
