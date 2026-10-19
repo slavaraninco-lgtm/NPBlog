@@ -57,6 +57,23 @@ if (!function_exists('mb_strcasecmp')) {
     }
 }
 
+// String helper polyfills for PHP 7.4 compatibility
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) {
+        return (string)$needle === '' || strpos($haystack, $needle) === 0;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle) {
+        return (string)$needle === '' || substr($haystack, -strlen($needle)) === (string)$needle;
+    }
+}
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return (string)$needle === '' || strpos($haystack, $needle) !== false;
+    }
+}
+
 // Automatically initialize config and whitelist from templates if missing
 if (!function_exists('ensureEditorSettingsFile')) {
     function ensureEditorSettingsFile() {

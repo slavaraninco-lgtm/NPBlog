@@ -4340,11 +4340,29 @@ function handleSystemUpdatePreview() {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(async response => {
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Non-JSON server response on preview:', text);
+            let errMsg = 'Сбой ответа сервера (HTTP ' + response.status + ')';
+            if (response.status === 413) {
+                errMsg = 'Архив слишком большой (HTTP 413). Превышен лимит загрузки на сервере.';
+            } else if (text && text.includes('Maximum execution time')) {
+                errMsg = 'Превышен лимит времени выполнения PHP на сервере.';
+            } else if (text && text.includes('ZipArchive')) {
+                errMsg = 'На сервере отсутствует расширение php-zip (ZipArchive).';
+            }
+            throw new Error(errMsg);
+        }
+        return data;
+    })
     .then(data => {
         document.getElementById('updateProgressContainer').style.display = 'none';
         
-            if (data.success) {
+        if (data.success) {
             updateToken = data.token;
             updateRootFolder = data.rootFolder;
             
@@ -4368,14 +4386,14 @@ function handleSystemUpdatePreview() {
             
             document.getElementById('updatePreviewContainer').style.display = 'flex';
         } else {
-            showNotification(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error, 'error');
+            showNotification(data.error ? ('Ошибка: ' + data.error) : (window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива'), 'error');
             document.getElementById('systemUpdateBtn').style.display = 'block';
             input.value = '';
         }
     })
     .catch(error => {
         console.error('Update preview error:', error);
-        showNotification(window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива', 'error');
+        showNotification(error.message || (window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива'), 'error');
         document.getElementById('updateProgressContainer').style.display = 'none';
         document.getElementById('systemUpdateBtn').style.display = 'block';
         input.value = '';
@@ -4395,7 +4413,25 @@ function startSystemUpdateProcess() {
         },
         body: JSON.stringify({ token: updateToken, rootFolder: updateRootFolder })
     })
-    .then(response => response.json())
+    .then(async response => {
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Non-JSON server response on update:', text);
+            let errMsg = 'Сбой ответа сервера (HTTP ' + response.status + ')';
+            if (response.status === 504 || response.status === 502) {
+                errMsg = 'Таймаут сервера (504 Gateway Timeout). Слишком много файлов для бэкапа.';
+            } else if (text && text.includes('Maximum execution time')) {
+                errMsg = 'Превышен лимит времени выполнения PHP (max_execution_time).';
+            } else if (text && text.includes('Memory limit')) {
+                errMsg = 'Превышен лимит памяти PHP (memory_limit).';
+            }
+            throw new Error(errMsg);
+        }
+        return data;
+    })
     .then(data => {
         if (data.success) {
             try {
@@ -4409,14 +4445,14 @@ function startSystemUpdateProcess() {
         } else {
             document.getElementById('updateProgressContainer').style.display = 'none';
             document.getElementById('systemUpdateBtn').style.display = 'block';
-            showNotification(window.t ? window.t('notifications.update_error_param', 'Ошибка обновления: ' + data.error, { error: data.error }) : 'Ошибка обновления: ' + data.error, 'error');
+            showNotification(data.error ? ('Ошибка обновления: ' + data.error) : (window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении'), 'error');
         }
     })
     .catch(error => {
         console.error('Update process error:', error);
         document.getElementById('updateProgressContainer').style.display = 'none';
         document.getElementById('systemUpdateBtn').style.display = 'block';
-        showNotification(window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении', 'error');
+        showNotification(error.message || (window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении'), 'error');
     });
 }
 

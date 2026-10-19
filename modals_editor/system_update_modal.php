@@ -43,9 +43,14 @@
                     Выберите архив .zip с новой версией NPBlog для автоматической установки.
                 </p>
                 <input type="file" id="systemUpdateInput" accept=".zip" style="display: none;" onchange="handleSystemUpdatePreview()">
-                <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="modal-btn modal-btn-primary" style="width: 100%; justify-content: center; padding: 12px;" data-i18n="modals.sys_select_btn">
-                    📦 Выбрать архив (.zip)
-                </button>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="modal-btn modal-btn-primary" style="width: 100%; justify-content: center; padding: 12px;" data-i18n="modals.sys_select_btn">
+                        📦 Выбрать архив (.zip)
+                    </button>
+                    <a href="update_system.php?action=export_package" class="modal-btn modal-btn-secondary" style="width: 100%; justify-content: center; padding: 8px 12px; font-size: 13px; text-decoration: none;" data-i18n="modals.sys_export_btn">
+                        💾 Скачать готовый архив обновления (.zip)
+                    </a>
+                </div>
             </div>
 
             <!-- Шаг 2: Предпросмотр обновления -->

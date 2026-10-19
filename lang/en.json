@@ -685,6 +685,7 @@
         "sys_rollback_loading": "Loading backup list...",
         "sys_choose_archive": "Select a .zip archive with the new NPBlog version.",
         "sys_select_btn": "Select Archive",
+        "sys_export_btn": "💾 Download clean update package (.zip)",
         "sys_arch_ver": "Archive Version:",
         "sys_will_replace": "The following files will be replaced:",
         "sys_safe_note": "Your articles, media files, and settings will remain untouched. A full project backup will be created before updating.",
