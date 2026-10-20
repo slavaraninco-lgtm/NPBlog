@@ -222,6 +222,38 @@ if (isset($data['rss_content_template'])) {
     $existingSettings['rss_content_template'] = $data['rss_content_template'];
 }
 
+if (isset($data['auto_update_check'])) {
+    $existingSettings['auto_update_check'] = (bool)$data['auto_update_check'];
+}
+
+if (isset($data['update_channel'])) {
+    $channel = strtolower(trim((string)$data['update_channel']));
+    if ($channel === 'canary' || $channel === 'stable') {
+        $existingSettings['update_channel'] = $channel;
+    }
+}
+
+if (isset($data['update_repo'])) {
+    $repo = trim((string)$data['update_repo']);
+    $repo = preg_replace('#^https?://github\.com/#i', '', $repo);
+    $repo = preg_replace('#^github\.com/#i', '', $repo);
+    $repo = trim($repo, '/');
+    $repo = preg_replace('/\.git$/i', '', $repo);
+    if ($repo === '' || !preg_match('#^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$#', $repo)) {
+        $repo = 'slavaraninco-lgtm/NPBlog';
+    }
+    $existingSettings['update_repo'] = $repo;
+}
+
+if (isset($data['update_github_token'])) {
+    $token = trim((string)$data['update_github_token']);
+    // Validate token format (GitHub tokens: ghp_, github_pat_, or alphanumeric)
+    if ($token !== '' && !preg_match('#^[a-zA-Z0-9_.-]+$#', $token)) {
+        $token = '';
+    }
+    $existingSettings['update_github_token'] = $token;
+}
+
 if (isset($data['ip_whitelist_enabled'])) {
     $ipWhitelistEnabled = (bool)$data['ip_whitelist_enabled'];
     $existingSettings['ip_whitelist_enabled'] = $ipWhitelistEnabled;

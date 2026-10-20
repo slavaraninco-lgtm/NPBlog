@@ -625,7 +625,7 @@ if (file_exists($settingsFile)) {
                 </div>
 
                 <!-- 4. Путь к папке data -->
-                <div class="modal-form-group setup-stagger-3" style="margin-bottom: 8px;">
+                <div class="modal-form-group setup-stagger-3" style="margin-bottom: 16px;">
                     <label class="modal-label modal-label-required" for="setupDataPath" style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
                         <span>📁</span> <span data-i18n="setup.data_path_label">Путь к папке данных (data):</span>
                     </label>
@@ -634,6 +634,25 @@ if (file_exists($settingsFile)) {
                         <button type="button" class="modal-btn modal-btn-secondary" onclick="resetSetupDataPathToDefault()" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n-title="modals.setup_restore_default_path" title="Восстановить путь по умолчанию" data-i18n="setup.default_btn_short">По умолч.</button>
                     </div>
                     <div class="modal-help-text" style="font-size: 11.5px; opacity: 0.7; margin-top: 5px;" data-i18n="setup.data_path_hint">Директория на сервере для хранения статей, файлов и настроек</div>
+                </div>
+
+                <!-- 5. Автообновления -->
+                <div class="modal-form-group setup-stagger-3" style="margin-bottom: 8px;">
+                    <label class="modal-label" style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                        <span>🔄</span> <span data-i18n="setup.auto_update_label">Обновления системы:</span>
+                    </label>
+                    <div style="padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(128,128,128,0.04);">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="setupAutoUpdateCheck" checked>
+                                <span class="modal-switch-slider"></span>
+                            </div>
+                            <span style="font-size: 13px; font-weight: 500;" data-i18n="setup.auto_update_toggle">Проверять обновления при запуске</span>
+                        </label>
+                        <div class="modal-help-text" style="font-size: 11.5px; opacity: 0.7; margin-top: 4px; margin-left: 48px;" data-i18n="setup.auto_update_hint">
+                            Автоматически уведомлять о выходе новых версий NPBlog
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -857,6 +876,10 @@ function openInitialSetupModal() {
                 if (s.autosaveInterval) {
                     const intInput = document.getElementById('setupAutosaveInterval');
                     if (intInput) intInput.value = s.autosaveInterval;
+                }
+                if (s.auto_update_check !== undefined) {
+                    const updChk = document.getElementById('setupAutoUpdateCheck');
+                    if (updChk) updChk.checked = !!s.auto_update_check;
                 }
                 const existingPath = s.active_blog_path || s.data_path || '';
                 const isPlaceholderPath = !existingPath || existingPath === '/CHANGE/ME' || existingPath.indexOf('CHANGE/ME') !== -1 || existingPath.indexOf('CHANGE\\ME') !== -1;
@@ -1454,6 +1477,7 @@ async function finishInitialSetup() {
     const autosaveInterval = parseInt(document.getElementById('setupAutosaveInterval').value, 10) || 60;
     const dataPath = document.getElementById('setupDataPath').value.trim();
     const ipWhitelistEnabled = document.getElementById('setupIpWhitelistEnabled').checked;
+    const autoUpdateCheck = document.getElementById('setupAutoUpdateCheck') ? document.getElementById('setupAutoUpdateCheck').checked : true;
     
     const payload = {
         initial_setup_completed: true,
@@ -1464,7 +1488,8 @@ async function finishInitialSetup() {
         blog_paths: [dataPath],
         active_blog_path: dataPath,
         data_path: dataPath,
-        ip_whitelist_enabled: ipWhitelistEnabled
+        ip_whitelist_enabled: ipWhitelistEnabled,
+        auto_update_check: autoUpdateCheck
     };
     
     if (window.setupHasExistingPassword) {

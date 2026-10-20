@@ -720,6 +720,8 @@ foreach ($editorJsFiles as $jsFile) {
 <!-- Модальные окна обновления и отката системы -->
 <?php safe_include_editor_modal('system_update_modal.php'); ?>
 <?php safe_include_editor_modal('update_success_modal.php'); ?>
+<?php safe_include_editor_modal('auto_update_modal.php'); ?>
+<?php safe_include_editor_modal('canary_warning_modal.php'); ?>
 
 <!-- Модальное окно публикации и загрузки по FTP -->
 <?php safe_include_editor_modal('ftp_upload_modal.php'); ?>
@@ -1379,7 +1381,8 @@ function showGlobalSection(sectionName) {
         'paths': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_paths', 'Пути к блoгам') : 'Пути к блoгам'),
         'security': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_security', 'Безопасность и доступ') : 'Безопасность и доступ'),
         'seo': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_seo', 'SEO и соцсети') : 'SEO и соцсети'),
-        'language': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_language', 'Язык') : 'Язык')
+        'language': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_language', 'Язык') : 'Язык'),
+        'updates': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_updates', 'Обновления') : 'Обновления')
     };
     document.getElementById('globalSectionTitle').textContent = titles[sectionName] || '';
     
@@ -1405,6 +1408,8 @@ function showGlobalSection(sectionName) {
         loadSeoSettings();
     } else if (sectionName === 'language') {
         loadLanguageSettings();
+    } else if (sectionName === 'updates') {
+        loadUpdateSettings();
     }
 }
 
@@ -2722,6 +2727,19 @@ function loadAndApplyAllSettings() {
                 if (enableApiCheck) enableApiCheck.checked = enableApi;
                 if (contentWidthInput) contentWidthInput.value = contentWidth;
 
+                // Настройки обновлений
+                const autoUpdateCheck = (settings.auto_update_check !== undefined) ? !!settings.auto_update_check : true;
+                const updateChannel = settings.update_channel || 'stable';
+                const updateRepo = settings.update_repo || 'slavaraninco-lgtm/NPBlog';
+
+                const settingAutoUpdateCheckEl = document.getElementById('settingAutoUpdateCheck');
+                const settingUpdateChannelEl = document.getElementById('settingUpdateChannel');
+                const settingUpdateRepoEl = document.getElementById('settingUpdateRepo');
+
+                if (settingAutoUpdateCheckEl) settingAutoUpdateCheckEl.checked = autoUpdateCheck;
+                if (settingUpdateChannelEl) settingUpdateChannelEl.value = updateChannel;
+                if (settingUpdateRepoEl) settingUpdateRepoEl.value = updateRepo;
+
                 // Apply disable animations state
                 window.disableAnimations = disableAnimations;
                 if (disableAnimations) {
@@ -2934,6 +2952,13 @@ function loadAndApplyAllSettings() {
                             openInitialSetupModal();
                         }
                     }, 200);
+                } else if (settings.auto_update_check !== false) {
+                    // Автоматическая проверка обновлений при каждом запуске
+                    setTimeout(() => {
+                        if (typeof checkSystemAutoUpdate === 'function') {
+                            checkSystemAutoUpdate(false);
+                        }
+                    }, 800);
                 }
             }
         })
@@ -4453,6 +4478,394 @@ function startSystemUpdateProcess() {
         document.getElementById('updateProgressContainer').style.display = 'none';
         document.getElementById('systemUpdateBtn').style.display = 'block';
         showNotification(error.message || (window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении'), 'error');
+    });
+}
+
+// ==============================================================================
+// Система автоматических обновлений (Stable & Canary)
+// ==============================================================================
+let currentAutoUpdateData = null;
+let autoUpdatePollTimer = null;
+let previousUpdateChannel = 'stable';
+
+function loadUpdateSettings() {
+    fetch('get_editor_settings.php?t=' + Date.now())
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.settings) {
+                const s = data.settings;
+                const checkEl = document.getElementById('settingAutoUpdateCheck');
+                const chanEl = document.getElementById('settingUpdateChannel');
+                const repoEl = document.getElementById('settingUpdateRepo');
+                const tokenEl = document.getElementById('settingUpdateGithubToken');
+                
+                const autoCheck = (s.auto_update_check !== undefined) ? !!s.auto_update_check : true;
+                const channel = s.update_channel || 'stable';
+                const repo = s.update_repo || 'slavaraninco-lgtm/NPBlog';
+                const token = s.update_github_token || '';
+                
+                previousUpdateChannel = channel;
+                if (checkEl) checkEl.checked = autoCheck;
+                if (chanEl) chanEl.value = channel;
+                if (repoEl) repoEl.value = repo;
+                if (tokenEl) tokenEl.value = token;
+            }
+        })
+        .catch(err => {
+            console.error('Error loading update settings:', err);
+        });
+}
+
+function handleUpdateChannelChange(newVal) {
+    if (newVal === 'canary') {
+        openCanaryWarningModal();
+    } else {
+        previousUpdateChannel = 'stable';
+    }
+}
+
+function openCanaryWarningModal() {
+    if (window.Modal) {
+        Modal.open('#canaryWarningModal');
+    } else {
+        const modal = document.getElementById('canaryWarningModal');
+        if (modal) modal.style.display = 'flex';
+    }
+}
+
+function confirmCanaryMode() {
+    previousUpdateChannel = 'canary';
+    const chanEl = document.getElementById('settingUpdateChannel');
+    if (chanEl) chanEl.value = 'canary';
+    if (window.Modal) {
+        Modal.close('#canaryWarningModal');
+    } else {
+        const modal = document.getElementById('canaryWarningModal');
+        if (modal) modal.style.display = 'none';
+    }
+}
+
+function cancelCanaryMode() {
+    const chanEl = document.getElementById('settingUpdateChannel');
+    if (chanEl) chanEl.value = previousUpdateChannel || 'stable';
+    if (window.Modal) {
+        Modal.close('#canaryWarningModal');
+    } else {
+        const modal = document.getElementById('canaryWarningModal');
+        if (modal) modal.style.display = 'none';
+    }
+}
+
+function resetUpdateRepoToDefault() {
+    const repoEl = document.getElementById('settingUpdateRepo');
+    if (repoEl) repoEl.value = 'slavaraninco-lgtm/NPBlog';
+}
+
+function saveUpdateSettings() {
+    const checkEl = document.getElementById('settingAutoUpdateCheck');
+    const chanEl = document.getElementById('settingUpdateChannel');
+    const repoEl = document.getElementById('settingUpdateRepo');
+    const tokenEl = document.getElementById('settingUpdateGithubToken');
+    
+    const payload = {
+        auto_update_check: checkEl ? checkEl.checked : true,
+        update_channel: chanEl ? chanEl.value : 'stable',
+        update_repo: repoEl ? repoEl.value.trim() : 'slavaraninco-lgtm/NPBlog',
+        update_github_token: tokenEl ? tokenEl.value.trim() : ''
+    };
+    
+    fetch('save_editor_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            previousUpdateChannel = payload.update_channel;
+            showNotification(window.t ? window.t('notifications.update_settings_saved', 'Настройки обновлений успешно сохранены') : 'Настройки обновлений успешно сохранены', 'success');
+        } else {
+            showNotification(data.error || (window.t ? window.t('notifications.save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек'), 'error');
+        }
+    })
+    .catch(err => {
+        showNotification(err.message || 'Ошибка сети', 'error');
+    });
+}
+
+function checkSystemAutoUpdate(isManual = false) {
+    const checkBtn = document.getElementById('manualCheckUpdateBtn');
+    if (isManual && checkBtn) {
+        checkBtn.classList.add('is-loading');
+        checkBtn.disabled = true;
+    }
+    
+    const chanEl = document.getElementById('settingUpdateChannel');
+    const repoEl = document.getElementById('settingUpdateRepo');
+    const channelParam = chanEl ? encodeURIComponent(chanEl.value) : '';
+    const repoParam = repoEl ? encodeURIComponent(repoEl.value.trim()) : '';
+    
+    let url = 'update_system.php?action=check_auto_update&t=' + Date.now();
+    if (isManual) {
+        url += '&force=1';
+    }
+    if (channelParam) url += '&channel=' + channelParam;
+    if (repoParam) url += '&repo=' + repoParam;
+    
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (isManual && checkBtn) {
+                checkBtn.classList.remove('is-loading');
+                checkBtn.disabled = false;
+            }
+            if (data.success) {
+                if (data.hasUpdate) {
+                    openAutoUpdateModal(data);
+                } else if (isManual) {
+                    const msg = window.t ? window.t('notifications.up_to_date', 'У вас установлена самая актуальная версия NPBlog ({version})', { version: data.currentVersion || '' }) : `У вас установлена самая актуальная версия NPBlog (${data.currentVersion || ''})`;
+                    showNotification(msg, 'info');
+                }
+            } else {
+                if (isManual) {
+                    showNotification(data.error || 'Ошибка проверки обновлений', 'error');
+                }
+            }
+        })
+        .catch(err => {
+            if (isManual && checkBtn) {
+                checkBtn.classList.remove('is-loading');
+                checkBtn.disabled = false;
+                showNotification(err.message || 'Ошибка сети при проверке обновлений', 'error');
+            }
+        });
+}
+
+function openAutoUpdateModal(updateData) {
+    currentAutoUpdateData = updateData;
+    
+    const curVerEl = document.getElementById('autoUpdateCurrentVersion');
+    const newVerEl = document.getElementById('autoUpdateNewVersion');
+    const badgeEl = document.getElementById('autoUpdateChannelBadge');
+    const clContainer = document.getElementById('autoUpdateChangelogList');
+    
+    if (curVerEl) curVerEl.textContent = updateData.currentVersion || 'Unknown';
+    if (newVerEl) newVerEl.textContent = updateData.latestVersion || 'Unknown';
+    
+    if (badgeEl) {
+        if (updateData.channel === 'canary') {
+            badgeEl.textContent = 'Canary';
+            badgeEl.style.background = '#f59e0b';
+            badgeEl.style.color = '#fff';
+        } else {
+            badgeEl.textContent = 'Stable';
+            badgeEl.style.background = 'var(--primary-color, #10b981)';
+            badgeEl.style.color = '#fff';
+        }
+    }
+    
+    if (clContainer) {
+        clContainer.innerHTML = '';
+        if (Array.isArray(updateData.changelog) && updateData.changelog.length > 0) {
+            const ul = document.createElement('ul');
+            ul.style.cssText = 'margin: 0; padding-left: 18px; line-height: 1.6;';
+            updateData.changelog.forEach(item => {
+                const li = document.createElement('li');
+                li.style.marginBottom = '4px';
+                li.textContent = item;
+                ul.appendChild(li);
+            });
+            clContainer.appendChild(ul);
+        } else {
+            clContainer.innerHTML = '<span style="opacity: 0.6;">' + (window.t ? window.t('modals.auto_update_no_changelog', 'Нет описания изменений для этой версии.') : 'Нет описания изменений для этой версии.') + '</span>';
+        }
+    }
+    
+    const infoBox = document.getElementById('autoUpdateInfoContainer');
+    const progBox = document.getElementById('autoUpdateProgressContainer');
+    const succBox = document.getElementById('autoUpdateSuccessContainer');
+    const footer = document.getElementById('autoUpdateFooter');
+    const startBtn = document.getElementById('autoUpdateStartBtn');
+    const cancelBtn = document.getElementById('autoUpdateCancelBtn');
+    const closeBtn = document.getElementById('autoUpdateHeaderCloseBtn');
+    
+    if (infoBox) infoBox.style.display = 'block';
+    if (progBox) progBox.style.display = 'none';
+    if (succBox) succBox.style.display = 'none';
+    if (footer) footer.style.display = 'flex';
+    if (startBtn) startBtn.style.display = 'inline-flex';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    if (closeBtn) closeBtn.style.display = 'flex';
+    
+    if (window.Modal) {
+        Modal.open('#autoUpdateModal');
+    } else {
+        const modal = document.getElementById('autoUpdateModal');
+        if (modal) modal.style.display = 'flex';
+    }
+}
+
+function closeAutoUpdateModal() {
+    if (autoUpdatePollTimer) {
+        clearInterval(autoUpdatePollTimer);
+        autoUpdatePollTimer = null;
+    }
+    if (window.Modal) {
+        Modal.close('#autoUpdateModal');
+    } else {
+        const modal = document.getElementById('autoUpdateModal');
+        if (modal) modal.style.display = 'none';
+    }
+}
+
+function startAutoUpdateProcess() {
+    if (!currentAutoUpdateData) return;
+    
+    const infoBox = document.getElementById('autoUpdateInfoContainer');
+    const progBox = document.getElementById('autoUpdateProgressContainer');
+    const succBox = document.getElementById('autoUpdateSuccessContainer');
+    const footer = document.getElementById('autoUpdateFooter');
+    const startBtn = document.getElementById('autoUpdateStartBtn');
+    const cancelBtn = document.getElementById('autoUpdateCancelBtn');
+    const closeBtn = document.getElementById('autoUpdateHeaderCloseBtn');
+    const progressBar = document.getElementById('autoUpdateProgressBar');
+    const statusText = document.getElementById('autoUpdateStatusText');
+    const percentText = document.getElementById('autoUpdateProgressPercent');
+    const detailText = document.getElementById('autoUpdateProgressDetail');
+    
+    if (infoBox) infoBox.style.display = 'none';
+    if (progBox) progBox.style.display = 'flex';
+    if (succBox) succBox.style.display = 'none';
+    if (startBtn) startBtn.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (closeBtn) closeBtn.style.display = 'none';
+    
+    if (progressBar) progressBar.style.width = '8%';
+    if (percentText) percentText.textContent = '8%';
+    if (statusText) statusText.textContent = window.t ? window.t('modals.auto_update_downloading', 'Скачивание архива с GitHub...') : 'Скачивание архива с GitHub...';
+    if (detailText) detailText.textContent = window.t ? window.t('modals.auto_update_connecting', 'Подключение к GitHub...') : 'Подключение к GitHub...';
+    
+    // Запуск периодического опроса прогресса скачивания
+    const startProgressPolling = (token) => {
+        if (autoUpdatePollTimer) clearInterval(autoUpdatePollTimer);
+        autoUpdatePollTimer = setInterval(() => {
+            fetch('update_system.php?action=auto_update_progress&token=' + encodeURIComponent(token) + '&t=' + Date.now())
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success && res.progress) {
+                        const p = res.progress;
+                        if (p.percent && progressBar) {
+                            progressBar.style.width = p.percent + '%';
+                            if (percentText) percentText.textContent = p.percent + '%';
+                        }
+                        if (p.message && statusText) statusText.textContent = p.message;
+                        if (p.detail && detailText) detailText.textContent = p.detail;
+                    }
+                })
+                .catch(() => {});
+        }, 400);
+    };
+    
+    const payload = {
+        channel: currentAutoUpdateData.channel,
+        repo: currentAutoUpdateData.repo,
+        tag: currentAutoUpdateData.tag || '',
+        commit: currentAutoUpdateData.commit || '',
+        archiveUrl: currentAutoUpdateData.archiveUrl || '',
+        changelog: currentAutoUpdateData.changelog || []
+    };
+    
+    fetch('update_system.php?action=prepare_auto_update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(async response => {
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('prepare_auto_update non-json response:', text);
+            throw new Error('Сбой ответа сервера при загрузке архива (HTTP ' + response.status + ')');
+        }
+        return data;
+    })
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.error || 'Ошибка при подготовке архива обновления');
+        }
+        
+        if (autoUpdatePollTimer) {
+            clearInterval(autoUpdatePollTimer);
+            autoUpdatePollTimer = null;
+        }
+        
+        if (progressBar) progressBar.style.width = '75%';
+        if (percentText) percentText.textContent = '75%';
+        if (statusText) statusText.textContent = window.t ? window.t('modals.auto_update_applying', 'Создание бэкапа и замена файлов системы...') : 'Создание бэкапа и замена файлов системы...';
+        if (detailText) detailText.textContent = window.t ? window.t('modals.auto_update_safe_copy', 'Резервное копирование и атомарная установка...') : 'Резервное копирование и атомарная установка...';
+        
+        // Шаг 2: Применение обновления через существующую систему update_system.php?action=update
+        return fetch('update_system.php?action=update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                token: data.token,
+                rootFolder: data.rootFolder
+            })
+        });
+    })
+    .then(async response => {
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('update_system update non-json response:', text);
+            throw new Error('Сбой ответа сервера при применении файлов обновления');
+        }
+        return data;
+    })
+    .then(updateResult => {
+        if (autoUpdatePollTimer) {
+            clearInterval(autoUpdatePollTimer);
+            autoUpdatePollTimer = null;
+        }
+        
+        if (updateResult.success) {
+            try {
+                localStorage.setItem('npblog_just_updated', 'true');
+            } catch (e) {}
+            
+            if (progressBar) progressBar.style.width = '100%';
+            if (percentText) percentText.textContent = '100%';
+            if (progBox) progBox.style.display = 'none';
+            if (footer) footer.style.display = 'none';
+            if (succBox) succBox.style.display = 'flex';
+        } else {
+            throw new Error(updateResult.error || 'Не удалось применить файлы обновления');
+        }
+    })
+    .catch(err => {
+        console.error('Auto update error:', err);
+        if (autoUpdatePollTimer) {
+            clearInterval(autoUpdatePollTimer);
+            autoUpdatePollTimer = null;
+        }
+        
+        if (statusText) {
+            statusText.textContent = 'Ошибка: ' + (err.message || 'Сбой обновления');
+            statusText.style.color = '#ef4444';
+        }
+        if (detailText) detailText.textContent = 'Обновление отменено, система сохранена без изменений';
+        if (cancelBtn) {
+            cancelBtn.style.display = 'inline-flex';
+            cancelBtn.textContent = window.t ? window.t('common.close', 'Закрыть') : 'Закрыть';
+        }
+        if (closeBtn) closeBtn.style.display = 'flex';
+        
+        showNotification(err.message || 'Ошибка обновления', 'error');
     });
 }
 

@@ -80,6 +80,9 @@ if (!isset($availableLanguages)) {
                 <button type="button" id="nav-btn-language" onclick="showGlobalSection('language')" class="global-nav-btn" data-section="language" data-i18n="settings.nav_language" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
                     Язык
                 </button>
+                <button type="button" id="nav-btn-updates" onclick="showGlobalSection('updates')" class="global-nav-btn" data-section="updates" data-i18n="settings.nav_updates" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
+                    Обновления
+                </button>
             </div>
             
             <!-- Контент справа -->
@@ -372,7 +375,6 @@ if (!isset($availableLanguages)) {
                             <button type="button" onclick="checkPostNumbering()" class="modal-btn modal-btn-primary" data-i18n="settings.exp_check_num_btn">Проверка нумерации</button>
                             <button type="button" onclick="resetTutorial()" class="modal-btn modal-btn-secondary" data-i18n="settings.exp_reset_guide_btn">Сбросить обучение</button>
                             <button type="button" onclick="closeGlobalSettings(); openInitialSetupModal();" class="modal-btn modal-btn-secondary" data-i18n="setup.rerun_setup_btn">🚀 Первоначальная настройка</button>
-                            <button type="button" onclick="closeGlobalSettings(); openUpdateSuccessNoticeModal();" class="modal-btn modal-btn-secondary" data-i18n="settings.exp_test_update_modal_btn">🎉 Окно обновления (тест)</button>
                             <button type="button" onclick="closeGlobalSettings(); enterSafeMode('Тестовый запуск Safe Mode (проверка интерфейса аварийного восстановления)');" class="modal-btn modal-btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">🛡️ Safe Mode</button>
                             <button type="button" onclick="deleteAllCustomTemplates()" class="modal-btn modal-btn-danger" data-i18n="settings.exp_delete_templates_btn">Удалить кастомные шаблоны</button>
                             <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn">Сбросить все настройки</button>
@@ -773,6 +775,77 @@ if (!isset($availableLanguages)) {
                         });
                     }
                     </script>
+                </div>
+
+                <!-- Секция 12: Обновления -->
+                <div id="globalSection-updates" class="global-section" style="display: none;">
+                    <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.updates_desc">
+                        Настройка автоматической проверки обновлений, выбор стабильного или экспериментального канала.
+                    </p>
+
+                    <!-- 1. Переключатель уведомлений -->
+                    <div style="margin-bottom: 20px; padding: 14px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02));">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 4px;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="settingAutoUpdateCheck" checked>
+                                <span class="modal-switch-slider"></span>
+                            </div>
+                            <span style="color: var(--text-color); font-weight: 600; font-size: 13.5px;" data-i18n="settings.updates_check_toggle">Проверять обновления при запуске</span>
+                        </label>
+                        <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-left: 50px;" data-i18n="settings.updates_check_hint">
+                            При каждом открытии редактора будет выполняться поиск новой версии. При обнаружении появится окно с чейнджлогом.
+                        </div>
+                    </div>
+
+                    <!-- 2. Выбор канала (Stable / Canary) -->
+                    <div class="modal-form-group" style="margin-bottom: 20px;">
+                        <label class="modal-label" for="settingUpdateChannel" style="font-weight: 600;" data-i18n="settings.updates_channel_label">Канал обновлений:</label>
+                        <select id="settingUpdateChannel" class="modal-select" onchange="handleUpdateChannelChange(this.value)">
+                            <option value="stable" data-i18n="settings.updates_channel_stable">Stable — Релизы GitHub (рекомендуется)</option>
+                            <option value="canary" data-i18n="settings.updates_channel_canary">Canary — Экспериментальная dev-ветка</option>
+                        </select>
+                        <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-top: 5px;" data-i18n="settings.updates_channel_hint">
+                            В режиме Stable загружаются проверенные релизы по тегам. В режиме Canary загружаются новейшие коммиты из ветки dev.
+                        </div>
+                    </div>
+
+                    <!-- 3. Поле ввода репозитория -->
+                    <div class="modal-form-group" style="margin-bottom: 24px;">
+                        <label class="modal-label" for="settingUpdateRepo" style="font-weight: 600;" data-i18n="settings.updates_repo_label">Репозиторий GitHub:</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="settingUpdateRepo" class="modal-input" value="slavaraninco-lgtm/NPBlog" placeholder="owner/repo" style="font-family: monospace; font-size: 13px;">
+                            <button type="button" class="modal-btn modal-btn-secondary" onclick="resetUpdateRepoToDefault()" style="white-space: nowrap; font-size: 12px;" data-i18n="common.reset">По умолчанию</button>
+                        </div>
+                        <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-top: 5px;" data-i18n="settings.updates_repo_hint">
+                            Официальный репозиторий: slavaraninco-lgtm/NPBlog. Вы можете указать собственный форк для тестирования обновлений.
+                        </div>
+                    </div>
+
+                    <!-- 4. Персональный токен GitHub (опционально) -->
+                    <div class="modal-form-group" style="margin-bottom: 24px;">
+                        <label class="modal-label" for="settingUpdateGithubToken" style="font-weight: 600;" data-i18n="settings.updates_token_label">Персональный токен GitHub (опционально):</label>
+                        <input type="password" id="settingUpdateGithubToken" class="modal-input" placeholder="ghp_xxxxxxxxxxxx" data-i18n-placeholder="settings.updates_token_ph" autocomplete="off" style="font-family: monospace; font-size: 13px;">
+                        <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-top: 5px;" data-i18n="settings.updates_token_hint">
+                            Необходим только при превышении лимитов GitHub API (например, при работе через общий NAT/VPN/прокси) или для доступа к приватным репозиториям.
+                        </div>
+                    </div>
+
+                    <!-- 5. Кнопки сохранения и проверки -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px;">
+                        <button type="button" onclick="saveUpdateSettings()" class="modal-btn modal-btn-primary" data-i18n="common.save_changes">Сохранить настройки</button>
+                        <button type="button" onclick="checkSystemAutoUpdate(true)" class="modal-btn modal-btn-secondary" id="manualCheckUpdateBtn" data-i18n="settings.updates_check_now_btn">🔍 Проверить обновления сейчас</button>
+                    </div>
+
+                    <!-- 5. Ссылка на ручное обновление -->
+                    <div style="padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 13px;" data-i18n="settings.updates_manual_title">Ручное обновление:</div>
+                            <div style="font-size: 12px; opacity: 0.75;" data-i18n="settings.updates_manual_desc">Установка обновления из локального .zip архива или откат на бэкап</div>
+                        </div>
+                        <button type="button" onclick="closeGlobalSettings(); openSystemUpdateModal();" class="modal-btn modal-btn-secondary" style="font-size: 12.5px;" data-i18n="settings.updates_manual_open_btn">
+                            📦 Ручное обновление
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

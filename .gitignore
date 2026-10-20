@@ -45,6 +45,10 @@ data/custom_editor_theme.css
 test_unit_blog_*
 tests_runtime_*
 
+# System update temporary files
+sys_update_tmp/
+rollback_tmp/
+
 # IDE & OS files
 .vscode/
 .idea/
