@@ -87,9 +87,13 @@ func main() {
 
 	r.Post("/save_autosave.php", legacyHandler.HandleSaveAutosave)
 	r.Get("/get_autosave.php", legacyHandler.HandleGetAutosave)
+	r.Post("/get_autosave.php", legacyHandler.HandleGetAutosave)
 	r.Get("/get_all_autosaves.php", legacyHandler.HandleGetAllAutosaves)
+	r.Post("/get_all_autosaves.php", legacyHandler.HandleGetAllAutosaves)
 	r.Post("/delete_autosave.php", legacyHandler.HandleDeleteAutosave)
+	r.Get("/delete_autosave.php", legacyHandler.HandleDeleteAutosave)
 	r.Post("/delete_all_autosaves.php", legacyHandler.HandleDeleteAllAutosaves)
+	r.Get("/delete_all_autosaves.php", legacyHandler.HandleDeleteAllAutosaves)
 
 	r.Get("/get_backups.php", legacyHandler.HandleGetBackups)
 	r.Get("/get_backup_content.php", legacyHandler.HandleGetBackupContent)
@@ -184,6 +188,38 @@ func main() {
 		api.Get("/posts/{id}", restHandler.HandleGetPost)
 		api.Put("/posts/{id}", restHandler.HandleUpdatePost)
 		api.Delete("/posts/{id}", restHandler.HandleDeletePost)
+
+		api.Route("/autosaves", func(sub chi.Router) {
+			sub.Get("/", restHandler.HandleListAutosaves)
+			sub.Post("/", restHandler.HandleCreateAutosave)
+			sub.Delete("/", restHandler.HandleDeleteAllAutosaves)
+			sub.Get("/{id}", restHandler.HandleGetAutosave)
+			sub.Delete("/{id}", restHandler.HandleDeleteAutosave)
+		})
+
+		api.Route("/drafts", func(sub chi.Router) {
+			sub.Get("/", restHandler.HandleListDrafts)
+			sub.Post("/", restHandler.HandleCreateDraft)
+			sub.Delete("/{filename}", restHandler.HandleDeleteDraft)
+		})
+
+		api.Route("/includes", func(sub chi.Router) {
+			sub.Get("/", restHandler.HandleListIncludes)
+			sub.Post("/", restHandler.HandleCreateInclude)
+			sub.Get("/{filename}", restHandler.HandleGetIncludeContent)
+			sub.Delete("/{filename}", restHandler.HandleDeleteInclude)
+		})
+
+		api.Route("/settings", func(sub chi.Router) {
+			sub.Get("/editor", restHandler.HandleGetEditorSettings)
+			sub.Put("/editor", restHandler.HandleUpdateEditorSettings)
+			sub.Get("/global", restHandler.HandleGetGlobalSettings)
+			sub.Put("/global", restHandler.HandleUpdateGlobalSettings)
+			sub.Get("/blog-view", restHandler.HandleGetBlogViewSettings)
+			sub.Put("/blog-view", restHandler.HandleUpdateBlogViewSettings)
+			sub.Get("/blog-nav", restHandler.HandleGetBlogNav)
+			sub.Put("/blog-nav", restHandler.HandleUpdateBlogNav)
+		})
 
 		api.Post("/formulas/render", restHandler.HandleRenderFormula)
 

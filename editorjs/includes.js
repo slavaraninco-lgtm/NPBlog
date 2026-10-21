@@ -62,23 +62,30 @@ async function confirmSaveInclude() {
     }
 
     try {
-        const response = await fetch('save_include.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-            },
-            body: JSON.stringify({ name: name, content: content })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            showNotification('Include сохранен: ' + (data.displayName || data.filename), 'success');
-            includesListLoaded = false; // Сбрасываем флаг для перезагрузки списка
-            closeSaveInclude();
+        let savedName = name;
+        if (window.api && window.api.includes) {
+            const data = await window.api.includes.save({ name: name, content: content });
+            savedName = (data && (data.displayName || data.filename)) || name;
         } else {
-            showNotification('Ошибка: ' + data.error, 'error');
+            const response = await fetch('save_include.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8',
+                },
+                body: JSON.stringify({ name: name, content: content })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                showNotification('Ошибка: ' + (data.error || 'Не удалось сохранить'), 'error');
+                return;
+            }
+            savedName = data.displayName || data.filename || name;
         }
+
+        showNotification('Include сохранен: ' + savedName, 'success');
+        includesListLoaded = false; // Сбрасываем флаг для перезагрузки списка
+        closeSaveInclude();
     } catch (error) {
         console.error('Ошибка сохранения include:', error);
         showNotification('Ошибка при сохранении include', 'error');
@@ -119,20 +126,22 @@ function saveDraft(event) {
         return;
     }
 
-    fetch('save_draft.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ title: title, content: content })
-    })
-        .then(response => response.json())
+    const draftPayload = { title: title, content: content };
+    const draftSaveAction = window.api
+        ? window.api.drafts.save(draftPayload)
+        : fetch('save_draft.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(draftPayload)
+        }).then(r => r.json());
+
+    draftSaveAction
         .then(data => {
-            if (data.success) {
+            if (data && data.success !== false) {
                 showAlert('Черновик сохранен');
-                draftsListLoaded = false; // Сбрасываем флаг чтобы перезагрузить список
+                draftsListLoaded = false;
             } else {
-                showAlert('Ошибка: ' + data.error);
+                showAlert('Ошибка: ' + (data && data.error ? (data.error.message || data.error) : 'Не удалось сохранить'));
             }
         })
         .catch(error => {
@@ -183,40 +192,37 @@ async function loadDraftsList(force = false) {
     if (containers.length === 0) return;
 
     try {
-        const response = await fetch('get_drafts.php');
-        const data = await response.json();
+        const drafts = window.api ? await window.api.drafts.list() : ((await (await fetch('get_drafts.php')).json()).drafts || []);
 
-        if (data.success) {
-            let htmlContent = '';
-            if (data.drafts.length === 0) {
-                htmlContent = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
-            } else {
-                const untitledText = window.t ? window.t('more_menu.untitled', 'Без названия') : 'Без названия';
-                const delDraftText = window.t ? window.t('more_menu.delete_draft', 'Удалить черновик') : 'Удалить черновик';
-                const currentLocale = (window.NPBlogI18n && typeof window.NPBlogI18n.getLocale === 'function') ? window.NPBlogI18n.getLocale() : 'ru-RU';
-                htmlContent = data.drafts.map(draft => {
-                    const displayTitle = draft.title || untitledText;
-                    const date = new Date(draft.timestamp * 1000).toLocaleString(currentLocale, {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                    return `<div class="draft-item-wrap">
-                        <button type="button" class="more-submenu-item draft-load-btn" onclick="loadDraft('${draft.filename}')" title="${escapeHtml(displayTitle)}">
-                            <div class="draft-title">${escapeHtml(displayTitle)}</div>
-                            <div class="draft-date">${date}</div>
-                        </button>
-                        <button type="button" class="draft-delete-btn" onclick="deleteDraft('${draft.filename}', event)" title="${delDraftText}">×</button>
-                    </div>`;
-                }).join('');
-            }
-            containers.forEach(container => {
-                container.innerHTML = htmlContent;
-            });
-            draftsListLoaded = true;
+        let htmlContent = '';
+        if (drafts.length === 0) {
+            htmlContent = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_drafts', 'Нет черновиков') : 'Нет черновиков') + '</div>';
+        } else {
+            const untitledText = window.t ? window.t('more_menu.untitled', 'Без названия') : 'Без названия';
+            const delDraftText = window.t ? window.t('more_menu.delete_draft', 'Удалить черновик') : 'Удалить черновик';
+            const currentLocale = (window.NPBlogI18n && typeof window.NPBlogI18n.getLocale === 'function') ? window.NPBlogI18n.getLocale() : 'ru-RU';
+            htmlContent = drafts.map(draft => {
+                const displayTitle = draft.title || untitledText;
+                const date = new Date(draft.timestamp * 1000).toLocaleString(currentLocale, {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                return `<div class="draft-item-wrap">
+                    <button type="button" class="more-submenu-item draft-load-btn" onclick="loadDraft('${draft.filename}')" title="${escapeHtml(displayTitle)}">
+                        <div class="draft-title">${escapeHtml(displayTitle)}</div>
+                        <div class="draft-date">${date}</div>
+                    </button>
+                    <button type="button" class="draft-delete-btn" onclick="deleteDraft('${draft.filename}', event)" title="${delDraftText}">×</button>
+                </div>`;
+            }).join('');
         }
+        containers.forEach(container => {
+            container.innerHTML = htmlContent;
+        });
+        draftsListLoaded = true;
     } catch (error) {
         console.error('Ошибка загрузки черновиков:', error);
         containers.forEach(container => {
@@ -227,13 +233,10 @@ async function loadDraftsList(force = false) {
 
 async function loadDraft(filename) {
     try {
-        const response = await fetch('get_drafts.php');
-        const data = await response.json();
+        const drafts = window.api ? await window.api.drafts.list() : ((await (await fetch('get_drafts.php')).json()).drafts || []);
+        const draft = drafts.find(d => d.filename === filename);
 
-        if (data.success) {
-            const draft = data.drafts.find(d => d.filename === filename);
-
-            if (draft) {
+        if (draft) {
                 // Вставляем заголовок и контент
                 document.getElementById('title').value = draft.title || '';
 
@@ -298,11 +301,8 @@ async function loadDraft(filename) {
                 if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
 
                 showNotification(window.t ? window.t('notifications.draft_loaded', 'Черновик загружен') : 'Черновик загружен', 'success');
-            } else {
-                showAlert(window.t ? window.t('notifications.draft_not_found', 'Черновик не найден') : 'Черновик не найден');
-            }
         } else {
-            showAlert(window.t ? window.t('notifications.draft_load_error', 'Ошибка загрузки черновика') : 'Ошибка загрузки черновика');
+            showAlert(window.t ? window.t('notifications.draft_not_found', 'Черновик не найден') : 'Черновик не найден');
         }
     } catch (error) {
         console.error('Ошибка загрузки черновика:', error);
@@ -317,23 +317,21 @@ async function deleteDraft(filename, event) {
     if (!result) return;
 
     try {
-        const response = await fetch('delete_draft.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filename: filename })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            showNotification(window.t ? window.t('notifications.draft_deleted', 'Черновик удален') : 'Черновик удален', 'success');
-            draftsListLoaded = false;
-            loadDraftsList(); // Перезагружаем список
+        if (window.api) {
+            await window.api.drafts.delete(filename);
         } else {
-            showAlert((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error);
+            await fetch('delete_draft.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: filename })
+            });
         }
+
+        showNotification(window.t ? window.t('notifications.draft_deleted', 'Черновик удален') : 'Черновик удален', 'success');
+        draftsListLoaded = false;
+        loadDraftsList(); // Перезагружаем список
     } catch (error) {
         console.error('Ошибка удаления черновика:', error);
         showAlert(window.t ? window.t('notifications.draft_delete_error', 'Ошибка при удалении черновика') : 'Ошибка при удалении черновика');
@@ -384,27 +382,39 @@ async function loadIncludesList(force = false) {
     if (containers.length === 0) return;
 
     try {
-        const response = await fetch('get_includes.php');
-        const data = await response.json();
-
-        if (data.success) {
-            let htmlContent = '';
-            if (data.files.length === 0) {
-                htmlContent = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
-            } else {
-                const delIncText = window.t ? window.t('more_menu.delete_include', 'Удалить include') : 'Удалить include';
-                htmlContent = data.files.map(file =>
-                    `<div class="draft-item-wrap">
-                        <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${file.name}')" title="${escapeHtml(file.displayName)}">${escapeHtml(file.displayName)}</button>
-                        <button type="button" class="draft-delete-btn" onclick="deleteInclude('${file.name}', event)" title="${delIncText}">×</button>
-                    </div>`
-                ).join('');
-            }
-            containers.forEach(container => {
-                container.innerHTML = htmlContent;
-            });
-            includesListLoaded = true;
+        let files = [];
+        if (window.api && window.api.includes) {
+            files = await window.api.includes.list();
+        } else {
+            const response = await fetch('get_includes.php');
+            const data = await response.json();
+            files = (data && (data.files || data.includes)) || [];
         }
+
+        if (!Array.isArray(files)) {
+            files = [];
+        }
+
+        let htmlContent = '';
+        if (files.length === 0) {
+            htmlContent = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_includes', 'Нет сохраненных includes') : 'Нет сохраненных includes') + '</div>';
+        } else {
+            const delIncText = window.t ? window.t('more_menu.delete_include', 'Удалить include') : 'Удалить include';
+            htmlContent = files.map(file => {
+                const name = file.name || file.filename || '';
+                const dName = file.displayName || file.name || '';
+                return `
+                    <div class="draft-item-wrap">
+                        <button type="button" class="more-submenu-item draft-load-btn" onclick="insertInclude('${name}')" title="${escapeHtml(dName)}">${escapeHtml(dName)}</button>
+                        <button type="button" class="draft-delete-btn" onclick="deleteInclude('${name}', event)" title="${delIncText}">×</button>
+                    </div>
+                `;
+            }).join('');
+        }
+        containers.forEach(container => {
+            container.innerHTML = htmlContent;
+        });
+        includesListLoaded = true;
     } catch (error) {
         console.error('Ошибка загрузки includes:', error);
         containers.forEach(container => {
@@ -420,23 +430,27 @@ async function deleteInclude(filename, event) {
     if (!result) return;
 
     try {
-        const response = await fetch('delete_include.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-            },
-            body: JSON.stringify({ filename: filename })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            showNotification(window.t ? window.t('notifications.include_deleted', 'Include успешно удален') : 'Include успешно удален', 'success');
-            includesListLoaded = false;
-            loadIncludesList();
+        if (window.api && window.api.includes) {
+            await window.api.includes.delete(filename);
         } else {
-            showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
+            const response = await fetch('delete_include.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8',
+                },
+                body: JSON.stringify({ filename: filename })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
+                return;
+            }
         }
+
+        showNotification(window.t ? window.t('notifications.include_deleted', 'Include успешно удален') : 'Include успешно удален', 'success');
+        includesListLoaded = false;
+        loadIncludesList();
     } catch (error) {
         console.error('Ошибка удаления include:', error);
         showNotification(window.t ? window.t('notifications.include_delete_error', 'Ошибка при удалении include') : 'Ошибка при удалении include', 'error');
@@ -445,39 +459,45 @@ async function deleteInclude(filename, event) {
 
 async function insertInclude(filename) {
     try {
-        const response = await fetch('get_include_content.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filename: filename })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            const ve = document.getElementById('contentVisual');
-            const ta = document.getElementById('content');
-
-            if (editorMode === 'visual') {
-                insertHtmlAtCursor(data.content);
-            } else {
-                const start = ta.selectionStart;
-                const end = ta.selectionEnd;
-                const text = ta.value;
-                ta.value = text.substring(0, start) + data.content + text.substring(end);
-                ta.selectionStart = ta.selectionEnd = start + data.content.length;
-            }
-
-            // Закрываем меню
-            const moreMenu = document.getElementById('moreMenuWrap');
-            if (moreMenu) moreMenu.classList.remove('is-open');
-            if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
-
-            showNotification(window.t ? window.t('notifications.include_inserted', 'Include вставлен') : 'Include вставлен', 'success');
+        let content = '';
+        if (window.api && window.api.includes) {
+            content = await window.api.includes.get(filename);
         } else {
-            showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
+            const response = await fetch('get_include_content.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: filename })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
+                return;
+            }
+            content = data.content;
         }
+
+        const ve = document.getElementById('contentVisual');
+        const ta = document.getElementById('content');
+
+        if (editorMode === 'visual') {
+            insertHtmlAtCursor(content);
+        } else {
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const text = ta.value;
+            ta.value = text.substring(0, start) + content + text.substring(end);
+            ta.selectionStart = ta.selectionEnd = start + content.length;
+        }
+
+        // Закрываем меню
+        const moreMenu = document.getElementById('moreMenuWrap');
+        if (moreMenu) moreMenu.classList.remove('is-open');
+        if (typeof window.closeAllBottomBarDropdowns === 'function') window.closeAllBottomBarDropdowns();
+
+        showNotification(window.t ? window.t('notifications.include_inserted', 'Include вставлен') : 'Include вставлен', 'success');
     } catch (error) {
         console.error('Ошибка вставки include:', error);
         showNotification(window.t ? window.t('notifications.include_insert_error', 'Ошибка при вставке include') : 'Ошибка при вставке include', 'error');
@@ -510,15 +530,20 @@ async function loadArticlesList() {
     if (!submenu) return;
 
     try {
-        const response = await fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now());
-        const articles = await response.json();
+        let articles = [];
+        if (window.api && window.api.posts) {
+            articles = await window.api.posts.list();
+        } else {
+            const response = await fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now());
+            articles = await response.json();
+        }
 
         if (!articles || articles.length === 0) {
             submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_articles', 'Нет статей') : 'Нет статей') + '</div>';
         } else {
             submenu.innerHTML = articles.map(article =>
-                `<button type="button" class="more-submenu-item" onclick="insertArticleLink('${article.filename}', '${article.title.replace(/'/g, "\\'")}')">
-                    ${article.title}
+                `<button type="button" class="more-submenu-item" onclick="insertArticleLink('${article.filename}', '${(article.title || '').replace(/'/g, "\\'")}')">
+                    ${escapeHtml(article.title || '')}
                 </button>`
             ).join('');
         }

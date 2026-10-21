@@ -111,11 +111,12 @@ type DraftData struct {
 
 // AutosaveData представляет автосохранение статьи
 type AutosaveData struct {
-	PostID    int       `json:"postId"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	Timestamp int64     `json:"timestamp"`
-	Date      string    `json:"date"`
+	ID        string `json:"id"`
+	PostID    int    `json:"postId,omitempty"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	Timestamp int64  `json:"timestamp"`
+	Date      string `json:"date"`
 }
 
 // ApiToken представляет токен доступа для мобильных клиентов в api_tokens.json

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="{{CURRENT_LANGUAGE}}"{{AMOLED_ATTR}}{{DISABLE_ANIMATIONS_ATTR}}>
 <head>
     <title data-i18n="header.editor_title">Редактор</title>
@@ -4052,6 +4052,7 @@ window.addEventListener('load', function() {
 </div>
 
 <script src="modals/modal.js?v=1792335621"></script>
+<script src="editorjs/api.js?v=1"></script>
 <script src="editorjs/core.js?v=1788820702"></script>
 <script src="editorjs/notifications.js?v=1788459283"></script>
 <script src="editorjs/drafts.js?v=1792233378"></script>
@@ -7099,11 +7100,13 @@ function openInitialSetupModal() {
     hideSetupError();
     
     // Подгружаем актуальные настройки если они уже были сохранены
-    fetch('get_editor_settings.php?t=' + Date.now())
-        .then(res => res.json())
-        .then(data => {
-            if (data.success && data.settings) {
-                const s = data.settings;
+    const fetchSettings = (window.api && window.api.settings)
+        ? window.api.settings.getEditor()
+        : fetch('get_editor_settings.php?t=' + Date.now()).then(res => res.json()).then(data => (data && data.settings) ? data.settings : {});
+
+    fetchSettings
+        .then(s => {
+            if (s) {
                 if (s.language) {
                     selectSetupLanguage(s.language, false);
                 }
@@ -7171,6 +7174,16 @@ function closeInitialSetupModal() {
             modal.style.display = 'none';
             modal.classList.remove('is-closing');
         }, 320);
+    }
+    // Сохраняем флаг завершения, чтобы окно обучения не показывалось повторно
+    if (window.api && window.api.settings) {
+        window.api.settings.updateEditor({ initial_setup_completed: true, tutorialCompleted: true }).catch(() => {});
+    } else {
+        fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initial_setup_completed: true, tutorialCompleted: true })
+        }).catch(() => {});
     }
 }
 
@@ -7760,17 +7773,24 @@ async function finishInitialSetup() {
         }
     }
     
+    payload.initial_setup_completed = true;
+
     try {
-        const res = await fetch('save_editor_settings.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        let data;
+        if (window.api && window.api.settings) {
+            data = await window.api.settings.updateEditor(payload);
+        } else {
+            const res = await fetch('save_editor_settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            data = await res.json();
+        }
         
-        const data = await res.json();
         if (finishBtn) finishBtn.classList.remove('is-loading');
         
-        if (data.success) {
+        if (data && (data.success !== false)) {
             // Применяем настройки в редакторе
             if (typeof loadAndApplyAllSettings === 'function') {
                 loadAndApplyAllSettings();
@@ -7782,7 +7802,7 @@ async function finishInitialSetup() {
             // Переходим на экран завершения настройки
             goToSetupStep('success');
         } else {
-            showSetupError('common.error', data.error || 'Ошибка при сохранении параметров');
+            showSetupError('common.error', (data && data.error) || 'Ошибка при сохранении параметров');
         }
     } catch (err) {
         console.error('Ошибка сохранения первоначальной настройки:', err);
@@ -7794,12 +7814,16 @@ async function finishInitialSetup() {
 function launchTutorialFromSetup() {
     closeInitialSetupModal();
     
-    // Сбрасываем флаг завершения обучения и запускаем гайд
-    fetch('save_editor_settings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tutorialCompleted: false })
-    }).finally(() => {
+    // Сбрасываем флаг завершения обучения и отмечаем первоначальную настройку завершенной
+    const savePromise = (window.api && window.api.settings)
+        ? window.api.settings.updateEditor({ tutorialCompleted: false, initial_setup_completed: true })
+        : fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tutorialCompleted: false, initial_setup_completed: true })
+        });
+
+    savePromise.finally(() => {
         if (typeof currentTutorialStep !== 'undefined') {
             currentTutorialStep = 0;
         }
@@ -7814,12 +7838,16 @@ function launchTutorialFromSetup() {
 }
 
 function continueToEditorFromSetup() {
-    // Отмечаем обучение завершенным и закрываем мастер
-    fetch('save_editor_settings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tutorialCompleted: true })
-    }).finally(() => {
+    // Отмечаем обучение и первоначальную настройку завершенными и закрываем мастер
+    const savePromise = (window.api && window.api.settings)
+        ? window.api.settings.updateEditor({ tutorialCompleted: true, initial_setup_completed: true })
+        : fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tutorialCompleted: true, initial_setup_completed: true })
+        });
+
+    savePromise.finally(() => {
         closeInitialSetupModal();
     });
 }
@@ -9059,14 +9087,16 @@ window.showPrompt = showPrompt;
 
 // Функции для настроек вида blog.html
 function loadBlogViewSettings() {
-    fetch('serve_data.php?file=blog-view-settings.json&t=' + Date.now())
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Settings not found');
-            }
+    const fetchSettings = window.api
+        ? window.api.settings.getBlogView()
+        : fetch('serve_data.php?file=blog-view-settings.json&t=' + Date.now()).then(response => {
+            if (!response.ok) throw new Error('Settings not found');
             return response.json();
-        })
+        });
+
+    fetchSettings
         .then(settings => {
+            if (!settings) return;
             document.getElementById('blogPageTitle').value = settings.title || 'Блог';
             
             const layoutSelect = document.getElementById('blogPostsLayout');
@@ -9352,26 +9382,18 @@ function performAutosave() {
         return; // Нечего сохранять
     }
     
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('content', content);
-    
-    fetch('save_autosave.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(async response => {
-        const text = await response.text();
-        if (!text) throw new Error('Сервер вернул пустой ответ (0 байт).');
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            console.error('Невалидный JSON от сервера. Ответ:', text);
-            throw e;
-        }
-    })
+    const payload = { title: title, content: content };
+    const savePromise = window.api
+        ? window.api.autosaves.save(payload)
+        : fetch('save_autosave.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(r => r.json());
+
+    savePromise
     .then(data => {
-        if (data.success) {
+        if (data && data.success !== false) {
             console.log('Автосохранение выполнено');
             if (typeof isEditorDirty !== 'undefined') {
                 isEditorDirty = false;
@@ -9455,13 +9477,16 @@ function closeAutosaveManager() {
 }
 
 function loadAutosavesList() {
-    fetch('get_all_autosaves.php')
-        .then(response => response.json())
-        .then(data => {
+    const listPromise = window.api
+        ? window.api.autosaves.list()
+        : fetch('get_all_autosaves.php').then(response => response.json()).then(data => (data && data.autosaves) ? data.autosaves : []);
+
+    listPromise
+        .then(autosaves => {
             const listDiv = document.getElementById('autosavesList');
             const emptyDiv = document.getElementById('autosavesEmpty');
             
-            if (data.success && data.autosaves && data.autosaves.length > 0) {
+            if (autosaves && autosaves.length > 0) {
                 listDiv.innerHTML = '';
                 listDiv.style.display = 'block';
                 emptyDiv.style.display = 'none';
@@ -9472,7 +9497,7 @@ function loadAutosavesList() {
                 const deleteText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
 
                 const groupedAutosaves = {};
-                data.autosaves.forEach(autosave => {
+                autosaves.forEach(autosave => {
                     const title = autosave.title || untitledText;
                     if (!groupedAutosaves[title]) {
                         groupedAutosaves[title] = [];
@@ -9538,22 +9563,25 @@ function toggleAutosaveGroup(index) {
 }
 
 function loadAutosaveById(id) {
-    fetch('get_autosave.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ id: id })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.autosave) {
-            document.getElementById('title').value = data.autosave.title || '';
+    const getPromise = window.api
+        ? window.api.autosaves.get(id)
+        : fetch('get_autosave.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: id })
+        }).then(response => response.json()).then(data => (data && data.autosave) ? data.autosave : null);
+
+    getPromise
+    .then(autosave => {
+        if (autosave) {
+            document.getElementById('title').value = autosave.title || '';
             
             let isMarkdown = false;
             let mdContent = '';
-            if (data.autosave.content && data.autosave.content.includes('id="markdown-source"')) {
-                const match = data.autosave.content.match(/id="markdown-source"\s+data-base64="([^"]*)"/);
+            if (autosave.content && autosave.content.includes('id="markdown-source"')) {
+                const match = autosave.content.match(/id="markdown-source"\s+data-base64="([^"]*)"/);
                 if (match && match[1]) {
                     try {
                         mdContent = decodeURIComponent(escape(atob(match[1])));
@@ -9580,12 +9608,12 @@ function loadAutosaveById(id) {
                 }
             } else {
                 if (window.enableMarkdown) {
-                    document.getElementById('content').value = data.autosave.content || '';
+                    document.getElementById('content').value = autosave.content || '';
                     const ve = document.getElementById('contentVisual');
                     if (ve) {
                         ve.contentEditable = 'true';
                         if (editorMode === 'visual') {
-                            ve.innerHTML = parseMarkdownToHtml(data.autosave.content || '');
+                            ve.innerHTML = parseMarkdownToHtml(autosave.content || '');
                         }
                     }
                 } else {
@@ -9594,12 +9622,12 @@ function loadAutosaveById(id) {
                     const enableMarkdownCheck = document.getElementById('enableMarkdown');
                     if (enableMarkdownCheck) enableMarkdownCheck.checked = false;
                     
-                    document.getElementById('content').value = data.autosave.content || '';
+                    document.getElementById('content').value = autosave.content || '';
                     const ve = document.getElementById('contentVisual');
                     if (ve) {
                         ve.contentEditable = 'true';
                         if (editorMode === 'visual') {
-                            ve.innerHTML = data.autosave.content || '';
+                            ve.innerHTML = autosave.content || '';
                         }
                     }
                 }
@@ -9622,22 +9650,21 @@ function deleteAutosaveById(id) {
     showConfirm(window.t ? window.t('notifications.autosave_delete_confirm', 'Удалить это автосохранение?') : 'Удалить это автосохранение?').then(result => {
         if (!result) return;
         
-        fetch('delete_autosave.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ id: id })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification(window.t ? window.t('notifications.autosave_deleted', 'Автосохранение удалено') : 'Автосохранение удалено', 'success');
-                loadAutosavesList();
-                checkAutosaveExists();
-            } else {
-                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
-            }
+        const deletePromise = window.api
+            ? window.api.autosaves.delete(id)
+            : fetch('delete_autosave.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: id })
+            }).then(response => response.json());
+
+        deletePromise
+        .then(() => {
+            showNotification(window.t ? window.t('notifications.autosave_deleted', 'Автосохранение удалено') : 'Автосохранение удалено', 'success');
+            loadAutosavesList();
+            checkAutosaveExists();
         })
         .catch(error => {
             console.error('Ошибка:', error);
@@ -9650,20 +9677,17 @@ function saveBlogViewSettings() {
     const title = document.getElementById('blogPageTitle').value.trim() || 'Блог';
     const layout = document.getElementById('blogPostsLayout') ? document.getElementById('blogPostsLayout').value : 'list';
     
-    fetch('save_blog_view_settings.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'save', title: title, layout: layout })
-    })
-    .then(response => response.json())
+    const savePromise = window.api
+        ? window.api.settings.updateBlogView({ action: 'save', title: title, layout: layout })
+        : fetch('save_blog_view_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'save', title: title, layout: layout })
+        }).then(response => response.json());
+
+    savePromise
     .then(data => {
-        if (data.success) {
-            showAlert(window.t ? window.t('notifications.blogview_saved_notice', 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.') : 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
-        } else {
-            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
-        }
+        showAlert(window.t ? window.t('notifications.blogview_saved_notice', 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.') : 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
     })
     .catch(error => {
         console.error('Ошибка:', error);
@@ -9674,24 +9698,21 @@ function saveBlogViewSettings() {
 function saveBlogViewLayout(action) {
     const layout = (document.getElementById('blogPostsLayout') && document.getElementById('blogPostsLayout').value) || 'list';
     
-    fetch('save_blog_view_settings.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: action || 'save', layout: layout })
-    })
-    .then(response => response.json())
+    const layoutPromise = window.api
+        ? window.api.settings.updateBlogView({ action: action || 'save', layout: layout })
+        : fetch('save_blog_view_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action || 'save', layout: layout })
+        }).then(response => response.json());
+
+    layoutPromise
     .then(data => {
-        if (data.success) {
-            if (action === 'apply_all') {
-                const count = data.updated_count || 1;
-                showAlert(window.t ? window.t('notifications.blogview_layout_applied_all', 'Вид успешно применен для всех блогов ({count})!', { count: count }) : ('Вид успешно применен для всех блогов (' + count + ')!'));
-            } else {
-                showAlert(window.t ? window.t('notifications.blogview_layout_saved', 'Вид отображения успешно сохранен для текущего блога!') : 'Вид отображения успешно сохранен для текущего блога!');
-            }
+        if (action === 'apply_all') {
+            const count = (data && data.updated_count) || (data && data.data && data.data.updated_count) || 1;
+            showAlert(window.t ? window.t('notifications.blogview_layout_applied_all', 'Вид успешно применен для всех блогов ({count})!', { count: count }) : ('Вид успешно применен для всех блогов (' + count + ')!'));
         } else {
-            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
+            showAlert(window.t ? window.t('notifications.blogview_layout_saved', 'Вид отображения успешно сохранен для текущего блога!') : 'Вид отображения успешно сохранен для текущего блога!');
         }
     })
     .catch(error => {
@@ -9704,24 +9725,31 @@ function saveBlogViewLayout(action) {
 let currentCrossBlogNavItems = [];
 
 function checkCrossBlogNavStatus() {
-    fetch('save_blog_nav.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=check'
-    })
-    .then(r => r.json())
+    const navPromise = window.api
+        ? window.api.settings.getBlogNav()
+        : fetch('save_blog_nav.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=check'
+        }).then(r => r.json());
+
+    navPromise
     .then(data => {
-        if (!data.is_standard) {
+        const payload = (data && data.data) ? data.data : data;
+        if (!payload || !payload.is_standard) {
             document.getElementById('crossBlogNavStatus').style.display = 'block';
             document.getElementById('crossBlogNavEditor').style.display = 'none';
         } else {
             document.getElementById('crossBlogNavStatus').style.display = 'none';
             document.getElementById('crossBlogNavEditor').style.display = 'block';
-            currentCrossBlogNavItems = data.buttons || [];
+            currentCrossBlogNavItems = payload.buttons || [];
             document.getElementById('enableCrossBlogNav').checked = currentCrossBlogNavItems.length > 0;
             toggleCrossBlogNavUI();
             renderCrossBlogNavItems();
         }
+    })
+    .catch(err => {
+        console.warn('Ошибка проверки статуса навигации:', err);
     });
 }
 
@@ -9789,23 +9817,23 @@ function saveCrossBlogNav(action) {
     const isEnabled = document.getElementById('enableCrossBlogNav').checked;
     const buttonsToSave = isEnabled ? currentCrossBlogNavItems : [];
     
-    fetch('save_blog_nav.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'action=' + action + '&buttons=' + encodeURIComponent(JSON.stringify(buttonsToSave))
-    })
-    .then(r => r.json())
+    const savePromise = window.api
+        ? window.api.settings.updateBlogNav({ action: action, buttons: buttonsToSave, apply_all: (action === 'apply_all') })
+        : fetch('save_blog_nav.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=' + action + '&buttons=' + encodeURIComponent(JSON.stringify(buttonsToSave))
+        }).then(r => r.json());
+
+    savePromise
     .then(data => {
-        if (data.success) {
-            if (action === 'apply_all') {
-                showAlert(window.t ? window.t('notifications.crossblog_applied_param', 'Кнопки успешно применены к ' + data.updated_count + ' блогам со стандартными шаблонами!', { count: data.updated_count }) : 'Кнопки успешно применены к ' + data.updated_count + ' блогам со стандартными шаблонами!');
-            } else {
-                showAlert(window.t ? window.t('notifications.crossblog_saved', 'Кнопки навигации успешно сохранены!') : 'Кнопки навигации успешно сохранены!');
-            }
-            checkCrossBlogNavStatus();
+        if (action === 'apply_all') {
+            const count = (data && data.updated_count) || (data && data.data && data.data.updated_count) || 1;
+            showAlert(window.t ? window.t('notifications.crossblog_applied_param', 'Кнопки успешно применены к ' + count + ' блогам со стандартными шаблонами!', { count: count }) : 'Кнопки успешно применены к ' + count + ' блогам со стандартными шаблонами!');
         } else {
-            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + (data.message || (window.t ? window.t('notifications.unknown_error', 'Неизвестная ошибка') : 'Неизвестная ошибка')), { error: data.message || (window.t ? window.t('notifications.unknown_error', 'Неизвестная ошибка') : 'Неизвестная ошибка') }) : 'Ошибка: ' + (data.message || 'Неизвестная ошибка'));
+            showAlert(window.t ? window.t('notifications.crossblog_saved', 'Кнопки навигации успешно сохранены!') : 'Кнопки навигации успешно сохранены!');
         }
+        checkCrossBlogNavStatus();
     })
     .catch(err => {
         showAlert(window.t ? window.t('notifications.crossblog_save_error', 'Произошла ошибка при сохранении кнопок.') : 'Произошла ошибка при сохранении кнопок.');
@@ -9815,11 +9843,13 @@ function saveCrossBlogNav(action) {
 
 // Единая функция загрузки и применения всех настроек редактора
 function loadAndApplyAllSettings() {
-    fetch('get_editor_settings.php?t=' + Date.now())
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.settings) {
-                const settings = data.settings;
+    const fetchSettings = window.api
+        ? window.api.settings.getEditor()
+        : fetch('get_editor_settings.php?t=' + Date.now()).then(response => response.json()).then(data => (data && data.settings) ? data.settings : {});
+
+    fetchSettings
+        .then(settings => {
+            if (settings) {
                 
                 // 1. Автосохранение
                 autosaveEnabled = settings.autosaveEnabled || false;

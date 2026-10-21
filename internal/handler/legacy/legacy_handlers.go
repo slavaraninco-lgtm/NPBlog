@@ -337,15 +337,86 @@ func (l *LegacyHandler) HandleDeleteDraft(w http.ResponseWriter, r *http.Request
 }
 
 func (l *LegacyHandler) HandleSaveAutosave(w http.ResponseWriter, r *http.Request) {
-	var body domain.AutosaveData
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	_ = l.draft.SaveAutosave(body)
-	l.jsonResponse(w, map[string]interface{}{"success": true})
+	var title, content, id string
+	var postID int
+
+	ct := r.Header.Get("Content-Type")
+	if strings.Contains(ct, "application/json") {
+		var body map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if t, ok := body["title"].(string); ok {
+			title = t
+		}
+		if c, ok := body["content"].(string); ok {
+			content = c
+		}
+		if i, ok := body["id"].(string); ok {
+			id = i
+		}
+		if pid, ok := body["postId"].(float64); ok {
+			postID = int(pid)
+		}
+	} else {
+		_ = r.ParseMultipartForm(50 << 20)
+		title = r.FormValue("title")
+		content = r.FormValue("content")
+		id = r.FormValue("id")
+		postID, _ = strconv.Atoi(r.FormValue("postId"))
+	}
+
+	if title == "" && content == "" {
+		l.errorResponse(w, "Отсутствуют данные")
+		return
+	}
+
+	saved, err := l.draft.SaveAutosave(domain.AutosaveData{
+		ID:      id,
+		PostID:  postID,
+		Title:   title,
+		Content: content,
+	})
+	if err != nil {
+		l.errorResponse(w, "Ошибка сохранения файла")
+		return
+	}
+
+	l.jsonResponse(w, map[string]interface{}{
+		"success":   true,
+		"id":        saved.ID,
+		"timestamp": saved.Timestamp,
+	})
 }
 
 func (l *LegacyHandler) HandleGetAutosave(w http.ResponseWriter, r *http.Request) {
-	postID, _ := strconv.Atoi(r.URL.Query().Get("postId"))
-	data, err := l.draft.GetAutosave(postID)
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		id = r.URL.Query().Get("postId")
+	}
+
+	ct := r.Header.Get("Content-Type")
+	if strings.Contains(ct, "application/json") {
+		var body struct {
+			ID     interface{} `json:"id"`
+			PostID interface{} `json:"postId"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if id == "" && body.ID != nil {
+			id = fmt.Sprintf("%v", body.ID)
+		}
+		if id == "" && body.PostID != nil {
+			id = fmt.Sprintf("%v", body.PostID)
+		}
+	} else if r.Method == http.MethodPost {
+		_ = r.ParseForm()
+		if id == "" {
+			id = r.FormValue("id")
+		}
+		if id == "" {
+			id = r.FormValue("postId")
+		}
+	}
+
+	data, err := l.draft.GetAutosave(id)
 	if err != nil {
 		l.errorResponse(w, "Автосохранение не найдено")
 		return
@@ -357,7 +428,10 @@ func (l *LegacyHandler) HandleGetAutosave(w http.ResponseWriter, r *http.Request
 }
 
 func (l *LegacyHandler) HandleGetAllAutosaves(w http.ResponseWriter, r *http.Request) {
-	list, _ := l.draft.GetAllAutosaves()
+	list, err := l.draft.GetAllAutosaves()
+	if err != nil || list == nil {
+		list = []domain.AutosaveData{}
+	}
 	l.jsonResponse(w, map[string]interface{}{
 		"success":   true,
 		"autosaves": list,
@@ -365,17 +439,44 @@ func (l *LegacyHandler) HandleGetAllAutosaves(w http.ResponseWriter, r *http.Req
 }
 
 func (l *LegacyHandler) HandleDeleteAutosave(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		PostID int `json:"postId"`
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		id = r.URL.Query().Get("postId")
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	_ = l.draft.DeleteAutosave(body.PostID)
+
+	ct := r.Header.Get("Content-Type")
+	if strings.Contains(ct, "application/json") {
+		var body struct {
+			ID     interface{} `json:"id"`
+			PostID interface{} `json:"postId"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if id == "" && body.ID != nil {
+			id = fmt.Sprintf("%v", body.ID)
+		}
+		if id == "" && body.PostID != nil {
+			id = fmt.Sprintf("%v", body.PostID)
+		}
+	} else if r.Method == http.MethodPost {
+		_ = r.ParseForm()
+		if id == "" {
+			id = r.FormValue("id")
+		}
+		if id == "" {
+			id = r.FormValue("postId")
+		}
+	}
+
+	_ = l.draft.DeleteAutosave(id)
 	l.jsonResponse(w, map[string]interface{}{"success": true})
 }
 
 func (l *LegacyHandler) HandleDeleteAllAutosaves(w http.ResponseWriter, r *http.Request) {
-	_ = l.draft.DeleteAllAutosaves()
-	l.jsonResponse(w, map[string]interface{}{"success": true})
+	deleted, _ := l.draft.DeleteAllAutosaves()
+	l.jsonResponse(w, map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("Удалено файлов: %d", deleted),
+	})
 }
 
 // --- Бэкапы ---

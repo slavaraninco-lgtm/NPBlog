@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/md5"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -102,31 +103,101 @@ func (d *DraftService) DeleteDraft(activeBlogPath, filename string) error {
 	return nil
 }
 
-// SaveAutosave сохраняет снимок текущей редактируемой статьи
-func (d *DraftService) SaveAutosave(data domain.AutosaveData) error {
+// SaveAutosave сохраняет снимок текущей редактируемой статьи в autosave_{id}.json
+func (d *DraftService) SaveAutosave(data domain.AutosaveData) (*domain.AutosaveData, error) {
 	autosaveDir := d.storage.GetAutosavePath("")
 	_ = os.MkdirAll(autosaveDir, 0755)
 
-	filename := filepath.Join(autosaveDir, fmt.Sprintf("autosave-%d.json", data.PostID))
-	data.Timestamp = time.Now().Unix()
-	data.Date = time.Now().Format("02.01.2006 15:04:05")
+	ts := time.Now().Unix()
+	id := data.ID
+	if id == "" {
+		hash := md5.Sum([]byte(data.Title))
+		id = fmt.Sprintf("%x_%d", hash, ts)
+	}
+	data.ID = id
+	data.Timestamp = ts
+	data.Date = time.Now().Format("2006-01-02 15:04:05")
 
-	return d.storage.SafeWriteJSON(filename, data)
-}
-
-// GetAutosave возвращает автосохранение для конкретной статьи
-func (d *DraftService) GetAutosave(postID int) (*domain.AutosaveData, error) {
-	autosaveDir := d.storage.GetAutosavePath("")
-	filename := filepath.Join(autosaveDir, fmt.Sprintf("autosave-%d.json", postID))
-
-	var data domain.AutosaveData
-	if err := d.storage.SafeReadJSON(filename, &data); err != nil {
+	filename := filepath.Join(autosaveDir, fmt.Sprintf("autosave_%s.json", id))
+	if err := d.storage.SafeWriteJSON(filename, data); err != nil {
 		return nil, err
 	}
 	return &data, nil
 }
 
-// GetAllAutosaves возвращает список всех активных автосохранений
+// GetAutosave возвращает автосохранение по ID (или последнее, если ID пуст)
+func (d *DraftService) GetAutosave(id string) (*domain.AutosaveData, error) {
+	autosaveDir := d.storage.GetAutosavePath("")
+
+	cleanID := filepath.Base(id)
+	cleanID = strings.TrimSuffix(cleanID, ".json")
+	cleanID = strings.TrimPrefix(cleanID, "autosave_")
+	cleanID = strings.TrimPrefix(cleanID, "autosave-")
+
+	if cleanID != "" {
+		// Try autosave_<cleanID>.json
+		path1 := filepath.Join(autosaveDir, fmt.Sprintf("autosave_%s.json", cleanID))
+		var data domain.AutosaveData
+		if err := d.storage.SafeReadJSON(path1, &data); err == nil {
+			if data.ID == "" {
+				data.ID = cleanID
+			}
+			return &data, nil
+		}
+		// Try autosave-<cleanID>.json
+		path2 := filepath.Join(autosaveDir, fmt.Sprintf("autosave-%s.json", cleanID))
+		if err := d.storage.SafeReadJSON(path2, &data); err == nil {
+			if data.ID == "" {
+				data.ID = cleanID
+			}
+			return &data, nil
+		}
+	}
+
+	// If cleanID is empty or not found, find the latest autosave
+	entries, err := os.ReadDir(autosaveDir)
+	if err != nil {
+		return nil, fmt.Errorf("autosaves directory not found")
+	}
+
+	var newestPath string
+	var newestTime int64
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		if !strings.HasPrefix(e.Name(), "autosave_") && !strings.HasPrefix(e.Name(), "autosave-") {
+			continue
+		}
+		fi, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if fi.ModTime().Unix() > newestTime {
+			newestTime = fi.ModTime().Unix()
+			newestPath = filepath.Join(autosaveDir, e.Name())
+		}
+	}
+
+	if newestPath == "" {
+		return nil, fmt.Errorf("no autosave found")
+	}
+
+	var data domain.AutosaveData
+	if err := d.storage.SafeReadJSON(newestPath, &data); err != nil {
+		return nil, err
+	}
+	if data.ID == "" {
+		name := filepath.Base(newestPath)
+		name = strings.TrimSuffix(name, ".json")
+		name = strings.TrimPrefix(name, "autosave_")
+		name = strings.TrimPrefix(name, "autosave-")
+		data.ID = name
+	}
+	return &data, nil
+}
+
+// GetAllAutosaves возвращает список всех активных автосохранений, отсортированных по времени (новые первые)
 func (d *DraftService) GetAllAutosaves() ([]domain.AutosaveData, error) {
 	autosaveDir := d.storage.GetAutosavePath("")
 	entries, err := os.ReadDir(autosaveDir)
@@ -136,38 +207,70 @@ func (d *DraftService) GetAllAutosaves() ([]domain.AutosaveData, error) {
 
 	var list []domain.AutosaveData
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasPrefix(e.Name(), "autosave-") || !strings.HasSuffix(e.Name(), ".json") {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		if !strings.HasPrefix(e.Name(), "autosave_") && !strings.HasPrefix(e.Name(), "autosave-") {
 			continue
 		}
 		var data domain.AutosaveData
 		if err := d.storage.SafeReadJSON(filepath.Join(autosaveDir, e.Name()), &data); err == nil {
+			if data.ID == "" {
+				name := strings.TrimSuffix(e.Name(), ".json")
+				name = strings.TrimPrefix(name, "autosave_")
+				name = strings.TrimPrefix(name, "autosave-")
+				data.ID = name
+			}
+			if data.Timestamp == 0 {
+				if fi, err := e.Info(); err == nil {
+					data.Timestamp = fi.ModTime().Unix()
+					data.Date = fi.ModTime().Format("2006-01-02 15:04:05")
+				}
+			}
 			list = append(list, data)
 		}
 	}
+
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].Timestamp > list[j].Timestamp
+	})
+
 	return list, nil
 }
 
-// DeleteAutosave удаляет автосохранение статьи
-func (d *DraftService) DeleteAutosave(postID int) error {
+// DeleteAutosave удаляет автосохранение статьи по ID
+func (d *DraftService) DeleteAutosave(id string) error {
 	autosaveDir := d.storage.GetAutosavePath("")
-	filename := filepath.Join(autosaveDir, fmt.Sprintf("autosave-%d.json", postID))
-	return os.Remove(filename)
-}
-
-// DeleteAllAutosaves полностью очищает каталог автосохранений
-func (d *DraftService) DeleteAllAutosaves() error {
-	autosaveDir := d.storage.GetAutosavePath("")
-	entries, err := os.ReadDir(autosaveDir)
-	if err != nil {
+	cleanID := filepath.Base(id)
+	cleanID = strings.TrimSuffix(cleanID, ".json")
+	cleanID = strings.TrimPrefix(cleanID, "autosave_")
+	cleanID = strings.TrimPrefix(cleanID, "autosave-")
+	if cleanID == "" {
 		return nil
 	}
 
+	_ = os.Remove(filepath.Join(autosaveDir, fmt.Sprintf("autosave_%s.json", cleanID)))
+	_ = os.Remove(filepath.Join(autosaveDir, fmt.Sprintf("autosave-%s.json", cleanID)))
+	return nil
+}
+
+// DeleteAllAutosaves полностью очищает каталог автосохранений
+func (d *DraftService) DeleteAllAutosaves() (int, error) {
+	autosaveDir := d.storage.GetAutosavePath("")
+	entries, err := os.ReadDir(autosaveDir)
+	if err != nil {
+		return 0, nil
+	}
+
+	deleted := 0
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasPrefix(e.Name(), "autosave-") {
-			_ = os.Remove(filepath.Join(autosaveDir, e.Name()))
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && (strings.HasPrefix(e.Name(), "autosave_") || strings.HasPrefix(e.Name(), "autosave-")) {
+			if err := os.Remove(filepath.Join(autosaveDir, e.Name())); err == nil {
+				deleted++
+			}
 		}
 	}
-	return nil
+	return deleted, nil
 }
 
 func parsePostIDFromFilename(name string) int {

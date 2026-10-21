@@ -647,10 +647,12 @@ function startTutorial(force = false) {
         showTutorialStep();
         return;
     }
-    fetch('get_editor_settings.php?t=' + Date.now())
-        .then(response => response.json())
-        .then(data => {
-            const settings = data.settings || {};
+    const fetchSettings = (window.api && window.api.settings)
+        ? window.api.settings.getEditor()
+        : fetch('get_editor_settings.php?t=' + Date.now()).then(response => response.json()).then(data => data.settings || {});
+
+    fetchSettings
+        .then(settings => {
             if (settings.tutorialCompleted || settings.initial_setup_completed === false) return;
             currentTutorialStep = 0;
             showTutorialStep();
@@ -982,11 +984,15 @@ function showTutorialComplete() {
 function completeTutorial() {
     cleanupTutorialEnvironment();
 
-    fetch('save_editor_settings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tutorialCompleted: true })
-    });
+    if (window.api && window.api.settings) {
+        window.api.settings.updateEditor({ tutorialCompleted: true, initial_setup_completed: true }).catch(() => {});
+    } else {
+        fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tutorialCompleted: true, initial_setup_completed: true })
+        });
+    }
     const overlay = document.getElementById('tutorialOverlay');
     if (overlay) overlay.classList.remove('show');
     
@@ -1004,11 +1010,15 @@ function completeTutorial() {
 function resetTutorial() {
     const confirmText = getTutorialText('tutorial.reset_confirm', 'Вы уверены, что хотите сбросить обучение? Гайд появится снова при следующей загрузке страницы.');
     const onConfirm = () => {
-        fetch('save_editor_settings.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tutorialCompleted: false })
-        }).then(() => {
+        const resetPromise = (window.api && window.api.settings)
+            ? window.api.settings.updateEditor({ tutorialCompleted: false })
+            : fetch('save_editor_settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tutorialCompleted: false })
+            });
+
+        resetPromise.then(() => {
             if (typeof showNotification === 'function') {
                 const notice = getTutorialText('tutorial.reset_notice', 'Обучение сброшено. Запускаем гайд...');
                 showNotification(notice, 'success');
