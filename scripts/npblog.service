@@ -1,0 +1,20 @@
+[Unit]
+Description=NPBlog CMS & Editor Service (Go Engine)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/npblog
+ExecStart=/var/www/npblog/npblog-linux-amd64 -host 0.0.0.0 -port 8080 -dir /var/www/npblog
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+
+# Безопасность окружения
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
