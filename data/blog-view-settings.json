@@ -1,8 +1,8 @@
 {
-    "title": "Мой новый блог",
-    "crossBlogNav": [],
-    "layout": "list",
+    "crossBlogNav": null,
     "fontFamily": "",
     "fontFile": "",
-    "fontFormat": ""
+    "fontFormat": "",
+    "layout": "list",
+    "title": "Мой новый блог"
 }

@@ -150,6 +150,13 @@ func (l *LegacyHandler) HandleGetPostContent(w http.ResponseWriter, r *http.Requ
 	activeBlog := middleware.GetActiveBlogPath(r)
 	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
 	if id <= 0 {
+		var body struct {
+			ID int `json:"id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		id = body.ID
+	}
+	if id <= 0 {
 		l.errorResponse(w, "Не указан ID статьи")
 		return
 	}
@@ -271,17 +278,21 @@ func (l *LegacyHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 func (l *LegacyHandler) HandleSaveDraft(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
 	var body struct {
-		ID      string `json:"id"`
 		Title   string `json:"title"`
 		Content string `json:"content"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 
-	if err := l.draft.SaveDraft(activeBlog, body.ID, body.Title, body.Content); err != nil {
+	filename, ts, err := l.draft.SaveDraft(activeBlog, body.Title, body.Content)
+	if err != nil {
 		l.errorResponse(w, err.Error())
 		return
 	}
-	l.jsonResponse(w, map[string]interface{}{"success": true})
+	l.jsonResponse(w, map[string]interface{}{
+		"success":   true,
+		"filename":  filename,
+		"timestamp": ts,
+	})
 }
 
 func (l *LegacyHandler) HandleGetDrafts(w http.ResponseWriter, r *http.Request) {
@@ -290,6 +301,9 @@ func (l *LegacyHandler) HandleGetDrafts(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		l.errorResponse(w, err.Error())
 		return
+	}
+	if drafts == nil {
+		drafts = make([]domain.DraftData, 0)
 	}
 	l.jsonResponse(w, map[string]interface{}{
 		"success": true,
@@ -300,14 +314,23 @@ func (l *LegacyHandler) HandleGetDrafts(w http.ResponseWriter, r *http.Request) 
 func (l *LegacyHandler) HandleDeleteDraft(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
 	var body struct {
-		ID string `json:"id"`
+		ID       string `json:"id"`
+		Filename string `json:"filename"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	if body.ID == "" {
-		body.ID = r.URL.Query().Get("id")
+
+	filename := body.Filename
+	if filename == "" {
+		filename = body.ID
+	}
+	if filename == "" {
+		filename = r.URL.Query().Get("filename")
+		if filename == "" {
+			filename = r.URL.Query().Get("id")
+		}
 	}
 
-	_ = l.draft.DeleteDraft(activeBlog, body.ID)
+	_ = l.draft.DeleteDraft(activeBlog, filename)
 	l.jsonResponse(w, map[string]interface{}{"success": true})
 }
 
@@ -553,24 +576,80 @@ func (l *LegacyHandler) HandleServeData(w http.ResponseWriter, r *http.Request) 
 // --- Настройки ---
 
 func (l *LegacyHandler) HandleGetEditorSettings(w http.ResponseWriter, r *http.Request) {
-	l.jsonResponse(w, l.cfg.GetSettings())
+	settingsPath := filepath.Join(l.cfg.BaseDir, "editor_settings.json")
+	var settingsMap map[string]interface{}
+	data, err := os.ReadFile(settingsPath)
+	if err == nil {
+		_ = json.Unmarshal(data, &settingsMap)
+	}
+	if settingsMap == nil {
+		settingsMap = make(map[string]interface{})
+	}
+
+	hasPassword := false
+	if ph, ok := settingsMap["password_hash"].(string); ok && ph != "" {
+		hasPassword = true
+	}
+	delete(settingsMap, "password_hash")
+	settingsMap["password_set"] = hasPassword
+	settingsMap["password_enabled"] = hasPassword
+	settingsMap["resolved_backup_path"] = l.storage.GetBackupPath("")
+	settingsMap["resolved_autosave_path"] = l.storage.GetAutosavePath("")
+	settingsMap["resolved_editor_backup_path"] = filepath.Join(l.cfg.BaseDir, "data_backup")
+	settingsMap["app_dir"] = l.cfg.BaseDir
+	settingsMap["suggested_data_path"] = filepath.Join(l.cfg.BaseDir, "data")
+
+	resp := make(map[string]interface{})
+	for k, v := range settingsMap {
+		resp[k] = v
+	}
+	resp["success"] = true
+	resp["settings"] = settingsMap
+
+	l.jsonResponse(w, resp)
 }
 
 func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.Request) {
-	var newSettings domain.EditorSettings
-	if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
+	var updateMap map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updateMap); err != nil {
 		l.errorResponse(w, "Некорректный JSON")
 		return
 	}
 
 	settingsPath := filepath.Join(l.cfg.BaseDir, "editor_settings.json")
-	if err := l.storage.SafeWriteJSON(settingsPath, newSettings); err != nil {
+	existingMap := make(map[string]interface{})
+	existingBytes, err := os.ReadFile(settingsPath)
+	if err == nil {
+		_ = json.Unmarshal(existingBytes, &existingMap)
+	}
+
+	for k, v := range updateMap {
+		if k == "bottomBar" {
+			if newBB, ok := v.(map[string]interface{}); ok {
+				existingBB, _ := existingMap["bottomBar"].(map[string]interface{})
+				if existingBB == nil {
+					existingBB = make(map[string]interface{})
+				}
+				for bbK, bbV := range newBB {
+					existingBB[bbK] = bbV
+				}
+				existingMap["bottomBar"] = existingBB
+				continue
+			}
+		}
+		existingMap[k] = v
+	}
+
+	if err := l.storage.SafeWriteJSON(settingsPath, existingMap); err != nil {
 		l.errorResponse(w, "Ошибка сохранения настроек")
 		return
 	}
 
 	l.cfg.ReloadSettings()
-	l.jsonResponse(w, map[string]interface{}{"success": true})
+	l.jsonResponse(w, map[string]interface{}{
+		"success": true,
+		"blogUrl": "/data/blog.html",
+	})
 }
 
 func (l *LegacyHandler) HandleSaveGlobalSettings(w http.ResponseWriter, r *http.Request) {
@@ -622,8 +701,12 @@ func (l *LegacyHandler) HandleApplyTemplate(w http.ResponseWriter, r *http.Reque
 func (l *LegacyHandler) HandleGetIncludes(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
 	items, _ := l.template.GetIncludes(activeBlog)
+	if items == nil {
+		items = make([]domain.IncludeMetaItem, 0)
+	}
 	l.jsonResponse(w, map[string]interface{}{
 		"success":  true,
+		"files":    items,
 		"includes": items,
 	})
 }
@@ -631,24 +714,43 @@ func (l *LegacyHandler) HandleGetIncludes(w http.ResponseWriter, r *http.Request
 func (l *LegacyHandler) HandleSaveInclude(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
 	var body struct {
-		Name        string `json:"name"`
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		Content     string `json:"content"`
+		Name    string `json:"name"`
+		Content string `json:"content"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 
-	if err := l.template.SaveInclude(activeBlog, body.Name, body.Title, body.Description, body.Content); err != nil {
+	filename, displayName, err := l.template.SaveInclude(activeBlog, body.Name, body.Content)
+	if err != nil {
 		l.errorResponse(w, err.Error())
 		return
 	}
-	l.jsonResponse(w, map[string]interface{}{"success": true})
+	l.jsonResponse(w, map[string]interface{}{
+		"success":     true,
+		"filename":    filename,
+		"displayName": displayName,
+	})
 }
 
 func (l *LegacyHandler) HandleGetIncludeContent(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
-	name := r.URL.Query().Get("name")
-	content, err := l.template.GetIncludeContent(activeBlog, name)
+	filename := r.URL.Query().Get("filename")
+	if filename == "" {
+		filename = r.URL.Query().Get("name")
+	}
+	if filename == "" {
+		var body struct {
+			Filename string `json:"filename"`
+			Name     string `json:"name"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Filename != "" {
+			filename = body.Filename
+		} else {
+			filename = body.Name
+		}
+	}
+
+	content, err := l.template.GetIncludeContent(activeBlog, filename)
 	if err != nil {
 		l.errorResponse(w, err.Error())
 		return
@@ -662,14 +764,23 @@ func (l *LegacyHandler) HandleGetIncludeContent(w http.ResponseWriter, r *http.R
 func (l *LegacyHandler) HandleDeleteInclude(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
 	var body struct {
-		Name string `json:"name"`
+		Filename string `json:"filename"`
+		Name     string `json:"name"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	if body.Name == "" {
-		body.Name = r.URL.Query().Get("name")
+
+	filename := body.Filename
+	if filename == "" {
+		filename = body.Name
+	}
+	if filename == "" {
+		filename = r.URL.Query().Get("filename")
+		if filename == "" {
+			filename = r.URL.Query().Get("name")
+		}
 	}
 
-	_ = l.template.DeleteInclude(activeBlog, body.Name)
+	_ = l.template.DeleteInclude(activeBlog, filename)
 	l.jsonResponse(w, map[string]interface{}{"success": true})
 }
 

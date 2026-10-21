@@ -1,12 +1,17 @@
 package middleware
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"npblog/internal/config"
 	"npblog/internal/service"
@@ -32,6 +37,79 @@ func NewMiddlewareManager(cfg *config.AppConfig, auth *service.AuthService, stor
 		auth:    auth,
 		storage: storage,
 	}
+}
+
+type responseWriterRecorder struct {
+	http.ResponseWriter
+	statusCode   int
+	bytesWritten int64
+}
+
+func (rw *responseWriterRecorder) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriterRecorder) Write(b []byte) (int, error) {
+	if rw.statusCode == 0 {
+		rw.statusCode = http.StatusOK
+	}
+	n, err := rw.ResponseWriter.Write(b)
+	rw.bytesWritten += int64(n)
+	return n, err
+}
+
+func (rw *responseWriterRecorder) Flush() {
+	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (rw *responseWriterRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, errors.New("hijack not supported")
+}
+
+// Logger логгирует входящие HTTP-запросы в стандартный вывод консоли
+func (m *MiddlewareManager) Logger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &responseWriterRecorder{
+			ResponseWriter: w,
+			statusCode:     http.StatusOK,
+		}
+
+		next.ServeHTTP(rec, r)
+
+		duration := time.Since(start)
+		clientIP := m.auth.GetClientIP(r)
+		sizeStr := formatBytes(rec.bytesWritten)
+
+		log.Printf("[HTTP] %s | %s %s -> %d %s (%s, %s)",
+			clientIP,
+			r.Method,
+			r.URL.RequestURI(),
+			rec.statusCode,
+			http.StatusText(rec.statusCode),
+			duration.Round(time.Microsecond),
+			sizeStr,
+		)
+	})
+}
+
+func formatBytes(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
 // BlogContext извлекает контекст активного блога из заголовков, cookie или query

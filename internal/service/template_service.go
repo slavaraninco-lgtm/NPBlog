@@ -4,7 +4,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"regexp"
+	"sort"
+	"strings"
 	"time"
 
 	"npblog/internal/config"
@@ -23,89 +24,166 @@ func NewTemplateService(cfg *config.AppConfig, storage *StorageService) *Templat
 	}
 }
 
-// GetIncludes возвращает список сниппетов из includes/includes-meta.json
-func (t *TemplateService) GetIncludes(activeBlogPath string) ([]domain.IncludeMetaItem, error) {
-	metaFile := filepath.Join(t.cfg.BaseDir, "includes", "includes-meta.json")
-	var items []domain.IncludeMetaItem
-	if err := t.storage.SafeReadJSON(metaFile, &items); err != nil {
-		return []domain.IncludeMetaItem{}, nil
+// Transliterate кириллицы в латиницу для безопасных имен файлов
+func transliterateIncludeName(text string) string {
+	translitMap := map[rune]string{
+		'а': "a", 'б': "b", 'в': "v", 'г': "g", 'д': "d",
+		'е': "e", 'ё': "yo", 'ж': "zh", 'з': "z", 'и': "i",
+		'й': "y", 'к': "k", 'л': "l", 'м': "m", 'н': "n",
+		'о': "o", 'п': "p", 'р': "r", 'с': "s", 'т': "t",
+		'у': "u", 'ф': "f", 'х': "h", 'ц': "ts", 'ч': "ch",
+		'ш': "sh", 'щ': "sch", 'ъ': "", 'ы': "y", 'ь': "",
+		'э': "e", 'ю': "yu", 'я': "ya",
+		'А': "A", 'Б': "B", 'В': "V", 'Г': "G", 'Д': "D",
+		'Е': "E", 'Ё': "Yo", 'Ж': "Zh", 'З': "Z", 'И': "I",
+		'Й': "Y", 'К': "K", 'Л': "L", 'М': "M", 'Н': "N",
+		'О': "O", 'П': "P", 'Р': "R", 'С': "S", 'Т': "T",
+		'У': "U", 'Ф': "F", 'Х': "H", 'Ц': "Ts", 'Ч': "Ch",
+		'Ш': "Sh", 'Щ': "Sch", 'Ъ': "", 'Ы': "Y", 'Ь': "",
+		'Э': "E", 'Ю': "Yu", 'Я': "Ya",
 	}
+
+	var sb strings.Builder
+	for _, r := range text {
+		if val, ok := translitMap[r]; ok {
+			sb.WriteString(val)
+		} else if r == ' ' {
+			sb.WriteRune('_')
+		} else if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			sb.WriteRune(r)
+		}
+	}
+	res := strings.Trim(sb.String(), "_-")
+	if res == "" {
+		res = "include_" + time.Now().Format("20060102150405")
+	}
+	return res
+}
+
+// GetIncludes возвращает список сниппетов из includes/ и includes-meta.json
+func (t *TemplateService) GetIncludes(activeBlogPath string) ([]domain.IncludeMetaItem, error) {
+	includesDir := filepath.Join(t.cfg.BaseDir, "includes")
+	items := make([]domain.IncludeMetaItem, 0)
+
+	if _, err := os.Stat(includesDir); os.IsNotExist(err) {
+		return items, nil
+	}
+
+	metaFile := filepath.Join(includesDir, "includes-meta.json")
+	meta := make(map[string]string)
+	_ = t.storage.SafeReadJSON(metaFile, &meta)
+
+	entries, err := os.ReadDir(includesDir)
+	if err != nil {
+		return items, nil
+	}
+
+	for _, e := range entries {
+		if e.IsDir() || e.Name() == "includes-meta.json" {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		if ext != ".txt" && ext != ".html" {
+			continue
+		}
+
+		displayName := meta[e.Name()]
+		if displayName == "" {
+			displayName = strings.TrimSuffix(e.Name(), ext)
+		}
+
+		var size int64
+		var modDate string
+		if info, err := e.Info(); err == nil {
+			size = info.Size()
+			modDate = info.ModTime().Format("02.01.2006 15:04")
+		}
+
+		items = append(items, domain.IncludeMetaItem{
+			Name:        e.Name(),
+			DisplayName: displayName,
+			Title:       displayName,
+			Date:        modDate,
+			Size:        size,
+		})
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return strings.ToLower(items[i].DisplayName) < strings.ToLower(items[j].DisplayName)
+	})
+
 	return items, nil
 }
 
-// SaveInclude сохраняет сниппет в includes/{name}.html и обновляет includes-meta.json
-func (t *TemplateService) SaveInclude(activeBlogPath, name, title, description, content string) error {
-	cleanName := regexp.MustCompile(`[^a-zA-Z0-9_\-]`).ReplaceAllString(name, "")
-	if cleanName == "" {
-		return errors.New("недопустимое имя сниппета")
+// SaveInclude сохраняет сниппет в includes/{name}.txt и обновляет includes-meta.json
+func (t *TemplateService) SaveInclude(activeBlogPath, name, content string) (string, string, error) {
+	if strings.TrimSpace(name) == "" {
+		return "", "", errors.New("не указано имя сниппета")
 	}
 
 	includesDir := filepath.Join(t.cfg.BaseDir, "includes")
 	_ = os.MkdirAll(includesDir, 0755)
 
-	targetFile := filepath.Join(includesDir, cleanName+".html")
+	safeBase := transliterateIncludeName(name)
+	filename := safeBase + ".txt"
+	targetFile := filepath.Join(includesDir, filename)
+
 	if err := t.storage.SafeWriteFile(targetFile, []byte(content)); err != nil {
-		return err
+		return "", "", err
 	}
 
 	metaFile := filepath.Join(includesDir, "includes-meta.json")
-	var items []domain.IncludeMetaItem
-	_ = t.storage.SafeReadJSON(metaFile, &items)
+	meta := make(map[string]string)
+	_ = t.storage.SafeReadJSON(metaFile, &meta)
 
-	found := false
-	nowDate := time.Now().Format("02.01.2006 15:04")
-	for i, it := range items {
-		if it.Name == cleanName {
-			items[i].Title = title
-			items[i].Description = description
-			items[i].Date = nowDate
-			items[i].Size = int64(len(content))
-			found = true
-			break
-		}
-	}
+	meta[filename] = name
+	_ = t.storage.SafeWriteJSON(metaFile, meta)
 
-	if !found {
-		items = append(items, domain.IncludeMetaItem{
-			Name:        cleanName,
-			Title:       title,
-			Description: description,
-			Date:        nowDate,
-			Size:        int64(len(content)),
-		})
-	}
-
-	return t.storage.SafeWriteJSON(metaFile, items)
+	return filename, name, nil
 }
 
 // GetIncludeContent возвращает содержимое файла сниппета
-func (t *TemplateService) GetIncludeContent(activeBlogPath, name string) (string, error) {
-	cleanName := regexp.MustCompile(`[^a-zA-Z0-9_\-]`).ReplaceAllString(name, "")
-	targetFile := filepath.Join(t.cfg.BaseDir, "includes", cleanName+".html")
+func (t *TemplateService) GetIncludeContent(activeBlogPath, filename string) (string, error) {
+	safeFilename := filepath.Base(filename)
+	if safeFilename == "" || safeFilename == "." || safeFilename == "includes-meta.json" {
+		return "", errors.New("некорректное имя файла")
+	}
+
+	includesDir := filepath.Join(t.cfg.BaseDir, "includes")
+	targetFile := filepath.Join(includesDir, safeFilename)
+
 	bytes, err := os.ReadFile(targetFile)
 	if err != nil {
-		return "", errors.New("сниппет не найден")
+		// Попробуем с расширением .txt
+		if !strings.HasSuffix(safeFilename, ".txt") {
+			if bytes2, err2 := os.ReadFile(targetFile + ".txt"); err2 == nil {
+				return string(bytes2), nil
+			}
+		}
+		return "", errors.New("файл не найден")
 	}
 	return string(bytes), nil
 }
 
 // DeleteInclude удаляет сниппет и запись из метаданных
-func (t *TemplateService) DeleteInclude(activeBlogPath, name string) error {
-	cleanName := regexp.MustCompile(`[^a-zA-Z0-9_\-]`).ReplaceAllString(name, "")
-	targetFile := filepath.Join(t.cfg.BaseDir, "includes", cleanName+".html")
+func (t *TemplateService) DeleteInclude(activeBlogPath, filename string) error {
+	safeFilename := filepath.Base(filename)
+	if safeFilename == "" || safeFilename == "." || safeFilename == "includes-meta.json" {
+		return errors.New("недопустимый файл")
+	}
+
+	includesDir := filepath.Join(t.cfg.BaseDir, "includes")
+	targetFile := filepath.Join(includesDir, safeFilename)
 	_ = os.Remove(targetFile)
 
-	metaFile := filepath.Join(t.cfg.BaseDir, "includes", "includes-meta.json")
-	var items []domain.IncludeMetaItem
-	_ = t.storage.SafeReadJSON(metaFile, &items)
-
-	var newItems []domain.IncludeMetaItem
-	for _, it := range items {
-		if it.Name != cleanName {
-			newItems = append(newItems, it)
-		}
+	metaFile := filepath.Join(includesDir, "includes-meta.json")
+	meta := make(map[string]string)
+	if err := t.storage.SafeReadJSON(metaFile, &meta); err == nil {
+		delete(meta, safeFilename)
+		_ = t.storage.SafeWriteJSON(metaFile, meta)
 	}
-	return t.storage.SafeWriteJSON(metaFile, newItems)
+
+	return nil
 }
 
 // GetTemplates возвращает список доступных шаблонов и активный шаблон

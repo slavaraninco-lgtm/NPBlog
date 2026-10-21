@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -25,58 +26,80 @@ func NewDraftService(cfg *config.AppConfig, storage *StorageService) *DraftServi
 	}
 }
 
-// SaveDraft сохраняет черновик статьи в data/drafts/draft-{id}.json
-func (d *DraftService) SaveDraft(activeBlogPath, id, title, content string) error {
+// SaveDraft сохраняет черновик статьи в data/drafts/{timestamp}.json
+func (d *DraftService) SaveDraft(activeBlogPath, title, content string) (string, int64, error) {
 	draftsDir := d.storage.GetDataPath(activeBlogPath, "drafts")
 	_ = os.MkdirAll(draftsDir, 0755)
 
-	if id == "" {
-		id = fmt.Sprintf("%d", time.Now().UnixNano())
-	}
-
-	cleanID := regexp.MustCompile(`[^a-zA-Z0-9_\-]`).ReplaceAllString(id, "")
-	filename := filepath.Join(draftsDir, fmt.Sprintf("draft-%s.json", cleanID))
+	ts := time.Now().Unix()
+	filename := fmt.Sprintf("%d.json", ts)
+	filePath := filepath.Join(draftsDir, filename)
 
 	draft := domain.DraftData{
-		ID:      cleanID,
-		Title:   title,
-		Content: content,
-		SavedAt: time.Now(),
+		Filename:  filename,
+		Title:     title,
+		Content:   content,
+		Timestamp: ts,
+		Date:      time.Now().Format("2006-01-02 15:04:05"),
 	}
 
-	return d.storage.SafeWriteJSON(filename, draft)
+	if err := d.storage.SafeWriteJSON(filePath, draft); err != nil {
+		return "", 0, err
+	}
+	return filename, ts, nil
 }
 
-// GetDrafts возвращает все сохраненные черновики
+// GetDrafts возвращает все сохраненные черновики, отсортированные от новых к старым
 func (d *DraftService) GetDrafts(activeBlogPath string) ([]domain.DraftData, error) {
-	draftsDir := d.storage.GetDataPath(activeBlogPath, "drafts")
-	entries, err := os.ReadDir(draftsDir)
-	if err != nil {
-		return []domain.DraftData{}, nil
+	drafts := make([]domain.DraftData, 0)
+	seen := make(map[string]bool)
+
+	dirs := []string{
+		d.storage.GetDataPath(activeBlogPath, "drafts"),
+		filepath.Join(d.cfg.BaseDir, "draft"),
 	}
 
-	var drafts []domain.DraftData
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasPrefix(e.Name(), "draft-") || !strings.HasSuffix(e.Name(), ".json") {
+	for _, dir := range dirs {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
 			continue
 		}
-		var draft domain.DraftData
-		if err := d.storage.SafeReadJSON(filepath.Join(draftsDir, e.Name()), &draft); err == nil {
-			drafts = append(drafts, draft)
+
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+				continue
+			}
+			if seen[e.Name()] {
+				continue
+			}
+			seen[e.Name()] = true
+
+			var draft domain.DraftData
+			if err := d.storage.SafeReadJSON(filepath.Join(dir, e.Name()), &draft); err == nil {
+				draft.Filename = e.Name()
+				if draft.Timestamp == 0 {
+					if info, err := e.Info(); err == nil {
+						draft.Timestamp = info.ModTime().Unix()
+					}
+				}
+				drafts = append(drafts, draft)
+			}
 		}
 	}
+
+	sort.Slice(drafts, func(i, j int) bool {
+		return drafts[i].Timestamp > drafts[j].Timestamp
+	})
+
 	return drafts, nil
 }
 
-// DeleteDraft удаляет черновик по ID или имени файла
-func (d *DraftService) DeleteDraft(activeBlogPath, id string) error {
-	draftsDir := d.storage.GetDataPath(activeBlogPath, "drafts")
-	cleanID := strings.TrimPrefix(id, "draft-")
-	cleanID = strings.TrimSuffix(cleanID, ".json")
-	cleanID = regexp.MustCompile(`[^a-zA-Z0-9_\-]`).ReplaceAllString(cleanID, "")
-
-	filename := filepath.Join(draftsDir, fmt.Sprintf("draft-%s.json", cleanID))
-	return os.Remove(filename)
+// DeleteDraft удаляет черновик по имени файла
+func (d *DraftService) DeleteDraft(activeBlogPath, filename string) error {
+	safeFilename := filepath.Base(filename)
+	_ = os.Remove(filepath.Join(d.storage.GetDataPath(activeBlogPath, "drafts"), safeFilename))
+	_ = os.Remove(filepath.Join(d.cfg.BaseDir, "draft", safeFilename))
+	return nil
 }
 
 // SaveAutosave сохраняет снимок текущей редактируемой статьи

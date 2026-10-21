@@ -56,6 +56,7 @@ func main() {
 
 	r := chi.NewRouter()
 
+	r.Use(mw.Logger)
 	r.Use(mw.Recovery)
 	r.Use(mw.IPFilter)
 	r.Use(mw.BlogContext)
@@ -71,6 +72,7 @@ func main() {
 	r.Post("/update_post.php", legacyHandler.HandleUpdatePost)
 	r.Post("/delete_post.php", legacyHandler.HandleDeletePost)
 	r.Get("/get_post_content.php", legacyHandler.HandleGetPostContent)
+	r.Post("/get_post_content.php", legacyHandler.HandleGetPostContent)
 	r.Post("/renumber_posts.php", legacyHandler.HandleRenumberPosts)
 	r.Post("/toggle_pin_post.php", legacyHandler.HandleTogglePinPost)
 	r.Post("/regenerate_posts.php", legacyHandler.HandleRegeneratePosts)
@@ -80,6 +82,7 @@ func main() {
 
 	r.Post("/save_draft.php", legacyHandler.HandleSaveDraft)
 	r.Get("/get_drafts.php", legacyHandler.HandleGetDrafts)
+	r.Post("/get_drafts.php", legacyHandler.HandleGetDrafts)
 	r.Post("/delete_draft.php", legacyHandler.HandleDeleteDraft)
 
 	r.Post("/save_autosave.php", legacyHandler.HandleSaveAutosave)
@@ -102,21 +105,27 @@ func main() {
 	r.Get("/serve_data.php/*", legacyHandler.HandleServeData)
 
 	r.Get("/get_editor_settings.php", legacyHandler.HandleGetEditorSettings)
+	r.Post("/get_editor_settings.php", legacyHandler.HandleGetEditorSettings)
 	r.Post("/save_editor_settings.php", legacyHandler.HandleSaveEditorSettings)
 	r.Post("/save_global_settings.php", legacyHandler.HandleSaveGlobalSettings)
 	r.Post("/save_blog_view_settings.php", legacyHandler.HandleSaveBlogViewSettings)
 
 	r.Get("/get_templates.php", legacyHandler.HandleGetTemplates)
+	r.Post("/get_templates.php", legacyHandler.HandleGetTemplates)
 	r.Post("/apply_template.php", legacyHandler.HandleApplyTemplate)
 	r.Get("/get_includes.php", legacyHandler.HandleGetIncludes)
+	r.Post("/get_includes.php", legacyHandler.HandleGetIncludes)
 	r.Post("/save_include.php", legacyHandler.HandleSaveInclude)
 	r.Get("/get_include_content.php", legacyHandler.HandleGetIncludeContent)
+	r.Post("/get_include_content.php", legacyHandler.HandleGetIncludeContent)
 	r.Post("/delete_include.php", legacyHandler.HandleDeleteInclude)
 
 	r.Post("/create_blog.php", legacyHandler.HandleCreateBlog)
 	r.Get("/check_integrity.php", legacyHandler.HandleCheckIntegrity)
 	r.Post("/fix_integrity.php", legacyHandler.HandleFixIntegrity)
+	r.Get("/fix_integrity.php", legacyHandler.HandleFixIntegrity)
 	r.Get("/get_history.php", legacyHandler.HandleGetHistory)
+	r.Post("/get_history.php", legacyHandler.HandleGetHistory)
 	r.Post("/save_history.php", legacyHandler.HandleSaveHistory)
 	r.Post("/clear_history.php", legacyHandler.HandleClearHistory)
 

@@ -1,7 +1,5 @@
 package domain
 
-import "time"
-
 // PostMeta представляет элемент в data/blog/posts-meta.json
 type PostMeta struct {
 	ID        int    `json:"id"`
@@ -96,13 +94,14 @@ type BlogViewSettings struct {
 	CustomCSS          string `json:"customCss"`
 }
 
-// DraftData представляет черновик в data/drafts/draft-{id}.json
+// DraftData представляет черновик в data/drafts/
 type DraftData struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	SavedAt   time.Time `json:"savedAt"`
-	PostID    *int      `json:"postId,omitempty"`
+	Filename  string `json:"filename"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	Timestamp int64  `json:"timestamp"`
+	Date      string `json:"date"`
+	PostID    *int   `json:"postId,omitempty"`
 }
 
 // AutosaveData представляет автосохранение статьи
@@ -141,10 +140,11 @@ type HistoryAction struct {
 // IncludeMetaItem представляет запись сниппета в includes/includes-meta.json
 type IncludeMetaItem struct {
 	Name        string `json:"name"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Date        string `json:"date"`
-	Size        int64  `json:"size"`
+	DisplayName string `json:"displayName"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	Date        string `json:"date,omitempty"`
+	Size        int64  `json:"size,omitempty"`
 }
 
 // PostBackgroundConfig представляет конфигурацию фонов в post_backgrounds.json
