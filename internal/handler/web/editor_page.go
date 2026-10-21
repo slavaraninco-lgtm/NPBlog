@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"npblog/internal/assets"
 	"npblog/internal/config"
@@ -15,9 +16,9 @@ import (
 )
 
 type EditorPageHandler struct {
-	cfg     *config.AppConfig
-	auth    *service.AuthService
-	storage *service.StorageService
+	cfg      *config.AppConfig
+	auth     *service.AuthService
+	storage  *service.StorageService
 	hybridFS *assets.HybridFS
 }
 
@@ -74,8 +75,8 @@ func (h *EditorPageHandler) renderLoginPage(w http.ResponseWriter, clientIP stri
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="ru" %s>
+	htmlTpl := `<!DOCTYPE html>
+<html lang="ru" {{AMOLED_ATTR}}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -114,21 +115,21 @@ func (h *EditorPageHandler) renderLoginPage(w http.ResponseWriter, clientIP stri
             <div class="login-title">NPBlog</div>
             <div class="login-subtitle">Панель управления редактором</div>
         </div>
-        <div class="lockout-info" id="lockoutInfo" style="display: %s;">%s</div>
+        <div class="lockout-info" id="lockoutInfo" style="display: {{LOCKOUT_STYLE}};">{{LOCKOUT_MSG}}</div>
         <form id="loginForm" onsubmit="handleLogin(event)">
             <div class="form-group">
                 <label class="form-label" for="password">Пароль доступа</label>
                 <div class="input-wrapper">
-                    <input type="password" id="password" class="form-input" required placeholder="Введите ваш пароль" %s autocomplete="current-password">
+                    <input type="password" id="password" class="form-input" required placeholder="Введите ваш пароль" {{DISABLED_ATTR}} autocomplete="current-password">
                     <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">👁️</button>
                 </div>
             </div>
-            <button type="submit" id="submitBtn" class="submit-btn" %s>Войти</button>
+            <button type="submit" id="submitBtn" class="submit-btn" {{DISABLED_ATTR}}>Войти</button>
             <div class="error-message" id="errorMessage"></div>
         </form>
     </div>
     <script>
-        let lockoutTimeRemaining = %d;
+        let lockoutTimeRemaining = {{REMAINING_LOCKOUT}};
         if (lockoutTimeRemaining > 0) startCountdown();
 
         function togglePasswordVisibility() {
@@ -190,14 +191,25 @@ func (h *EditorPageHandler) renderLoginPage(w http.ResponseWriter, clientIP stri
         }
     </script>
 </body>
-</html>`, amoledAttr, lockoutStyle, lockoutMsg, disabledAttr, disabledAttr, remainingLockout)
+</html>`
+
+	htmlTpl = strings.ReplaceAll(htmlTpl, "{{AMOLED_ATTR}}", amoledAttr)
+	htmlTpl = strings.ReplaceAll(htmlTpl, "{{LOCKOUT_STYLE}}", lockoutStyle)
+	htmlTpl = strings.ReplaceAll(htmlTpl, "{{LOCKOUT_MSG}}", lockoutMsg)
+	htmlTpl = strings.ReplaceAll(htmlTpl, "{{DISABLED_ATTR}}", disabledAttr)
+	htmlTpl = strings.ReplaceAll(htmlTpl, "{{REMAINING_LOCKOUT}}", fmt.Sprintf("%d", remainingLockout))
+
+	_, _ = w.Write([]byte(htmlTpl))
 }
 
 func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request) {
-	// Читаем index.php как базовую разметку
-	rawBytes, err := h.hybridFS.ReadFile("index.php")
+	// 1. Пытаемся прочитать предкомпилированный шаблон web/templates/editor.html
+	rawBytes, err := h.hybridFS.ReadFile("web/templates/editor.html")
 	if err != nil {
-		http.Error(w, "Не удалось загрузить index.php", http.StatusInternalServerError)
+		rawBytes, err = h.hybridFS.ReadFile("index.php")
+	}
+	if err != nil {
+		http.Error(w, "Не удалось загрузить шаблон редактора", http.StatusInternalServerError)
 		return
 	}
 
@@ -209,7 +221,7 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 	if session != nil {
 		csrfToken = session.CSRFToken
 	} else {
-		// Если пароля нет, создаем сессию для генерации CSRF токена
+		// Создаем сессию для генерации CSRF токена
 		s := h.auth.CreateSession(w)
 		csrfToken = s.CSRFToken
 	}
@@ -237,49 +249,58 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// Подстановка динамических параметров в <head>
-	amoledStr := ""
+	amoledAttr := ""
 	if settings.AmoledTheme {
-		amoledStr = ` data-amoled="true"`
+		amoledAttr = ` data-amoled="true"`
 	}
-	disableAnimStr := ""
+	disableAnimAttr := ""
 	if settings.DisableAnimations {
-		disableAnimStr = ` data-disable-animations="true"`
+		disableAnimAttr = ` data-disable-animations="true"`
 	}
 
-	// 1. Замена PHP открывающего тега <html>
-	reHTML := regexp.MustCompile(`(?i)<html lang="<\?php[^>]*"[^>]*>`)
-	content = reHTML.ReplaceAllString(content, fmt.Sprintf(`<html lang="%s"%s%s>`, settings.Language, amoledStr, disableAnimStr))
+	activeBlog := middleware.GetActiveBlogPath(r)
+	dataDirName := filepath.Base(h.storage.GetDataPath(activeBlog, ""))
+	defaultDataPath := h.storage.GetDataPath(activeBlog, "")
 
-	// 2. Подстановка csrf-token
+	hasPassword := settings.PasswordHash != ""
+
+	// Подстановка чистых плейсхолдеров
+	content = strings.ReplaceAll(content, "{{CSRF_TOKEN}}", csrfToken)
+	content = strings.ReplaceAll(content, "{{AVAILABLE_LANGUAGES}}", string(langBytes))
+	content = strings.ReplaceAll(content, "{{CURRENT_LANGUAGE}}", settings.Language)
+	content = strings.ReplaceAll(content, "{{DISABLE_ANIMATIONS}}", fmt.Sprintf("%t", settings.DisableAnimations))
+	content = strings.ReplaceAll(content, "{{ACTIVE_THEME}}", settings.ActiveTheme)
+	content = strings.ReplaceAll(content, "{{DATA_URL_PREFIX}}", fmt.Sprintf("/%s/", dataDirName))
+	content = strings.ReplaceAll(content, "{{IS_DEV_BUILD}}", fmt.Sprintf("%t", isDev))
+	content = strings.ReplaceAll(content, "{{VERSION}}", version)
+	content = strings.ReplaceAll(content, "{{SETUP_DEFAULT_DATA_PATH}}", fmt.Sprintf("%q", defaultDataPath))
+	content = strings.ReplaceAll(content, "{{SETUP_HAS_PASSWORD}}", fmt.Sprintf("%t", hasPassword))
+	content = strings.ReplaceAll(content, "{{AMOLED_ATTR}}", amoledAttr)
+	content = strings.ReplaceAll(content, "{{DISABLE_ANIMATIONS_ATTR}}", disableAnimAttr)
+
+	// Замена динамических тегов, если читался сырой index.php
 	reCSRF := regexp.MustCompile(`(?i)<meta name="csrf-token" content="<\?php[^>]*">`)
 	content = reCSRF.ReplaceAllString(content, fmt.Sprintf(`<meta name="csrf-token" content="%s">`, csrfToken))
 
-	// 3. Подстановка window.NPBLOG_AVAILABLE_LANGUAGES и window.NPBLOG_LANG
-	reLangs := regexp.MustCompile(`(?i)window\.NPBLOG_AVAILABLE_LANGUAGES\s*=\s*<\?php[^;]*;`)
+	reLangs := regexp.MustCompile(`(?i)window\.NPBLOG_AVAILABLE_LANGUAGES\s*=\s*<\?php[\s\S]*?\?>;?`)
 	content = reLangs.ReplaceAllString(content, fmt.Sprintf(`window.NPBLOG_AVAILABLE_LANGUAGES = %s;`, string(langBytes)))
 
-	reLang := regexp.MustCompile(`(?i)window\.NPBLOG_LANG\s*=\s*'<\?php[^']*';`)
+	reLang := regexp.MustCompile(`(?i)window\.NPBLOG_LANG\s*=\s*'<\?php[\s\S]*?\?>';?`)
 	content = reLang.ReplaceAllString(content, fmt.Sprintf(`window.NPBLOG_LANG = '%s';`, settings.Language))
 
-	reAnim := regexp.MustCompile(`(?i)window\.disableAnimations\s*=\s*<\?php[^;]*;`)
+	reAnim := regexp.MustCompile(`(?i)window\.disableAnimations\s*=\s*<\?php[\s\S]*?\?>;?`)
 	content = reAnim.ReplaceAllString(content, fmt.Sprintf(`window.disableAnimations = %t;`, settings.DisableAnimations))
 
-	reTheme := regexp.MustCompile(`(?i)localStorage\.getItem\('theme'\)\s*\|\|\s*'<\?php[^']*'`)
+	reTheme := regexp.MustCompile(`(?i)localStorage\.getItem\('theme'\)\s*\|\|\s*'<\?php[\s\S]*?\?>'`)
 	content = reTheme.ReplaceAllString(content, fmt.Sprintf(`localStorage.getItem('theme') || '%s'`, settings.ActiveTheme))
 
-	reDataPrefix := regexp.MustCompile(`(?i)const DATA_URL_PREFIX\s*=\s*'<\?php[^']*';`)
-	dataDirName := filepath.Base(h.storage.GetDataPath(middleware.GetActiveBlogPath(r), ""))
+	reDataPrefix := regexp.MustCompile(`(?i)const DATA_URL_PREFIX\s*=\s*'<\?php[\s\S]*?\?>';?`)
 	content = reDataPrefix.ReplaceAllString(content, fmt.Sprintf(`const DATA_URL_PREFIX = '/%s/';`, dataDirName))
 
-	reDev := regexp.MustCompile(`(?i)window\.isDevBuild\s*=\s*<\?php[^;]*;`)
+	reDev := regexp.MustCompile(`(?i)window\.isDevBuild\s*=\s*<\?php[\s\S]*?\?>;?`)
 	content = reDev.ReplaceAllString(content, fmt.Sprintf(`window.isDevBuild = %t;`, isDev))
 
-	// 4. Подстановка версии в меню
-	reVer := regexp.MustCompile(`(?i)ver\s*<\?php[^>]*\?>(?:<span[^>]*>[^<]*</span>)?`)
-	content = reVer.ReplaceAllString(content, fmt.Sprintf(`ver %s`, version))
-
-	// 5. Замена вызовов safe_include_editor_modal('filename.php') на содержимое модальных окон
+	// Замена safe_include_editor_modal
 	reModal := regexp.MustCompile(`<\?php\s+(?:safe_include_editor_modal|require_once\s+__DIR__\s*\.\s*'\/modals_editor\/)\(?['"]([^'"]+)['"]\)?;\s*\?>`)
 	content = reModal.ReplaceAllStringFunc(content, func(m string) string {
 		sub := reModal.FindStringSubmatch(m)
@@ -288,7 +309,6 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 			modalBytes, err := h.hybridFS.ReadFile(filepath.Join("modals_editor", filename))
 			if err == nil {
 				modalHTML := string(modalBytes)
-				// Удаляем открывающий <?php в начале файла модалки
 				modalHTML = regexp.MustCompile(`^<\?php[\s\S]*?\?>`).ReplaceAllString(modalHTML, "")
 				return modalHTML
 			}
@@ -296,14 +316,14 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 		return ""
 	})
 
-	// 6. Очистка оставшихся PHP блоков версий ?v=<?php echo ... ?> в скриптах и стилях
-	reCacheBust := regexp.MustCompile(`\?v=<\?php[^>]*\?>`)
+	// Очистка версионных хэшей в стилях и скриптах (?v=...)
 	nowTs := fmt.Sprintf("?v=%d", os.Getpid())
-	content = reCacheBust.ReplaceAllString(content, nowTs)
+	content = regexp.MustCompile(`\?v=<\?php[\s\S]*?\?>`).ReplaceAllString(content, nowTs)
 
-	// Удаляем оставшиеся изолированные PHP теги
-	reAnyPHP := regexp.MustCompile(`<\?php[\s\S]*?\?>`)
-	content = reAnyPHP.ReplaceAllString(content, "")
+	// Гарантированное удаление любых оставшихся PHP тегов
+	content = regexp.MustCompile(`<\?php[\s\S]*?\?>`).ReplaceAllString(content, "")
+	content = regexp.MustCompile(`<\?=[^>]*\?>`).ReplaceAllString(content, "")
+	content = regexp.MustCompile(`\?>;`).ReplaceAllString(content, ";")
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write([]byte(content))
