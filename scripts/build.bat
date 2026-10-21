@@ -35,7 +35,11 @@ if %ERRORLEVEL% NEQ 0 (
 set GOOS=
 set GOARCH=
 
+copy /y dist\npblog.exe npblog.exe >nul
+copy /y dist\npblog-linux-amd64 npblog >nul
+
 echo ==============================================
 echo  Готово! Все бинарники собраны в папку dist\
+echo  и скопированы в корень (npblog.exe, npblog)
 echo ==============================================
 dir dist

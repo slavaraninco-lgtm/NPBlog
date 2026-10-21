@@ -17,8 +17,12 @@ echo "[3/3] Сборка Windows x86_64 (npblog.exe)..."
 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/npblog.exe ./cmd/npblog
 
 chmod +x dist/npblog-linux-* || true
+cp dist/npblog-linux-amd64 npblog || true
+cp dist/npblog.exe npblog.exe || true
+chmod +x npblog || true
 
 echo "=============================================="
 echo " Готово! Все бинарники собраны в папку dist/"
+echo " и скопированы в корень (npblog, npblog.exe)"
 echo "=============================================="
 ls -lh dist/
