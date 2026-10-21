@@ -63,3 +63,6 @@ Thumbs.db
 ehthumbs.db
 desktop.ini
 .helm-diag
+
+# Old PHP backend archive
+old_back/

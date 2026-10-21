@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"npblog/internal/assets"
@@ -203,13 +201,10 @@ func (h *EditorPageHandler) renderLoginPage(w http.ResponseWriter, clientIP stri
 }
 
 func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request) {
-	// 1. Пытаемся прочитать предкомпилированный шаблон web/templates/editor.html
+	// Читаем шаблон редактора web/templates/editor.html (с диска или из embedded FS)
 	rawBytes, err := h.hybridFS.ReadFile("web/templates/editor.html")
 	if err != nil {
-		rawBytes, err = h.hybridFS.ReadFile("index.php")
-	}
-	if err != nil {
-		http.Error(w, "Не удалось загрузить шаблон редактора", http.StatusInternalServerError)
+		http.Error(w, "Не удалось загрузить шаблон редактора web/templates/editor.html", http.StatusInternalServerError)
 		return
 	}
 
@@ -277,53 +272,6 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 	content = strings.ReplaceAll(content, "{{SETUP_HAS_PASSWORD}}", fmt.Sprintf("%t", hasPassword))
 	content = strings.ReplaceAll(content, "{{AMOLED_ATTR}}", amoledAttr)
 	content = strings.ReplaceAll(content, "{{DISABLE_ANIMATIONS_ATTR}}", disableAnimAttr)
-
-	// Замена динамических тегов, если читался сырой index.php
-	reCSRF := regexp.MustCompile(`(?i)<meta name="csrf-token" content="<\?php[^>]*">`)
-	content = reCSRF.ReplaceAllString(content, fmt.Sprintf(`<meta name="csrf-token" content="%s">`, csrfToken))
-
-	reLangs := regexp.MustCompile(`(?i)window\.NPBLOG_AVAILABLE_LANGUAGES\s*=\s*<\?php[\s\S]*?\?>;?`)
-	content = reLangs.ReplaceAllString(content, fmt.Sprintf(`window.NPBLOG_AVAILABLE_LANGUAGES = %s;`, string(langBytes)))
-
-	reLang := regexp.MustCompile(`(?i)window\.NPBLOG_LANG\s*=\s*'<\?php[\s\S]*?\?>';?`)
-	content = reLang.ReplaceAllString(content, fmt.Sprintf(`window.NPBLOG_LANG = '%s';`, settings.Language))
-
-	reAnim := regexp.MustCompile(`(?i)window\.disableAnimations\s*=\s*<\?php[\s\S]*?\?>;?`)
-	content = reAnim.ReplaceAllString(content, fmt.Sprintf(`window.disableAnimations = %t;`, settings.DisableAnimations))
-
-	reTheme := regexp.MustCompile(`(?i)localStorage\.getItem\('theme'\)\s*\|\|\s*'<\?php[\s\S]*?\?>'`)
-	content = reTheme.ReplaceAllString(content, fmt.Sprintf(`localStorage.getItem('theme') || '%s'`, settings.ActiveTheme))
-
-	reDataPrefix := regexp.MustCompile(`(?i)const DATA_URL_PREFIX\s*=\s*'<\?php[\s\S]*?\?>';?`)
-	content = reDataPrefix.ReplaceAllString(content, fmt.Sprintf(`const DATA_URL_PREFIX = '/%s/';`, dataDirName))
-
-	reDev := regexp.MustCompile(`(?i)window\.isDevBuild\s*=\s*<\?php[\s\S]*?\?>;?`)
-	content = reDev.ReplaceAllString(content, fmt.Sprintf(`window.isDevBuild = %t;`, isDev))
-
-	// Замена safe_include_editor_modal
-	reModal := regexp.MustCompile(`<\?php\s+(?:safe_include_editor_modal|require_once\s+__DIR__\s*\.\s*'\/modals_editor\/)\(?['"]([^'"]+)['"]\)?;\s*\?>`)
-	content = reModal.ReplaceAllStringFunc(content, func(m string) string {
-		sub := reModal.FindStringSubmatch(m)
-		if len(sub) > 1 {
-			filename := sub[1]
-			modalBytes, err := h.hybridFS.ReadFile(filepath.Join("modals_editor", filename))
-			if err == nil {
-				modalHTML := string(modalBytes)
-				modalHTML = regexp.MustCompile(`^<\?php[\s\S]*?\?>`).ReplaceAllString(modalHTML, "")
-				return modalHTML
-			}
-		}
-		return ""
-	})
-
-	// Очистка версионных хэшей в стилях и скриптах (?v=...)
-	nowTs := fmt.Sprintf("?v=%d", os.Getpid())
-	content = regexp.MustCompile(`\?v=<\?php[\s\S]*?\?>`).ReplaceAllString(content, nowTs)
-
-	// Гарантированное удаление любых оставшихся PHP тегов
-	content = regexp.MustCompile(`<\?php[\s\S]*?\?>`).ReplaceAllString(content, "")
-	content = regexp.MustCompile(`<\?=[^>]*\?>`).ReplaceAllString(content, "")
-	content = regexp.MustCompile(`\?>;`).ReplaceAllString(content, ";")
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write([]byte(content))
