@@ -158,6 +158,7 @@ func main() {
 	r.Get("/get_post_backgrounds.php", legacyHandler.HandleGetPostBackgrounds)
 	r.Post("/update_post_background.php", legacyHandler.HandleUpdatePostBackground)
 	r.Post("/remove_background.php", legacyHandler.HandleRemoveBackground)
+	r.Post("/remove_blog_background.php", legacyHandler.HandleRemoveBlogBackground)
 
 	// Навигация, настройки и языки
 	r.Get("/get_languages.php", legacyHandler.HandleGetLanguages)

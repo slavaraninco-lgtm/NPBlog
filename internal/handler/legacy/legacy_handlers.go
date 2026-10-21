@@ -3,10 +3,12 @@ package legacy
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -645,6 +647,30 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if blogTitle, ok := updateMap["blog_title"].(string); ok && strings.TrimSpace(blogTitle) != "" {
+		activeBlog := middleware.GetActiveBlogPath(r)
+		bvsPath := l.storage.GetDataPath(activeBlog, "blog-view-settings.json")
+		var bvs map[string]interface{}
+		_ = l.storage.SafeReadJSON(bvsPath, &bvs)
+		if bvs == nil {
+			bvs = make(map[string]interface{})
+		}
+		cleanTitle := strings.TrimSpace(blogTitle)
+		bvs["title"] = cleanTitle
+		_ = l.storage.SafeWriteJSON(bvsPath, bvs)
+
+		blogHTML := l.storage.GetDataPath(activeBlog, "blog.html")
+		if bytes, err := os.ReadFile(blogHTML); err == nil {
+			content := string(bytes)
+			escaped := html.EscapeString(cleanTitle)
+			reTitle := regexp.MustCompile(`(?i)<title>.*?</title>`)
+			reH1 := regexp.MustCompile(`(?i)<h1>.*?</h1>`)
+			content = reTitle.ReplaceAllString(content, fmt.Sprintf("<title>%s - Список статей</title>", escaped))
+			content = reH1.ReplaceAllString(content, fmt.Sprintf("<h1>%s</h1>", escaped))
+			_ = os.WriteFile(blogHTML, []byte(content), 0644)
+		}
+	}
+
 	l.cfg.ReloadSettings()
 	l.jsonResponse(w, map[string]interface{}{
 		"success": true,
@@ -663,12 +689,140 @@ func (l *LegacyHandler) HandleSaveGlobalSettings(w http.ResponseWriter, r *http.
 }
 
 func (l *LegacyHandler) HandleSaveBlogViewSettings(w http.ResponseWriter, r *http.Request) {
-	activeBlog := middleware.GetActiveBlogPath(r)
-	var body domain.BlogViewSettings
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	data := make(map[string]interface{})
+	ct := r.Header.Get("Content-Type")
+	if strings.Contains(ct, "application/json") {
+		_ = json.NewDecoder(r.Body).Decode(&data)
+	} else {
+		_ = r.ParseForm()
+		for k, v := range r.Form {
+			if len(v) > 0 {
+				data[k] = v[0]
+			}
+		}
+	}
 
-	target := l.storage.GetDataPath(activeBlog, "blog-view-settings.json")
-	_ = l.storage.SafeWriteJSON(target, body)
+	action, _ := data["action"].(string)
+	if action == "" {
+		action = "save"
+	}
+
+	var layout string
+	if lVal, ok := data["layout"].(string); ok {
+		lVal = strings.TrimSpace(lVal)
+		if lVal == "grid" || lVal == "list" {
+			layout = lVal
+		}
+	}
+
+	var title string
+	if tVal, ok := data["title"].(string); ok {
+		title = strings.TrimSpace(tVal)
+	}
+
+	applyTitleAll := false
+	if ata, ok := data["apply_title_all"]; ok {
+		switch v := ata.(type) {
+		case bool:
+			applyTitleAll = v
+		case string:
+			applyTitleAll = v == "true" || v == "1"
+		}
+	}
+
+	updateFile := func(blogDir string, updates map[string]interface{}) bool {
+		target := l.storage.GetDataPath(blogDir, "blog-view-settings.json")
+		var settings map[string]interface{}
+		_ = l.storage.SafeReadJSON(target, &settings)
+		if settings == nil {
+			settings = make(map[string]interface{})
+		}
+		for k, v := range updates {
+			settings[k] = v
+		}
+		if err := l.storage.SafeWriteJSON(target, settings); err != nil {
+			return false
+		}
+		if newTitle, hasTitle := updates["title"].(string); hasTitle && newTitle != "" {
+			blogHTML := l.storage.GetDataPath(blogDir, "blog.html")
+			if bytes, err := os.ReadFile(blogHTML); err == nil {
+				content := string(bytes)
+				escaped := html.EscapeString(newTitle)
+				reTitle := regexp.MustCompile(`(?i)<title>.*?</title>`)
+				reH1 := regexp.MustCompile(`(?i)<h1>.*?</h1>`)
+				content = reTitle.ReplaceAllString(content, fmt.Sprintf("<title>%s - Список статей</title>", escaped))
+				content = reH1.ReplaceAllString(content, fmt.Sprintf("<h1>%s</h1>", escaped))
+				_ = os.WriteFile(blogHTML, []byte(content), 0644)
+			}
+		}
+		return true
+	}
+
+	if action == "apply_all" {
+		if layout == "" && title == "" {
+			l.errorResponse(w, "Нет данных для сохранения")
+			return
+		}
+		updates := make(map[string]interface{})
+		if layout != "" {
+			updates["layout"] = layout
+		}
+		if title != "" && applyTitleAll {
+			updates["title"] = title
+		}
+
+		blogPaths := l.cfg.GetSettings().BlogPaths
+		if len(blogPaths) == 0 {
+			dp := l.cfg.GetSettings().ActiveBlogPath
+			if dp == "" {
+				dp = "data"
+			}
+			blogPaths = []string{dp}
+		}
+
+		successCount := 0
+		details := make(map[string]interface{})
+		for _, p := range blogPaths {
+			ok := updateFile(p, updates)
+			details[p] = map[string]interface{}{"success": ok}
+			if ok {
+				successCount++
+			}
+		}
+
+		l.jsonResponse(w, map[string]interface{}{
+			"success":       true,
+			"updated_count": successCount,
+			"details":       details,
+		})
+		return
+	}
+
+	// action == "save"
+	activeBlog := middleware.GetActiveBlogPath(r)
+	updates := make(map[string]interface{})
+	if layout != "" {
+		updates["layout"] = layout
+	}
+	if title != "" {
+		updates["title"] = title
+	}
+	for k, v := range data {
+		if k != "action" && k != "apply_title_all" && k != "title" && k != "layout" {
+			updates[k] = v
+		}
+	}
+
+	if len(updates) == 0 {
+		l.errorResponse(w, "Нет данных для сохранения")
+		return
+	}
+
+	if !updateFile(activeBlog, updates) {
+		l.errorResponse(w, "Не удалось сохранить настройки вида блога")
+		return
+	}
+
 	l.jsonResponse(w, map[string]interface{}{"success": true})
 }
 
@@ -1210,16 +1364,54 @@ func (l *LegacyHandler) HandleUploadBlogBackground(w http.ResponseWriter, r *htt
 	}
 	defer file.Close()
 
-	data, _ := io.ReadAll(file)
-	filename, err := l.media.UploadBackground(activeBlog, header.Filename, data)
+	mode := r.FormValue("mode")
+	if mode != "contain" && mode != "repeat" {
+		mode = "cover"
+	}
+
+	data, err := io.ReadAll(file)
 	if err != nil {
-		l.errorResponse(w, err.Error())
+		l.errorResponse(w, "Ошибка чтения файла")
 		return
 	}
 
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" && ext != ".webp" {
+		l.errorResponse(w, "Недопустимый тип файла")
+		return
+	}
+
+	bgDir := l.storage.GetDataPath(activeBlog, "backgrounds")
+	_ = os.MkdirAll(bgDir, 0755)
+
+	// Remove old blog-bg.*
+	if matches, err := filepath.Glob(filepath.Join(bgDir, "blog-bg.*")); err == nil {
+		for _, m := range matches {
+			_ = os.Remove(m)
+		}
+	}
+
+	filename := "blog-bg" + ext
+	targetPath := filepath.Join(bgDir, filename)
+	if err := l.storage.SafeWriteFile(targetPath, data); err != nil {
+		l.errorResponse(w, "Ошибка сохранения файла")
+		return
+	}
+
+	// Update blog-view-settings.json
+	settingsPath := l.storage.GetDataPath(activeBlog, "blog-view-settings.json")
+	var settings map[string]interface{}
+	_ = l.storage.SafeReadJSON(settingsPath, &settings)
+	if settings == nil {
+		settings = make(map[string]interface{})
+	}
+	settings["background"] = filename
+	settings["backgroundMode"] = mode
+	_ = l.storage.SafeWriteJSON(settingsPath, settings)
+
 	bgItem := &domain.BackgroundItem{
 		Image:  filename,
-		Size:   "cover",
+		Size:   mode,
 		Repeat: "no-repeat",
 	}
 	_ = l.media.SaveBackground(activeBlog, "blog", "", bgItem)
@@ -1228,6 +1420,28 @@ func (l *LegacyHandler) HandleUploadBlogBackground(w http.ResponseWriter, r *htt
 		"success":  true,
 		"filename": filename,
 	})
+}
+
+func (l *LegacyHandler) HandleRemoveBlogBackground(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	bgDir := l.storage.GetDataPath(activeBlog, "backgrounds")
+	if matches, err := filepath.Glob(filepath.Join(bgDir, "blog-bg.*")); err == nil {
+		for _, m := range matches {
+			_ = os.Remove(m)
+		}
+	}
+
+	settingsPath := l.storage.GetDataPath(activeBlog, "blog-view-settings.json")
+	var settings map[string]interface{}
+	_ = l.storage.SafeReadJSON(settingsPath, &settings)
+	if settings != nil {
+		delete(settings, "background")
+		delete(settings, "backgroundMode")
+		_ = l.storage.SafeWriteJSON(settingsPath, settings)
+	}
+
+	_ = l.media.RemoveBackground(activeBlog, "blog", "")
+	l.jsonResponse(w, map[string]interface{}{"success": true})
 }
 
 func (l *LegacyHandler) HandleUploadGlobalBackground(w http.ResponseWriter, r *http.Request) {
@@ -1320,10 +1534,30 @@ func (l *LegacyHandler) HandleGetLanguages(w http.ResponseWriter, r *http.Reques
 
 func (l *LegacyHandler) HandleSaveBlogNav(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
-	var body struct {
-		Buttons []map[string]interface{} `json:"buttons"`
+
+	var action string
+	var buttons []map[string]interface{}
+
+	ct := r.Header.Get("Content-Type")
+	if strings.Contains(ct, "application/json") {
+		var body struct {
+			Action  string                   `json:"action"`
+			Buttons []map[string]interface{} `json:"buttons"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		action = body.Action
+		buttons = body.Buttons
+	} else {
+		_ = r.ParseForm()
+		action = r.FormValue("action")
+		if rawBtns := r.FormValue("buttons"); rawBtns != "" {
+			_ = json.Unmarshal([]byte(rawBtns), &buttons)
+		}
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	if action == "" {
+		action = "save"
+	}
 
 	navFile := l.storage.GetDataPath(activeBlog, "blog-view-settings.json")
 	var settings map[string]interface{}
@@ -1331,10 +1565,73 @@ func (l *LegacyHandler) HandleSaveBlogNav(w http.ResponseWriter, r *http.Request
 	if settings == nil {
 		settings = make(map[string]interface{})
 	}
-	settings["crossBlogNav"] = body.Buttons
-	_ = l.storage.SafeWriteJSON(navFile, settings)
 
-	l.jsonResponse(w, map[string]interface{}{"success": true})
+	if action == "check" {
+		blogHtmlPath := l.storage.GetDataPath(activeBlog, "blog.html")
+		isStandard := false
+		if bytes, err := os.ReadFile(blogHtmlPath); err == nil {
+			content := string(bytes)
+			isStandard = strings.Contains(content, "function loadBlogViewSettings()") && strings.Contains(content, "<header>")
+		}
+		currentButtons := settings["crossBlogNav"]
+		if currentButtons == nil {
+			currentButtons = []interface{}{}
+		}
+		l.jsonResponse(w, map[string]interface{}{
+			"is_standard": isStandard,
+			"buttons":     currentButtons,
+		})
+		return
+	}
+
+	sanitized := make([]map[string]interface{}, 0, len(buttons))
+	for _, b := range buttons {
+		u, _ := b["url"].(string)
+		t, _ := b["text"].(string)
+		u = strings.TrimSpace(u)
+		t = strings.TrimSpace(t)
+		lower := strings.ToLower(u)
+		if strings.HasPrefix(lower, "javascript:") || strings.HasPrefix(lower, "data:") || strings.HasPrefix(lower, "vbscript:") {
+			continue
+		}
+		sanitized = append(sanitized, map[string]interface{}{
+			"url":  u,
+			"text": t,
+		})
+	}
+
+	if action == "apply_all" {
+		blogPaths := l.cfg.GetSettings().BlogPaths
+		if len(blogPaths) == 0 {
+			dp := l.cfg.GetSettings().ActiveBlogPath
+			if dp == "" {
+				dp = "data"
+			}
+			blogPaths = []string{dp}
+		}
+		successCount := 0
+		for _, p := range blogPaths {
+			t := l.storage.GetDataPath(p, "blog-view-settings.json")
+			var s map[string]interface{}
+			_ = l.storage.SafeReadJSON(t, &s)
+			if s == nil {
+				s = make(map[string]interface{})
+			}
+			s["crossBlogNav"] = sanitized
+			if err := l.storage.SafeWriteJSON(t, s); err == nil {
+				successCount++
+			}
+		}
+		l.jsonResponse(w, map[string]interface{}{
+			"success":       true,
+			"updated_count": successCount,
+		})
+		return
+	}
+
+	settings["crossBlogNav"] = sanitized
+	_ = l.storage.SafeWriteJSON(navFile, settings)
+	l.jsonResponse(w, map[string]interface{}{"success": true, "is_standard": true})
 }
 
 func (l *LegacyHandler) HandleSaveOverlaySettings(w http.ResponseWriter, r *http.Request) {

@@ -1,8 +1,4 @@
 {
-    "crossBlogNav": null,
-    "fontFamily": "",
-    "fontFile": "",
-    "fontFormat": "",
     "layout": "list",
-    "title": "Мой новый блог"
+    "title": "NPBlog на go"
 }

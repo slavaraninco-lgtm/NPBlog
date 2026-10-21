@@ -85,13 +85,18 @@ type GlobalSettings struct {
 
 // BlogViewSettings представляет настройки отображения списка статей в data/blog-view-settings.json
 type BlogViewSettings struct {
-	ViewMode           string `json:"viewMode"` // "classic" | "grid" | "cards"
-	PostsPerPage       int    `json:"postsPerPage"`
-	ShowDate           bool   `json:"showDate"`
-	ShowAuthor         bool   `json:"showAuthor"`
-	ShowSummary        bool   `json:"showSummary"`
-	TruncateLength     int    `json:"truncateLength"`
-	CustomCSS          string `json:"customCss"`
+	Title          string      `json:"title"`
+	Layout         string      `json:"layout"` // "list" | "grid"
+	Background     string      `json:"background,omitempty"`
+	BackgroundMode string      `json:"backgroundMode,omitempty"`
+	CrossBlogNav   interface{} `json:"crossBlogNav,omitempty"`
+	ViewMode       string      `json:"viewMode,omitempty"`
+	PostsPerPage   int         `json:"postsPerPage,omitempty"`
+	ShowDate       bool        `json:"showDate,omitempty"`
+	ShowAuthor     bool        `json:"showAuthor,omitempty"`
+	ShowSummary    bool        `json:"showSummary,omitempty"`
+	TruncateLength int         `json:"truncateLength,omitempty"`
+	CustomCSS      string      `json:"customCss,omitempty"`
 }
 
 // DraftData представляет черновик в data/drafts/
