@@ -4057,11 +4057,11 @@ window.addEventListener('load', function() {
 <script src="editorjs/notifications.js?v=1788459283"></script>
 <script src="editorjs/drafts.js?v=1792233378"></script>
 <script src="editorjs/history.js?v=1792334209"></script>
-<script src="editorjs/formatting.js?v=1792334296"></script>
+<script src="editorjs/formatting.js?v=1792791200"></script>
 <script src="editorjs/tables.js?v=1788448476"></script>
-<script src="editorjs/media.js?v=1792335599"></script>
+<script src="editorjs/media.js?v=1792791200"></script>
 <script src="editorjs/network.js?v=1792265012"></script>
-<script src="editorjs/ui.js?v=1791643014"></script>
+<script src="editorjs/ui.js?v=1792791200"></script>
 <script src="editorjs/integrity.js?v=1788254967"></script>
 <script src="editorjs/backups.js?v=1788795398"></script>
 <script src="editorjs/includes.js?v=1791637702"></script>
@@ -11373,10 +11373,11 @@ function loadCustomFonts() {
                     else if (font.format === 'woff2') format = 'woff2';
                     else if (font.format === 'otf') format = 'opentype';
                     
+                    const fontUrl = DATA_URL_PREFIX + 'fonts/' + encodeURIComponent(font.file);
                     fontFaceRules += `
                         @font-face {
                             font-family: '${font.name}';
-                            src: url('${font.path}') format('${format}');
+                            src: url('${fontUrl}') format('${format}');
                         }
                     `;
                     

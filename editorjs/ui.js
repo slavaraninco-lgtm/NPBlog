@@ -18,10 +18,12 @@ function loadEditorCustomFonts() {
                     else if (font.format === 'woff2') format = 'woff2';
                     else if (font.format === 'otf') format = 'opentype';
 
+                    const fontUrl = (typeof DATA_URL_PREFIX === 'string' ? DATA_URL_PREFIX : '/data/') +
+                        'fonts/' + encodeURIComponent(font.file);
                     fontFaceRules += `
                             @font-face {
                                 font-family: '${font.name}';
-                                src: url('${font.path}') format('${format}');
+                                src: url('${fontUrl}') format('${format}');
                             }
                         `;
                 });

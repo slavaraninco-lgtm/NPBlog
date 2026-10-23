@@ -1,18 +1,25 @@
 /**
- * NPBlog Visual Editing Engine 2.0
- * Fully rewritten visual editing engine for maximum stability, predictable block manipulation,
- * robust key handling (Enter, Backspace, Delete), clean inline formatting, and safe HTML serialization.
+ * NPBlog Visual Editing Engine (WYSIWYG 3.0)
+ * Modern, deterministic, robust visual editing engine.
+ *
+ * Key Pillars:
+ * 1. Strict Block-and-Inline DOM Model (no orphan text nodes, no collapsed empty divs).
+ * 2. Pure DOM Range Splitting & Formatting (zero reliance on deprecated execCommand).
+ * 3. Deterministic Key Handling (Enter, Backspace, Delete, Tab, Shift+Enter, Undo/Redo).
+ * 4. Rock-solid Focus & Selection Preservation across modals and popovers.
+ * 5. Clean, Idempotent HTML Serialization & Pretty Indentation.
+ * 6. 100% Backward Compatibility with all NPBlog modules and global APIs.
  */
 
 (function (window, document) {
     'use strict';
 
-    // Global state
+    // Global Selection & Input State
+    let savedRange = null;
     let linkInsertStart = 0;
     let linkInsertEnd = 0;
     let colorInsertStart = 0;
     let colorInsertEnd = 0;
-    let savedRange = null;
 
     window.savedRange = savedRange;
     window.linkInsertStart = linkInsertStart;
@@ -20,7 +27,19 @@
     window.colorInsertStart = colorInsertStart;
     window.colorInsertEnd = colorInsertEnd;
 
-    const BLOCK_TAGS = ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'UL', 'OL', 'LI', 'DIV', 'TABLE', 'DETAILS', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'HR'];
+    // Constants
+    const BLOCK_TAGS = new Set([
+        'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+        'BLOCKQUOTE', 'PRE', 'UL', 'OL', 'LI', 'DIV',
+        'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD',
+        'DETAILS', 'SUMMARY', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'HR'
+    ]);
+
+    const EMBED_TAGS = new Set([
+        'IMG', 'VIDEO', 'AUDIO', 'IFRAME', 'TABLE', 'HR',
+        'OBJECT', 'EMBED', 'CANVAS', 'SVG'
+    ]);
+
     const INLINE_FORMAT_MAP = {
         'b': 'STRONG',
         'strong': 'STRONG',
@@ -32,13 +51,16 @@
         'del': 'S',
         'sup': 'SUP',
         'sub': 'SUB',
-        'code': 'CODE'
+        'code': 'CODE',
+        'mark': 'MARK'
     };
 
     /**
-     * Core VisualEngine Object
+     * =========================================================================
+     * DOM UTILITIES & INSPECTION
+     * =========================================================================
      */
-    const VisualEngine = {
+    const DOM = {
         getEditor() {
             return document.getElementById('contentVisual');
         },
@@ -47,98 +69,259 @@
             return document.getElementById('content');
         },
 
-        isEditorActive() {
-            return typeof editorMode !== 'undefined' && editorMode === 'visual';
-        },
-
-        /**
-         * Check if editor content (HTML string, DOM element, or current editor) is effectively empty
-         */
-        isEmpty(target) {
-            let html = '';
-            if (!target) {
-                const editor = this.getEditor();
-                if (!editor) return true;
-                html = editor.innerHTML;
-            } else if (typeof target === 'string') {
-                html = target;
-            } else if (target instanceof HTMLElement) {
-                html = target.innerHTML;
-            } else if (target instanceof DocumentFragment || (target && target.nodeType === Node.DOCUMENT_FRAGMENT_NODE)) {
-                const div = document.createElement('div');
-                div.appendChild(target.cloneNode(true));
-                html = div.innerHTML;
-            } else if (target && typeof target.nodeType === 'number') {
-                if (target.nodeType === Node.TEXT_NODE) {
-                    const text = (target.textContent || '')
-                        .replace(/&(nbsp|#160|#xa0|#8203|#x200b|#65279|#xfeff|zwnj|zwj);/gi, ' ')
-                        .replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
-                    return text.length === 0;
-                }
-                const div = document.createElement('div');
-                div.appendChild(target.cloneNode(true));
-                html = div.innerHTML;
-            } else {
-                return true;
-            }
-
-            const trimmed = html.trim();
-            if (!trimmed || trimmed === '<br>' || trimmed === '<br/>' || 
-                trimmed === '<p><br></p>' || trimmed === '<p><br/></p>' || 
-                trimmed === '<div><br></div>' || trimmed === '<div><br/></div>' || 
-                trimmed === '<p></p>' || trimmed === '<div></div>') {
-                return true;
-            }
-
-            // Embedded media or interactive blocks count as real content
-            if (/<(img|video|audio|iframe|table|hr|object|embed|canvas|svg|blockquote)\b/i.test(trimmed)) {
-                return false;
-            }
-
-            // Strip HTML tags and whitespace/non-breaking/zero-width chars
-            const textOnly = trimmed
-                .replace(/<[^>]*>/g, '')
-                .replace(/&(nbsp|#160|#xa0|#8203|#x200b|#65279|#xfeff|zwnj|zwj);/gi, ' ')
-                .replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
-
-            return textOnly.length === 0;
-        },
-
-        isInsideEditor(node) {
+        isInside(node, parent) {
+            if (!node || !parent) return false;
+            if (node === parent) return true;
             try {
-                const editor = this.getEditor();
-                if (!editor || !node) return false;
-                if (node === editor) return true;
-                if (node === document || node === window) return false;
-                if (typeof node.nodeType !== 'number') return false;
-                if (typeof editor.contains === 'function') {
-                    return editor.contains(node);
-                }
+                return parent.contains(node);
             } catch (e) {
                 return false;
             }
+        },
+
+        isBlock(node) {
+            if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+            const tag = node.tagName.toUpperCase();
+            if (BLOCK_TAGS.has(tag)) return true;
+            if (node.classList && (
+                node.classList.contains('blog-image-align-wrap') ||
+                node.classList.contains('npblog-formula-block') ||
+                node.classList.contains('code-block') ||
+                node.classList.contains('spoiler-block')
+            )) return true;
             return false;
         },
 
-        isSelectionInEditor() {
-            try {
-                const sel = window.getSelection();
-                if (!sel || sel.rangeCount === 0) return false;
-                const range = sel.getRangeAt(0);
-                return range && range.commonAncestorContainer ? this.isInsideEditor(range.commonAncestorContainer) : false;
-            } catch (e) {
-                return false;
+        getClosestBlock(node, editor) {
+            const ed = editor || DOM.getEditor();
+            if (!node || !ed) return null;
+            let curr = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
+            while (curr && curr !== ed) {
+                if (DOM.isBlock(curr)) return curr;
+                curr = curr.parentNode;
+            }
+            return null;
+        },
+
+        isEmpty(target) {
+            if (!target) return true;
+
+            let html = '';
+            let text = '';
+            let hasEmbed = false;
+
+            if (typeof target === 'string') {
+                html = target.trim();
+                if (!html || html === '<br>' || html === '<br/>' ||
+                    html === '<p><br></p>' || html === '<p><br/></p>' ||
+                    html === '<div><br></div>' || html === '<p></p>' || html === '<div></div>') {
+                    return true;
+                }
+                if (/<(img|video|audio|iframe|table|hr|object|embed|canvas|svg)\b/i.test(html)) {
+                    return false;
+                }
+                text = html
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/&(nbsp|#160|#xa0|#8203|#x200b|#65279|#xfeff|zwnj|zwj);/gi, ' ')
+                    .replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
+                return text.length === 0;
+            }
+
+            if (target instanceof HTMLElement || target instanceof DocumentFragment || (target && target.nodeType === Node.ELEMENT_NODE)) {
+                if (target.querySelector && target.querySelector('img, video, audio, iframe, table, hr, svg, canvas, [data-formula]')) {
+                    return false;
+                }
+                text = (target.textContent || '')
+                    .replace(/&(nbsp|#160|#xa0|#8203|#x200b|#65279|#xfeff|zwnj|zwj);/gi, ' ')
+                    .replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
+                return text.length === 0;
+            }
+
+            if (target && target.nodeType === Node.TEXT_NODE) {
+                text = (target.textContent || '').replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
+                return text.length === 0;
+            }
+
+            return true;
+        },
+
+        normalizeBlock(block) {
+            if (!block) return;
+            if (DOM.isEmpty(block) && !block.querySelector('img, video, audio, iframe, hr, table, svg, canvas, [data-formula]')) {
+                block.innerHTML = '<br>';
             }
         },
 
-        restoreFocus(range) {
-            const editor = this.getEditor();
+        normalizeDOM(root) {
+            const editor = root || DOM.getEditor();
+            if (!editor) return;
+
+            // 1. Editor completely empty -> guarantee standard <p><br></p>
+            if (!editor.hasChildNodes() || (editor.children.length <= 1 && DOM.isEmpty(editor))) {
+                if (editor.innerHTML !== '<p><br></p>') {
+                    editor.innerHTML = '<p><br></p>';
+                }
+                return;
+            }
+
+            // 2. Wrap stray orphan inline elements or raw text nodes into <p>
+            const children = Array.from(editor.childNodes);
+            let inlineBuffer = [];
+
+            const flushBuffer = () => {
+                if (inlineBuffer.length === 0) return;
+                const p = document.createElement('p');
+                editor.insertBefore(p, inlineBuffer[0]);
+                inlineBuffer.forEach(node => p.appendChild(node));
+                if (p.innerHTML.trim() === '') {
+                    p.innerHTML = '<br>';
+                }
+                inlineBuffer = [];
+            };
+
+            children.forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    if (node.textContent.trim() !== '') {
+                        inlineBuffer.push(node);
+                    } else if (inlineBuffer.length > 0) {
+                        inlineBuffer.push(node);
+                    } else {
+                        editor.removeChild(node);
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    const tag = node.tagName.toUpperCase();
+                    if (tag === 'BR') {
+                        inlineBuffer.push(node);
+                        flushBuffer();
+                    } else if (!BLOCK_TAGS.has(tag) && !node.classList.contains('blog-image-align-wrap')) {
+                        inlineBuffer.push(node);
+                    } else {
+                        flushBuffer();
+                    }
+                }
+            });
+            flushBuffer();
+
+            // 3. Ensure empty blocks have a visible <br>
+            editor.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li').forEach(block => {
+                if (block.innerHTML.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
+                    block.innerHTML = '<br>';
+                }
+            });
+
+            // 4. Clean stray empty inline elements without touching caret
+            DOM.cleanEmptyInline(editor, true);
+
+            // 5. Formula widgets integrity
+            if (typeof window.refreshAllFormulasInEditor === 'function') {
+                window.refreshAllFormulasInEditor(editor);
+            }
+        },
+
+        cleanEmptyInline(root, skipActive = false) {
+            const container = root || DOM.getEditor();
+            if (!container) return;
+
+            const sel = window.getSelection();
+            const activeNode = (skipActive && sel && sel.rangeCount > 0) ? sel.getRangeAt(0).startContainer : null;
+
+            // Strip redundant zero-width spaces
+            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+            let textNode;
+            const toRemove = [];
+            while ((textNode = walker.nextNode())) {
+                if (activeNode && textNode === activeNode) continue;
+                if (textNode.parentElement && textNode.parentElement.closest('.npblog-formula, .npblog-formula-block, .katex, math')) continue;
+                const val = textNode.nodeValue;
+                if (/[\u200B\u200C\u200D\uFEFF]/.test(val)) {
+                    const cleaned = val.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+                    if (cleaned.length === 0) {
+                        toRemove.push(textNode);
+                    } else {
+                        textNode.nodeValue = cleaned;
+                    }
+                }
+            }
+            toRemove.forEach(n => n.parentNode && n.parentNode.removeChild(n));
+
+            // Unwrap useless spans without any attributes
+            container.querySelectorAll('span').forEach(span => {
+                if (span.id === 'customCaret' || span.dataset.npblogAnchor) return;
+                if (span.closest('.npblog-formula, .npblog-formula-block, .katex, math')) return;
+                const hasStyle = span.getAttribute('style') && span.getAttribute('style').trim().length > 0;
+                const hasClass = span.getAttribute('class') && span.getAttribute('class').trim().length > 0;
+                const hasId = span.getAttribute('id') && span.getAttribute('id').trim().length > 0;
+                if (!hasStyle && !hasClass && !hasId && span.attributes.length === 0) {
+                    const parent = span.parentNode;
+                    if (parent) {
+                        while (span.firstChild) parent.insertBefore(span.firstChild, span);
+                        parent.removeChild(span);
+                    }
+                }
+            });
+
+            // Recursively remove empty inline tags
+            const inlineSel = 'span, strong, b, em, i, u, s, strike, del, sup, sub, code, mark, a:not([href])';
+            let changed = true;
+            let limit = 0;
+            while (changed && limit < 5) {
+                changed = false;
+                limit++;
+                container.querySelectorAll(inlineSel).forEach(el => {
+                    if (activeNode && el.contains(activeNode)) return;
+                    if (el.closest('.npblog-formula, .npblog-formula-block, .katex, math')) return;
+                    if (el.id === 'customCaret' || el.dataset.npblogAnchor || el.classList.contains('npblog-formula') || el.classList.contains('npblog-formula-block') || el.hasAttribute('data-formula') || el.classList.contains('katex')) return;
+                    if (el.querySelector('img, video, audio, iframe, table, svg, canvas, [data-npblog-anchor], [data-formula]')) return;
+                    const text = el.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '');
+                    if (text.length === 0 && el.parentNode) {
+                        el.parentNode.removeChild(el);
+                        changed = true;
+                    }
+                });
+            }
+        }
+    };
+
+    /**
+     * =========================================================================
+     * SELECTION & FOCUS MANAGER
+     * =========================================================================
+     */
+    const SelectionManager = {
+        save(customRange) {
+            const editor = DOM.getEditor();
+            if (!editor) return;
+
+            if (customRange && customRange.commonAncestorContainer && DOM.isInside(customRange.commonAncestorContainer, editor)) {
+                savedRange = customRange.cloneRange();
+                window.savedRange = savedRange;
+                if (typeof window.setGlobalSavedRange === 'function') window.setGlobalSavedRange(savedRange);
+                return;
+            }
+
+            if (document.activeElement && document.activeElement !== editor && !DOM.isInside(document.activeElement, editor)) {
+                return;
+            }
+
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+
+            const range = sel.getRangeAt(0);
+            if (range && range.commonAncestorContainer && DOM.isInside(range.commonAncestorContainer, editor)) {
+                savedRange = range.cloneRange();
+                window.savedRange = savedRange;
+                if (typeof window.setGlobalSavedRange === 'function') window.setGlobalSavedRange(savedRange);
+            }
+        },
+
+        restore(range) {
+            const editor = DOM.getEditor();
             if (!editor) return false;
 
             const targetRange = range || window.savedRange || savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null);
             const sel = window.getSelection();
 
-            if (targetRange && targetRange.commonAncestorContainer && this.isInsideEditor(targetRange.commonAncestorContainer)) {
+            if (targetRange && targetRange.commonAncestorContainer && DOM.isInside(targetRange.commonAncestorContainer, editor)) {
                 try {
                     editor.focus({ preventScroll: true });
                     if (sel) {
@@ -147,253 +330,523 @@
                     }
                     savedRange = targetRange;
                     window.savedRange = targetRange;
-                    if (typeof window.setGlobalSavedRange === 'function') {
-                        window.setGlobalSavedRange(targetRange);
-                    }
+                    if (typeof window.setGlobalSavedRange === 'function') window.setGlobalSavedRange(targetRange);
                     return true;
                 } catch (e) { }
             }
 
             editor.focus({ preventScroll: true });
-            // Fallback to end of editor instead of offset 0
             this.setCursorToEnd(editor);
-            this.saveSelection();
+            this.save();
             return true;
         },
 
-        saveSelection(customRange) {
-            try {
-                const editor = this.getEditor();
-                if (!editor) return;
-
-                if (customRange && customRange.commonAncestorContainer && this.isInsideEditor(customRange.commonAncestorContainer)) {
-                    const cloned = customRange.cloneRange();
-                    savedRange = cloned;
-                    window.savedRange = cloned;
-                    if (typeof window.setGlobalSavedRange === 'function') {
-                        window.setGlobalSavedRange(cloned);
-                    }
-                    return;
-                }
-
-                // If focus is currently in another element (modal, dropdown, text input), do not overwrite editor's selection
-                if (document.activeElement && document.activeElement !== editor && !this.isInsideEditor(document.activeElement)) {
-                    return;
-                }
-
-                const sel = window.getSelection();
-                if (!sel || sel.rangeCount === 0) return;
-
-                const range = sel.getRangeAt(0);
-                if (range && range.commonAncestorContainer && this.isInsideEditor(range.commonAncestorContainer)) {
-                    const cloned = range.cloneRange();
-                    savedRange = cloned;
-                    window.savedRange = cloned;
-                    if (typeof window.setGlobalSavedRange === 'function') {
-                        window.setGlobalSavedRange(cloned);
-                    }
-                }
-            } catch (e) { }
-        },
-
-        setCursorToEnd(container) {
-            const editor = this.getEditor();
-            if (!editor) return;
-            const target = container || editor;
+        setCursorToStart(el) {
+            if (!el) return;
             const range = document.createRange();
-            range.selectNodeContents(target);
-            range.collapse(false);
             const sel = window.getSelection();
-            if (sel) {
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-        },
+            if (!sel) return;
 
-        setCursorToStart(container) {
-            const range = document.createRange();
-            range.selectNodeContents(container);
+            if (el.firstChild && el.firstChild.nodeType === Node.TEXT_NODE) {
+                range.setStart(el.firstChild, 0);
+            } else if (el.firstChild && el.firstChild.nodeName === 'BR') {
+                range.setStartBefore(el.firstChild);
+            } else if (el.firstChild) {
+                range.setStart(el, 0);
+            } else {
+                range.selectNodeContents(el);
+            }
             range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            this.save(range);
+        },
+
+        setCursorToEnd(el) {
+            if (!el) return;
+            const range = document.createRange();
             const sel = window.getSelection();
-            if (sel) {
-                sel.removeAllRanges();
-                sel.addRange(range);
+            if (!sel) return;
+
+            range.selectNodeContents(el);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            this.save(range);
+        },
+
+        isCaretAtStart(block, range) {
+            if (!block || !range) return false;
+            try {
+                const testRange = document.createRange();
+                testRange.setStart(block, 0);
+                testRange.setEnd(range.startContainer, range.startOffset);
+                const frag = testRange.cloneContents();
+                if (frag.querySelector('img, video, audio, iframe, hr, table, svg, canvas')) return false;
+                return testRange.toString().replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '').length === 0;
+            } catch (e) {
+                return false;
             }
         },
 
-        getClosestBlock(node) {
-            const editor = this.getEditor();
-            let current = node;
-            if (current && current.nodeType === Node.TEXT_NODE) {
-                current = current.parentNode;
+        isCaretAtEnd(block, range) {
+            if (!block || !range) return false;
+            try {
+                const testRange = document.createRange();
+                testRange.setStart(range.endContainer, range.endOffset);
+                testRange.setEndAfter(block.lastChild || block);
+                const frag = testRange.cloneContents();
+                if (frag.querySelector('img, video, audio, iframe, hr, table, svg, canvas')) return false;
+                return testRange.toString().replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '').length === 0;
+            } catch (e) {
+                return false;
             }
-            while (current && current !== editor) {
-                if (current.nodeType === Node.ELEMENT_NODE) {
-                    const tag = current.tagName.toUpperCase();
-                    if (BLOCK_TAGS.includes(tag) || current.classList.contains('blog-image-align-wrap')) {
-                        return current;
-                    }
+        },
+
+        getOffsets(container) {
+            if (!container) return { start: 0, end: 0 };
+            const sel = window.getSelection();
+            if (!sel || !sel.rangeCount) return { start: 0, end: 0 };
+            const range = sel.getRangeAt(0);
+
+            if (!container.contains(range.commonAncestorContainer)) {
+                return { start: 0, end: 0 };
+            }
+
+            let start = 0;
+            let end = 0;
+            const iterator = document.createNodeIterator(container, NodeFilter.SHOW_TEXT);
+            let currentNode;
+
+            while ((currentNode = iterator.nextNode())) {
+                if (currentNode === range.startContainer) {
+                    start += range.startOffset;
+                } else if (currentNode.compareDocumentPosition(range.startContainer) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    start += currentNode.length;
                 }
-                current = current.parentNode;
+
+                if (currentNode === range.endContainer) {
+                    end += range.endOffset;
+                } else if (currentNode.compareDocumentPosition(range.endContainer) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    end += currentNode.length;
+                }
+            }
+
+            return { start, end };
+        },
+
+        setOffsets(container, start, end) {
+            if (!container) return;
+            const sel = window.getSelection();
+            if (!sel) return;
+            sel.removeAllRanges();
+
+            const range = document.createRange();
+            let charIndex = 0;
+            let startNode = null, startOffset = 0;
+            let endNode = null, endOffset = 0;
+
+            const iterator = document.createNodeIterator(container, NodeFilter.SHOW_TEXT);
+            let currentNode;
+
+            while ((currentNode = iterator.nextNode())) {
+                const len = currentNode.length;
+                if (!startNode && charIndex + len >= start) {
+                    startNode = currentNode;
+                    startOffset = start - charIndex;
+                }
+                if (!endNode && charIndex + len >= end) {
+                    endNode = currentNode;
+                    endOffset = end - charIndex;
+                }
+                charIndex += len;
+            }
+
+            if (!startNode) { startNode = container; startOffset = 0; }
+            if (!endNode) { endNode = container; endOffset = 0; }
+
+            try {
+                range.setStart(startNode, startOffset);
+                range.setEnd(endNode, endOffset);
+                sel.addRange(range);
+            } catch (e) { }
+        }
+    };
+
+    /**
+     * =========================================================================
+     * INLINE FORMATTING ENGINE
+     * =========================================================================
+     */
+    const InlineFormatter = {
+        findAncestor(node, tagName, editor) {
+            const ed = editor || DOM.getEditor();
+            let curr = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
+            const target = tagName.toUpperCase();
+            while (curr && curr !== ed) {
+                if (curr.nodeType === Node.ELEMENT_NODE && curr.tagName.toUpperCase() === target) {
+                    return curr;
+                }
+                curr = curr.parentNode;
             }
             return null;
         },
 
-        /**
-         * Normalize DOM: ensure every piece of text is wrapped in a valid block container
-         */
-        normalizeDOM(root) {
-            const editor = root || this.getEditor();
-            if (!editor) return;
-
-            // 1. If editor is completely empty or only contains whitespace/empty tags
-            if (!editor.hasChildNodes() || (editor.children.length <= 1 && this.isEmpty(editor))) {
-                if (editor.innerHTML !== '<p><br></p>') {
-                    editor.innerHTML = '<p><br></p>';
+        findAncestorWithStyle(node, styleProp, editor) {
+            const ed = editor || DOM.getEditor();
+            let curr = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
+            while (curr && curr !== ed && !DOM.isBlock(curr)) {
+                if (curr.nodeType === Node.ELEMENT_NODE && curr.tagName === 'SPAN' && curr.style && curr.style[styleProp]) {
+                    return curr;
                 }
+                curr = curr.parentNode;
+            }
+            return null;
+        },
+
+        isFormatActive(range, tagName) {
+            const ed = DOM.getEditor();
+            const target = tagName.toUpperCase();
+
+            if (range.collapsed) {
+                return !!this.findAncestor(range.startContainer, target, ed);
+            }
+
+            const ancestor = this.findAncestor(range.commonAncestorContainer, target, ed);
+            if (ancestor) return true;
+
+            const startAncestor = this.findAncestor(range.startContainer, target, ed);
+            const endAncestor = this.findAncestor(range.endContainer, target, ed);
+            return !!(startAncestor && endAncestor);
+        },
+
+        formatInline(formatType) {
+            if (!SelectionManager.restore()) return;
+            const targetTag = INLINE_FORMAT_MAP[formatType.toLowerCase()] || formatType.toUpperCase();
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+
+            const range = sel.getRangeAt(0);
+
+            // Caret collapsed: toggle state for subsequent typing
+            if (range.collapsed) {
+                const existing = this.findAncestor(range.startContainer, targetTag);
+                if (existing) {
+                    // Turn off format: break out of tag
+                    const textNode = document.createTextNode('\u200B');
+                    if (existing.nextSibling) {
+                        existing.parentNode.insertBefore(textNode, existing.nextSibling);
+                    } else {
+                        existing.parentNode.appendChild(textNode);
+                    }
+                    const newRange = document.createRange();
+                    newRange.setStart(textNode, 1);
+                    newRange.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                    SelectionManager.save(newRange);
+                } else {
+                    // Turn on format: insert tag with zero-width placeholder
+                    const el = document.createElement(targetTag);
+                    el.appendChild(document.createTextNode('\u200B'));
+                    range.insertNode(el);
+                    SelectionManager.setCursorToStart(el);
+                }
+                VisualEngine.updateActiveButtons();
+                if (typeof saveToHistory === 'function') saveToHistory();
                 return;
             }
 
-            // 2. Wrap orphan inline elements or loose text nodes into <p>
-            const children = Array.from(editor.childNodes);
-            let inlineGroup = [];
+            // Selection active
+            const isActive = this.isFormatActive(range, targetTag);
 
-            function flushInlineGroup() {
-                if (inlineGroup.length === 0) return;
-                const p = document.createElement('p');
-                editor.insertBefore(p, inlineGroup[0]);
-                inlineGroup.forEach(node => p.appendChild(node));
-                if (p.innerHTML.trim() === '') {
-                    p.innerHTML = '<br>';
-                }
-                inlineGroup = [];
-            }
-
-            children.forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    if (node.textContent.trim() !== '') {
-                        inlineGroup.push(node);
-                    } else if (inlineGroup.length > 0) {
-                        inlineGroup.push(node);
-                    } else {
-                        editor.removeChild(node);
-                    }
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    const tag = node.tagName.toUpperCase();
-                    if (tag === 'BR') {
-                        inlineGroup.push(node);
-                        flushInlineGroup();
-                    } else if (!BLOCK_TAGS.includes(tag) && !node.classList.contains('blog-image-align-wrap')) {
-                        inlineGroup.push(node);
-                    } else {
-                        flushInlineGroup();
-                    }
-                }
-            });
-            flushInlineGroup();
-
-            // 3. Ensure empty blocks contain at least a <br>
-            editor.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li').forEach(block => {
-                if (block.innerHTML.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
-                    block.innerHTML = '<br>';
-                }
-            });
-
-            // 4. Clean stray empty inline artifacts (without touching active caret)
-            this.cleanDOMArtifacts(editor, true);
-
-            // 5. Ensure all formula widgets have contenteditable="false" and valid KaTeX markup
-            if (typeof window.refreshAllFormulasInEditor === 'function') {
-                window.refreshAllFormulasInEditor(editor);
+            if (isActive) {
+                // Unwrap / Remove format from selection
+                this.removeFormat(range, targetTag);
             } else {
-                editor.querySelectorAll('.npblog-formula, .npblog-formula-block').forEach(formulaEl => {
-                    formulaEl.setAttribute('contenteditable', 'false');
-                    const formula = formulaEl.getAttribute('data-formula');
-                    if (formula && typeof katex !== 'undefined') {
-                        const isBlock = formulaEl.getAttribute('data-display') === 'block' || formulaEl.classList.contains('npblog-formula-block');
-                        try {
-                            katex.render(formula, formulaEl, { displayMode: isBlock, throwOnError: false });
-                        } catch(e) {}
-                    }
-                });
+                // Apply format to selection
+                try {
+                    const contents = range.extractContents();
+                    // Clean internal duplicate tags
+                    contents.querySelectorAll(targetTag).forEach(nested => {
+                        const parent = nested.parentNode;
+                        if (parent) {
+                            while (nested.firstChild) parent.insertBefore(nested.firstChild, nested);
+                            parent.removeChild(nested);
+                        }
+                    });
+
+                    const wrapper = document.createElement(targetTag);
+                    wrapper.appendChild(contents);
+                    range.insertNode(wrapper);
+
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(wrapper);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                } catch (e) {
+                    console.warn('Inline format error:', e);
+                }
             }
+
+            SelectionManager.save();
+            VisualEngine.updateActiveButtons();
+            if (typeof saveToHistory === 'function') saveToHistory();
         },
 
-        /**
-         * Handle Tab Key (Tab between table cells or indent)
-         */
-        handleTabKey(e) {
-            if (!this.isEditorActive()) return false;
+        removeFormat(range, targetTag) {
+            const ed = DOM.getEditor();
+            const target = targetTag.toUpperCase();
+            const startAncestor = this.findAncestor(range.startContainer, target, ed);
+
+            if (startAncestor) {
+                const parent = startAncestor.parentNode;
+                while (startAncestor.firstChild) {
+                    parent.insertBefore(startAncestor.firstChild, startAncestor);
+                }
+                parent.removeChild(startAncestor);
+            }
+
+            ed.querySelectorAll(target).forEach(el => {
+                if (range.intersectsNode(el)) {
+                    const parent = el.parentNode;
+                    while (el.firstChild) {
+                        parent.insertBefore(el.firstChild, el);
+                    }
+                    parent.removeChild(el);
+                }
+            });
+        },
+
+        applyInlineStyle(styleProp, value) {
+            if (!SelectionManager.restore()) return;
             const sel = window.getSelection();
-            if (!sel || !sel.rangeCount) return false;
+            if (!sel || sel.rangeCount === 0) return;
 
             const range = sel.getRangeAt(0);
-            const container = range.startContainer;
-            const cell = (container.nodeType === Node.ELEMENT_NODE ? container : container.parentNode).closest('td, th');
-            if (!cell || !this.isInsideEditor(cell)) return false;
 
-            e.preventDefault();
-            const table = cell.closest('table');
-            if (!table) return false;
-
-            const allCells = Array.from(table.querySelectorAll('thead th, thead td, tbody td, tbody th, tr td, tr th'));
-            const uniqueCells = Array.from(new Set(allCells));
-            const currentIndex = uniqueCells.indexOf(cell);
-
-            if (e.shiftKey) {
-                if (currentIndex > 0) {
-                    this.setCursorToStart(uniqueCells[currentIndex - 1]);
-                    this.saveSelection();
-                }
-            } else {
-                if (currentIndex < uniqueCells.length - 1) {
-                    this.setCursorToStart(uniqueCells[currentIndex + 1]);
-                    this.saveSelection();
-                } else {
-                    if (typeof addTableRow === 'function') {
-                        window.contextMenuTableRow = cell.closest('tr');
-                        addTableRow();
+            const cleanStyles = (root) => {
+                if (!root) return;
+                root.querySelectorAll('span').forEach(el => {
+                    if (el.style && el.style[styleProp]) {
+                        el.style[styleProp] = '';
+                        const rem = el.getAttribute('style');
+                        if (!rem || rem.trim() === '' || rem.trim() === ';') el.removeAttribute('style');
                     }
+                    if (el.attributes.length === 0) {
+                        const p = el.parentNode;
+                        if (p) {
+                            while (el.firstChild) p.insertBefore(el.firstChild, el);
+                            p.removeChild(el);
+                        }
+                    }
+                });
+            };
+
+            if (range.collapsed) {
+                const span = document.createElement('span');
+                span.style[styleProp] = value;
+                span.appendChild(document.createTextNode('\u200B'));
+                range.insertNode(span);
+                SelectionManager.setCursorToStart(span);
+            } else {
+                try {
+                    const contents = range.extractContents();
+                    cleanStyles(contents);
+
+                    const span = document.createElement('span');
+                    span.style[styleProp] = value;
+                    span.appendChild(contents);
+                    range.insertNode(span);
+
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(span);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                } catch (e) {
+                    console.warn('Style application error:', e);
                 }
             }
-            return true;
+
+            SelectionManager.save();
+            VisualEngine.updateActiveButtons();
+            if (typeof saveToHistory === 'function') saveToHistory();
+        }
+    };
+
+    /**
+     * =========================================================================
+     * BLOCK FORMATTING & MANIPULATION
+     * =========================================================================
+     */
+    const BlockFormatter = {
+        formatBlock(tag) {
+            if (!SelectionManager.restore()) return;
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+
+            const range = sel.getRangeAt(0);
+            const block = DOM.getClosestBlock(range.startContainer);
+            const targetTag = tag.toUpperCase();
+
+            if (block && block.id !== 'contentVisual') {
+                if (block.tagName.toUpperCase() === targetTag) {
+                    // Toggle back to P
+                    const p = document.createElement('p');
+                    p.innerHTML = block.innerHTML;
+                    block.parentNode.replaceChild(p, block);
+                    SelectionManager.setCursorToEnd(p);
+                } else {
+                    const newBlock = document.createElement(targetTag);
+                    newBlock.innerHTML = block.innerHTML;
+                    block.parentNode.replaceChild(newBlock, block);
+                    SelectionManager.setCursorToEnd(newBlock);
+                }
+            } else {
+                const newBlock = document.createElement(targetTag);
+                newBlock.innerHTML = '<br>';
+                range.insertNode(newBlock);
+                SelectionManager.setCursorToStart(newBlock);
+            }
+
+            SelectionManager.save();
+            VisualEngine.updateActiveButtons();
+            if (typeof saveToHistory === 'function') saveToHistory();
         },
 
-        /**
-         * Handle Enter Key (Deterministic paragraph and block division)
-         */
-        handleEnterKey(e) {
-            if (!this.isEditorActive()) return;
+        alignText(side) {
+            if (typeof editorMode !== 'undefined' && editorMode === 'code') {
+                const ta = DOM.getCodeEditor();
+                if (!ta) return;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const text = ta.value.substring(start, end);
+                const html = `<div style="text-align: ${side};">${text || '&nbsp;'}</div>`;
+                ta.value = ta.value.substring(0, start) + html + ta.value.substring(end);
+                return;
+            }
+
+            // Check active media selection
+            if (typeof activeTarget !== 'undefined' && activeTarget && typeof applyMediaAlignment === 'function') {
+                const mediaAlignWrap = activeTarget.closest('.blog-image-align-wrap');
+                if (mediaAlignWrap) {
+                    applyMediaAlignment(mediaAlignWrap, side, true, () => {
+                        if (typeof saveToHistory === 'function') saveToHistory();
+                    });
+                    return;
+                }
+            }
+
+            if (!SelectionManager.restore()) return;
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+
+            const range = sel.getRangeAt(0);
+            const block = DOM.getClosestBlock(range.startContainer);
+
+            if (block && block.id !== 'contentVisual') {
+                const alignWrap = block.classList.contains('blog-image-align-wrap')
+                    ? block
+                    : (block.closest ? block.closest('.blog-image-align-wrap') : null);
+
+                if (alignWrap && typeof applyMediaAlignment === 'function') {
+                    applyMediaAlignment(alignWrap, side, true, () => {
+                        if (typeof saveToHistory === 'function') saveToHistory();
+                    });
+                    return;
+                }
+                block.style.textAlign = (side === 'left' ? '' : side);
+                if (!block.getAttribute('style')) block.removeAttribute('style');
+            }
+
+            SelectionManager.save();
+            if (typeof saveToHistory === 'function') saveToHistory();
+        },
+
+        insertList(type = 'ul') {
+            const listTag = (type === 'ol') ? 'ol' : 'ul';
+            const template = `\n<${listTag}>\n  <li>Пункт 1</li>\n  <li>Пункт 2</li>\n  <li>Пункт 3</li>\n</${listTag}>\n`;
+
+            if (typeof editorMode !== 'undefined' && editorMode === 'code') {
+                const ta = DOM.getCodeEditor();
+                const pos = ta.selectionStart;
+                ta.value = ta.value.substring(0, pos) + template + ta.value.substring(pos);
+                ta.focus();
+            } else {
+                VisualEngine.insertBlockMedia(template);
+            }
+            if (typeof saveToHistory === 'function') saveToHistory();
+        },
+
+        insertHorizontalRule() {
+            const ta = DOM.getCodeEditor();
+            if (typeof editorMode !== 'undefined' && editorMode === 'code') {
+                if (window.enableMarkdown) {
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    const before = ta.value.substring(0, start);
+                    const after = ta.value.substring(end);
+                    const prefix = (before.length > 0 && !before.endsWith('\n')) ? '\n\n' : (before.endsWith('\n\n') ? '' : '\n');
+                    const hrText = `${prefix}---\n\n`;
+                    ta.value = before + hrText + after;
+                    const newPos = start + hrText.length;
+                    ta.setSelectionRange(newPos, newPos);
+                    ta.focus();
+                } else {
+                    const start = ta.selectionStart;
+                    const end = ta.selectionEnd;
+                    const before = ta.value.substring(0, start);
+                    const after = ta.value.substring(end);
+                    const prefix = (before.length > 0 && !before.endsWith('\n')) ? '\n' : '';
+                    const hrText = `${prefix}<hr>\n`;
+                    ta.value = before + hrText + after;
+                    const newPos = start + hrText.length;
+                    ta.setSelectionRange(newPos, newPos);
+                    ta.focus();
+                }
+            } else {
+                VisualEngine.insertBlockMedia('<hr>');
+            }
+            if (typeof saveToHistory === 'function') saveToHistory();
+        }
+    };
+
+    /**
+     * =========================================================================
+     * KEYBOARD HANDLER (Enter, Backspace, Delete, Tab, Shortcuts)
+     * =========================================================================
+     */
+    const KeyHandler = {
+        handleEnter(e) {
+            const editor = DOM.getEditor();
+            if (!editor || (typeof editorMode !== 'undefined' && editorMode !== 'visual')) return;
 
             const sel = window.getSelection();
             if (!sel || !sel.rangeCount) return;
 
             const range = sel.getRangeAt(0);
 
-            // Inside table cell: Enter inserts <br> inside cell instead of splitting table
+            // 1. Inside Table: insert <br> without breaking table
             const tableCell = (range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentNode).closest('td, th');
-            if (tableCell && this.isInsideEditor(tableCell)) {
+            if (tableCell && DOM.isInside(tableCell, editor)) {
                 e.preventDefault();
                 range.deleteContents();
                 const br = document.createElement('br');
                 range.insertNode(br);
-
                 if (!br.nextSibling) {
-                    const extraBr = document.createElement('br');
-                    tableCell.appendChild(extraBr);
+                    tableCell.appendChild(document.createElement('br'));
                 }
-
                 range.setStartAfter(br);
                 range.collapse(true);
                 sel.removeAllRanges();
                 sel.addRange(range);
-                this.saveSelection();
+                SelectionManager.save();
                 if (typeof saveToHistory === 'function') saveToHistory();
                 editor.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
-            // Shift+Enter: Insert standard <br>
+            // 2. Shift+Enter: Insert standard <br>
             if (e.shiftKey) {
                 e.preventDefault();
                 range.deleteContents();
@@ -403,16 +856,15 @@
                 range.collapse(true);
                 sel.removeAllRanges();
                 sel.addRange(range);
-                this.saveSelection();
+                SelectionManager.save();
                 if (typeof saveToHistory === 'function') saveToHistory();
                 editor.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
-            const editor = this.getEditor();
-            let block = this.getClosestBlock(range.startContainer);
+            let block = DOM.getClosestBlock(range.startContainer, editor);
 
-            // Pre-formatted code blocks: insert real newline
+            // 3. Pre-formatted Code Block: insert literal newline
             if (block && block.tagName === 'PRE') {
                 e.preventDefault();
                 const textNode = document.createTextNode('\n');
@@ -421,13 +873,13 @@
                 range.collapse(true);
                 sel.removeAllRanges();
                 sel.addRange(range);
-                this.saveSelection();
+                SelectionManager.save();
                 if (typeof saveToHistory === 'function') saveToHistory();
                 editor.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
-            // List items
+            // 4. List Items
             if (block && block.tagName === 'LI') {
                 const liText = block.textContent.trim();
                 if (liText === '' && !block.querySelector('img, video, audio, iframe')) {
@@ -440,50 +892,42 @@
                     if (list && list.parentNode) {
                         list.parentNode.insertBefore(newP, list.nextSibling);
                         block.parentNode.removeChild(block);
-                        if (list.children.length === 0) {
-                            list.parentNode.removeChild(list);
-                        }
+                        if (list.children.length === 0) list.parentNode.removeChild(list);
                     } else {
                         editor.appendChild(newP);
                     }
-
-                    this.setCursorToStart(newP);
-                    this.saveSelection();
+                    SelectionManager.setCursorToStart(newP);
+                    SelectionManager.save();
                     if (typeof saveToHistory === 'function') saveToHistory();
                     editor.dispatchEvent(new Event('input', { bubbles: true }));
                     return;
                 }
-                // Non-empty list item -> default browser behavior handles LI cleanly
-                return;
+                return; // Default browser LI splitting
             }
 
-            // Headings (H1 - H6)
+            // 5. Headings (H1 - H6)
             if (block && /^H[1-6]$/.test(block.tagName)) {
                 e.preventDefault();
-                const isAtEnd = this.isCaretAtEndOfBlock(block, range);
-                const isAtStart = this.isCaretAtStartOfBlock(block, range);
+                const isAtEnd = SelectionManager.isCaretAtEnd(block, range);
+                const isAtStart = SelectionManager.isCaretAtStart(block, range);
                 const isBlockEmpty = block.textContent.trim() === '';
 
                 if (isBlockEmpty) {
-                    // Empty heading -> convert to paragraph
                     const newP = document.createElement('p');
                     newP.innerHTML = '<br>';
                     block.parentNode.replaceChild(newP, block);
-                    this.setCursorToStart(newP);
+                    SelectionManager.setCursorToStart(newP);
                 } else if (isAtEnd) {
-                    // Enter at the end of heading -> start new paragraph below
                     const newP = document.createElement('p');
                     newP.innerHTML = '<br>';
                     block.parentNode.insertBefore(newP, block.nextSibling);
-                    this.setCursorToStart(newP);
+                    SelectionManager.setCursorToStart(newP);
                 } else if (isAtStart) {
-                    // Enter at the start of heading -> insert empty paragraph above
                     const newP = document.createElement('p');
                     newP.innerHTML = '<br>';
                     block.parentNode.insertBefore(newP, block);
-                    this.setCursorToStart(block);
+                    SelectionManager.setCursorToStart(block);
                 } else {
-                    // Split heading into two headings
                     const afterRange = document.createRange();
                     afterRange.setStart(range.endContainer, range.endOffset);
                     afterRange.setEndAfter(block.lastChild || block);
@@ -495,84 +939,89 @@
                     if (block.innerHTML.trim() === '') block.innerHTML = '<br>';
 
                     block.parentNode.insertBefore(newH, block.nextSibling);
-                    this.setCursorToStart(newH);
+                    SelectionManager.setCursorToStart(newH);
                 }
 
-                this.saveSelection();
+                SelectionManager.save();
                 if (typeof saveToHistory === 'function') saveToHistory();
                 editor.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
-            // Blockquote escape on empty line
-            if (block && block.tagName === 'BLOCKQUOTE') {
-                if (block.textContent.trim() === '') {
+            // 6. Blockquote: escape on empty line
+            if (block && block.tagName === 'BLOCKQUOTE' && block.textContent.trim() === '') {
+                e.preventDefault();
+                const newP = document.createElement('p');
+                newP.innerHTML = '<br>';
+                block.parentNode.replaceChild(newP, block);
+                SelectionManager.setCursorToStart(newP);
+                SelectionManager.save();
+                if (typeof saveToHistory === 'function') saveToHistory();
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+                return;
+            }
+
+            // 7. Formula block: insert new paragraph below
+            if (block && block.classList.contains('npblog-formula-block')) {
+                e.preventDefault();
+                const newP = document.createElement('p');
+                newP.innerHTML = '<br>';
+                block.parentNode.insertBefore(newP, block.nextSibling);
+                SelectionManager.setCursorToStart(newP);
+                SelectionManager.save();
+                if (typeof saveToHistory === 'function') saveToHistory();
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+                return;
+            }
+
+            // 8. Spoiler Block Escape: if Enter on empty paragraph inside spoiler-content, escape out
+            let spoilerBlock = block ? block.closest('.spoiler-block') : null;
+            if (spoilerBlock) {
+                const spoilerContent = spoilerBlock.querySelector('.spoiler-content');
+                if (spoilerContent && spoilerContent.contains(range.startContainer) && DOM.isEmpty(block)) {
                     e.preventDefault();
+                    if (block.parentNode) block.parentNode.removeChild(block);
                     const newP = document.createElement('p');
                     newP.innerHTML = '<br>';
-                    block.parentNode.replaceChild(newP, block);
-                    this.setCursorToStart(newP);
-                    this.saveSelection();
+                    spoilerBlock.parentNode.insertBefore(newP, spoilerBlock.nextSibling);
+                    SelectionManager.setCursorToStart(newP);
+                    SelectionManager.save();
                     if (typeof saveToHistory === 'function') saveToHistory();
                     editor.dispatchEvent(new Event('input', { bubbles: true }));
                     return;
                 }
             }
 
-            // Formula block: Enter inserts new paragraph below without splitting formula
-            if (block && block.classList.contains('npblog-formula-block')) {
-                e.preventDefault();
-                const newP = document.createElement('p');
-                newP.innerHTML = '<br>';
-                block.parentNode.insertBefore(newP, block.nextSibling);
-                this.setCursorToStart(newP);
-                this.saveSelection();
-                if (typeof saveToHistory === 'function') saveToHistory();
-                editor.dispatchEvent(new Event('input', { bubbles: true }));
-                return;
-            }
-
-            // Ensure caret is never inside an inline formula when splitting
-            const formulaParent = (range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentNode).closest('.npblog-formula, .npblog-formula-block');
-            if (formulaParent) {
-                range.setStartAfter(formulaParent);
-                range.collapse(true);
-            }
-
-            // Standard Block Split (<p>, <div>, etc.)
+            // 9. Standard Paragraph Split (<p>, <div>)
             e.preventDefault();
             if (!block || block === editor) {
-                this.normalizeDOM(editor);
-                block = this.getClosestBlock(range.startContainer) || editor.firstElementChild;
+                DOM.normalizeDOM(editor);
+                block = DOM.getClosestBlock(range.startContainer, editor) || editor.firstElementChild;
             }
 
             if (block && block !== editor) {
                 range.deleteContents();
-
-                const isAtStart = this.isCaretAtStartOfBlock(block, range);
-                const isAtEnd = this.isCaretAtEndOfBlock(block, range);
-                const isBlockEmpty = this.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr');
+                const isAtStart = SelectionManager.isCaretAtStart(block, range);
+                const isAtEnd = SelectionManager.isCaretAtEnd(block, range);
+                const isBlockEmpty = DOM.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr');
 
                 if (isBlockEmpty) {
                     block.innerHTML = '<br>';
                     const newP = document.createElement('p');
                     newP.innerHTML = '<br>';
                     block.parentNode.insertBefore(newP, block.nextSibling);
-                    this.setCursorToStart(newP);
+                    SelectionManager.setCursorToStart(newP);
                 } else if (isAtStart) {
-                    // Enter at the start of block -> insert empty paragraph above, leave block untouched
                     const newP = document.createElement('p');
                     newP.innerHTML = '<br>';
                     block.parentNode.insertBefore(newP, block);
-                    this.setCursorToStart(block);
+                    SelectionManager.setCursorToStart(block);
                 } else if (isAtEnd) {
-                    // Enter at the end of block -> insert empty paragraph below
                     const newP = document.createElement('p');
                     newP.innerHTML = '<br>';
                     block.parentNode.insertBefore(newP, block.nextSibling);
-                    this.setCursorToStart(newP);
+                    SelectionManager.setCursorToStart(newP);
                 } else {
-                    // Enter in the middle of block -> split into two blocks
                     const afterRange = document.createRange();
                     afterRange.setStart(range.endContainer, range.endOffset);
                     afterRange.setEndAfter(block.lastChild || block);
@@ -589,51 +1038,46 @@
                     if (block.style.cssText) newBlock.style.cssText = block.style.cssText;
 
                     newBlock.appendChild(afterContent);
-                    if (this.isEmpty(newBlock) && !newBlock.querySelector('img, video, audio, iframe, table, hr')) {
+                    if (DOM.isEmpty(newBlock) && !newBlock.querySelector('img, video, audio, iframe, table, hr')) {
                         newBlock.innerHTML = '<br>';
                     }
-
-                    block.parentNode.insertBefore(newBlock, block.nextSibling);
-
-                    if (this.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr')) {
+                    if (DOM.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr')) {
                         block.innerHTML = '<br>';
                     }
 
-                    this.setCursorToStart(newBlock);
+                    block.parentNode.insertBefore(newBlock, block.nextSibling);
+                    SelectionManager.setCursorToStart(newBlock);
                 }
             } else {
                 const newP = document.createElement('p');
                 newP.innerHTML = '<br>';
                 editor.appendChild(newP);
-                this.setCursorToStart(newP);
+                SelectionManager.setCursorToStart(newP);
             }
 
-            this.saveSelection();
+            SelectionManager.save();
             if (typeof saveToHistory === 'function') saveToHistory();
             editor.dispatchEvent(new Event('input', { bubbles: true }));
         },
 
-        /**
-         * Handle Backspace & Delete keys (Clean block merges & atomic embed deletions)
-         */
-        handleBackspaceDeleteKey(e) {
-            if (!this.isEditorActive()) return;
+        handleBackspaceDelete(e) {
+            const editor = DOM.getEditor();
+            if (!editor || (typeof editorMode !== 'undefined' && editorMode !== 'visual')) return;
+
             const sel = window.getSelection();
             if (!sel || !sel.rangeCount) return;
 
             const range = sel.getRangeAt(0);
-            if (!range.collapsed) return; // Browser handles text range deletion cleanly
+            if (!range.collapsed) return; // Browser handles range deletion cleanly
 
             const isBackspace = (e.key === 'Backspace');
-            const editor = this.getEditor();
-            const block = this.getClosestBlock(range.startContainer);
-
+            const block = DOM.getClosestBlock(range.startContainer, editor);
             if (!block || block === editor) return;
 
-            // 0. Protect table cells from structural damage
+            // 0. Protect Table Cells
             const tableCell = (range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentNode).closest('td, th');
-            if (tableCell && this.isInsideEditor(tableCell)) {
-                if (isBackspace && this.isCaretAtStartOfBlock(tableCell, range)) {
+            if (tableCell && DOM.isInside(tableCell, editor)) {
+                if (isBackspace && SelectionManager.isCaretAtStart(tableCell, range)) {
                     e.preventDefault();
                     return;
                 }
@@ -644,47 +1088,44 @@
                 return;
             }
 
-            // 1. Backspace at start of block
-            if (isBackspace && this.isCaretAtStartOfBlock(block, range)) {
+            // 1. Backspace at Start of Block
+            if (isBackspace && SelectionManager.isCaretAtStart(block, range)) {
                 const prevSibling = block.previousElementSibling;
 
                 if (prevSibling) {
                     e.preventDefault();
 
-                    // If previous sibling is a table: do NOT delete table on backspace from below
+                    // Table protection
                     if (prevSibling.tagName === 'TABLE') {
                         if (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
                             block.parentNode.removeChild(block);
-                            const lastCell = prevSibling.querySelector('tbody tr:last-child td:last-child, tr:last-child td:last-child, th:last-child');
-                            if (lastCell) {
-                                this.setCursorToEnd(lastCell);
-                            }
-                            this.saveSelection();
+                            const lastCell = prevSibling.querySelector('tr:last-child td:last-child, tr:last-child th:last-child');
+                            if (lastCell) SelectionManager.setCursorToEnd(lastCell);
+                            SelectionManager.save();
                             if (typeof saveToHistory === 'function') saveToHistory();
                         }
                         return;
                     }
 
-                    // If previous sibling is a formula block: do NOT delete or merge formula block on backspace from below
+                    // Formula block protection
                     if (prevSibling.classList.contains('npblog-formula-block')) {
                         if (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
                             block.parentNode.removeChild(block);
-                            this.setCursorToEnd(prevSibling);
-                            this.saveSelection();
+                            SelectionManager.setCursorToEnd(prevSibling);
+                            SelectionManager.save();
                             if (typeof saveToHistory === 'function') saveToHistory();
                         }
                         return;
                     }
 
-                    // If previous sibling is an atomic media wrapper or HR
+                    // Media wrap / HR protection
                     if (prevSibling.classList.contains('blog-image-align-wrap') || prevSibling.tagName === 'HR') {
                         const isCurrentEmpty = (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe'));
                         if (!isCurrentEmpty) {
-                            // Do not delete media wrapper if current block has text!
                             const beforeMedia = prevSibling.previousElementSibling;
                             if (beforeMedia) {
-                                this.setCursorToEnd(beforeMedia);
-                                this.saveSelection();
+                                SelectionManager.setCursorToEnd(beforeMedia);
+                                SelectionManager.save();
                             }
                             return;
                         }
@@ -692,8 +1133,8 @@
                         if (!prevSibling.classList.contains('align-float-left') && !prevSibling.classList.contains('align-float-right')) {
                             prevSibling.parentNode.removeChild(prevSibling);
                         }
-                        this.normalizeDOM(editor);
-                        this.saveSelection();
+                        DOM.normalizeDOM(editor);
+                        SelectionManager.save();
                         if (typeof saveToHistory === 'function') saveToHistory();
                         return;
                     }
@@ -701,16 +1142,14 @@
                     // Merge current block into previous block
                     const isCurrentEmpty = (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe'));
                     if (isCurrentEmpty) {
-                        this.setCursorToEnd(prevSibling);
+                        SelectionManager.setCursorToEnd(prevSibling);
                         block.parentNode.removeChild(block);
                     } else {
                         const marker = document.createElement('span');
                         marker.id = 'merge-caret-temp';
                         marker.innerHTML = '\uFEFF';
 
-                        if (prevSibling.innerHTML === '<br>') {
-                            prevSibling.innerHTML = '';
-                        }
+                        if (prevSibling.innerHTML === '<br>') prevSibling.innerHTML = '';
                         prevSibling.appendChild(marker);
 
                         while (block.firstChild) {
@@ -723,7 +1162,6 @@
 
                         block.parentNode.removeChild(block);
 
-                        // Position cursor at merge point safely
                         const nextNode = marker.nextSibling;
                         const parent = marker.parentNode;
                         parent.removeChild(marker);
@@ -740,26 +1178,26 @@
                         sel.addRange(newRange);
                     }
 
-                    this.saveSelection();
+                    SelectionManager.save();
                     if (typeof saveToHistory === 'function') saveToHistory();
                     return;
                 } else {
-                    // First block in editor
+                    // First block in editor: convert non-P to P, never delete
                     if (block.tagName !== 'P') {
                         e.preventDefault();
                         const p = document.createElement('p');
                         p.innerHTML = block.innerHTML || '<br>';
                         block.parentNode.replaceChild(p, block);
-                        this.setCursorToStart(p);
-                        this.saveSelection();
+                        SelectionManager.setCursorToStart(p);
+                        SelectionManager.save();
                         if (typeof saveToHistory === 'function') saveToHistory();
                         return;
                     }
                 }
             }
 
-            // 2. Delete key at end of block
-            if (!isBackspace && this.isCaretAtEndOfBlock(block, range)) {
+            // 2. Delete at End of Block
+            if (!isBackspace && SelectionManager.isCaretAtEnd(block, range)) {
                 const nextSibling = block.nextElementSibling;
                 if (nextSibling) {
                     e.preventDefault();
@@ -778,725 +1216,70 @@
                         }
                     }
 
-                    this.saveSelection();
+                    SelectionManager.save();
                     if (typeof saveToHistory === 'function') saveToHistory();
                     return;
                 }
             }
         },
 
-        isCaretAtStartOfBlock(block, range) {
-            if (!block || !range) return false;
-            try {
-                const checkRange = document.createRange();
-                checkRange.setStart(block, 0);
-                checkRange.setEnd(range.startContainer, range.startOffset);
-                const frag = checkRange.cloneContents();
-                if (frag.querySelector('img, video, audio, iframe, hr, table')) return false;
-                return checkRange.toString().replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '').length === 0;
-            } catch (e) {
-                return false;
-            }
-        },
+        handleTab(e) {
+            const editor = DOM.getEditor();
+            if (!editor || (typeof editorMode !== 'undefined' && editorMode !== 'visual')) return false;
 
-        isCaretAtEndOfBlock(block, range) {
-            if (!block || !range) return false;
-            try {
-                const checkRange = document.createRange();
-                checkRange.setStart(range.endContainer, range.endOffset);
-                checkRange.setEndAfter(block.lastChild || block);
-                const frag = checkRange.cloneContents();
-                if (frag.querySelector('img, video, audio, iframe, hr, table')) return false;
-                return checkRange.toString().replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '').length === 0;
-            } catch (e) {
-                return false;
-            }
-        },
-
-        /**
-         * Apply Inline Formatting (Bold, Italic, Underline, Strike, etc.)
-         */
-        formatInline(formatType, options = {}) {
-            if (!this.restoreFocus()) return;
-            const targetTag = INLINE_FORMAT_MAP[formatType.toLowerCase()] || formatType.toUpperCase();
             const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
+            if (!sel || !sel.rangeCount) return false;
 
             const range = sel.getRangeAt(0);
+            const container = range.startContainer;
+            const cell = (container.nodeType === Node.ELEMENT_NODE ? container : container.parentNode).closest('td, th');
+            if (!cell || !DOM.isInside(cell, editor)) return false;
 
-            if (range.collapsed) {
-                // If collapsed, check if we are inside the tag to unwrap/escape
-                const existing = this.findAncestorTag(range.startContainer, targetTag);
-                if (existing) {
-                    const existingText = existing.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '');
-                    if (existingText.length === 0 && !existing.querySelector('img, video, audio, iframe')) {
-                        // User toggled off an empty format tag -> remove it completely
-                        existing.parentNode.removeChild(existing);
-                        this.saveSelection();
-                        this.updateActiveButtons();
-                        if (typeof saveToHistory === 'function') saveToHistory();
-                        return;
-                    }
+            e.preventDefault();
+            const table = cell.closest('table');
+            if (!table) return false;
 
-                    // Escape formatting tag cleanly into normal text
-                    const afterRange = document.createRange();
-                    afterRange.setStart(range.startContainer, range.startOffset);
-                    afterRange.setEndAfter(existing.lastChild || existing);
-                    const afterContent = afterRange.extractContents();
+            const allCells = Array.from(new Set(table.querySelectorAll('thead th, thead td, tbody td, tbody th, tr td, tr th')));
+            const idx = allCells.indexOf(cell);
 
-                    const textNode = document.createTextNode('\u200B');
-                    existing.parentNode.insertBefore(textNode, existing.nextSibling);
-
-                    if (afterContent.hasChildNodes() && !this.isEmpty(afterContent)) {
-                        const cloned = existing.cloneNode(false);
-                        cloned.appendChild(afterContent);
-                        existing.parentNode.insertBefore(cloned, textNode.nextSibling);
-                    }
-
-                    const newRange = document.createRange();
-                    newRange.setStart(textNode, 1);
-                    newRange.collapse(true);
-                    sel.removeAllRanges();
-                    sel.addRange(newRange);
-                    this.saveSelection();
-                } else {
-                    // Check if current container is already an empty inline tag
-                    let container = range.startContainer;
-                    let emptyInline = null;
-                    if (container.nodeType === Node.TEXT_NODE && container.nodeValue.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length === 0) {
-                        const parent = container.parentNode;
-                        if (parent && parent.id !== 'contentVisual' && !BLOCK_TAGS.includes(parent.tagName.toUpperCase())) {
-                            emptyInline = parent;
-                        }
-                    } else if (container.nodeType === Node.ELEMENT_NODE && !BLOCK_TAGS.includes(container.tagName.toUpperCase()) && container.id !== 'contentVisual') {
-                        if (container.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length === 0) {
-                            emptyInline = container;
-                        }
-                    }
-
-                    if (emptyInline) {
-                        const el = document.createElement(targetTag);
-                        el.appendChild(document.createTextNode('\u200B'));
-                        emptyInline.parentNode.replaceChild(el, emptyInline);
-                        this.setCursorToStart(el);
-                        this.saveSelection();
-                    } else {
-                        const el = document.createElement(targetTag);
-                        el.appendChild(document.createTextNode('\u200B'));
-                        range.insertNode(el);
-                        this.setCursorToStart(el);
-                        this.saveSelection();
-                    }
-                }
-                this.updateActiveButtons();
-                if (typeof saveToHistory === 'function') saveToHistory();
-                return;
-            }
-
-            // Non-collapsed selection
-            const isApplied = this.isFormatAppliedToRange(range, targetTag);
-
-            if (isApplied) {
-                // Remove format from range
-                this.removeFormatFromRange(range, targetTag);
-            } else {
-                // Apply format to range
-                try {
-                    const contents = range.extractContents();
-                    const wrapper = document.createElement(targetTag);
-                    wrapper.appendChild(contents);
-                    range.insertNode(wrapper);
-
-                    const newRange = document.createRange();
-                    newRange.selectNodeContents(wrapper);
-                    sel.removeAllRanges();
-                    sel.addRange(newRange);
-                } catch (e) {
-                    console.warn('Range formatting fallback:', e);
-                }
-            }
-
-            this.saveSelection();
-            this.updateActiveButtons();
-            if (typeof saveToHistory === 'function') saveToHistory();
-        },
-
-        findAncestorTag(node, tagName) {
-            const editor = this.getEditor();
-            let curr = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
-            const target = tagName.toUpperCase();
-            while (curr && curr !== editor) {
-                if (curr.nodeType === Node.ELEMENT_NODE && curr.tagName.toUpperCase() === target) {
-                    return curr;
-                }
-                curr = curr.parentNode;
-            }
-            return null;
-        },
-
-        isFormatAppliedToRange(range, tagName) {
-            const ancestor = this.findAncestorTag(range.commonAncestorContainer, tagName);
-            if (ancestor) return true;
-
-            const startAncestor = this.findAncestorTag(range.startContainer, tagName);
-            const endAncestor = this.findAncestorTag(range.endContainer, tagName);
-            return !!(startAncestor && endAncestor);
-        },
-
-        removeFormatFromRange(range, tagName) {
-            const target = tagName.toUpperCase();
-            const editor = this.getEditor();
-            const startAncestor = this.findAncestorTag(range.startContainer, target);
-
-            if (startAncestor) {
-                const parent = startAncestor.parentNode;
-                while (startAncestor.firstChild) {
-                    parent.insertBefore(startAncestor.firstChild, startAncestor);
-                }
-                parent.removeChild(startAncestor);
-            }
-
-            editor.querySelectorAll(target).forEach(el => {
-                if (range.intersectsNode(el)) {
-                    const parent = el.parentNode;
-                    while (el.firstChild) {
-                        parent.insertBefore(el.firstChild, el);
-                    }
-                    parent.removeChild(el);
-                }
-            });
-        },
-
-        /**
-         * Apply Block Format (H1 - H6, P, Blockquote)
-         */
-        formatBlock(tag) {
-            if (!this.restoreFocus()) return;
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-
-            const range = sel.getRangeAt(0);
-            let block = this.getClosestBlock(range.startContainer);
-            const targetTag = tag.toUpperCase();
-
-            if (block && block.id !== 'contentVisual') {
-                if (block.tagName.toUpperCase() === targetTag) {
-                    // Toggle back to <p>
-                    const p = document.createElement('p');
-                    p.innerHTML = block.innerHTML;
-                    block.parentNode.replaceChild(p, block);
-                    this.setCursorToEnd(p);
-                } else {
-                    const newBlock = document.createElement(targetTag);
-                    newBlock.innerHTML = block.innerHTML;
-                    block.parentNode.replaceChild(newBlock, block);
-                    this.setCursorToEnd(newBlock);
+            if (e.shiftKey) {
+                if (idx > 0) {
+                    SelectionManager.setCursorToStart(allCells[idx - 1]);
+                    SelectionManager.save();
                 }
             } else {
-                const newBlock = document.createElement(targetTag);
-                newBlock.innerHTML = '<br>';
-                range.insertNode(newBlock);
-                this.setCursorToStart(newBlock);
-            }
-
-            this.saveSelection();
-            this.updateActiveButtons();
-            if (typeof saveToHistory === 'function') saveToHistory();
-        },
-
-        /**
-         * Apply Text Alignment
-         */
-        setTextAlignment(side) {
-            if (typeof editorMode !== 'undefined' && editorMode === 'code') {
-                const ta = this.getCodeEditor();
-                if (!ta) return;
-                const start = ta.selectionStart;
-                const end = ta.selectionEnd;
-                const text = ta.value.substring(start, end);
-                const html = `<div style="text-align: ${side};">${text || '&nbsp;'}</div>`;
-                ta.value = ta.value.substring(0, start) + html + ta.value.substring(end);
-                return;
-            }
-
-            // Если активно глобальное выделение медиа-элемента, выравниваем его с анимацией
-            if (typeof activeTarget !== 'undefined' && activeTarget && typeof applyMediaAlignment === 'function') {
-                const mediaAlignWrap = activeTarget.closest('.blog-image-align-wrap');
-                if (mediaAlignWrap) {
-                    applyMediaAlignment(mediaAlignWrap, side, true, () => {
-                        if (typeof saveToHistory === 'function') saveToHistory();
-                    });
-                    return;
+                if (idx < allCells.length - 1) {
+                    SelectionManager.setCursorToStart(allCells[idx + 1]);
+                    SelectionManager.save();
+                } else if (typeof addTableRow === 'function') {
+                    window.contextMenuTableRow = cell.closest('tr');
+                    addTableRow();
                 }
             }
+            return true;
+        }
+    };
 
-            if (!this.restoreFocus()) return;
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-
-            const range = sel.getRangeAt(0);
-            const block = this.getClosestBlock(range.startContainer);
-
-            if (block && block.id !== 'contentVisual') {
-                const alignWrap = block.classList.contains('blog-image-align-wrap')
-                    ? block
-                    : (block.closest ? block.closest('.blog-image-align-wrap') : null);
-
-                if (alignWrap && typeof applyMediaAlignment === 'function') {
-                    applyMediaAlignment(alignWrap, side, true, () => {
-                        if (typeof saveToHistory === 'function') saveToHistory();
-                    });
-                    return;
-                } else {
-                    block.style.textAlign = side;
-                }
-            } else {
-                const div = document.createElement('div');
-                div.style.textAlign = side;
-                if (!range.collapsed) {
-                    try {
-                        div.appendChild(range.extractContents());
-                        range.insertNode(div);
-                    } catch (e) { }
-                } else {
-                    div.innerHTML = '<br>';
-                    range.insertNode(div);
-                }
-            }
-
-            this.saveSelection();
-            if (typeof saveToHistory === 'function') saveToHistory();
-        },
-
-        /**
-         * Apply Inline Style (Font Family, Font Size, Color)
-         */
-        applyInlineStyle(styleProp, value) {
-            if (!this.restoreFocus()) return;
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-
-            const range = sel.getRangeAt(0);
-
-            // Clean existing style property from an element and unwrap useless empty spans
-            const cleanElementStyle = (el, prop) => {
-                if (el.style && el.style[prop]) {
-                    el.style[prop] = '';
-                    const remainingStyle = el.getAttribute('style');
-                    if (!remainingStyle || remainingStyle.trim() === '' || remainingStyle.trim() === ';') {
-                        el.removeAttribute('style');
-                    }
-                }
-                if (prop === 'color' && el.hasAttribute('color')) {
-                    el.removeAttribute('color');
-                }
-                if (prop === 'fontSize' && el.hasAttribute('size')) {
-                    el.removeAttribute('size');
-                }
-                if (prop === 'fontFamily' && el.hasAttribute('face')) {
-                    el.removeAttribute('face');
-                }
-            };
-
-            const cleanDescendantStyles = (root, prop) => {
-                if (!root) return;
-                const elements = Array.from(root.querySelectorAll('*'));
-                elements.forEach(el => {
-                    cleanElementStyle(el, prop);
-                    if (el.tagName === 'SPAN' && el.attributes.length === 0 && !el.id && !el.className) {
-                        const parent = el.parentNode;
-                        if (parent) {
-                            while (el.firstChild) {
-                                parent.insertBefore(el.firstChild, el);
-                            }
-                            parent.removeChild(el);
-                        }
-                    }
-                });
-            };
-
-            if (range.collapsed) {
-                let container = range.startContainer;
-                let emptySpan = null;
-                if (container.nodeType === Node.TEXT_NODE && container.nodeValue.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length === 0) {
-                    if (container.parentNode && container.parentNode.tagName === 'SPAN') {
-                        emptySpan = container.parentNode;
-                    }
-                } else if (container.nodeType === Node.ELEMENT_NODE && container.tagName === 'SPAN') {
-                    if (container.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length === 0) {
-                        emptySpan = container;
-                    }
-                }
-
-                if (emptySpan) {
-                    emptySpan.style[styleProp] = value;
-                    this.setCursorToStart(emptySpan);
-                } else {
-                    const span = document.createElement('span');
-                    span.style[styleProp] = value;
-                    span.appendChild(document.createTextNode('\u200B'));
-                    range.insertNode(span);
-                    this.setCursorToStart(span);
-                }
-            } else {
-                try {
-                    const editor = this.getEditor();
-
-                    // Check if range is completely inside an existing SPAN that has this styleProp
-                    let ancestorSpan = range.commonAncestorContainer;
-                    if (ancestorSpan.nodeType === Node.TEXT_NODE) {
-                        ancestorSpan = ancestorSpan.parentNode;
-                    }
-                    while (ancestorSpan && ancestorSpan !== editor && !BLOCK_TAGS.includes(ancestorSpan.tagName.toUpperCase())) {
-                        if (ancestorSpan.tagName === 'SPAN' && ancestorSpan.style && ancestorSpan.style[styleProp]) {
-                            break;
-                        }
-                        ancestorSpan = ancestorSpan.parentNode;
-                    }
-                    if (ancestorSpan && (ancestorSpan === editor || BLOCK_TAGS.includes(ancestorSpan.tagName.toUpperCase()) || ancestorSpan.tagName !== 'SPAN')) {
-                        ancestorSpan = null;
-                    }
-
-                    const selectedText = range.toString();
-
-                    // Scenario 1: Selection covers the entire text of an existing styled span
-                    if (ancestorSpan && ancestorSpan.textContent.trim() === selectedText.trim() && selectedText.trim().length > 0) {
-                        ancestorSpan.style[styleProp] = value;
-                        cleanDescendantStyles(ancestorSpan, styleProp);
-                        const newRange = document.createRange();
-                        newRange.selectNodeContents(ancestorSpan);
-                        sel.removeAllRanges();
-                        sel.addRange(newRange);
-                    } else {
-                        // Scenario 2: General selection
-                        const contents = range.extractContents();
-
-                        // Clean any previous occurrences of this styleProp in the extracted content
-                        cleanDescendantStyles(contents, styleProp);
-
-                        // Check if contents contains block elements (multi-paragraph selection)
-                        const blockElements = contents.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, div, blockquote');
-                        if (blockElements.length > 0) {
-                            blockElements.forEach(blk => {
-                                if (blk.textContent.trim().length > 0) {
-                                    cleanDescendantStyles(blk, styleProp);
-                                    const blkSpan = document.createElement('span');
-                                    blkSpan.style[styleProp] = value;
-                                    while (blk.firstChild) {
-                                        blkSpan.appendChild(blk.firstChild);
-                                    }
-                                    blk.appendChild(blkSpan);
-                                }
-                            });
-                            range.insertNode(contents);
-                        } else {
-                            const span = document.createElement('span');
-                            span.style[styleProp] = value;
-                            span.appendChild(contents);
-                            range.insertNode(span);
-
-                            // Clean up parent nesting: ensure span is not trapped inside an ancestor with the same styleProp
-                            let parent = span.parentNode;
-                            while (parent && parent !== editor && !BLOCK_TAGS.includes(parent.tagName.toUpperCase())) {
-                                if (parent.tagName === 'SPAN' && parent.style && parent.style[styleProp]) {
-                                    const grandparent = parent.parentNode;
-                                    if (!grandparent) break;
-
-                                    const hasOtherContent = Array.from(parent.childNodes).some(child => {
-                                        if (child === span) return false;
-                                        return child.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '').length > 0 ||
-                                            (child.nodeType === Node.ELEMENT_NODE && child.querySelector && child.querySelector('img, video, audio, iframe'));
-                                    });
-
-                                    if (!hasOtherContent) {
-                                        grandparent.replaceChild(span, parent);
-                                        parent = grandparent;
-                                        continue;
-                                    } else {
-                                        const beforeNodes = [];
-                                        let curr = parent.firstChild;
-                                        while (curr && curr !== span) {
-                                            const next = curr.nextSibling;
-                                            beforeNodes.push(curr);
-                                            curr = next;
-                                        }
-
-                                        const afterNodes = [];
-                                        curr = span.nextSibling;
-                                        while (curr) {
-                                            const next = curr.nextSibling;
-                                            afterNodes.push(curr);
-                                            curr = next;
-                                        }
-
-                                        if (beforeNodes.length > 0) {
-                                            const beforeParent = parent.cloneNode(false);
-                                            beforeNodes.forEach(node => beforeParent.appendChild(node));
-                                            if (beforeParent.textContent.length > 0) {
-                                                grandparent.insertBefore(beforeParent, parent);
-                                            }
-                                        }
-
-                                        grandparent.insertBefore(span, parent);
-
-                                        if (afterNodes.length > 0) {
-                                            const afterParent = parent.cloneNode(false);
-                                            afterNodes.forEach(node => afterParent.appendChild(node));
-                                            if (afterParent.textContent.length > 0) {
-                                                grandparent.insertBefore(afterParent, parent);
-                                            }
-                                        }
-
-                                        grandparent.removeChild(parent);
-                                        parent = grandparent;
-                                        continue;
-                                    }
-                                }
-                                parent = parent.parentNode;
-                            }
-
-                            const newRange = document.createRange();
-                            newRange.selectNodeContents(span);
-                            sel.removeAllRanges();
-                            sel.addRange(newRange);
-                        }
-                    }
-                } catch (e) {
-                    console.error('Style application error:', e);
-                }
-            }
-
-            this.saveSelection();
-            this.updateActiveButtons();
-            if (typeof saveToHistory === 'function') saveToHistory();
-        },
-
-        /**
-         * Insert Arbitrary HTML at Caret / Selection
-         */
-        insertHTML(html, isBlock = false) {
-            if (!this.restoreFocus()) return;
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-
-            const range = sel.getRangeAt(0);
-            range.deleteContents();
-
-            const temp = document.createElement('div');
-            temp.innerHTML = html;
-            const frag = document.createDocumentFragment();
-            let node, lastNode;
-
-            while ((node = temp.firstChild)) {
-                lastNode = frag.appendChild(node);
-            }
-
-            range.insertNode(frag);
-
-            if (lastNode) {
-                range.setStartAfter(lastNode);
-                range.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-
-            this.saveSelection();
-            if (typeof saveToHistory === 'function') saveToHistory();
-        },
-
-        /**
-         * Insert Block Media / Table / Embed with Auto-Continuation Paragraph
-         */
-        insertBlockMedia(html, targetRange) {
-            const editor = this.getEditor();
-            if (!editor) return;
-
-            const r = targetRange || window.savedRange || savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null);
-            this.restoreFocus(r);
-
-            const sel = window.getSelection();
-            let range = (r && this.isInsideEditor(r.commonAncestorContainer)) ? r : ((sel && sel.rangeCount > 0 && this.isInsideEditor(sel.getRangeAt(0).commonAncestorContainer)) ? sel.getRangeAt(0) : null);
-
-            const temp = document.createElement('div');
-            temp.innerHTML = html;
-            const frag = document.createDocumentFragment();
-            let node, lastNode;
-
-            while ((node = temp.firstChild)) {
-                lastNode = frag.appendChild(node);
-            }
-
-            const emptyP = document.createElement('p');
-            emptyP.innerHTML = '<br>';
-
-            if (!range || !this.isInsideEditor(range.commonAncestorContainer)) {
-                editor.appendChild(frag);
-                editor.appendChild(emptyP);
-                this.setCursorToStart(emptyP);
-            } else {
-                range.deleteContents();
-                let block = this.getClosestBlock(range.startContainer);
-
-                if (!block || block === editor) {
-                    range.insertNode(frag);
-                    if (lastNode && lastNode.parentNode) {
-                        if (lastNode.nextSibling) {
-                            this.setCursorToStart(lastNode.nextSibling);
-                        } else {
-                            lastNode.parentNode.insertBefore(emptyP, lastNode.nextSibling);
-                            this.setCursorToStart(emptyP);
-                        }
-                    } else {
-                        editor.appendChild(emptyP);
-                        this.setCursorToStart(emptyP);
-                    }
-                } else if (this.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr')) {
-                    // Current block is empty paragraph -> replace with block media
-                    const parent = block.parentNode;
-                    const next = block.nextSibling;
-                    parent.insertBefore(frag, block);
-                    parent.removeChild(block);
-                    if (next) {
-                        this.setCursorToStart(next);
-                    } else {
-                        parent.appendChild(emptyP);
-                        this.setCursorToStart(emptyP);
-                    }
-                } else if (this.isCaretAtStartOfBlock(block, range)) {
-                    // At start of block -> insert media before block
-                    block.parentNode.insertBefore(frag, block);
-                    this.setCursorToStart(block);
-                } else if (this.isCaretAtEndOfBlock(block, range)) {
-                    // At end of block -> insert media after block
-                    const parent = block.parentNode;
-                    const next = block.nextSibling;
-                    if (next) {
-                        parent.insertBefore(frag, next);
-                        this.setCursorToStart(next);
-                    } else {
-                        parent.appendChild(frag);
-                        parent.appendChild(emptyP);
-                        this.setCursorToStart(emptyP);
-                    }
-                } else {
-                    // In the middle of block -> split block, insert media between halves
-                    const afterRange = document.createRange();
-                    afterRange.setStart(range.endContainer, range.endOffset);
-                    afterRange.setEndAfter(block.lastChild || block);
-                    const afterContent = afterRange.extractContents();
-
-                    const newBlock = document.createElement(block.tagName === 'DIV' ? 'div' : 'p');
-                    if (block.className) newBlock.className = block.className;
-                    if (block.style.cssText) newBlock.style.cssText = block.style.cssText;
-                    newBlock.appendChild(afterContent);
-
-                    const parent = block.parentNode;
-                    const next = block.nextSibling;
-
-                    parent.insertBefore(frag, next);
-                    parent.insertBefore(newBlock, next);
-                    this.setCursorToStart(newBlock);
-                }
-            }
-
-            this.saveSelection();
-            if (typeof saveToHistory === 'function') saveToHistory();
-        },
-
-        insertHorizontalRule(targetRange) {
-            this.insertBlockMedia('<hr>', targetRange);
-        },
-
-        /**
-         * Clean up empty inline tags, unwrap plain spans, and remove stray zero-width chars
-         */
-        cleanDOMArtifacts(root, skipSelection = false) {
-            const container = root || this.getEditor();
-            if (!container) return;
-
-            const sel = window.getSelection();
-            const activeNode = (skipSelection && sel && sel.rangeCount > 0) ? sel.getRangeAt(0).startContainer : null;
-
-            // 1. Remove zero-width spaces from text nodes where not needed
-            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
-            let textNode;
-            const toRemove = [];
-            while ((textNode = walker.nextNode())) {
-                if (activeNode && textNode === activeNode) continue;
-                if (textNode.parentElement && textNode.parentElement.closest('.npblog-formula, .npblog-formula-block, .katex, math')) continue;
-                const val = textNode.nodeValue;
-                if (/[\u200B\u200C\u200D\uFEFF]/.test(val)) {
-                    const cleaned = val.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
-                    if (cleaned.length === 0) {
-                        toRemove.push(textNode);
-                    } else {
-                        textNode.nodeValue = cleaned;
-                    }
-                }
-            }
-            toRemove.forEach(node => {
-                if (node.parentNode) node.parentNode.removeChild(node);
-            });
-
-            // 2. Unwrap useless spans without styling, class, or id
-            container.querySelectorAll('span').forEach(span => {
-                if (span.id === 'customCaret' || span.dataset.npblogAnchor) return;
-                if (span.closest('.npblog-formula, .npblog-formula-block, .katex, math')) return;
-                const hasStyle = span.getAttribute('style') && span.getAttribute('style').trim().length > 0;
-                const hasClass = span.getAttribute('class') && span.getAttribute('class').trim().length > 0;
-                const hasId = span.getAttribute('id') && span.getAttribute('id').trim().length > 0;
-                if (!hasStyle && !hasClass && !hasId && span.attributes.length === 0) {
-                    const parent = span.parentNode;
-                    if (parent) {
-                        while (span.firstChild) {
-                            parent.insertBefore(span.firstChild, span);
-                        }
-                        parent.removeChild(span);
-                    }
-                }
-            });
-
-            // 3. Recursively remove empty inline formatting tags
-            const inlineSelectors = 'span, strong, b, em, i, u, s, strike, del, sup, sub, code, mark, a:not([href])';
-            let changed = true;
-            let passes = 0;
-            while (changed && passes < 6) {
-                changed = false;
-                passes++;
-                container.querySelectorAll(inlineSelectors).forEach(el => {
-                    if (activeNode && el.contains(activeNode)) return;
-                    if (el.closest('.npblog-formula, .npblog-formula-block, .katex, math')) return;
-                    if (el.id === 'customCaret' || el.dataset.npblogAnchor || el.classList.contains('npblog-formula') || el.classList.contains('npblog-formula-block') || el.hasAttribute('data-formula') || el.classList.contains('katex')) return;
-                    if (el.querySelector('img, video, audio, iframe, table, svg, canvas, [data-npblog-anchor], [data-formula], .npblog-formula, .npblog-formula-block, .katex, math')) return;
-                    const text = el.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '');
-                    if (text.length === 0) {
-                        if (el.parentNode) {
-                            el.parentNode.removeChild(el);
-                            changed = true;
-                        }
-                    }
-                });
-            }
-        },
-
-        /**
-         * Clean HTML for saving (removes runtime widgets, overlays, resizers, temporary attributes)
-         */
+    /**
+     * =========================================================================
+     * SERIALIZATION & FORMATTER (Clean Save & Pretty Indent)
+     * =========================================================================
+     */
+    const Serializer = {
         cleanContentForSave(html) {
             if (!html) return '';
             const temp = document.createElement('div');
             temp.innerHTML = html;
 
-            // Remove runtime UI elements
-            const elementsToRemove = temp.querySelectorAll(
+            // Remove runtime editor widgets & overlays
+            const toRemove = temp.querySelectorAll(
                 '.image-toolbar, .image-align-dropdown, .image-size-indicator, ' +
                 '.image-resize-handle, .blog-image-overlay, .column-resizer, #customCaret, .media-upload-placeholder'
             );
-            elementsToRemove.forEach(el => el.parentNode && el.parentNode.removeChild(el));
+            toRemove.forEach(el => el.parentNode && el.parentNode.removeChild(el));
 
-            // Remove runtime data attributes
-            const widgets = temp.querySelectorAll('[data-image-id], [data-media-id], [data-media-type], table[data-resizers-added], [data-wrap-animating]');
-            widgets.forEach(el => {
+            // Remove temporary runtime attributes
+            temp.querySelectorAll('[data-image-id], [data-media-id], [data-media-type], table[data-resizers-added], [data-wrap-animating]').forEach(el => {
                 el.removeAttribute('data-image-id');
                 el.removeAttribute('data-media-id');
                 el.removeAttribute('data-media-type');
@@ -1504,118 +1287,95 @@
                 el.removeAttribute('data-wrap-animating');
             });
 
-            // Strip any temporary animation transform/transition inline styles
+            // Strip runtime animation styles
             temp.querySelectorAll('[style*="transform"], [style*="transition"], [style*="will-change"]').forEach(el => {
                 el.style.transform = '';
                 el.style.transition = '';
                 el.style.willChange = '';
-                const styleAttr = el.getAttribute('style');
-                if (styleAttr !== null && styleAttr.trim() === '') {
-                    el.removeAttribute('style');
-                }
+                const rem = el.getAttribute('style');
+                if (rem !== null && rem.trim() === '') el.removeAttribute('style');
             });
 
-            // Remove contenteditable attributes from cells or blocks, but preserve on non-editable widgets
+            // Preserve contenteditable="false" ONLY on protected widgets
             temp.querySelectorAll('[contenteditable]').forEach(el => {
-                if (el.getAttribute('contenteditable') === 'false' && (el.classList.contains('npblog-formula') || el.classList.contains('npblog-formula-block') || el.hasAttribute('data-formula') || el.classList.contains('code-block') || el.classList.contains('custom-blog-btn'))) {
+                if (el.getAttribute('contenteditable') === 'false' && (
+                    el.classList.contains('npblog-formula') ||
+                    el.classList.contains('npblog-formula-block') ||
+                    el.hasAttribute('data-formula') ||
+                    el.classList.contains('code-block') ||
+                    el.classList.contains('custom-blog-btn')
+                )) {
                     return;
                 }
                 el.removeAttribute('contenteditable');
             });
 
-            // Remove selection markers
             temp.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
 
-            // Shelter formula elements directly from DOM so they are never touched by cleanDOMArtifacts or regexes
-            const formulaSaveBlocks = [];
-            temp.querySelectorAll('.npblog-formula, .npblog-formula-block, [data-formula]').forEach(formulaEl => {
-                if (formulaEl.parentElement && formulaEl.parentElement.closest('.npblog-formula, .npblog-formula-block, [data-formula]')) {
-                    return;
-                }
-                const idx = formulaSaveBlocks.length;
-                formulaSaveBlocks.push(formulaEl.outerHTML);
+            // Shelter formula elements during cleanup
+            const formulaBlocks = [];
+            temp.querySelectorAll('.npblog-formula, .npblog-formula-block, [data-formula]').forEach(fEl => {
+                if (fEl.parentElement && fEl.parentElement.closest('.npblog-formula, .npblog-formula-block, [data-formula]')) return;
+                const idx = formulaBlocks.length;
+                formulaBlocks.push(fEl.outerHTML);
                 const placeholder = document.createTextNode('___FORMULA_SAVE_HOLDER_' + idx + '___');
-                formulaEl.parentNode.replaceChild(placeholder, formulaEl);
+                fEl.parentNode.replaceChild(placeholder, fEl);
             });
 
-            // Clean DOM artifacts: zero-width spaces, empty inline elements, useless spans
-            this.cleanDOMArtifacts(temp, false);
+            DOM.cleanEmptyInline(temp, false);
 
-            // Remove stray empty paragraphs immediately following collapsible blocks (spoilers)
-            temp.querySelectorAll('details.spoiler-block').forEach(spoiler => {
-                let next = spoiler.nextElementSibling;
-                while (next && next.tagName === 'P' && this.isEmpty(next)) {
-                    const toRemove = next;
-                    next = next.nextElementSibling;
-                    toRemove.parentNode.removeChild(toRemove);
-                }
+            // Normalize empty paragraphs to have <br>
+            temp.querySelectorAll('p, div').forEach(b => {
+                if (b.innerHTML.trim() === '') b.innerHTML = '<br>';
             });
 
-            // Ensure empty paragraphs and blocks contain at least a <br>
-            temp.querySelectorAll('p, div').forEach(block => {
-                if (block.innerHTML.trim() === '') {
-                    block.innerHTML = '<br>';
-                }
-            });
-
-            if (temp.children.length === 0 && temp.textContent.trim() === '') {
-                return '';
-            }
-            if (temp.children.length === 1 && temp.firstElementChild.tagName === 'P' && this.isEmpty(temp.firstElementChild)) {
-                return '';
-            }
+            if (temp.children.length === 0 && temp.textContent.trim() === '') return '';
+            if (temp.children.length === 1 && temp.firstElementChild.tagName === 'P' && DOM.isEmpty(temp.firstElementChild)) return '';
 
             let cleaned = temp.innerHTML.replace(/(?:[?&]|&amp;)t=\d+/g, '');
 
-            // Second-pass regex safety cleanup for any leftover empty inline tags
+            // Second pass regex cleanup for stray empty tags
             let prevCleaned;
             do {
                 prevCleaned = cleaned;
                 cleaned = cleaned.replace(/<(strong|b|em|i|u|s|strike|del|sup|sub|code|span)(?:\s+[^>]*)?>\s*(?:&nbsp;|\u200B|\uFEFF)?\s*<\/\1>/gi, '');
             } while (cleaned !== prevCleaned);
 
-            // Normalize empty paragraphs without content to have <br> instead of deleting them
             cleaned = cleaned.replace(/<p(?:\s+[^>]*)?>\s*<\/p>/gi, '<p><br></p>');
 
             let formatted = this.formatHTML(cleaned);
 
             // Restore sheltered formulas
-            for (let i = 0; i < formulaSaveBlocks.length; i++) {
-                formatted = formatted.replace('___FORMULA_SAVE_HOLDER_' + i + '___', formulaSaveBlocks[i]);
+            for (let i = 0; i < formulaBlocks.length; i++) {
+                formatted = formatted.replace('___FORMULA_SAVE_HOLDER_' + i + '___', formulaBlocks[i]);
             }
 
             return formatted;
         },
 
-        /**
-         * Tree-Based Formatter with Tag Indentation preserving <pre> blocks
-         */
         formatHTML(html) {
             if (!html) return '';
 
             let formulaBlocks = [];
             let formatted = html;
 
-            // Shelter formula elements from block indentation/splitting using DOM extraction if raw formulas exist
             if (typeof document !== 'undefined' && (formatted.indexOf('npblog-formula') !== -1 || formatted.indexOf('data-formula') !== -1)) {
                 try {
                     const tempDoc = document.createElement('div');
                     tempDoc.innerHTML = formatted;
-                    tempDoc.querySelectorAll('.npblog-formula, .npblog-formula-block, [data-formula]').forEach(formulaEl => {
-                        if (formulaEl.parentElement && formulaEl.parentElement.closest('.npblog-formula, .npblog-formula-block, [data-formula]')) {
-                            return;
-                        }
+                    tempDoc.querySelectorAll('.npblog-formula, .npblog-formula-block, [data-formula]').forEach(fEl => {
+                        if (fEl.parentElement && fEl.parentElement.closest('.npblog-formula, .npblog-formula-block, [data-formula]')) return;
                         const idx = formulaBlocks.length;
-                        formulaBlocks.push(formulaEl.outerHTML);
+                        formulaBlocks.push(fEl.outerHTML);
                         const placeholder = document.createTextNode('___FORMULA_BLOCK_HOLDER_' + idx + '___');
-                        formulaEl.parentNode.replaceChild(placeholder, formulaEl);
+                        fEl.parentNode.replaceChild(placeholder, fEl);
                     });
                     formatted = tempDoc.innerHTML;
                 } catch (e) { }
             }
 
             let preBlocks = [];
-            formatted = formatted.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, function (match) {
+            formatted = formatted.replace(/<pre[^>]*>[\s\S]*?<\/pre>/gi, match => {
                 preBlocks.push(match);
                 return '___PRE_BLOCK_HOLDER_' + (preBlocks.length - 1) + '___';
             });
@@ -1671,15 +1431,9 @@
                     }
                 }
 
-                if (isClosing) {
-                    pad = Math.max(0, pad - 1);
-                }
-
+                if (isClosing) pad = Math.max(0, pad - 1);
                 result.push('    '.repeat(pad) + line);
-
-                if (isOpening) {
-                    pad++;
-                }
+                if (isOpening) pad++;
             }
 
             let finalHtml = result.join('\n');
@@ -1691,11 +1445,190 @@
             }
 
             return finalHtml.trim();
+        }
+    };
+
+    /**
+     * =========================================================================
+     * CORE VISUAL ENGINE OBJECT
+     * =========================================================================
+     */
+    const VisualEngine = {
+        getEditor: DOM.getEditor,
+        getCodeEditor: DOM.getCodeEditor,
+        isInsideEditor: DOM.isInside,
+        isEmpty: DOM.isEmpty,
+        getClosestBlock: DOM.getClosestBlock,
+        normalizeDOM: DOM.normalizeDOM,
+        cleanDOMArtifacts: DOM.cleanEmptyInline,
+
+        isEditorActive() {
+            return typeof editorMode !== 'undefined' && editorMode === 'visual';
+        },
+
+        isSelectionInEditor() {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return false;
+            const range = sel.getRangeAt(0);
+            return range && range.commonAncestorContainer ? DOM.isInside(range.commonAncestorContainer, DOM.getEditor()) : false;
+        },
+
+        saveSelection: SelectionManager.save.bind(SelectionManager),
+        restoreFocus: SelectionManager.restore.bind(SelectionManager),
+        setCursorToStart: SelectionManager.setCursorToStart.bind(SelectionManager),
+        setCursorToEnd: SelectionManager.setCursorToEnd.bind(SelectionManager),
+        isCaretAtStartOfBlock: SelectionManager.isCaretAtStart.bind(SelectionManager),
+        isCaretAtEndOfBlock: SelectionManager.isCaretAtEnd.bind(SelectionManager),
+        getSelectionOffsets: SelectionManager.getOffsets.bind(SelectionManager),
+        setSelectionOffsets: SelectionManager.setOffsets.bind(SelectionManager),
+
+        formatInline: InlineFormatter.formatInline.bind(InlineFormatter),
+        applyInlineStyle: InlineFormatter.applyInlineStyle.bind(InlineFormatter),
+        findAncestorTag: InlineFormatter.findAncestor.bind(InlineFormatter),
+        isFormatAppliedToRange: InlineFormatter.isFormatActive.bind(InlineFormatter),
+        removeFormatFromRange: InlineFormatter.removeFormat.bind(InlineFormatter),
+
+        formatBlock: BlockFormatter.formatBlock.bind(BlockFormatter),
+        setTextAlignment: BlockFormatter.alignText.bind(BlockFormatter),
+        insertList: BlockFormatter.insertList.bind(BlockFormatter),
+        insertHorizontalRule: BlockFormatter.insertHorizontalRule.bind(BlockFormatter),
+
+        handleEnterKey: KeyHandler.handleEnter.bind(KeyHandler),
+        handleBackspaceDeleteKey: KeyHandler.handleBackspaceDelete.bind(KeyHandler),
+        handleTabKey: KeyHandler.handleTab.bind(KeyHandler),
+
+        cleanContentForSave: Serializer.cleanContentForSave.bind(Serializer),
+        formatHTML: Serializer.formatHTML.bind(Serializer),
+
+        insertHTML(html, isBlock = false) {
+            if (!SelectionManager.restore()) return;
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+
+            const range = sel.getRangeAt(0);
+            range.deleteContents();
+
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            const frag = document.createDocumentFragment();
+            let node, lastNode;
+
+            while ((node = temp.firstChild)) {
+                lastNode = frag.appendChild(node);
+            }
+
+            range.insertNode(frag);
+
+            if (lastNode) {
+                range.setStartAfter(lastNode);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+
+            SelectionManager.save();
+            if (typeof saveToHistory === 'function') saveToHistory();
+        },
+
+        insertBlockMedia(html, targetRange) {
+            const editor = DOM.getEditor();
+            if (!editor) return;
+
+            const sourceRange = targetRange || window.savedRange || savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null);
+            // Focus handlers save the current selection. Preserve the explicit
+            // drop position independently before restoring editor focus.
+            const r = sourceRange ? sourceRange.cloneRange() : null;
+            SelectionManager.restore(r);
+
+            const sel = window.getSelection();
+            let range = (r && DOM.isInside(r.commonAncestorContainer, editor)) ? r : ((sel && sel.rangeCount > 0 && DOM.isInside(sel.getRangeAt(0).commonAncestorContainer, editor)) ? sel.getRangeAt(0) : null);
+
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            const frag = document.createDocumentFragment();
+            let node, lastNode;
+
+            while ((node = temp.firstChild)) {
+                lastNode = frag.appendChild(node);
+            }
+
+            const emptyP = document.createElement('p');
+            emptyP.innerHTML = '<br>';
+
+            if (!range || !DOM.isInside(range.commonAncestorContainer, editor)) {
+                editor.appendChild(frag);
+                editor.appendChild(emptyP);
+                SelectionManager.setCursorToStart(emptyP);
+            } else {
+                range.deleteContents();
+                let block = DOM.getClosestBlock(range.startContainer, editor);
+
+                if (!block || block === editor) {
+                    range.insertNode(frag);
+                    if (lastNode && lastNode.parentNode) {
+                        if (lastNode.nextSibling) {
+                            SelectionManager.setCursorToStart(lastNode.nextSibling);
+                        } else {
+                            lastNode.parentNode.insertBefore(emptyP, lastNode.nextSibling);
+                            SelectionManager.setCursorToStart(emptyP);
+                        }
+                    } else {
+                        editor.appendChild(emptyP);
+                        SelectionManager.setCursorToStart(emptyP);
+                    }
+                } else if (DOM.isEmpty(block) && !block.querySelector('img, video, audio, iframe, table, hr')) {
+                    const parent = block.parentNode;
+                    const next = block.nextSibling;
+                    parent.insertBefore(frag, block);
+                    parent.removeChild(block);
+                    if (next) {
+                        SelectionManager.setCursorToStart(next);
+                    } else {
+                        parent.appendChild(emptyP);
+                        SelectionManager.setCursorToStart(emptyP);
+                    }
+                } else if (SelectionManager.isCaretAtStart(block, range)) {
+                    block.parentNode.insertBefore(frag, block);
+                    SelectionManager.setCursorToStart(block);
+                } else if (SelectionManager.isCaretAtEnd(block, range)) {
+                    const parent = block.parentNode;
+                    const next = block.nextSibling;
+                    if (next) {
+                        parent.insertBefore(frag, next);
+                        SelectionManager.setCursorToStart(next);
+                    } else {
+                        parent.appendChild(frag);
+                        parent.appendChild(emptyP);
+                        SelectionManager.setCursorToStart(emptyP);
+                    }
+                } else {
+                    const afterRange = document.createRange();
+                    afterRange.setStart(range.endContainer, range.endOffset);
+                    afterRange.setEndAfter(block.lastChild || block);
+                    const afterContent = afterRange.extractContents();
+
+                    const newBlock = block.cloneNode(false);
+                    newBlock.removeAttribute('id');
+                    if (block.className) newBlock.className = block.className;
+                    if (block.style.cssText) newBlock.style.cssText = block.style.cssText;
+                    newBlock.appendChild(afterContent);
+
+                    const parent = block.parentNode;
+                    const next = block.nextSibling;
+
+                    parent.insertBefore(frag, next);
+                    parent.insertBefore(newBlock, next);
+                    SelectionManager.setCursorToStart(newBlock);
+                }
+            }
+
+            SelectionManager.save();
+            if (typeof saveToHistory === 'function') saveToHistory();
         },
 
         updateActiveButtons() {
             if (typeof editorMode !== 'undefined' && editorMode !== 'visual') return;
-            const editor = this.getEditor();
+            const editor = DOM.getEditor();
             const sel = window.getSelection();
 
             const buttonIds = ['btn-bold', 'btn-italic', 'btn-underline', 'btn-strike', 'btn-sup', 'btn-sub', 'btn-h2'];
@@ -1704,24 +1637,24 @@
                 if (el) el.classList.toggle('active', !!active);
             };
 
-            if (!editor || !sel || sel.rangeCount === 0 || !this.isInsideEditor(sel.anchorNode)) {
+            if (!editor || !sel || sel.rangeCount === 0 || !DOM.isInside(sel.anchorNode, editor)) {
                 buttonIds.forEach(id => setBtn(id, false));
                 return;
             }
 
             try {
                 const node = sel.anchorNode;
-                setBtn('btn-bold', this.findAncestorTag(node, 'STRONG') || this.findAncestorTag(node, 'B'));
-                setBtn('btn-italic', this.findAncestorTag(node, 'EM') || this.findAncestorTag(node, 'I'));
-                setBtn('btn-underline', this.findAncestorTag(node, 'U'));
-                setBtn('btn-strike', this.findAncestorTag(node, 'S') || this.findAncestorTag(node, 'STRIKE') || this.findAncestorTag(node, 'DEL'));
-                setBtn('btn-sup', this.findAncestorTag(node, 'SUP'));
-                setBtn('btn-sub', this.findAncestorTag(node, 'SUB'));
+                setBtn('btn-bold', InlineFormatter.findAncestor(node, 'STRONG', editor) || InlineFormatter.findAncestor(node, 'B', editor));
+                setBtn('btn-italic', InlineFormatter.findAncestor(node, 'EM', editor) || InlineFormatter.findAncestor(node, 'I', editor));
+                setBtn('btn-underline', InlineFormatter.findAncestor(node, 'U', editor));
+                setBtn('btn-strike', InlineFormatter.findAncestor(node, 'S', editor) || InlineFormatter.findAncestor(node, 'STRIKE', editor) || InlineFormatter.findAncestor(node, 'DEL', editor));
+                setBtn('btn-sup', InlineFormatter.findAncestor(node, 'SUP', editor));
+                setBtn('btn-sub', InlineFormatter.findAncestor(node, 'SUB', editor));
 
-                const block = this.getClosestBlock(node);
+                const block = DOM.getClosestBlock(node, editor);
                 setBtn('btn-h2', block && block.tagName === 'H2');
 
-                // Inspect current applied font, size, and color
+                // Inspect active font, size, and color
                 let fontName = 'Arial';
                 let fontSize = '14px';
                 let currentColor = '';
@@ -1758,89 +1691,17 @@
                     if (preview) preview.style.background = currentColor;
                 }
             } catch (e) { }
-        },
-
-        getSelectionOffsets(container) {
-            if (!container) return { start: 0, end: 0 };
-            const sel = window.getSelection();
-            if (!sel || !sel.rangeCount) return { start: 0, end: 0 };
-            const range = sel.getRangeAt(0);
-
-            if (!container.contains(range.commonAncestorContainer)) {
-                return { start: 0, end: 0 };
-            }
-
-            let start = 0;
-            let end = 0;
-            const iterator = document.createNodeIterator(container, NodeFilter.SHOW_TEXT);
-            let currentNode;
-
-            while ((currentNode = iterator.nextNode())) {
-                if (currentNode === range.startContainer) {
-                    start += range.startOffset;
-                } else if (currentNode.compareDocumentPosition(range.startContainer) & Node.DOCUMENT_POSITION_FOLLOWING) {
-                    start += currentNode.length;
-                }
-
-                if (currentNode === range.endContainer) {
-                    end += range.endOffset;
-                } else if (currentNode.compareDocumentPosition(range.endContainer) & Node.DOCUMENT_POSITION_FOLLOWING) {
-                    end += currentNode.length;
-                }
-            }
-
-            return { start, end };
-        },
-
-        setSelectionOffsets(container, start, end) {
-            if (!container) return;
-            const sel = window.getSelection();
-            if (!sel) return;
-            sel.removeAllRanges();
-
-            const range = document.createRange();
-            let charIndex = 0;
-            let startNode = null, startOffset = 0;
-            let endNode = null, endOffset = 0;
-
-            const iterator = document.createNodeIterator(container, NodeFilter.SHOW_TEXT);
-            let currentNode;
-
-            while ((currentNode = iterator.nextNode())) {
-                const len = currentNode.length;
-                if (!startNode && charIndex + len >= start) {
-                    startNode = currentNode;
-                    startOffset = start - charIndex;
-                }
-                if (!endNode && charIndex + len >= end) {
-                    endNode = currentNode;
-                    endOffset = end - charIndex;
-                }
-                charIndex += len;
-            }
-
-            if (!startNode) {
-                startNode = container;
-                startOffset = 0;
-            }
-            if (!endNode) {
-                endNode = container;
-                endOffset = 0;
-            }
-
-            try {
-                range.setStart(startNode, startOffset);
-                range.setEnd(endNode, endOffset);
-                sel.addRange(range);
-            } catch (e) { }
         }
     };
 
-    // Expose engine to window
+    /**
+     * =========================================================================
+     * BACKWARD-COMPATIBLE GLOBAL API EXPORTS
+     * =========================================================================
+     */
     window.VisualEngine = VisualEngine;
     window.isEditorContentEmpty = function (htmlOrText) { return VisualEngine.isEmpty(htmlOrText); };
 
-    // --- Backward Compatible Global Functions ---
     window.saveSelection = function () { VisualEngine.saveSelection(); };
     window.restoreEditorFocus = function () { return VisualEngine.restoreFocus(); };
     window.insertHtmlAtCursor = function (html) { VisualEngine.insertHTML(html); };
@@ -1860,7 +1721,7 @@
             window.insertHorizontalRule();
             return;
         }
-        const ta = document.getElementById('content');
+        const ta = DOM.getCodeEditor();
         if (window.enableMarkdown && editorMode === 'code') {
             const start = ta.selectionStart;
             const end = ta.selectionEnd;
@@ -1912,57 +1773,18 @@
     };
 
     window.insertList = function () {
-        const listTemplate = "\n<ul>\n  <li>Пункт 1</li>\n  <li>Пункт 2</li>\n  <li>Пункт 3</li>\n</ul>\n";
-        if (editorMode === 'code') {
-            const ta = document.getElementById('content');
-            const cursorPos = ta.selectionStart;
-            ta.value = ta.value.substring(0, cursorPos) + listTemplate + ta.value.substring(cursorPos);
-            ta.focus();
-        } else {
-            VisualEngine.insertBlockMedia(listTemplate);
-        }
-        if (typeof saveToHistory === 'function') saveToHistory();
+        VisualEngine.insertList('ul');
     };
 
     window.insertHorizontalRule = function () {
-        const ta = document.getElementById('content');
-        if (window.enableMarkdown && editorMode === 'code') {
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            const beforeText = ta.value.substring(0, start);
-            const afterText = ta.value.substring(end);
-            const prefix = (beforeText.length > 0 && !beforeText.endsWith('\n')) ? '\n\n' : (beforeText.endsWith('\n\n') ? '' : (beforeText.endsWith('\n') ? '\n' : ''));
-            const hrText = `${prefix}---\n\n`;
-            ta.value = beforeText + hrText + afterText;
-            const newCursor = start + hrText.length;
-            ta.setSelectionRange(newCursor, newCursor);
-            ta.focus();
-            if (typeof saveToHistory === 'function') saveToHistory();
-            return;
-        }
-
-        if (editorMode === 'code') {
-            const start = ta.selectionStart;
-            const end = ta.selectionEnd;
-            const beforeText = ta.value.substring(0, start);
-            const afterText = ta.value.substring(end);
-            const prefix = (beforeText.length > 0 && !beforeText.endsWith('\n')) ? '\n' : '';
-            const hrText = `${prefix}<hr>\n`;
-            ta.value = beforeText + hrText + afterText;
-            const newCursor = start + hrText.length;
-            ta.setSelectionRange(newCursor, newCursor);
-            ta.focus();
-            if (typeof saveToHistory === 'function') saveToHistory();
-        } else {
-            VisualEngine.insertBlockMedia('<hr>');
-        }
+        VisualEngine.insertHorizontalRule();
     };
     window.insertHr = window.insertHorizontalRule;
 
     window.setMode = function (mode) {
         editorMode = mode;
-        const ta = document.getElementById('content');
-        const ve = document.getElementById('contentVisual');
+        const ta = DOM.getCodeEditor();
+        const ve = DOM.getEditor();
         const visualBtn = document.getElementById('modeVisualBtn');
         const codeBtn = document.getElementById('modeCodeBtn');
 
@@ -1999,30 +1821,20 @@
             if (codeBtn) codeBtn.classList.add('active');
             if (visualBtn) visualBtn.classList.remove('active');
         }
-        if (typeof updateAutosaveBadge === 'function') {
-            updateAutosaveBadge();
-        }
-        if (typeof updateBottomBarStats === 'function') {
-            updateBottomBarStats();
-        }
+        if (typeof updateAutosaveBadge === 'function') updateAutosaveBadge();
+        if (typeof updateBottomBarStats === 'function') updateBottomBarStats();
     };
 
-    // --- Keyboard & Selection Event Listeners ---
+    /**
+     * =========================================================================
+     * EVENT LISTENERS INITIALIZATION
+     * =========================================================================
+     */
     document.addEventListener('DOMContentLoaded', function () {
-        const editor = VisualEngine.getEditor();
+        const editor = DOM.getEditor();
         if (!editor) return;
 
-        try {
-            document.execCommand('defaultParagraphSeparator', false, 'p');
-        } catch (e) {}
-
-        editor.addEventListener('focus', function () {
-            try {
-                document.execCommand('defaultParagraphSeparator', false, 'p');
-            } catch (e) {}
-        });
-
-        // Toolbar focus guard
+        // Toolbar focus protection
         const bar = document.getElementById('formatBarRow');
         if (bar) {
             bar.addEventListener('mousedown', function (e) {
@@ -2034,7 +1846,7 @@
             }, true);
         }
 
-        // Selection tracking inside editor
+        // Selection & Button State Tracking
         ['mouseup', 'keyup', 'click', 'touchend'].forEach(evt => {
             editor.addEventListener(evt, function () {
                 if (VisualEngine.isEditorActive()) {
@@ -2044,7 +1856,7 @@
             }, true);
         });
 
-        // Input handler: DOM normalization and dirty marking
+        // Input & Mutation
         editor.addEventListener('input', function () {
             if (VisualEngine.isEditorActive()) {
                 if (!editor.hasChildNodes() || editor.innerHTML.trim() === '' || editor.innerHTML === '<br>') {
@@ -2054,16 +1866,12 @@
                 }
                 VisualEngine.saveSelection();
                 VisualEngine.updateActiveButtons();
-                if (typeof markEditorDirty === 'function') {
-                    markEditorDirty();
-                }
-                if (typeof updateAutosaveBadge === 'function') {
-                    updateAutosaveBadge();
-                }
+                if (typeof markEditorDirty === 'function') markEditorDirty();
+                if (typeof updateAutosaveBadge === 'function') updateAutosaveBadge();
             }
         });
 
-        // Keydown handlers
+        // Keyboard Handling
         editor.addEventListener('keydown', function (e) {
             if (e.key === 'Tab') {
                 if (VisualEngine.handleTabKey(e)) return;
@@ -2075,8 +1883,32 @@
             }
         });
 
-        // Initial DOM normalization
+        // Click on empty space below content -> append or focus empty paragraph
+        editor.addEventListener('click', function (e) {
+            if (e.target !== editor) return;
+            const lastEl = editor.lastElementChild;
+            if (!lastEl) return;
+            const rect = lastEl.getBoundingClientRect();
+            const isFloated = lastEl.classList.contains('align-float-left') || lastEl.classList.contains('align-float-right');
+            const clickedBelow = e.clientY > rect.bottom;
+            const clickedBeside = isFloated && (e.clientY >= rect.top && e.clientY <= rect.bottom);
+
+            if (clickedBelow || clickedBeside) {
+                if (lastEl.tagName === 'P' && DOM.isEmpty(lastEl)) {
+                    VisualEngine.setCursorToEnd(lastEl);
+                } else {
+                    const emptyP = document.createElement('p');
+                    emptyP.innerHTML = '<br>';
+                    editor.appendChild(emptyP);
+                    VisualEngine.setCursorToStart(emptyP);
+                    editor.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                VisualEngine.saveSelection();
+            }
+        });
+
+        // Initial DOM Normalization
         VisualEngine.normalizeDOM(editor);
     });
 
-})(window, document);
+})(window, document);

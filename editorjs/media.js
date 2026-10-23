@@ -77,6 +77,22 @@ function insertLinkFromDialog() {
 let selectedImageFiles = [];
 let isImageDragDropInitialized = false;
 
+/**
+ * Возвращает обязательные заголовки для запросов изменения медиа.
+ *
+ * @return {Object<string, string>}
+ */
+function getMediaRequestHeaders() {
+    const headers = {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = (meta && meta.getAttribute('content')) || window.CSRF_TOKEN || '';
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+    return headers;
+}
+
 function initImageDragDrop() {
     if (isImageDragDropInitialized) return;
     const dropzone = document.getElementById('imageDropzone');
@@ -454,18 +470,46 @@ function initEditorMediaDragDrop() {
     }
 
     function getCaretRangeFromPoint(clientX, clientY) {
+        // Media is atomic: dropping over its upper/lower half inserts beside it,
+        // never inside a caption, upload card or non-editable image wrapper.
+        const hit = document.elementFromPoint(clientX, clientY);
+        const media = hit && hit.closest('.blog-image-align-wrap, [contenteditable="false"]');
+        if (media && visualEditor.contains(media)) {
+            const range = document.createRange();
+            const rect = media.getBoundingClientRect();
+            if (clientY < rect.top + rect.height / 2) range.setStartBefore(media);
+            else range.setStartAfter(media);
+            range.collapse(true);
+            return range;
+        }
+        let caret = null;
         if (document.caretRangeFromPoint) {
-            return document.caretRangeFromPoint(clientX, clientY);
+            caret = document.caretRangeFromPoint(clientX, clientY);
         } else if (document.caretPositionFromPoint) {
             const pos = document.caretPositionFromPoint(clientX, clientY);
             if (pos && pos.offsetNode) {
                 const range = document.createRange();
                 range.setStart(pos.offsetNode, pos.offset);
                 range.collapse(true);
-                return range;
+                caret = range;
             }
         }
-        return null;
+        if (caret && visualEditor.contains(caret.commonAncestorContainer)) return caret;
+
+        // Editor padding can have no browser caret. Use the pointer's vertical
+        // position instead of restoring an unrelated saved text selection.
+        const range = document.createRange();
+        range.selectNodeContents(visualEditor);
+        range.collapse(false);
+        for (const child of visualEditor.children) {
+            const rect = child.getBoundingClientRect();
+            if (clientY < rect.top + rect.height / 2) {
+                range.setStartBefore(child);
+                range.collapse(true);
+                break;
+            }
+        }
+        return range;
     }
 
     // Защита от случайного сброса файлов мимо редактора (браузер по умолчанию переходит по ссылке на файл)
@@ -485,9 +529,20 @@ function initEditorMediaDragDrop() {
 
     // 1. Визуальный редактор (#contentVisual)
     let visualDragCounter = 0;
+    let visualDropRange = null;
+    let visualCaretBeforeDrag = null;
     if (visualEditor) {
         visualEditor.addEventListener('dragenter', function (e) {
             if (!hasFiles(e)) return;
+            if (visualDragCounter === 0) {
+                const selection = window.getSelection();
+                const currentRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                const editorHadFocus = document.activeElement === visualEditor || visualEditor.contains(document.activeElement);
+                visualCaretBeforeDrag = editorHadFocus && currentRange && visualEditor.contains(currentRange.commonAncestorContainer)
+                    ? currentRange.cloneRange()
+                    : null;
+                visualDropRange = null;
+            }
             visualDragCounter++;
             visualEditor.classList.add('drag-over-media');
         });
@@ -497,12 +552,12 @@ function initEditorMediaDragDrop() {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'copy';
 
-            // Живой курсор в месте вставки
+            // Сохраняем вычисленную браузером позицию, не изменяя настоящее
+            // выделение: его принудительное перемещение давало неверный range
+            // при повторном сбросе после изображения.
             const range = getCaretRangeFromPoint(e.clientX, e.clientY);
             if (range && visualEditor.contains(range.commonAncestorContainer)) {
-                const sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(range);
+                visualDropRange = range.cloneRange();
             }
         });
 
@@ -511,6 +566,8 @@ function initEditorMediaDragDrop() {
             visualDragCounter--;
             if (visualDragCounter <= 0) {
                 visualDragCounter = 0;
+                visualDropRange = null;
+                visualCaretBeforeDrag = null;
                 visualEditor.classList.remove('drag-over-media');
             }
         });
@@ -525,10 +582,14 @@ function initEditorMediaDragDrop() {
             const files = Array.from(e.dataTransfer.files || []);
             if (!files.length) return;
 
-            let dropRange = getCaretRangeFromPoint(e.clientX, e.clientY);
+            // Если пользователь начал перетаскивание сразу после набора текста,
+            // сохранённый текстовый курсор точнее координат внешнего drag-события.
+            let dropRange = visualCaretBeforeDrag || visualDropRange || getCaretRangeFromPoint(e.clientX, e.clientY);
             if (dropRange && !visualEditor.contains(dropRange.commonAncestorContainer)) {
                 dropRange = null;
             }
+            visualDropRange = null;
+            visualCaretBeforeDrag = null;
 
             handleDroppedMediaFiles(files, 'visual', dropRange);
         });
@@ -619,7 +680,7 @@ function initEditorMediaDragDrop() {
 
         if (mode === 'visual') {
             const itemsToUpload = [];
-            let currentRange = dropRange;
+            const placeholders = [];
 
             mediaFiles.forEach(function (file) {
                 const uploadId = 'media-upload-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -636,18 +697,21 @@ function initEditorMediaDragDrop() {
                     '</div>' +
                 '</div>';
 
-                if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
-                    window.VisualEngine.insertBlockMedia(placeholderHtml, currentRange);
-                    // После вставки первого плейсхолдера курсор уже стоит сразу за ним
-                    currentRange = null;
-                } else if (typeof insertImageBlockAtCaret === 'function') {
-                    insertImageBlockAtCaret(placeholderHtml);
-                } else if (visualEditor) {
-                    visualEditor.insertAdjacentHTML('beforeend', placeholderHtml);
-                }
+                placeholders.push(placeholderHtml);
 
                 itemsToUpload.push({ file: file, uploadId: uploadId, isVideo: isVid });
             });
+
+            // One insertion keeps the batch together even when the next block
+            // is another image; no subsequent file depends on saved selection.
+            const placeholderHtml = placeholders.join('');
+            if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+                window.VisualEngine.insertBlockMedia(placeholderHtml, dropRange);
+            } else if (typeof insertImageBlockAtCaret === 'function') {
+                insertImageBlockAtCaret(placeholderHtml);
+            } else if (visualEditor) {
+                visualEditor.insertAdjacentHTML('beforeend', placeholderHtml);
+            }
 
             // Запускаем загрузку каждого файла параллельно
             itemsToUpload.forEach(function (item) {
@@ -707,17 +771,10 @@ function initEditorMediaDragDrop() {
             formData.append('image', file);
         }
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || (window.CSRF_TOKEN || '');
-        const headers = {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        };
-        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
-
         try {
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: headers,
+                headers: getMediaRequestHeaders(),
                 body: formData
             });
 
@@ -806,6 +863,10 @@ function initEditorMediaDragDrop() {
             if (placeholder && placeholder.parentNode) {
                 placeholder.insertAdjacentHTML('beforebegin', mediaHtml);
                 placeholder.parentNode.removeChild(placeholder);
+            } else if (uploadId) {
+                // Deleted/undone uploads must not reappear at the current caret
+                // or in a different article after an asynchronous response.
+                return;
             } else {
                 if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
                     window.VisualEngine.insertBlockMedia(mediaHtml);
@@ -1035,8 +1096,7 @@ function processImage() {
         return;
     }
 
-    let hasFiles = false;
-    const formData = new FormData();
+    const files = [];
 
     if (gridLayout) {
         // Использование интерактивных плиток визуальной сетки!
@@ -1044,54 +1104,63 @@ function processImage() {
         const totalTiles = cols * rows;
         for (let i = 0; i < totalTiles; i++) {
             if (gridTileFiles[i]) {
-                formData.append('image[]', gridTileFiles[i]);
-                hasFiles = true;
+                files.push(gridTileFiles[i]);
             }
         }
     } else {
         // Стандартная одиночная или множественная загрузка файлов
         if (selectedImageFiles.length) {
             selectedImageFiles.forEach(file => {
-                formData.append('image[]', file);
+                files.push(file);
             });
-            hasFiles = true;
         }
     }
 
-    if (!hasFiles) {
+    if (!files.length) {
         showNotification('Выберите хотя бы одно изображение для загрузки', 'warning');
         return;
     }
 
-    formData.append('width', width);
-    formData.append('widthUnit', widthUnit);
-    formData.append('gridLayout', gridLayout);
-
-    fetch('upload_images_grid.php', {
-        method: 'POST',
-        body: formData
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.urls) {
-                if (data.urls.length === 1 && !data.gridLayout) {
-                    insertImage(data.urls[0], width, '', widthUnit, '', caption, noBorderRadius);
-                } else {
-                    if (insertGallery && data.urls.length > 1) {
-                        insertImagesAsGallery(data.urls, caption, width, widthUnit, noBorderRadius);
-                    } else {
-                        insertImagesInGrid(data.urls, data.gridLayout, caption, width, widthUnit, noBorderRadius);
-                    }
-                }
-            } else {
-                showNotification('Ошибка при загрузке изображений: ' + data.error, 'error');
-            }
+    // Одиночный endpoint имеет стабильный контракт { success, url } и принимает
+    // тот же формат, что drag & drop. Promise.all сохраняет порядок файлов.
+    Promise.all(files.map(function (file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        return fetch('upload_image.php', {
+            method: 'POST',
+            headers: getMediaRequestHeaders(),
+            body: formData
         })
-        .catch(() => {
-            showNotification('Ошибка сети при загрузке изображений', 'error');
+            .then(function (response) {
+                return response.text().then(function (body) {
+                    let data;
+                    try {
+                        data = JSON.parse(body);
+                    } catch (error) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    if (!response.ok || !data.success || !data.url) {
+                        throw new Error(data.error || data.message || ('HTTP ' + response.status));
+                    }
+                    return data.url;
+                });
+            });
+    }))
+        .then(function (urls) {
+            if (urls.length === 1 && !gridLayout) {
+                insertImage(urls[0], width, '', widthUnit, '', caption, noBorderRadius);
+            } else {
+                if (insertGallery && urls.length > 1) {
+                    insertImagesAsGallery(urls, caption, width, widthUnit, noBorderRadius);
+                } else {
+                    insertImagesInGrid(urls, gridLayout, caption, width, widthUnit, noBorderRadius);
+                }
+            }
+            closeImageDialog();
+        })
+        .catch(function (error) {
+            showNotification('Ошибка при загрузке изображений: ' + error.message, 'error');
         });
-
-    closeImageDialog();
 }
 
 function insertImagesInGrid(urls, layout, caption = '', width = '', widthUnit = 'px', noBorderRadius = false) {
@@ -1177,6 +1246,7 @@ function uploadImage(file, width, height, widthUnit, heightUnit, caption) {
 
     fetch('upload_image.php', {
         method: 'POST',
+        headers: getMediaRequestHeaders(),
         body: formData
     })
         .then(response => response.json())
@@ -2440,74 +2510,6 @@ initImageAlignmentHandlers();
         contentTa.addEventListener('keydown', onUndoRedoShortcut);
     }
 
-    // Позволяет кликнуть по пустому пространству редактора ниже последнего блока или сбоку от обтекаемого элемента для продолжения ввода
-    contentVisual.addEventListener('click', function (e) {
-        if (e.target !== contentVisual) return;
-        const lastEl = contentVisual.lastElementChild;
-        if (!lastEl) return;
-        const rect = lastEl.getBoundingClientRect();
-        const isFloated = lastEl.classList.contains('align-float-left') || lastEl.classList.contains('align-float-right');
-        const clickedBelow = e.clientY > rect.bottom;
-        const clickedBeside = isFloated && (e.clientY >= rect.top && e.clientY <= rect.bottom);
-
-        if (clickedBelow || clickedBeside) {
-            if (lastEl.tagName === 'P' && typeof VisualEngine !== 'undefined' && VisualEngine.isEmpty(lastEl)) {
-                VisualEngine.setCursorToEnd(lastEl);
-                VisualEngine.saveSelection();
-            } else {
-                const emptyP = document.createElement('p');
-                emptyP.innerHTML = '<br>';
-                contentVisual.appendChild(emptyP);
-                if (typeof VisualEngine !== 'undefined') {
-                    VisualEngine.setCursorToStart(emptyP);
-                    VisualEngine.saveSelection();
-                }
-                contentVisual.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-        }
-    });
-
-    // Обработчик клавиши Enter внутри spoiler-content:
-    // Позволяет делать переносы строк внутри спойлера, а при повторном Enter на пустой строке в конце — выйти из спойлера
-    contentVisual.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter' || e.shiftKey) return;
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return;
-        const range = sel.getRangeAt(0);
-
-        let node = range.startContainer;
-        while (node && node !== contentVisual) {
-            if (node.classList && node.classList.contains('spoiler-block')) {
-                const spoilerContent = node.querySelector('.spoiler-content');
-                if (spoilerContent && spoilerContent.contains(range.startContainer)) {
-                    const block = (typeof VisualEngine !== 'undefined' && VisualEngine.getClosestBlock)
-                        ? VisualEngine.getClosestBlock(range.startContainer)
-                        : null;
-
-                    // Если текущий блок внутри spoiler пустой — выходим из спойлера
-                    if (block && spoilerContent.contains(block) && typeof VisualEngine !== 'undefined' && VisualEngine.isEmpty(block)) {
-                        e.preventDefault();
-                        if (block.parentNode) {
-                            block.parentNode.removeChild(block);
-                        }
-                        if (node.nextElementSibling) {
-                            VisualEngine.setCursorToStart(node.nextElementSibling);
-                        } else {
-                            const emptyP = document.createElement('p');
-                            emptyP.innerHTML = '<br>';
-                            node.parentNode.insertBefore(emptyP, node.nextSibling);
-                            VisualEngine.setCursorToStart(emptyP);
-                            contentVisual.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                        VisualEngine.saveSelection();
-                        return;
-                    }
-                }
-                break;
-            }
-            node = node.parentNode;
-        }
-    });
 
     menu.addEventListener('click', function (e) {
         var item = e.target.closest('.editor-context-item');
