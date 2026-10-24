@@ -47,9 +47,6 @@
                     <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="modal-btn modal-btn-primary" style="width: 100%; justify-content: center; padding: 12px;" data-i18n="modals.sys_select_btn">
                         📦 Выбрать архив (.zip)
                     </button>
-                    <a href="update_system.php?action=export_package" class="modal-btn modal-btn-secondary" style="width: 100%; justify-content: center; padding: 8px 12px; font-size: 13px; text-decoration: none;" data-i18n="modals.sys_export_btn">
-                        💾 Скачать готовый архив обновления (.zip)
-                    </a>
                 </div>
             </div>
 
