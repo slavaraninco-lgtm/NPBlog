@@ -57,6 +57,48 @@ if (!function_exists('mb_strcasecmp')) {
     }
 }
 
+// String helper polyfills for PHP 7.4 compatibility
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) {
+        return (string)$needle === '' || strpos($haystack, $needle) === 0;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle) {
+        return (string)$needle === '' || substr($haystack, -strlen($needle)) === (string)$needle;
+    }
+}
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return (string)$needle === '' || strpos($haystack, $needle) !== false;
+    }
+}
+
+// Automatically initialize config and whitelist from templates if missing
+if (!function_exists('ensureEditorSettingsFile')) {
+    function ensureEditorSettingsFile() {
+        $settingsFile = __DIR__ . '/editor_settings.json';
+        $exampleFile = __DIR__ . '/editor_settings.example.json';
+        if (!file_exists($settingsFile) && file_exists($exampleFile)) {
+            @copy($exampleFile, $settingsFile);
+        }
+        return $settingsFile;
+    }
+}
+ensureEditorSettingsFile();
+
+if (!function_exists('ensureAllowedIpsFile')) {
+    function ensureAllowedIpsFile() {
+        $ipsFile = __DIR__ . '/allowed_ips.txt';
+        $exampleFile = __DIR__ . '/allowed_ips.example.txt';
+        if (!file_exists($ipsFile) && file_exists($exampleFile)) {
+            @copy($exampleFile, $ipsFile);
+        }
+        return $ipsFile;
+    }
+}
+ensureAllowedIpsFile();
+
 if (!function_exists('validateSafePath')) {
     function validateSafePath($baseDir, $filename) {
         $realBase = realpath($baseDir);
@@ -190,14 +232,19 @@ function getDataPath($subpath = '') {
         $activePath = __DIR__ . '/data';
     }
 
-    $dataDir = $activePath;
-    
-    // Normalize path: check if absolute or relative
-    $isAbsolute = (strpos($dataDir, '/') === 0) || 
-                  (strpos($dataDir, '\\') === 0) || 
-                  (strlen($dataDir) >= 2 && $dataDir[1] === ':');
-    if (!$isAbsolute) {
-        $dataDir = __DIR__ . '/' . ltrim($dataDir, '/\\');
+    // Safe fallback if path is placeholder /CHANGE/ME
+    if ($activePath === '/CHANGE/ME' || trim($activePath, '/\\') === 'CHANGE/ME' || trim($activePath, '/\\') === 'CHANGE\\ME') {
+        $dataDir = __DIR__ . '/data';
+    } else {
+        $dataDir = $activePath;
+        
+        // Normalize path: check if absolute or relative
+        $isAbsolute = (strpos($dataDir, '/') === 0) || 
+                      (strpos($dataDir, '\\') === 0) || 
+                      (strlen($dataDir) >= 2 && $dataDir[1] === ':');
+        if (!$isAbsolute) {
+            $dataDir = __DIR__ . '/' . ltrim($dataDir, '/\\');
+        }
     }
 
     if (!is_dir($dataDir)) {

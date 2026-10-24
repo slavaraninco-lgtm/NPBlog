@@ -37,7 +37,7 @@ if (!isset($availableLanguages)) {
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeGlobalSettings()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeGlobalSettings()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -80,6 +80,9 @@ if (!isset($availableLanguages)) {
                 <button type="button" id="nav-btn-language" onclick="showGlobalSection('language')" class="global-nav-btn" data-section="language" data-i18n="settings.nav_language" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
                     Язык
                 </button>
+                <button type="button" id="nav-btn-updates" onclick="showGlobalSection('updates')" class="global-nav-btn" data-section="updates" data-i18n="settings.nav_updates" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
+                    Обновления
+                </button>
             </div>
             
             <!-- Контент справа -->
@@ -102,7 +105,17 @@ if (!isset($availableLanguages)) {
                     
                     <div style="margin-bottom: 20px;">
                         <label class="modal-label" for="globalBackgroundInput" data-i18n="settings.bg_image_label">Фоновое изображение:</label>
-                        <input type="file" id="globalBackgroundInput" accept="image/*" class="modal-input" style="margin-bottom: 14px;">
+                        <div class="modal-file-picker" id="globalBackgroundPicker" tabindex="0" style="margin-bottom: 14px;">
+                            <input type="file" id="globalBackgroundInput" accept="image/*" style="display: none;">
+                            <button type="button" class="modal-btn modal-btn-secondary modal-file-picker-btn" tabindex="-1">
+                                <span data-i18n="common.browse">Обзор...</span>
+                            </button>
+                            <div class="modal-file-picker-info">
+                                <span class="modal-file-picker-text" data-i18n="common.no_file_chosen">Файл не выбран</span>
+                                <span class="modal-file-picker-size"></span>
+                            </div>
+                            <button type="button" class="modal-file-picker-clear" title="Сбросить выбор" data-i18n-title="common.clear_selection">✕</button>
+                        </div>
                         
                         <label class="modal-label" for="globalBackgroundMode" data-i18n="settings.bg_mode_label">Режим отображения:</label>
                         <select id="globalBackgroundMode" class="modal-select" style="margin-bottom: 14px;">
@@ -124,9 +137,12 @@ if (!isset($availableLanguages)) {
                     </div>
                     
                     <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); margin-bottom: 20px;">
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
-                            <input type="checkbox" id="hidePoweredByCheckbox" onchange="savePoweredBySetting(this.checked)" style="width: 18px; height: 18px; cursor: pointer;">
-                            <span style="color: var(--text-color); font-weight: 500; font-size: 13px;" data-i18n="settings.bg_hide_powered_by">Скрыть надпись "Powered by NPBlog" в статьях</span>
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="hidePoweredByCheckbox" onchange="savePoweredBySetting(this.checked)">
+                                <span class="modal-switch-slider"></span>
+                            </div>
+                            <span style="color: var(--text-color); font-weight: 500; font-size: 13.5px;" data-i18n="settings.bg_hide_powered_by">Скрыть надпись "Powered by NPBlog" в статьях</span>
                         </label>
                     </div>
                     
@@ -143,9 +159,24 @@ if (!isset($availableLanguages)) {
                     
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <label class="modal-label" for="blogPageTitle" data-i18n="settings.blogview_page_title_label">Заголовок страницы:</label>
-                        <input type="text" id="blogPageTitle" placeholder="Блог" class="modal-input" style="margin-bottom: 14px;">
+                        <input type="text" id="blogPageTitle" data-i18n-placeholder="settings.blog_title_ph" placeholder="Блог" class="modal-input" style="margin-bottom: 14px;">
                         
                         <button type="button" onclick="saveBlogViewSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.blogview_save_btn">Сохранить настройки</button>
+                    </div>
+
+                    <!-- Отображение списка статей (Сетка / Список) -->
+                    <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                        <h4 style="margin: 0 0 14px 0; color: var(--text-color); font-size: 15px; font-weight: 600;" data-i18n="settings.blogview_layout_title">Отображение списка статей</h4>
+                        <label class="modal-label" for="blogPostsLayout" data-i18n="settings.blogview_layout_label">Вид списка статей:</label>
+                        <select id="blogPostsLayout" class="modal-select" style="margin-bottom: 14px;">
+                            <option value="list" data-i18n="settings.blogview_layout_list">📋 Списком (по умолчанию)</option>
+                            <option value="grid" data-i18n="settings.blogview_layout_grid">⊞ Сеткой (карточки с превью)</option>
+                        </select>
+                        
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" onclick="saveBlogViewLayout('save')" class="modal-btn modal-btn-primary" data-i18n="settings.blogview_save_layout_current">Сохранить для текущего блога</button>
+                            <button type="button" onclick="saveBlogViewLayout('apply_all')" class="modal-btn modal-btn-secondary" data-i18n="settings.blogview_apply_layout_all">Применить во всех блогах</button>
+                        </div>
                     </div>
 
                     <div style="margin-bottom: 20px;">
@@ -160,7 +191,17 @@ if (!isset($availableLanguages)) {
                         </div>
 
                         <label class="modal-label" for="blogBackgroundInput" data-i18n="settings.bg_image_label">Фоновое изображение:</label>
-                        <input type="file" id="blogBackgroundInput" accept="image/*" class="modal-input" style="margin-bottom: 14px;">
+                        <div class="modal-file-picker" id="blogBackgroundPicker" tabindex="0" style="margin-bottom: 14px;">
+                            <input type="file" id="blogBackgroundInput" accept="image/*" style="display: none;">
+                            <button type="button" class="modal-btn modal-btn-secondary modal-file-picker-btn" tabindex="-1">
+                                <span data-i18n="common.browse">Обзор...</span>
+                            </button>
+                            <div class="modal-file-picker-info">
+                                <span class="modal-file-picker-text" data-i18n="common.no_file_chosen">Файл не выбран</span>
+                                <span class="modal-file-picker-size"></span>
+                            </div>
+                            <button type="button" class="modal-file-picker-clear" title="Сбросить выбор" data-i18n-title="common.clear_selection">✕</button>
+                        </div>
                         
                         <label class="modal-label" for="blogBackgroundMode" data-i18n="settings.bg_mode_label">Режим отображения:</label>
                         <select id="blogBackgroundMode" class="modal-select" style="margin-bottom: 20px;">
@@ -183,8 +224,11 @@ if (!isset($availableLanguages)) {
                         </div>
 
                         <div id="crossBlogNavEditor" style="display: none;">
-                            <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                                <input type="checkbox" id="enableCrossBlogNav" onchange="toggleCrossBlogNavUI()" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px; cursor: pointer;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="enableCrossBlogNav" onchange="toggleCrossBlogNavUI()">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.blogview_crossblog_enable">Кнопки к разным блогам</span>
                             </label>
                             
@@ -207,8 +251,11 @@ if (!isset($availableLanguages)) {
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.autosave_desc">Настройте автоматическое сохранение статей во время редактирования.</p>
                     
                     <div style="margin-bottom: 20px;">
-                        <label style="display: flex; align-items: center; margin-bottom: 18px; cursor: pointer;">
-                            <input type="checkbox" id="autosaveEnabled" onchange="toggleAutosavePreview()" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; margin-bottom: 18px; cursor: pointer;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="autosaveEnabled" onchange="toggleAutosavePreview()">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.autosave_enable">Включить автосохранение</span>
                         </label>
                         
@@ -233,18 +280,35 @@ if (!isset($availableLanguages)) {
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.appearance_desc">Настройте внешний вид редактора статей.</p>
                     
                     <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="amoledTheme" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="amoledTheme">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.app_amoled">Включить абсолютно черный фон (для AMOLED дисплеев)</span>
                         </label>
                         
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="smoothTyping" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="smoothTyping">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.app_smooth_typing">Включить плавную печать текста (мягкий курсор)</span>
                         </label>
                         
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="headerBottomPosition" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="disableAnimations">
+                                <span class="modal-switch-slider"></span>
+                            </div>
+                            <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.app_disable_animations">Отключить все анимации в редакторе</span>
+                        </label>
+                        
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="headerBottomPosition">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.app_header_bottom">Переместить панель управления в низ экрана</span>
                         </label>
 
@@ -256,6 +320,7 @@ if (!isset($availableLanguages)) {
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
                             <button type="button" onclick="saveAppearanceSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.app_save_btn">Сохранить настройки</button>
                             <button type="button" onclick="startHeaderCustomization()" class="modal-btn modal-btn-secondary" data-i18n="settings.app_customize_header_btn">Кастомизация верхней панели</button>
+                            <button type="button" onclick="closeGlobalSettings(); openBottomBarCustomizer();" class="modal-btn modal-btn-secondary" data-i18n="bottom_bar.customize">Настроить панель</button>
                         </div>
                     </div>
                     
@@ -272,18 +337,27 @@ if (!isset($availableLanguages)) {
                     
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px;">
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" id="enableUndoRedo" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="enableUndoRedo">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.exp_undo_redo">Включить Undo/Redo (отмена/возврат изменений)</span>
                             </label>
                             
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" id="enableMarkdown" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="enableMarkdown">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.exp_markdown">Использовать Markdown</span>
                             </label>
                             
-                            <label style="display: flex; align-items: flex-start; cursor: pointer;">
-                                <input type="checkbox" id="enableApi" style="width: 18px; height: 18px; margin-right: 10px; margin-top: 2px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; margin-bottom: 0;">
+                                <div class="modal-switch-control" style="margin-top: 2px;">
+                                    <input type="checkbox" id="enableApi">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <div>
                                     <span style="color: var(--text-color); font-weight: 500; font-size: 14px; display: block;" data-i18n="settings.exp_enable_api">Включить REST API (мобильные приложения и сторонние редакторы)</span>
                                     <span style="color: var(--text-color); font-size: 12px; opacity: 0.7; display: block; margin-top: 3px;" data-i18n="settings.exp_enable_api_desc">Разрешает доступ к эндпоинтам /api/v1/... Снимите флажок, чтобы полностью отключить API в целях безопасности.</span>
@@ -303,6 +377,7 @@ if (!isset($availableLanguages)) {
                             <button type="button" onclick="closeGlobalSettings(); openInitialSetupModal();" class="modal-btn modal-btn-secondary" data-i18n="setup.rerun_setup_btn">🚀 Первоначальная настройка</button>
                             <button type="button" onclick="closeGlobalSettings(); enterSafeMode('Тестовый запуск Safe Mode (проверка интерфейса аварийного восстановления)');" class="modal-btn modal-btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">🛡️ Safe Mode</button>
                             <button type="button" onclick="deleteAllCustomTemplates()" class="modal-btn modal-btn-danger" data-i18n="settings.exp_delete_templates_btn">Удалить кастомные шаблоны</button>
+                            <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn">Сбросить все настройки</button>
                         </div>
                     </div>
                     
@@ -360,11 +435,14 @@ if (!isset($availableLanguages)) {
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.rss_feed_desc">Настройте автоматическую генерацию RSS ленты (XML-файла) для вашего блога.</p>
                     
                     <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="rssFeedEnabled" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 8px;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="rssFeedEnabled">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.rss_feed_enable">Включить автоматическую генерацию RSS</span>
                         </label>
-                        <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin-top: 8px;" data-i18n-html="settings.rss_feed_enable_hint">
+                        <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin: 0; padding-left: 52px;" data-i18n-html="settings.rss_feed_enable_hint">
                             Если включено, файл <code>feed.xml</code> будет создаваться и обновляться автоматически в корне папки <code>data</code> при сохранении/редактировании/удалении статей.
                         </p>
                     </div>
@@ -389,11 +467,14 @@ if (!isset($availableLanguages)) {
                         </div>
                         
                         <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="checkbox" id="rssFeedUseFirstLine" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 6px;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="rssFeedUseFirstLine">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.rss_feed_first_line">Брать только первую строку статьи в описание</span>
                             </label>
-                            <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin-top: 6px;" data-i18n="settings.rss_feed_first_line_hint">
+                            <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin: 0; padding-left: 52px;" data-i18n="settings.rss_feed_first_line_hint">
                                 Если включено, в содержание поста для RSS будет попадать только первая текстовая строка. Если выключено — будет передаваться весь HTML-код содержимого статьи.
                             </p>
                         </div>
@@ -496,14 +577,7 @@ if (!isset($availableLanguages)) {
                         </div>
                     </div>
 
-                    <!-- Кнопка сохранения -->
-                    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
-                        <button type="button" onclick="savePathsSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.paths_save_btn">
-                            Сохранить настройки путей
-                        </button>
-                    </div>
-                    
-                    <div style="padding: 14px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px;">
+                    <div style="padding: 14px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px; margin-bottom: 20px;">
                         <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;" data-i18n-html="settings.paths_hint">
                             💡 Укажите абсолютные или относительные пути к папкам данных, бэкапов статей, автосохранений и бэкапов системы на сервере. При изменении путей новые файлы будут автоматически сохраняться в указанные директории.
                         </p>
@@ -517,19 +591,22 @@ if (!isset($availableLanguages)) {
                     <div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border-color);">
                         <!-- Вариант 1: Пароль не установлен -->
                         <div id="securityPasswordNotSet" style="display: block;">
-                            <label style="display: flex; align-items: center; margin-bottom: 15px; cursor: pointer;">
-                                <input type="checkbox" id="settingsPasswordEnabled" onchange="togglePasswordFieldsVisibility()" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                            <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px; cursor: pointer;">
+                                <div class="modal-switch-control">
+                                    <input type="checkbox" id="settingsPasswordEnabled" onchange="togglePasswordFieldsVisibility()">
+                                    <span class="modal-switch-slider"></span>
+                                </div>
                                 <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.sec_pwd_enable">Включить защиту паролем</span>
                             </label>
                             
                             <div id="securityPasswordFields" style="display: none; margin-bottom: 18px; padding: 16px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02)); border: 1px solid var(--border-color); border-radius: 10px;">
                                 <div style="margin-bottom: 12px;">
                                     <label class="modal-label" for="settingsNewPassword" data-i18n="settings.sec_pwd_new">Новый пароль:</label>
-                                    <input type="password" id="settingsNewPassword" placeholder="Введите новый пароль" class="modal-input">
+                                    <input type="password" id="settingsNewPassword" data-i18n-placeholder="settings.new_password_ph" placeholder="Введите новый пароль" class="modal-input">
                                 </div>
                                 <div>
                                     <label class="modal-label" for="settingsConfirmPassword" data-i18n="settings.sec_pwd_confirm">Подтверждение пароля:</label>
-                                    <input type="password" id="settingsConfirmPassword" placeholder="Повторите новый пароль" class="modal-input">
+                                    <input type="password" id="settingsConfirmPassword" data-i18n-placeholder="settings.repeat_new_password_ph" placeholder="Повторите новый пароль" class="modal-input">
                                 </div>
                             </div>
                         </div>
@@ -550,15 +627,15 @@ if (!isset($availableLanguages)) {
                             <div id="changePasswordFormContainer" style="display: none; margin-bottom: 16px; padding: 16px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02)); border: 1px solid var(--border-color); border-radius: 10px;">
                                 <div style="margin-bottom: 12px;">
                                     <label class="modal-label" for="changeSettingsOldPassword" data-i18n="settings.sec_pwd_old">Старый пароль:</label>
-                                    <input type="password" id="changeSettingsOldPassword" placeholder="Введите старый пароль" class="modal-input">
+                                    <input type="password" id="changeSettingsOldPassword" data-i18n-placeholder="settings.old_password_ph" placeholder="Введите старый пароль" class="modal-input">
                                 </div>
                                 <div style="margin-bottom: 12px;">
                                     <label class="modal-label" for="changeSettingsNewPassword" data-i18n="settings.sec_pwd_new">Новый пароль:</label>
-                                    <input type="password" id="changeSettingsNewPassword" placeholder="Введите новый пароль" class="modal-input">
+                                    <input type="password" id="changeSettingsNewPassword" data-i18n-placeholder="settings.new_password_ph" placeholder="Введите новый пароль" class="modal-input">
                                 </div>
                                 <div>
                                     <label class="modal-label" for="changeSettingsConfirmPassword" data-i18n="settings.sec_pwd_confirm">Подтверждение нового пароля:</label>
-                                    <input type="password" id="changeSettingsConfirmPassword" placeholder="Повторите новый пароль" class="modal-input">
+                                    <input type="password" id="changeSettingsConfirmPassword" data-i18n-placeholder="settings.repeat_new_password_ph" placeholder="Повторите новый пароль" class="modal-input">
                                 </div>
                             </div>
 
@@ -566,18 +643,21 @@ if (!isset($availableLanguages)) {
                             <div id="disablePasswordFormContainer" style="display: none; margin-bottom: 16px; padding: 16px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02)); border: 1px solid var(--border-color); border-radius: 10px;">
                                 <div>
                                     <label class="modal-label" for="disableSettingsPassword" data-i18n="settings.sec_pwd_current_to_disable">Введите текущий пароль для отключения защиты:</label>
-                                    <input type="password" id="disableSettingsPassword" placeholder="Введите ваш текущий пароль" class="modal-input">
+                                    <input type="password" id="disableSettingsPassword" data-i18n-placeholder="settings.current_password_ph" placeholder="Введите ваш текущий пароль" class="modal-input">
                                 </div>
                             </div>
                         </div>
                     </div>
                     
                     <div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border-color);">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="settingsIpWhitelistEnabled" style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 6px;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="settingsIpWhitelistEnabled">
+                                <span class="modal-switch-slider"></span>
+                            </div>
                             <span style="color: var(--text-color); font-weight: 500; font-size: 14px;" data-i18n="settings.sec_ip_enable">Ограничить доступ по списку IP (allowed_ips.txt)</span>
                         </label>
-                        <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin-top: 6px;" data-i18n-html="settings.sec_ip_hint">
+                        <p style="color: var(--text-color); opacity: 0.7; font-size: 12px; margin: 0; padding-left: 52px;" data-i18n-html="settings.sec_ip_hint">
                             Если включено, доступ к редактору и всем его функциям будет разрешен только с IP-адресов, перечисленных в файле <code>allowed_ips.txt</code> в корне проекта. При включении ваш текущий IP-адрес будет автоматически добавлен в список, чтобы вы не потеряли доступ.
                         </p>
                     </div>
@@ -638,35 +718,56 @@ if (!isset($availableLanguages)) {
                 <div id="globalSection-language" class="global-section" style="display: none;">
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.lang_desc">Выберите язык интерфейса редактора NPBlog.</p>
                     
-                    <div style="margin-bottom: 16px;">
-                        <input type="text" id="langSearchInput" onkeyup="filterLanguages()" placeholder="Поиск языка..." data-i18n-placeholder="settings.lang_search" class="modal-input" style="width: 100%;">
+                    <div class="lang-search-wrap">
+                        <svg class="lang-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="langSearchInput" onkeyup="filterLanguages()" placeholder="Поиск языка..." data-i18n-placeholder="settings.lang_search" class="lang-search-input">
                     </div>
 
-                    <div id="languageCardsContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; padding-right: 8px;">
-                        <?php foreach ($availableLanguages as $l): 
+                    <div id="languageCardsContainer" class="language-cards-container">
+                        <?php 
+                        $subnames = [
+                            'ru' => 'Russian',
+                            'en' => 'English',
+                            'uk' => 'Ukrainian',
+                            'lv' => 'Latvian',
+                        ];
+                        foreach ($availableLanguages as $l): 
                             $isSel = ($l['code'] === $currentLanguage);
-                            $borderStyle = $isSel ? 'var(--primary-color, #4CAF50)' : 'var(--border-color)';
-                            $bgStyle = $isSel ? 'rgba(76, 175, 80, 0.08)' : 'var(--modal-bg-subtle, rgba(0,0,0,0.02))';
+                            $selectedClass = $isSel ? ' is-selected' : '';
                             $nameStr = (string)$l['name'];
                             $langNameLower = htmlspecialchars(function_exists('mb_strtolower') ? mb_strtolower($nameStr, 'UTF-8') : strtolower($nameStr));
+                            $codeUpper = strtoupper((string)$l['code']);
+                            $subName = isset($subnames[$l['code']]) ? $subnames[$l['code']] : $codeUpper;
                         ?>
-                        <div id="langCard-<?php echo htmlspecialchars($l['code']); ?>" data-lang-code="<?php echo htmlspecialchars($l['code']); ?>" data-lang-name="<?php echo $langNameLower; ?>" class="lang-selection-card" onclick="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" style="border: 1px solid <?php echo $borderStyle; ?>; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: <?php echo $bgStyle; ?>; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-size: 18px; line-height: 1;"><?php echo htmlspecialchars($l['smile']); ?></span>
-                                <span style="font-size: 14px; font-weight: 500; color: var(--text-color);"><?php echo htmlspecialchars($l['name']); ?></span>
+                        <div id="langCard-<?php echo htmlspecialchars($l['code']); ?>" data-lang-code="<?php echo htmlspecialchars($l['code']); ?>" data-lang-name="<?php echo $langNameLower; ?>" class="lang-selection-card<?php echo $selectedClass; ?>" onclick="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)">
+                            <div class="lang-card-left">
+                                <div class="lang-code-badge"><?php echo htmlspecialchars($codeUpper); ?></div>
+                                <div class="lang-text-group">
+                                    <span class="lang-name"><?php echo htmlspecialchars($l['name']); ?></span>
+                                    <span class="lang-subname"><?php echo htmlspecialchars($subName); ?></span>
+                                </div>
                             </div>
-                            <input type="radio" name="editor_lang_radio" id="langRadio-<?php echo htmlspecialchars($l['code']); ?>" value="<?php echo htmlspecialchars($l['code']); ?>" style="cursor: pointer; width: 14px; height: 14px; margin: 0;" onchange="selectLanguageOption('<?php echo htmlspecialchars($l['code']); ?>', true)" <?php echo $isSel ? 'checked' : ''; ?>>
+                            <div class="lang-check-indicator">
+                                <svg class="lang-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                            <input type="radio" name="editor_lang_radio" id="langRadio-<?php echo htmlspecialchars($l['code']); ?>" value="<?php echo htmlspecialchars($l['code']); ?>" class="lang-radio-hidden" <?php echo $isSel ? 'checked' : ''; ?> tabindex="-1" aria-hidden="true">
                         </div>
                         <?php endforeach; ?>
                     </div>
                     
                     <script>
                     function filterLanguages() {
-                        let input = document.getElementById('langSearchInput').value.toLowerCase();
+                        let input = document.getElementById('langSearchInput').value.toLowerCase().trim();
                         let cards = document.querySelectorAll('.lang-selection-card');
                         cards.forEach(card => {
                             let name = card.getAttribute('data-lang-name') || '';
-                            if (name.includes(input)) {
+                            let code = card.getAttribute('data-lang-code') || '';
+                            if (name.includes(input) || code.includes(input)) {
                                 card.style.display = 'flex';
                             } else {
                                 card.style.display = 'none';
@@ -675,12 +776,91 @@ if (!isset($availableLanguages)) {
                     }
                     </script>
                 </div>
+
+                <!-- Секция 12: Обновления -->
+                <div id="globalSection-updates" class="global-section" style="display: none;">
+                    <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.updates_desc">
+                        Настройка автоматической проверки обновлений, выбор стабильного или экспериментального канала.
+                    </p>
+
+                    <!-- 1. Переключатель уведомлений -->
+                    <div style="margin-bottom: 20px; padding: 14px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02));">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 4px;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="settingAutoUpdateCheck" checked>
+                                <span class="modal-switch-slider"></span>
+                            </div>
+                            <span style="color: var(--text-color); font-weight: 600; font-size: 13.5px;" data-i18n="settings.updates_check_toggle">Проверять обновления при запуске</span>
+                        </label>
+                        <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-left: 50px;" data-i18n="settings.updates_check_hint">
+                            При каждом открытии редактора будет выполняться поиск новой версии. При обнаружении появится окно с чейнджлогом.
+                        </div>
+                    </div>
+
+                    <!-- 2. Выбор канала (Stable / Canary) -->
+                    <div class="modal-form-group" style="margin-bottom: 20px;">
+                        <label class="modal-label" for="settingUpdateChannel" style="font-weight: 600;" data-i18n="settings.updates_channel_label">Канал обновлений:</label>
+                        <select id="settingUpdateChannel" class="modal-select" onchange="handleUpdateChannelChange(this.value)">
+                            <option value="stable" data-i18n="settings.updates_channel_stable">Stable — Релизы GitHub (рекомендуется)</option>
+                            <option value="canary" data-i18n="settings.updates_channel_canary">Canary — Экспериментальная dev-ветка</option>
+                        </select>
+                        <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-top: 5px;" data-i18n="settings.updates_channel_hint">
+                            В режиме Stable загружаются проверенные релизы по тегам. В режиме Canary загружаются новейшие коммиты из ветки dev.
+                        </div>
+                    </div>
+
+                    <!-- 3. Поле ввода репозитория -->
+                    <div class="modal-form-group" style="margin-bottom: 24px;">
+                        <label class="modal-label" for="settingUpdateRepo" style="font-weight: 600;" data-i18n="settings.updates_repo_label">Репозиторий GitHub:</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="settingUpdateRepo" class="modal-input" value="slavaraninco-lgtm/NPBlog" placeholder="owner/repo" style="font-family: monospace; font-size: 13px;">
+                            <button type="button" class="modal-btn modal-btn-secondary" onclick="resetUpdateRepoToDefault()" style="white-space: nowrap; font-size: 12px;" data-i18n="common.reset">По умолчанию</button>
+                        </div>
+                        <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-top: 5px;" data-i18n="settings.updates_repo_hint">
+                            Официальный репозиторий: slavaraninco-lgtm/NPBlog. Вы можете указать собственный форк для тестирования обновлений.
+                        </div>
+                    </div>
+
+                    <!-- 4. Персональный токен GitHub (опционально) -->
+                    <div class="modal-form-group" style="margin-bottom: 24px;">
+                        <label class="modal-label" for="settingUpdateGithubToken" style="font-weight: 600;" data-i18n="settings.updates_token_label">Персональный токен GitHub (опционально):</label>
+                        <input type="password" id="settingUpdateGithubToken" class="modal-input" placeholder="ghp_xxxxxxxxxxxx" data-i18n-placeholder="settings.updates_token_ph" autocomplete="off" style="font-family: monospace; font-size: 13px;">
+                        <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-top: 5px;" data-i18n="settings.updates_token_hint">
+                            Необходим только при превышении лимитов GitHub API (например, при работе через общий NAT/VPN/прокси) или для доступа к приватным репозиториям.
+                        </div>
+                    </div>
+
+                    <!-- 5. Кнопки сохранения и проверки -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px;">
+                        <button type="button" onclick="saveUpdateSettings()" class="modal-btn modal-btn-primary" data-i18n="common.save_changes">Сохранить настройки</button>
+                        <button type="button" onclick="checkSystemAutoUpdate(true)" class="modal-btn modal-btn-secondary" id="manualCheckUpdateBtn" data-i18n="settings.updates_check_now_btn">🔍 Проверить обновления сейчас</button>
+                    </div>
+
+                    <!-- 5. Ссылка на ручное обновление -->
+                    <div style="padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 13px;" data-i18n="settings.updates_manual_title">Ручное обновление:</div>
+                            <div style="font-size: 12px; opacity: 0.75;" data-i18n="settings.updates_manual_desc">Установка обновления из локального .zip архива или откат на бэкап</div>
+                        </div>
+                        <button type="button" onclick="closeGlobalSettings(); openSystemUpdateModal();" class="modal-btn modal-btn-secondary" style="font-size: 12.5px;" data-i18n="settings.updates_manual_open_btn">
+                            📦 Ручное обновление
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Подвал -->
-        <div class="modal-footer">
-            <button type="button" onclick="closeGlobalSettings()" class="modal-btn modal-btn-ghost" data-modal-close data-i18n="common.close">Закрыть</button>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn" data-i18n-title="settings.exp_reset_all_title" title="Сбросить все настройки редактора к значениям по умолчанию">
+                Сбросить настройки
+            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" id="globalPathsSaveBtn" onclick="savePathsSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.paths_save_btn" style="display: none;">
+                    Сохранить настройки путей
+                </button>
+                <button type="button" onclick="closeGlobalSettings()" class="modal-btn modal-btn-ghost" data-modal-close data-i18n="common.close">Закрыть</button>
+            </div>
         </div>
     </div>
 </div>

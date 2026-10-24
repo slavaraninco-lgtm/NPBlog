@@ -17,11 +17,16 @@ if (!isset($availableLanguages)) {
     $currentLanguage = getCurrentLanguage();
 }
 
+$detectedDataPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data';
 $defaultDataPath = '';
 if (function_exists('getDataPath')) {
-    $defaultDataPath = rtrim(str_replace('/', DIRECTORY_SEPARATOR, getDataPath()), DIRECTORY_SEPARATOR);
-} else {
-    $defaultDataPath = __DIR__ . DIRECTORY_SEPARATOR . 'data';
+    $curPath = getDataPath();
+    if (strpos($curPath, 'CHANGE/ME') === false && strpos($curPath, 'CHANGE\\ME') === false) {
+        $defaultDataPath = rtrim(str_replace('/', DIRECTORY_SEPARATOR, $curPath), DIRECTORY_SEPARATOR);
+    }
+}
+if (empty($defaultDataPath) || $defaultDataPath === DIRECTORY_SEPARATOR . 'CHANGE' . DIRECTORY_SEPARATOR . 'ME') {
+    $defaultDataPath = $detectedDataPath;
 }
 
 $defaultBlogTitle = 'Блог';
@@ -497,7 +502,7 @@ if (file_exists($settingsFile)) {
     <div class="setup-ambient-orb setup-ambient-orb-2"></div>
 
     <!-- Кнопка закрытия (доступна при повторном запуске из настроек) -->
-    <button type="button" id="initialSetupCloseBtn" onclick="closeInitialSetupModal()" class="setup-close-btn" title="Закрыть">×</button>
+    <button type="button" id="initialSetupCloseBtn" onclick="closeInitialSetupModal()" class="setup-close-btn" data-i18n-title="common.close" title="Закрыть">×</button>
 
     <!-- ====================================================================== -->
     <!-- СЛАЙД 0: ЭКРАН ПРИВЕТСТВИЯ -->
@@ -620,15 +625,34 @@ if (file_exists($settingsFile)) {
                 </div>
 
                 <!-- 4. Путь к папке data -->
-                <div class="modal-form-group setup-stagger-3" style="margin-bottom: 8px;">
+                <div class="modal-form-group setup-stagger-3" style="margin-bottom: 16px;">
                     <label class="modal-label modal-label-required" for="setupDataPath" style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
                         <span>📁</span> <span data-i18n="setup.data_path_label">Путь к папке данных (data):</span>
                     </label>
                     <div style="display: flex; gap: 8px; align-items: stretch;">
                         <input type="text" id="setupDataPath" class="modal-input" value="<?= htmlspecialchars($defaultDataPath) ?>" placeholder="C:\xampp\htdocs\data или data" data-i18n-placeholder="setup.data_path_ph" required autocomplete="off" style="font-family: monospace; font-size: 13px;" onkeydown="if(event.key==='Enter') goToSetupStep(2)">
-                        <button type="button" class="modal-btn modal-btn-secondary" onclick="resetSetupDataPathToDefault()" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" title="Восстановить путь по умолчанию" data-i18n="setup.default_btn_short">По умолч.</button>
+                        <button type="button" class="modal-btn modal-btn-secondary" onclick="resetSetupDataPathToDefault()" style="white-space: nowrap; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center;" data-i18n-title="modals.setup_restore_default_path" title="Восстановить путь по умолчанию" data-i18n="setup.default_btn_short">По умолч.</button>
                     </div>
                     <div class="modal-help-text" style="font-size: 11.5px; opacity: 0.7; margin-top: 5px;" data-i18n="setup.data_path_hint">Директория на сервере для хранения статей, файлов и настроек</div>
+                </div>
+
+                <!-- 5. Автообновления -->
+                <div class="modal-form-group setup-stagger-3" style="margin-bottom: 8px;">
+                    <label class="modal-label" style="font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                        <span>🔄</span> <span data-i18n="setup.auto_update_label">Обновления системы:</span>
+                    </label>
+                    <div style="padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(128,128,128,0.04);">
+                        <label class="modal-switch-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0;">
+                            <div class="modal-switch-control">
+                                <input type="checkbox" id="setupAutoUpdateCheck" checked>
+                                <span class="modal-switch-slider"></span>
+                            </div>
+                            <span style="font-size: 13px; font-weight: 500;" data-i18n="setup.auto_update_toggle">Проверять обновления при запуске</span>
+                        </label>
+                        <div class="modal-help-text" style="font-size: 11.5px; opacity: 0.7; margin-top: 4px; margin-left: 48px;" data-i18n="setup.auto_update_hint">
+                            Автоматически уведомлять о выходе новых версий NPBlog
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -680,7 +704,7 @@ if (file_exists($settingsFile)) {
                             <label class="modal-label modal-label-required" for="setupChangeOldPassword" data-i18n="setup.sec_pwd_old_label" style="font-size: 12px; font-weight: 600;">Текущий (старый) пароль:</label>
                             <div style="position: relative;">
                                 <input type="password" id="setupChangeOldPassword" class="modal-input" placeholder="Введите текущий пароль" data-i18n-placeholder="setup.sec_pwd_old_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                             </div>
                         </div>
                         <div class="modal-grid-2" style="gap: 16px; margin-bottom: 8px;">
@@ -688,14 +712,14 @@ if (file_exists($settingsFile)) {
                                 <label class="modal-label modal-label-required" for="setupChangeNewPassword" data-i18n="setup.sec_pwd_new_label" style="font-size: 12px; font-weight: 600;">Новый пароль:</label>
                                 <div style="position: relative;">
                                     <input type="password" id="setupChangeNewPassword" class="modal-input" placeholder="Введите новый пароль" data-i18n-placeholder="setup.sec_pwd_new_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                                 </div>
                             </div>
                             <div class="modal-form-group" style="margin-bottom: 0;">
                                 <label class="modal-label modal-label-required" for="setupChangeConfirmPassword" data-i18n="setup.sec_pwd_confirm_label" style="font-size: 12px; font-weight: 600;">Подтверждение нового пароля:</label>
                                 <div style="position: relative;">
                                     <input type="password" id="setupChangeConfirmPassword" class="modal-input" placeholder="Повторите новый пароль" data-i18n-placeholder="setup.sec_pwd_confirm_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                    <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupChangeConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                                 </div>
                             </div>
                         </div>
@@ -711,7 +735,7 @@ if (file_exists($settingsFile)) {
                             <label class="modal-label modal-label-required" for="setupDisableOldPassword" data-i18n="setup.sec_pwd_current_to_disable" style="font-size: 12px; font-weight: 600;">Введите текущий пароль для подтверждения:</label>
                             <div style="position: relative;">
                                 <input type="password" id="setupDisableOldPassword" class="modal-input" placeholder="Введите текущий пароль" data-i18n-placeholder="setup.sec_pwd_old_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupDisableOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupDisableOldPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                             </div>
                         </div>
                     </div>
@@ -738,14 +762,14 @@ if (file_exists($settingsFile)) {
                                     <label class="modal-label modal-label-required" for="setupNewPassword" data-i18n="setup.sec_pwd_new_label" style="font-size: 12px; font-weight: 600;">Новый пароль:</label>
                                     <div style="position: relative;">
                                         <input type="password" id="setupNewPassword" class="modal-input" placeholder="Введите пароль для входа" data-i18n-placeholder="setup.sec_pwd_new_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                        <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                        <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupNewPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                                     </div>
                                 </div>
                                 <div class="modal-form-group" style="margin-bottom: 0;">
                                     <label class="modal-label modal-label-required" for="setupConfirmPassword" data-i18n="setup.sec_pwd_confirm_label" style="font-size: 12px; font-weight: 600;">Подтверждение пароля:</label>
                                     <div style="position: relative;">
                                         <input type="password" id="setupConfirmPassword" class="modal-input" placeholder="Повторите пароль" data-i18n-placeholder="setup.sec_pwd_confirm_ph" style="padding-right: 38px;" onkeydown="if(event.key==='Enter') finishInitialSetup()">
-                                        <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" title="Показать/скрыть">👁️</button>
+                                        <button type="button" class="setup-pwd-eye-btn" onclick="toggleSetupPasswordEye('setupConfirmPassword', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; opacity: 0.6;" data-i18n-title="modals.setup_toggle_password" title="Показать/скрыть">👁️</button>
                                     </div>
                                 </div>
                             </div>
@@ -853,9 +877,15 @@ function openInitialSetupModal() {
                     const intInput = document.getElementById('setupAutosaveInterval');
                     if (intInput) intInput.value = s.autosaveInterval;
                 }
-                if (s.active_blog_path || s.data_path) {
-                    const pInput = document.getElementById('setupDataPath');
-                    if (pInput) pInput.value = s.active_blog_path || s.data_path;
+                if (s.auto_update_check !== undefined) {
+                    const updChk = document.getElementById('setupAutoUpdateCheck');
+                    if (updChk) updChk.checked = !!s.auto_update_check;
+                }
+                const existingPath = s.active_blog_path || s.data_path || '';
+                const isPlaceholderPath = !existingPath || existingPath === '/CHANGE/ME' || existingPath.indexOf('CHANGE/ME') !== -1 || existingPath.indexOf('CHANGE\\ME') !== -1;
+                const pInput = document.getElementById('setupDataPath');
+                if (pInput) {
+                    pInput.value = isPlaceholderPath ? (s.suggested_data_path || window.setupDefaultDataPath || '') : existingPath;
                 }
                 
                 // Парсинг статуса пароля
@@ -1447,6 +1477,7 @@ async function finishInitialSetup() {
     const autosaveInterval = parseInt(document.getElementById('setupAutosaveInterval').value, 10) || 60;
     const dataPath = document.getElementById('setupDataPath').value.trim();
     const ipWhitelistEnabled = document.getElementById('setupIpWhitelistEnabled').checked;
+    const autoUpdateCheck = document.getElementById('setupAutoUpdateCheck') ? document.getElementById('setupAutoUpdateCheck').checked : true;
     
     const payload = {
         initial_setup_completed: true,
@@ -1457,7 +1488,8 @@ async function finishInitialSetup() {
         blog_paths: [dataPath],
         active_blog_path: dataPath,
         data_path: dataPath,
-        ip_whitelist_enabled: ipWhitelistEnabled
+        ip_whitelist_enabled: ipWhitelistEnabled,
+        auto_update_check: autoUpdateCheck
     };
     
     if (window.setupHasExistingPassword) {

@@ -19,7 +19,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeDeleteConfirm()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeDeleteConfirm()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 

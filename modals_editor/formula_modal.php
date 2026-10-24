@@ -277,7 +277,7 @@ $quickSymbols = [
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeFormulaDialog()" data-modal-close title="Закрыть (Esc)">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeFormulaDialog()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -340,34 +340,34 @@ $quickSymbols = [
                     <!-- Панель быстрых визуальных действий -->
                     <div class="formula-visual-actions-bar">
                         <div class="formula-btn-group">
-                            <button type="button" class="formula-action-btn" onclick="formulaActionUndo()" title="Отменить последнее действие (Ctrl+Z)">
-                                ↶ Отменить
+                            <button type="button" class="formula-action-btn" onclick="formulaActionUndo()" data-i18n-title="modals.formula_undo_title" title="Отменить последнее действие (Ctrl+Z)">
+                                <span data-i18n="modals.formula_undo">↶ Отменить</span>
                             </button>
-                            <button type="button" class="formula-action-btn" onclick="formulaActionRedo()" title="Повторить действие (Ctrl+Y)">
-                                ↷ Повторить
+                            <button type="button" class="formula-action-btn" onclick="formulaActionRedo()" data-i18n-title="modals.formula_redo_title" title="Повторить действие (Ctrl+Y)">
+                                <span data-i18n="modals.formula_redo">↷ Повторить</span>
                             </button>
-                            <button type="button" class="formula-action-btn" onclick="formulaActionDelete()" title="Стереть символ слева (Backspace)">
-                                ⌫ Стереть
+                            <button type="button" class="formula-action-btn" onclick="formulaActionDelete()" data-i18n-title="modals.formula_erase_title" title="Стереть символ слева (Backspace)">
+                                <span data-i18n="modals.formula_erase">⌫ Стереть</span>
                             </button>
-                            <button type="button" class="formula-action-btn formula-action-btn-danger" onclick="formulaActionClear()" title="Очистить поле">
-                                🗑️ Очистить
+                            <button type="button" class="formula-action-btn formula-action-btn-danger" onclick="formulaActionClear()" data-i18n-title="modals.formula_clear_title" title="Очистить поле">
+                                <span data-i18n="modals.formula_clear">🗑️ Очистить</span>
                             </button>
                         </div>
                         <div class="formula-btn-divider"></div>
                         <div class="formula-btn-group">
-                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('\\left( #@ \\right)')" title="Взять в круглые скобки ( )">( ... )</button>
-                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('\\frac{#@}{#?}')" title="Превратить в дробь">a/b</button>
-                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('\\sqrt{#@}')" title="Поместить под корень">√x</button>
-                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('{#@}^2')" title="Возвести в квадрат">x²</button>
-                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('{#@}_{#?}')" title="Добавить нижний индекс">x_i</button>
+                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('\\left( #@ \\right)')" data-i18n-title="modals.formula_wrap_brackets" title="Взять в круглые скобки ( )">( ... )</button>
+                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('\\frac{#@}{#?}')" data-i18n-title="modals.formula_make_fraction" title="Превратить в дробь">a/b</button>
+                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('\\sqrt{#@}')" data-i18n-title="modals.formula_put_sqrt" title="Поместить под корень">√x</button>
+                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('{#@}^2')" data-i18n-title="modals.formula_square" title="Возвести в квадрат">x²</button>
+                            <button type="button" class="formula-action-btn formula-wrap-btn" onclick="insertVisualSnippet('{#@}_{#?}')" data-i18n-title="modals.formula_add_subscript" title="Добавить нижний индекс">x_i</button>
                         </div>
                         <div class="formula-btn-divider"></div>
                         <div class="formula-btn-group">
-                            <button type="button" id="formulaVirtualKeyboardBtn" class="formula-action-btn" onclick="formulaActionToggleKeyboard()" title="Экранная клавиатура">
-                                ⌨ Клавиатура
+                            <button type="button" id="formulaVirtualKeyboardBtn" class="formula-action-btn" onclick="formulaActionToggleKeyboard()" data-i18n-title="modals.formula_keyboard_title" title="Экранная клавиатура">
+                                <span data-i18n="modals.formula_keyboard">⌨ Клавиатура</span>
                             </button>
-                            <button type="button" id="formulaToggleCodeBtn" class="formula-action-btn" onclick="toggleFormulaCodeSection()" title="Показать или скрыть код LaTeX">
-                                <span>{ } Код LaTeX</span>
+                            <button type="button" id="formulaToggleCodeBtn" class="formula-action-btn" onclick="toggleFormulaCodeSection()" data-i18n-title="modals.formula_latex_toggle_title" title="Показать или скрыть код LaTeX">
+                                <span data-i18n="modals.formula_latex_code">{ } Код LaTeX</span>
                             </button>
                         </div>
                     </div>
@@ -379,8 +379,8 @@ $quickSymbols = [
                 </div>
 
                 <div class="formula-status-bar">
-                    <div id="formulaSyntaxStatus" class="formula-syntax-badge is-valid">Готово к редактированию ✓</div>
-                    <div class="formula-quick-tip">💡 Кликайте по квадратикам □ или используйте Tab и стрелки для перемещения. Печатайте знаки с клавиатуры: / для дроби, ^ для степени, _ для индекса.</div>
+                    <div id="formulaSyntaxStatus" class="formula-syntax-badge is-valid" data-i18n="modals.formula_status_ready">Готово к редактированию ✓</div>
+                    <div class="formula-quick-tip" data-i18n="modals.formula_quick_tip">💡 Кликайте по квадратикам □ или используйте Tab и стрелки для перемещения. Печатайте знаки с клавиатуры: / для дроби, ^ для степени, _ для индекса.</div>
                 </div>
             </div>
 
@@ -389,9 +389,9 @@ $quickSymbols = [
                 <div class="formula-section-header">
                     <label class="modal-label" for="formulaInput" style="margin: 0;" data-i18n="modals.formula_code_label">Код формулы (LaTeX):</label>
                     <div class="formula-code-helpers">
-                        <button type="button" class="formula-helper-btn" onclick="insertVisualSnippet('\\, ')" title="Небольшой пробел">\, пробел</button>
-                        <button type="button" class="formula-helper-btn" onclick="insertVisualSnippet('\\quad ')" title="Широкий пробел">\quad</button>
-                        <button type="button" class="formula-helper-btn" onclick="insertVisualSnippet('\\text{#@}')" title="Обычный текст">\text{...}</button>
+                        <button type="button" class="formula-helper-btn" onclick="insertVisualSnippet('\\, ')" data-i18n-title="modals.formula_small_space_title" title="Небольшой пробел" data-i18n="modals.formula_small_space">\, пробел</button>
+                        <button type="button" class="formula-helper-btn" onclick="insertVisualSnippet('\\quad ')" data-i18n-title="modals.formula_wide_space_title" title="Широкий пробел">\quad</button>
+                        <button type="button" class="formula-helper-btn" onclick="insertVisualSnippet('\\text{#@}')" data-i18n-title="modals.formula_text_title" title="Обычный текст">\text{...}</button>
                     </div>
                 </div>
                 <textarea id="formulaInput" class="modal-textarea formula-code-textarea" rows="2" placeholder="x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}" spellcheck="false" oninput="syncCodeToVisual()"></textarea>

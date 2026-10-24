@@ -654,20 +654,36 @@
             var langs = this.getAvailableLanguages();
             var html = '';
 
+            var subnames = {
+                'ru': 'Russian',
+                'en': 'English',
+                'uk': 'Ukrainian',
+                'lv': 'Latvian'
+            };
+
             for (var i = 0; i < langs.length; i++) {
                 var l = langs[i];
                 var isSelected = (l.code === lang);
-                var border = isSelected ? 'var(--primary-color, #4CAF50)' : 'transparent';
-                var bg = isSelected ? 'rgba(76, 175, 80, 0.08)' : 'var(--modal-bg-subtle, rgba(0,0,0,0.02))';
+                var selectedClass = isSelected ? ' is-selected' : '';
                 var checked = isSelected ? ' checked' : '';
                 var langNameLower = (l.name || '').toLowerCase();
+                var codeUpper = (l.code || '').toUpperCase();
+                var subName = subnames[l.code] || codeUpper;
 
-                html += '<div id="langCard-' + escapeHtml(l.code) + '" data-lang-code="' + escapeHtml(l.code) + '" data-lang-name="' + escapeHtml(langNameLower) + '" class="lang-selection-card" onclick="selectLanguageOption(\'' + escapeHtml(l.code) + '\', true)" style="border: 1px solid ' + border + '; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: ' + bg + '; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between;">' +
-                    '<div style="display: flex; align-items: center; gap: 10px;">' +
-                        '<span style="font-size: 18px; line-height: 1;">' + (l.smile || l.icon || '🌐') + '</span>' +
-                        '<span style="font-size: 14px; font-weight: 500; color: var(--text-color);">' + escapeHtml(l.name) + '</span>' +
+                html += '<div id="langCard-' + escapeHtml(l.code) + '" data-lang-code="' + escapeHtml(l.code) + '" data-lang-name="' + escapeHtml(langNameLower) + '" class="lang-selection-card' + selectedClass + '" onclick="selectLanguageOption(\'' + escapeHtml(l.code) + '\', true)">' +
+                    '<div class="lang-card-left">' +
+                        '<div class="lang-code-badge">' + escapeHtml(codeUpper) + '</div>' +
+                        '<div class="lang-text-group">' +
+                            '<span class="lang-name">' + escapeHtml(l.name) + '</span>' +
+                            '<span class="lang-subname">' + escapeHtml(subName) + '</span>' +
+                        '</div>' +
                     '</div>' +
-                    '<input type="radio" name="editor_lang_radio" id="langRadio-' + escapeHtml(l.code) + '" value="' + escapeHtml(l.code) + '" style="cursor: pointer; width: 14px; height: 14px; margin: 0;" onchange="selectLanguageOption(\'' + escapeHtml(l.code) + '\', true)"' + checked + '>' +
+                    '<div class="lang-check-indicator">' +
+                        '<svg class="lang-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' +
+                            '<polyline points="20 6 9 17 4 12"></polyline>' +
+                        '</svg>' +
+                    '</div>' +
+                    '<input type="radio" name="editor_lang_radio" id="langRadio-' + escapeHtml(l.code) + '" value="' + escapeHtml(l.code) + '" class="lang-radio-hidden"' + checked + ' tabindex="-1" aria-hidden="true">' +
                 '</div>';
             }
             el.innerHTML = html;
@@ -788,8 +804,14 @@
             for (var m = 0; m < phElements.length; m++) {
                 var pEl = phElements[m];
                 var pKey = pEl.getAttribute('data-i18n-placeholder');
-                var pDef = pEl.getAttribute('placeholder') || '';
-                pEl.setAttribute('placeholder', this.t(pKey, pDef));
+                var pDef = pEl.getAttribute('placeholder') || pEl.getAttribute('data-placeholder') || '';
+                var pVal = this.t(pKey, pDef);
+                if (pEl.hasAttribute('placeholder')) {
+                    pEl.setAttribute('placeholder', pVal);
+                }
+                if (pEl.hasAttribute('data-placeholder')) {
+                    pEl.setAttribute('data-placeholder', pVal);
+                }
             }
 
             // 5. Aria-label: data-i18n-aria

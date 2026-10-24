@@ -21,7 +21,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeMarkerDialog()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeMarkerDialog()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -31,13 +31,13 @@
             <div class="modal-form-group">
                 <label class="modal-label" data-i18n="modals.marker_style_label">Выберите стиль:</label>
                 <div class="marker-styles">
-                    <button type="button" class="marker-style-btn active" data-style="straight" title="Ровное">
+                    <button type="button" class="marker-style-btn active" data-style="straight" data-i18n-title="modals.marker_style_straight" title="Ровное">
                         <div class="marker-preview-box">
                             <span class="marker-style-preview marker-preview-straight" data-i18n="modals.marker_preview_text">Текст</span>
                         </div>
                         <span class="marker-style-name" data-i18n="modals.marker_style_straight">Ровное</span>
                     </button>
-                    <button type="button" class="marker-style-btn" data-style="rough" title="Кривое">
+                    <button type="button" class="marker-style-btn" data-style="rough" data-i18n-title="modals.marker_style_rough" title="Кривое">
                         <div class="marker-preview-box">
                             <span class="marker-style-preview marker-preview-rough" data-i18n="modals.marker_preview_text">Текст</span>
                         </div>
@@ -50,12 +50,12 @@
             <div class="modal-form-group" style="margin-top: 14px;">
                 <label class="modal-label" data-i18n="modals.marker_color_label">Выберите цвет (нажмите для применения):</label>
                 <div class="marker-colors">
-                    <button type="button" class="marker-color-btn active" data-color="#ffeb3b" style="background: #ffeb3b;" title="Желтый"></button>
-                    <button type="button" class="marker-color-btn" data-color="#4caf50" style="background: #4caf50;" title="Зеленый"></button>
-                    <button type="button" class="marker-color-btn" data-color="#2196f3" style="background: #2196f3;" title="Синий"></button>
-                    <button type="button" class="marker-color-btn" data-color="#ff9800" style="background: #ff9800;" title="Оранжевый"></button>
-                    <button type="button" class="marker-color-btn" data-color="#e91e63" style="background: #e91e63;" title="Розовый"></button>
-                    <button type="button" class="marker-color-btn" data-color="#9c27b0" style="background: #9c27b0;" title="Фиолетовый"></button>
+                    <button type="button" class="marker-color-btn active" data-color="#ffeb3b" style="background: #ffeb3b;" data-i18n-title="common.color_yellow" title="Желтый"></button>
+                    <button type="button" class="marker-color-btn" data-color="#4caf50" style="background: #4caf50;" data-i18n-title="common.color_green" title="Зеленый"></button>
+                    <button type="button" class="marker-color-btn" data-color="#2196f3" style="background: #2196f3;" data-i18n-title="common.color_blue" title="Синий"></button>
+                    <button type="button" class="marker-color-btn" data-color="#ff9800" style="background: #ff9800;" data-i18n-title="common.color_orange" title="Оранжевый"></button>
+                    <button type="button" class="marker-color-btn" data-color="#e91e63" style="background: #e91e63;" data-i18n-title="common.color_pink" title="Розовый"></button>
+                    <button type="button" class="marker-color-btn" data-color="#9c27b0" style="background: #9c27b0;" data-i18n-title="common.color_purple" title="Фиолетовый"></button>
                 </div>
             </div>
         </div>

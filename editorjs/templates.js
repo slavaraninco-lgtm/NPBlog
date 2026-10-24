@@ -42,39 +42,42 @@ function renderTemplatesGrid() {
     grid.innerHTML = '';
 
     templatesList.forEach(tpl => {
+        const isMain = tpl.name === 'main';
+        const isDefault = tpl.name === defaultTemplateName;
+
         const card = document.createElement('div');
         card.className = 'template-card';
         card.onclick = () => openTemplateDetails(tpl.name);
 
         // Build badges
         let badges = '';
-        if (tpl.name === 'main') {
+        if (isMain) {
             const badgeMainText = window.t ? window.t('modals.tpl_badge_main', 'Главный') : 'Главный';
-            badges += `<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">${badgeMainText}</span>`;
+            badges += `<span class="template-badge template-badge-main">${badgeMainText}</span>`;
         }
-        if (tpl.name === defaultTemplateName) {
+        if (isDefault) {
             const badgeDefText = window.t ? window.t('modals.tpl_badge_default', 'По умолчанию') : 'По умолчанию';
-            badges += `<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">${badgeDefText}</span>`;
+            badges += `<span class="template-badge template-badge-default">${badgeDefText}</span>`;
         }
 
         // Generate miniature preview HTML
-        const previewHtml = getTemplatePreviewHtml(tpl.code);
+        const previewHtml = getTemplatePreviewHtml(tpl.code, true);
 
-        const cardTitle = (tpl.name === 'main' && window.t) ? window.t('modals.tpl_default_name', tpl.title) : tpl.title;
-        const cardDesc = (tpl.name === 'main' && window.t) ? window.t('settings.tpl_default_desc', tpl.description) : (tpl.description || (window.t ? window.t('common.no_description', 'Нет описания') : 'Нет описания'));
+        const cardTitle = (isMain && window.t) ? window.t('modals.tpl_default_name', tpl.title) : tpl.title;
+        const cardDesc = (isMain && window.t) ? window.t('settings.tpl_default_desc', tpl.description) : (tpl.description || (window.t ? window.t('common.no_description', 'Нет описания') : 'Нет описания'));
 
         card.innerHTML = `
                 <div class="template-preview-card-wrap">
-                    <iframe class="template-preview-iframe" srcdoc="${escapeHtml(previewHtml)}"></iframe>
+                    <iframe class="template-preview-iframe" srcdoc="${escapeHtml(previewHtml)}" tabindex="-1" aria-hidden="true"></iframe>
                     <div style="position: absolute; top:0; left:0; right:0; bottom:0; background:transparent; z-index:2;"></div>
                 </div>
-                <div style="padding: 12px; flex: 1; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                        <span style="color: var(--text-color);">${cardTitle}</span>
-                        <div style="display: flex; gap: 2px;">${badges}</div>
+                <div class="template-card-content">
+                    <div class="template-card-header-wrap">
+                        <div class="template-card-title">${escapeHtml(cardTitle)}</div>
+                        ${badges ? `<div class="template-card-badges">${badges}</div>` : ''}
                     </div>
-                    <div style="font-size: 12px; opacity: 0.7; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 34px; color: var(--text-color);">
-                        ${cardDesc}
+                    <div class="template-card-desc">
+                        ${escapeHtml(cardDesc)}
                     </div>
                 </div>
             `;
@@ -82,8 +85,21 @@ function renderTemplatesGrid() {
     });
 }
 
-function getTemplatePreviewHtml(templateCode) {
-    let mockContent = `
+function getTemplatePreviewHtml(templateCode, isThumbnail = false) {
+    let mockContent;
+    if (isThumbnail) {
+        mockContent = `
+            <p>Это пример текста статьи для предпросмотра шаблона оформления NPBlog. Здесь можно оценить шрифты, интервалы и структуру элементов.</p>
+            <h2>Подзаголовок статьи</h2>
+            <div class="blog-image-align-wrap" style="text-align:center; margin: 10px 0;">
+                <div class="blog-image-wrap">
+                    <div style="background:#4CAF50;color:white;padding:14px 20px;border-radius:8px;font-weight:bold;font-size:13px;display:inline-block;min-width:180px;">Пример картинки / медиа</div>
+                    <span class="caption" style="display:block;margin-top:4px;font-size:11px;opacity:0.7;">Подпись к медиа-файлу</span>
+                </div>
+            </div>
+        `;
+    } else {
+        mockContent = `
             <p>Это пример текста статьи для предпросмотра шаблона. Здесь вы можете увидеть, как будут выглядеть ваши абзацы, ссылки, списки и другие элементы.</p>
             <h2>Подзаголовок статьи</h2>
             <p>А здесь ссылка на <a href="#">какой-то внешний ресурс</a>.</p>
@@ -98,6 +114,8 @@ function getTemplatePreviewHtml(templateCode) {
                 </div>
             </div>
         `;
+    }
+
     let preview = templateCode
         .replace(/\{\{TITLE\}\}/g, 'Пример заголовка статьи')
         .replace(/\{\{DATE\}\}/g, '20.06.2026 12:00')
@@ -109,11 +127,94 @@ function getTemplatePreviewHtml(templateCode) {
         .replace(/\{\{CONTENT_WRAPPER_END\}\}/g, '')
         .replace(/\{\{CONTENT\}\}/g, mockContent);
 
-    // Inject <base href="data/blog/"> inside <head> if present to resolve relative URLs of CSS and JS assets correctly
+    // Sync theme with editor
+    const currentTheme = document.documentElement.getAttribute('data-theme') || (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
+    const isAmoled = document.documentElement.getAttribute('data-amoled') === 'true';
+
+    let headInject = `
+    <script>
+        try {
+            localStorage.setItem('theme', '${currentTheme}');
+            document.documentElement.setAttribute('data-theme', '${currentTheme}');
+            ${isAmoled ? "document.documentElement.setAttribute('data-amoled', 'true');" : "document.documentElement.removeAttribute('data-amoled');"}
+        } catch(e){}
+    </script>`;
+
+    if (isThumbnail) {
+        headInject += `
+    <style id="thumbnail-preview-styles">
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+        }
+        body {
+            max-width: 100% !important;
+            padding: 16px 22px 18px 22px !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 100% !important;
+        }
+        h1 {
+            font-size: 1.85em !important;
+            margin-bottom: 8px !important;
+            padding-bottom: 8px !important;
+            line-height: 1.25 !important;
+        }
+        .date {
+            margin-bottom: 12px !important;
+            font-size: 0.85em !important;
+        }
+        .content {
+            margin-top: 6px !important;
+            font-size: 0.95em !important;
+            line-height: 1.45 !important;
+            flex: 1 0 auto !important;
+        }
+        .content p {
+            margin-bottom: 8px !important;
+        }
+        h2 {
+            font-size: 1.3em !important;
+            margin: 10px 0 6px 0 !important;
+        }
+        .back-link {
+            margin-top: 14px !important;
+            padding: 6px 14px !important;
+            font-size: 12px !important;
+            display: inline-block !important;
+            align-self: flex-start !important;
+        }
+        .powered-by {
+            position: static !important;
+            margin-top: 14px !important;
+            padding-top: 6px !important;
+            font-size: 11px !important;
+            opacity: 0.55 !important;
+            display: block !important;
+        }
+        .theme-toggle {
+            position: absolute !important;
+            top: 16px !important;
+            right: 22px !important;
+            padding: 6px 14px !important;
+            font-size: 12px !important;
+        }
+    </style>`;
+    }
+
+    // Inject base tag and head styles/scripts
     if (!preview.includes('<base ') && preview.includes('<head>')) {
-        preview = preview.replace('<head>', '<head>\n    <base href="data/blog/">');
+        preview = preview.replace('<head>', '<head>\n    <base href="data/blog/">' + headInject);
     } else if (!preview.includes('<base ')) {
-        preview = '<base href="data/blog/">' + preview;
+        preview = '<base href="data/blog/">' + headInject + preview;
+    } else if (preview.includes('</head>')) {
+        preview = preview.replace('</head>', headInject + '\n</head>');
+    } else {
+        preview = headInject + preview;
     }
 
     return preview;
@@ -334,7 +435,7 @@ function renderTemplatePostList() {
     container.innerHTML = '';
 
     if (postsList.length === 0) {
-        container.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px;">Нет статей</div>';
+        container.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px;">' + (window.t ? window.t('modals.tpl_no_posts', 'Нет статей') : 'Нет статей') + '</div>';
         return;
     }
 
@@ -345,14 +446,19 @@ function renderTemplatePostList() {
 
         // Check if this post currently uses this template
         const isAssigned = postTemplatesMeta[post.id] === currentTemplateName;
+        const dateText = window.t ? window.t('modals.tpl_post_date', `Дата: ${post.date}`, { date: post.date }) : `Дата: ${post.date}`;
+        const appliedBadge = isAssigned ? `• <span style="color:#10b981; font-weight:600;">${window.t ? window.t('modals.tpl_already_applied', 'Уже применен') : 'Уже применен'}</span>` : '';
+        const btnText = isAssigned 
+            ? (window.t ? window.t('modals.tpl_reapply', 'Переприменить') : 'Переприменить') 
+            : (window.t ? window.t('modals.tpl_select', 'Выбрать') : 'Выбрать');
 
         item.innerHTML = `
                 <div style="flex: 1; min-width: 0; padding-right: 10px;">
                     <div style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-color);">${post.title}</div>
-                    <div style="font-size: 11px; opacity: 0.6; margin-top: 2px;">Дата: ${post.date} ${isAssigned ? '• <span style="color:#10b981; font-weight:600;">Уже применен</span>' : ''}</div>
+                    <div style="font-size: 11px; opacity: 0.6; margin-top: 2px;">${dateText} ${appliedBadge}</div>
                 </div>
                 <button type="button" onclick="applyTemplateToPost(${post.id})" style="padding: 6px 12px; background: ${isAssigned ? '#10b981' : 'var(--primary-color, #4CAF50)'}; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                    ${isAssigned ? 'Переприменить' : 'Выбрать'}
+                    ${btnText}
                 </button>
             `;
         container.appendChild(item);
@@ -428,17 +534,18 @@ function deleteCurrentTemplate() {
 
 function showTemplatePlaceholdersInfo(e) {
     e.preventDefault();
-    const info = `Обязательные плейсхолдеры в шаблоне:\n\n` +
-        `{{TITLE}} - заголовок статьи\n` +
-        `{{DATE}} - дата публикации\n` +
-        `{{POST_ID}} - ID статьи\n` +
-        `{{CONTENT}} - основной контент\n` +
-        `{{META_TAGS}} - метатеги SEO\n` +
-        `{{CUSTOM_FONTS}} - блок шрифтов\n` +
-        `{{BODY_STYLE}} - стили тела документа\n` +
-        `{{CONTENT_WRAPPER_START}} - начало обертки контента\n` +
-        `{{CONTENT_WRAPPER_END}} - конец обертки контента`;
-    showAlert(info, 'Теги шаблонов');
+    const t = window.t || function(k, d) { return d; };
+    const info = (t('modals.tpl_req_title', 'Обязательные плейсхолдеры в шаблоне:')) + '\n\n' +
+        `{{TITLE}} - ` + t('modals.tpl_ph_title_desc', 'заголовок статьи') + '\n' +
+        `{{DATE}} - ` + t('modals.tpl_ph_date_desc', 'дата публикации') + '\n' +
+        `{{POST_ID}} - ` + t('modals.tpl_ph_post_id_desc', 'ID статьи') + '\n' +
+        `{{CONTENT}} - ` + t('modals.tpl_ph_content_desc', 'основной контент статьи') + '\n' +
+        `{{META_TAGS}} - ` + t('modals.tpl_ph_meta_desc', 'SEO-метатеги') + '\n' +
+        `{{CUSTOM_FONTS}} - ` + t('modals.tpl_ph_fonts_desc', 'блок подключения шрифтов') + '\n' +
+        `{{BODY_STYLE}} - ` + t('modals.tpl_ph_body_desc', 'стили фона и цвета текста') + '\n' +
+        `{{CONTENT_WRAPPER_START}} - ` + t('modals.tpl_ph_wrap_start_desc', 'начало обертки контента') + '\n' +
+        `{{CONTENT_WRAPPER_END}} - ` + t('modals.tpl_ph_wrap_end_desc', 'конец обертки контента');
+    showAlert(info, t('modals.tpl_tags_title', 'Теги шаблонов'));
 }
 
 function showTemplateInstructions() {

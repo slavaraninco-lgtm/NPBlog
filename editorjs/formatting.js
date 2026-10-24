@@ -678,10 +678,20 @@
 
                     // If previous sibling is an atomic media wrapper or HR
                     if (prevSibling.classList.contains('blog-image-align-wrap') || prevSibling.tagName === 'HR') {
-                        if (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe')) {
-                            block.parentNode.removeChild(block);
+                        const isCurrentEmpty = (block.textContent.trim() === '' && !block.querySelector('img, video, audio, iframe'));
+                        if (!isCurrentEmpty) {
+                            // Do not delete media wrapper if current block has text!
+                            const beforeMedia = prevSibling.previousElementSibling;
+                            if (beforeMedia) {
+                                this.setCursorToEnd(beforeMedia);
+                                this.saveSelection();
+                            }
+                            return;
                         }
-                        prevSibling.parentNode.removeChild(prevSibling);
+                        block.parentNode.removeChild(block);
+                        if (!prevSibling.classList.contains('align-float-left') && !prevSibling.classList.contains('align-float-right')) {
+                            prevSibling.parentNode.removeChild(prevSibling);
+                        }
                         this.normalizeDOM(editor);
                         this.saveSelection();
                         if (typeof saveToHistory === 'function') saveToHistory();
@@ -1009,6 +1019,17 @@
                 return;
             }
 
+            // Если активно глобальное выделение медиа-элемента, выравниваем его с анимацией
+            if (typeof activeTarget !== 'undefined' && activeTarget && typeof applyMediaAlignment === 'function') {
+                const mediaAlignWrap = activeTarget.closest('.blog-image-align-wrap');
+                if (mediaAlignWrap) {
+                    applyMediaAlignment(mediaAlignWrap, side, true, () => {
+                        if (typeof saveToHistory === 'function') saveToHistory();
+                    });
+                    return;
+                }
+            }
+
             if (!this.restoreFocus()) return;
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return;
@@ -1017,7 +1038,18 @@
             const block = this.getClosestBlock(range.startContainer);
 
             if (block && block.id !== 'contentVisual') {
-                block.style.textAlign = side;
+                const alignWrap = block.classList.contains('blog-image-align-wrap')
+                    ? block
+                    : (block.closest ? block.closest('.blog-image-align-wrap') : null);
+
+                if (alignWrap && typeof applyMediaAlignment === 'function') {
+                    applyMediaAlignment(alignWrap, side, true, () => {
+                        if (typeof saveToHistory === 'function') saveToHistory();
+                    });
+                    return;
+                } else {
+                    block.style.textAlign = side;
+                }
             } else {
                 const div = document.createElement('div');
                 div.style.textAlign = side;
@@ -1458,17 +1490,29 @@
             // Remove runtime UI elements
             const elementsToRemove = temp.querySelectorAll(
                 '.image-toolbar, .image-align-dropdown, .image-size-indicator, ' +
-                '.image-resize-handle, .blog-image-overlay, .column-resizer, #customCaret'
+                '.image-resize-handle, .blog-image-overlay, .column-resizer, #customCaret, .media-upload-placeholder'
             );
             elementsToRemove.forEach(el => el.parentNode && el.parentNode.removeChild(el));
 
             // Remove runtime data attributes
-            const widgets = temp.querySelectorAll('[data-image-id], [data-media-id], [data-media-type], table[data-resizers-added]');
+            const widgets = temp.querySelectorAll('[data-image-id], [data-media-id], [data-media-type], table[data-resizers-added], [data-wrap-animating]');
             widgets.forEach(el => {
                 el.removeAttribute('data-image-id');
                 el.removeAttribute('data-media-id');
                 el.removeAttribute('data-media-type');
                 el.removeAttribute('data-resizers-added');
+                el.removeAttribute('data-wrap-animating');
+            });
+
+            // Strip any temporary animation transform/transition inline styles
+            temp.querySelectorAll('[style*="transform"], [style*="transition"], [style*="will-change"]').forEach(el => {
+                el.style.transform = '';
+                el.style.transition = '';
+                el.style.willChange = '';
+                const styleAttr = el.getAttribute('style');
+                if (styleAttr !== null && styleAttr.trim() === '') {
+                    el.removeAttribute('style');
+                }
             });
 
             // Remove contenteditable attributes from cells or blocks, but preserve on non-editable widgets
@@ -1957,6 +2001,9 @@
         }
         if (typeof updateAutosaveBadge === 'function') {
             updateAutosaveBadge();
+        }
+        if (typeof updateBottomBarStats === 'function') {
+            updateBottomBarStats();
         }
     };
 

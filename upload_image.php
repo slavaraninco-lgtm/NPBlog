@@ -70,6 +70,7 @@ if ($saved) {
     if (ob_get_length()) ob_clean();
     echo json_encode([
         'success' => true,
+        'filename' => $fileName,
         'url' => getDataUrl('uploads/' . $newFileName)
     ]);
 } else {

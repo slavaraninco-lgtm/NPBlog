@@ -245,6 +245,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const forbidden = temp.querySelectorAll('script, style, link, meta, base, xml, object, embed, applet, iframe, form, input, button, select, textarea, o\\:p');
         forbidden.forEach(el => el.remove());
 
+        // Очищаем специфический мусор Википедии: сноски-ссылки ([1], [2]), кнопки [править] и скрытые элементы
+        const wikiNoise = temp.querySelectorAll('sup.reference, sup.mw-ref, span.mw-editsection, .noprint, .mw-cite-backlink');
+        wikiNoise.forEach(el => el.remove());
+
         // Удаляем HTML-комментарии (например от Word <!--[if ...]-->)
         const removeComments = function (element) {
             for (let i = element.childNodes.length - 1; i >= 0; i--) {
@@ -258,6 +262,21 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         removeComments(temp);
 
+        // Разворачиваем гиперссылки (<a>), сохраняя их текст и внутреннее форматирование (жирный, курсив и т.д.)
+        const links = Array.from(temp.querySelectorAll('a'));
+        links.forEach(link => {
+            // Сохраняем специальные кнопки-виджеты блога (.custom-blog-btn)
+            if (link.classList.contains('custom-blog-btn')) {
+                return;
+            }
+            const parent = link.parentNode;
+            if (!parent) return;
+            while (link.firstChild) {
+                parent.insertBefore(link.firstChild, link);
+            }
+            parent.removeChild(link);
+        });
+
         // Очищаем атрибуты и инлайн-стили
         const allNodes = temp.querySelectorAll('*');
         allNodes.forEach(node => {
@@ -269,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 // Очищаем классы от стилей Word/сторонних библиотек
                 if (name === 'class') {
-                    const safeClasses = Array.from(node.classList).filter(c => c.startsWith('blog-') || c === 'content' || c === 'table-container');
+                    const safeClasses = Array.from(node.classList).filter(c => c.startsWith('blog-') || c === 'content' || c === 'table-container' || c === 'custom-blog-btn');
                     if (safeClasses.length) {
                         node.className = safeClasses.join(' ');
                     } else {
@@ -300,10 +319,12 @@ document.addEventListener('DOMContentLoaded', function () {
             // Разворачиваем устаревшие теги <font>
             if (node.tagName === 'FONT') {
                 const parent = node.parentNode;
-                while (node.firstChild) {
-                    parent.insertBefore(node.firstChild, node);
+                if (parent) {
+                    while (node.firstChild) {
+                        parent.insertBefore(node.firstChild, node);
+                    }
+                    parent.removeChild(node);
                 }
-                parent.removeChild(node);
             }
         });
 
@@ -363,14 +384,23 @@ document.addEventListener('DOMContentLoaded', function () {
         // Smart Paste Sanitization for Visual Mode
         if (editorMode === 'visual') {
             const html = clipboardData.getData('text/html');
-            if (html && (html.includes('MsoNormal') || html.includes('style=') || html.includes('<!--[if') || html.includes('<font') || html.includes('<span'))) {
+            if (html) {
                 e.preventDefault();
                 const cleanHtml = sanitizePastedHtml(html);
                 if (cleanHtml) {
-                    document.execCommand('insertHTML', false, cleanHtml);
+                    let inserted = false;
+                    try {
+                        inserted = document.execCommand('insertHTML', false, cleanHtml);
+                    } catch (err) { }
+                    if (!inserted && typeof VisualEngine !== 'undefined' && typeof VisualEngine.insertHTML === 'function') {
+                        VisualEngine.insertHTML(cleanHtml);
+                    }
                 } else {
                     const text = clipboardData.getData('text/plain');
                     if (text) document.execCommand('insertText', false, text);
+                }
+                if (typeof wrapExistingEditorImages === 'function') {
+                    wrapExistingEditorImages();
                 }
                 markEditorDirty();
                 saveToHistory();
@@ -386,7 +416,434 @@ document.addEventListener('DOMContentLoaded', function () {
     if (codeEditor) {
         codeEditor.addEventListener('paste', handlePaste);
     }
+
+    // Initialize media Drag & Drop into editor fields
+    initEditorMediaDragDrop();
 });
+
+// --- Drag and Drop Медиа (Фото и Видео) в поле статьи ---
+
+/**
+ * Инициализирует возможность вставки фото и видео файлов в статью путем drag & drop
+ */
+function initEditorMediaDragDrop() {
+    const visualEditor = document.getElementById('contentVisual');
+    const codeEditor = document.getElementById('content');
+    const blogForm = document.getElementById('blogForm');
+
+    if (!visualEditor && !codeEditor) return;
+
+    function hasFiles(e) {
+        if (!e.dataTransfer || !e.dataTransfer.types) return false;
+        for (let i = 0; i < e.dataTransfer.types.length; i++) {
+            if (e.dataTransfer.types[i] === 'Files') return true;
+        }
+        return false;
+    }
+
+    function isImageFile(file) {
+        if (file.type && file.type.startsWith('image/')) return true;
+        const ext = (file.name || '').split('.').pop().toLowerCase();
+        return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].indexOf(ext) !== -1;
+    }
+
+    function isVideoFile(file) {
+        if (file.type && file.type.startsWith('video/')) return true;
+        const ext = (file.name || '').split('.').pop().toLowerCase();
+        return ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi'].indexOf(ext) !== -1;
+    }
+
+    function getCaretRangeFromPoint(clientX, clientY) {
+        if (document.caretRangeFromPoint) {
+            return document.caretRangeFromPoint(clientX, clientY);
+        } else if (document.caretPositionFromPoint) {
+            const pos = document.caretPositionFromPoint(clientX, clientY);
+            if (pos && pos.offsetNode) {
+                const range = document.createRange();
+                range.setStart(pos.offsetNode, pos.offset);
+                range.collapse(true);
+                return range;
+            }
+        }
+        return null;
+    }
+
+    // Защита от случайного сброса файлов мимо редактора (браузер по умолчанию переходит по ссылке на файл)
+    window.addEventListener('dragover', function (e) {
+        if (hasFiles(e)) {
+            e.preventDefault();
+        }
+    }, false);
+
+    window.addEventListener('drop', function (e) {
+        if (hasFiles(e)) {
+            if (!e.target.closest('#contentVisual, #content, .file-dropzone, #smileDropzone, #videoDropzone, #audioDropzone')) {
+                e.preventDefault();
+            }
+        }
+    }, false);
+
+    // 1. Визуальный редактор (#contentVisual)
+    let visualDragCounter = 0;
+    if (visualEditor) {
+        visualEditor.addEventListener('dragenter', function (e) {
+            if (!hasFiles(e)) return;
+            visualDragCounter++;
+            visualEditor.classList.add('drag-over-media');
+        });
+
+        visualEditor.addEventListener('dragover', function (e) {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+
+            // Живой курсор в месте вставки
+            const range = getCaretRangeFromPoint(e.clientX, e.clientY);
+            if (range && visualEditor.contains(range.commonAncestorContainer)) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        });
+
+        visualEditor.addEventListener('dragleave', function (e) {
+            if (!hasFiles(e)) return;
+            visualDragCounter--;
+            if (visualDragCounter <= 0) {
+                visualDragCounter = 0;
+                visualEditor.classList.remove('drag-over-media');
+            }
+        });
+
+        visualEditor.addEventListener('drop', function (e) {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            visualDragCounter = 0;
+            visualEditor.classList.remove('drag-over-media');
+
+            const files = Array.from(e.dataTransfer.files || []);
+            if (!files.length) return;
+
+            let dropRange = getCaretRangeFromPoint(e.clientX, e.clientY);
+            if (dropRange && !visualEditor.contains(dropRange.commonAncestorContainer)) {
+                dropRange = null;
+            }
+
+            handleDroppedMediaFiles(files, 'visual', dropRange);
+        });
+    }
+
+    // 2. Редактор исходного кода (#content)
+    let codeDragCounter = 0;
+    if (codeEditor) {
+        codeEditor.addEventListener('dragenter', function (e) {
+            if (!hasFiles(e)) return;
+            codeDragCounter++;
+            codeEditor.classList.add('drag-over-media');
+        });
+
+        codeEditor.addEventListener('dragover', function (e) {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        codeEditor.addEventListener('dragleave', function (e) {
+            if (!hasFiles(e)) return;
+            codeDragCounter--;
+            if (codeDragCounter <= 0) {
+                codeDragCounter = 0;
+                codeEditor.classList.remove('drag-over-media');
+            }
+        });
+
+        codeEditor.addEventListener('drop', function (e) {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            codeDragCounter = 0;
+            codeEditor.classList.remove('drag-over-media');
+
+            const files = Array.from(e.dataTransfer.files || []);
+            if (!files.length) return;
+
+            handleDroppedMediaFiles(files, 'code', null);
+        });
+    }
+
+    // 3. Форма статьи (#blogForm) — если перетащили в поле формы за пределами текстовых областей
+    if (blogForm) {
+        blogForm.addEventListener('dragover', function (e) {
+            if (!hasFiles(e)) return;
+            if (e.target && e.target.id === 'title') return;
+            e.preventDefault();
+        });
+
+        blogForm.addEventListener('drop', function (e) {
+            if (!hasFiles(e)) return;
+            if (e.target && e.target.id === 'title') return;
+            if (e.target === visualEditor || visualEditor?.contains(e.target) || e.target === codeEditor) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            if (visualEditor) visualEditor.classList.remove('drag-over-media');
+            if (codeEditor) codeEditor.classList.remove('drag-over-media');
+
+            const files = Array.from(e.dataTransfer.files || []);
+            if (!files.length) return;
+
+            const mode = (typeof editorMode !== 'undefined' && editorMode === 'code') ? 'code' : 'visual';
+            handleDroppedMediaFiles(files, mode, null);
+        });
+    }
+
+    /**
+     * Обработка сброшенных медиа файлов
+     */
+    function handleDroppedMediaFiles(files, mode, dropRange) {
+        const mediaFiles = [];
+        files.forEach(function (file) {
+            if (isImageFile(file) || isVideoFile(file)) {
+                mediaFiles.push(file);
+            } else {
+                const warnMsg = window.t
+                    ? window.t('notifications.drag_drop_unsupported_file', 'Формат файла "{filename}" не поддерживается (разрешены только фото и видео)', { filename: file.name })
+                    : 'Формат файла "' + file.name + '" не поддерживается (разрешены только фото и видео)';
+                showNotification(warnMsg, 'warning');
+            }
+        });
+
+        if (!mediaFiles.length) return;
+
+        if (mode === 'visual') {
+            const itemsToUpload = [];
+            let currentRange = dropRange;
+
+            mediaFiles.forEach(function (file) {
+                const uploadId = 'media-upload-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                const isVid = isVideoFile(file);
+                const icon = isVid ? '🎬' : '🖼️';
+                const safeName = typeof escapeHtml === 'function' ? escapeHtml(file.name) : file.name;
+                const placeholderHtml = '<div class="blog-image-align-wrap media-upload-placeholder" data-upload-id="' + uploadId + '" contenteditable="false" style="text-align: center; margin: 14px 0; width: 100%; clear: both;">' +
+                    '<div class="media-upload-card">' +
+                        '<div class="media-upload-spinner"></div>' +
+                        '<div class="media-upload-info">' +
+                            '<span class="media-upload-icon">' + icon + '</span>' +
+                            '<span class="media-upload-text">' + safeName + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+
+                if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+                    window.VisualEngine.insertBlockMedia(placeholderHtml, currentRange);
+                    // После вставки первого плейсхолдера курсор уже стоит сразу за ним
+                    currentRange = null;
+                } else if (typeof insertImageBlockAtCaret === 'function') {
+                    insertImageBlockAtCaret(placeholderHtml);
+                } else if (visualEditor) {
+                    visualEditor.insertAdjacentHTML('beforeend', placeholderHtml);
+                }
+
+                itemsToUpload.push({ file: file, uploadId: uploadId, isVideo: isVid });
+            });
+
+            // Запускаем загрузку каждого файла параллельно
+            itemsToUpload.forEach(function (item) {
+                uploadDroppedMediaFile(item.file, 'visual', item.uploadId, item.isVideo);
+            });
+        } else {
+            // В режиме кода загружаем файлы последовательно, сохраняя порядок вставки
+            (async function () {
+                for (const file of mediaFiles) {
+                    await uploadDroppedMediaFile(file, 'code', null, isVideoFile(file));
+                }
+            })();
+        }
+    }
+
+    /**
+     * Загрузка отдельного медиа файла (фото или видео) на сервер
+     */
+    async function uploadDroppedMediaFile(file, mode, uploadId, isVideo) {
+        const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+        const MAX_IMG_SIZE = 25 * 1024 * 1024;    // 25 MB
+
+        if (isVideo && file.size > MAX_VIDEO_SIZE) {
+            removeUploadPlaceholder(uploadId);
+            const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+            const msg = window.t
+                ? window.t('notifications.video_too_big_param', 'Видео файл слишком большой ({size} МБ). Максимальный размер: 100 МБ.', { size: sizeMb })
+                : 'Видео файл слишком большой (' + sizeMb + ' МБ). Максимальный размер: 100 МБ.';
+            showNotification(msg, 'error');
+            return;
+        }
+
+        if (!isVideo && file.size > MAX_IMG_SIZE) {
+            removeUploadPlaceholder(uploadId);
+            const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+            const msg = window.t
+                ? window.t('notifications.file_too_big_param', 'Файл "{filename}" слишком большой ({size} МБ). Максимум 25 МБ.', { filename: file.name, size: sizeMb })
+                : 'Файл "' + file.name + '" слишком большой (' + sizeMb + ' МБ). Максимум 25 МБ.';
+            showNotification(msg, 'error');
+            return;
+        }
+
+        window.activeMediaUploadsCount = (window.activeMediaUploadsCount || 0) + 1;
+
+        if (mode === 'code') {
+            const startMsg = window.t
+                ? window.t('notifications.drag_drop_uploading', 'Загрузка: {filename}...', { filename: file.name })
+                : 'Загрузка: ' + file.name + '...';
+            showNotification(startMsg, 'info');
+        }
+
+        const formData = new FormData();
+        const endpoint = isVideo ? 'upload_video.php' : 'upload_image.php';
+        if (isVideo) {
+            formData.append('video', file);
+        } else {
+            formData.append('image', file);
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || (window.CSRF_TOKEN || '');
+        const headers = {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        };
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: headers,
+                body: formData
+            });
+
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (jsonErr) {
+                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                throw new Error(clean || ('HTTP ' + response.status));
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || (isVideo ? 'Не удалось загрузить видео' : 'Не удалось загрузить изображение'));
+            }
+
+            if (isVideo) {
+                const videoPath = data.path || ('data/files/videos/' + (data.filename || file.name));
+                const fileName = data.filename || file.name;
+                insertUploadedMediaContent(videoPath, fileName, 'video', mode, uploadId);
+                const successMsg = window.t
+                    ? window.t('notifications.drag_drop_video_success', 'Видео "{filename}" успешно добавлено', { filename: file.name })
+                    : 'Видео "' + file.name + '" успешно добавлено';
+                showNotification(successMsg, 'success');
+                if (typeof loadVideoFilesList === 'function') loadVideoFilesList();
+            } else {
+                const imgUrl = data.url;
+                insertUploadedMediaContent(imgUrl, file.name, 'image', mode, uploadId);
+                const successMsg = window.t
+                    ? window.t('notifications.drag_drop_image_success', 'Изображение "{filename}" успешно добавлено', { filename: file.name })
+                    : 'Изображение "' + file.name + '" успешно добавлено';
+                showNotification(successMsg, 'success');
+            }
+        } catch (err) {
+            console.error('Drag & Drop media upload error:', err);
+            removeUploadPlaceholder(uploadId);
+            const errMsg = window.t
+                ? window.t('notifications.error_with_param', 'Ошибка: {error}', { error: err.message || 'Ошибка сети' })
+                : 'Ошибка: ' + (err.message || 'Ошибка сети');
+            showNotification(errMsg, 'error');
+        } finally {
+            window.activeMediaUploadsCount = Math.max(0, (window.activeMediaUploadsCount || 1) - 1);
+        }
+    }
+
+    function removeUploadPlaceholder(uploadId) {
+        if (!uploadId) return;
+        const ph = document.querySelector('[data-upload-id="' + uploadId + '"]');
+        if (ph && ph.parentNode) ph.parentNode.removeChild(ph);
+    }
+
+    /**
+     * Вставляет загруженное медиа в статью (заменяя плейсхолдер или добавляя в textarea)
+     */
+    function insertUploadedMediaContent(url, fileName, type, mode, uploadId) {
+        const isVid = (type === 'video');
+        const noBorderRadius = localStorage.getItem('noBorderRadius') === 'true';
+
+        let videoElement = '';
+        let mediaHtml = '';
+
+        if (isVid) {
+            let mimeType = 'video/mp4';
+            const ext = (url || fileName).split(/[#?]/)[0].split('.').pop().toLowerCase();
+            if (ext === 'webm') mimeType = 'video/webm';
+            else if (ext === 'ogg' || ext === 'ogv') mimeType = 'video/ogg';
+            else if (ext === 'mov') mimeType = 'video/quicktime';
+            else if (ext === 'mkv') mimeType = 'video/x-matroska';
+
+            videoElement = '<video controls playsinline preload="metadata" style="width: 100%; min-width: 280px; max-width: 800px; height: auto; display: block; margin: 10px auto; border-radius: 8px;"><source src="' + url + '" type="' + mimeType + '">Ваш браузер не поддерживает видео элемент.</video>';
+            mediaHtml = wrapMediaWithControls(videoElement, 'video');
+        } else {
+            const radiusStyle = noBorderRadius ? 'border-radius: 0px !important;' : 'border-radius: 8px;';
+            const imgStyle = 'width: 100%; max-width: 100%; height: auto; display: block; margin: 0; ' + radiusStyle;
+            const classAttr = 'blog-image' + (noBorderRadius ? ' no-radius' : '');
+            const imgTag = '<img src="' + url + '" style="' + imgStyle + '" class="' + classAttr + '">';
+            mediaHtml = wrapImageWithHint(imgTag, '');
+        }
+
+        const isVisualMode = (mode === 'visual' || (typeof editorMode !== 'undefined' && editorMode === 'visual'));
+
+        if (isVisualMode) {
+            const vEditor = document.getElementById('contentVisual');
+            let placeholder = uploadId ? vEditor?.querySelector('[data-upload-id="' + uploadId + '"]') : null;
+
+            if (placeholder && placeholder.parentNode) {
+                placeholder.insertAdjacentHTML('beforebegin', mediaHtml);
+                placeholder.parentNode.removeChild(placeholder);
+            } else {
+                if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+                    window.VisualEngine.insertBlockMedia(mediaHtml);
+                } else if (typeof insertImageBlockAtCaret === 'function') {
+                    insertImageBlockAtCaret(mediaHtml);
+                } else if (vEditor) {
+                    vEditor.insertAdjacentHTML('beforeend', mediaHtml);
+                }
+            }
+
+            if (typeof wrapExistingEditorImages === 'function') wrapExistingEditorImages();
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            if (typeof saveToHistory === 'function') saveToHistory();
+        } else {
+            // Code mode
+            const ta = document.getElementById('content');
+            if (ta) {
+                let codeSnippet = '';
+                if (window.enableMarkdown) {
+                    if (isVid) {
+                        codeSnippet = '\n' + videoElement + '\n';
+                    } else {
+                        codeSnippet = '\n![' + (fileName || 'Изображение') + '](' + url + ')\n';
+                    }
+                } else {
+                    codeSnippet = '\n' + (isVid ? videoElement : mediaHtml) + '\n';
+                }
+
+                const cursorPos = (typeof ta.selectionStart === 'number') ? ta.selectionStart : ta.value.length;
+                ta.value = ta.value.substring(0, cursorPos) + codeSnippet + ta.value.substring(cursorPos);
+                ta.selectionStart = ta.selectionEnd = cursorPos + codeSnippet.length;
+
+                if (typeof markEditorDirty === 'function') markEditorDirty();
+                if (typeof saveToHistory === 'function') saveToHistory();
+            }
+        }
+    }
+}
 
 function renderGridPreview() {
     const gridLayout = document.getElementById('gridLayout').value;
@@ -748,6 +1205,379 @@ function wrapMediaWithControls(mediaHtml, type = 'video') {
         '<div class="blog-image-wrap" style="position: relative; display: inline-block; max-width: 100%; vertical-align: top; text-align: center;" data-media-type="' + type + '">' + mediaHtml + '</div></div>';
 }
 
+function getMediaAlignment(alignWrap) {
+    if (!alignWrap) return 'left';
+    var dataAlign = alignWrap.getAttribute('data-align');
+    if (dataAlign) return dataAlign;
+
+    if (alignWrap.classList.contains('align-float-left') || alignWrap.style.float === 'left') {
+        return 'float-left';
+    }
+    if (alignWrap.classList.contains('align-float-right') || alignWrap.style.float === 'right') {
+        return 'float-right';
+    }
+    if (alignWrap.classList.contains('align-center') || alignWrap.style.textAlign === 'center') {
+        return 'center';
+    }
+    if (alignWrap.classList.contains('align-right') || alignWrap.style.textAlign === 'right') {
+        return 'right';
+    }
+    return 'left';
+}
+window.getMediaAlignment = getMediaAlignment;
+
+function getElementReflowRect(el) {
+    if (!el || typeof el.getBoundingClientRect !== 'function') return null;
+    return el.getBoundingClientRect();
+}
+
+function applyAlignmentStylesDirect(alignWrap, align) {
+    if (!alignWrap) return;
+
+    alignWrap.classList.remove('align-float-left', 'align-float-right', 'align-center', 'align-left', 'align-right');
+    alignWrap.setAttribute('data-align', align);
+
+    if (align === 'float-left') {
+        alignWrap.classList.add('align-float-left');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'left';
+        alignWrap.style.clear = 'none';
+        alignWrap.style.width = 'auto';
+        alignWrap.style.maxWidth = '70%';
+        alignWrap.style.margin = '6px 20px 14px 0';
+        alignWrap.style.textAlign = 'left';
+        alignWrap.style.position = 'relative';
+
+        if (!alignWrap.nextElementSibling || alignWrap.nextElementSibling.classList.contains('blog-image-align-wrap')) {
+            var p = document.createElement('p');
+            p.innerHTML = '<br>';
+            alignWrap.parentNode.insertBefore(p, alignWrap.nextSibling);
+        }
+    } else if (align === 'float-right') {
+        alignWrap.classList.add('align-float-right');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'right';
+        alignWrap.style.clear = 'none';
+        alignWrap.style.width = 'auto';
+        alignWrap.style.maxWidth = '70%';
+        alignWrap.style.margin = '6px 0 14px 20px';
+        alignWrap.style.textAlign = 'right';
+        alignWrap.style.position = 'relative';
+
+        if (!alignWrap.nextElementSibling || alignWrap.nextElementSibling.classList.contains('blog-image-align-wrap')) {
+            var p = document.createElement('p');
+            p.innerHTML = '<br>';
+            alignWrap.parentNode.insertBefore(p, alignWrap.nextSibling);
+        }
+    } else if (align === 'center') {
+        alignWrap.classList.add('align-center');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'none';
+        alignWrap.style.clear = 'both';
+        alignWrap.style.width = '100%';
+        alignWrap.style.maxWidth = '';
+        alignWrap.style.margin = '14px auto';
+        alignWrap.style.textAlign = 'center';
+        alignWrap.style.position = 'relative';
+    } else if (align === 'right') {
+        alignWrap.classList.add('align-right');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'none';
+        alignWrap.style.clear = 'both';
+        alignWrap.style.width = '100%';
+        alignWrap.style.maxWidth = '';
+        alignWrap.style.margin = '14px 0';
+        alignWrap.style.textAlign = 'right';
+        alignWrap.style.position = 'relative';
+    } else {
+        alignWrap.classList.add('align-left');
+        alignWrap.setAttribute('data-align', 'left');
+        alignWrap.style.display = 'block';
+        alignWrap.style.float = 'none';
+        alignWrap.style.clear = 'both';
+        alignWrap.style.width = '100%';
+        alignWrap.style.maxWidth = '';
+        alignWrap.style.margin = '14px 0';
+        alignWrap.style.textAlign = 'left';
+        alignWrap.style.position = 'relative';
+    }
+}
+
+function animateMediaAlignment(alignWrap, align, onComplete) {
+    if (!alignWrap) {
+        if (typeof onComplete === 'function') onComplete();
+        return;
+    }
+
+    var currentAlign = getMediaAlignment(alignWrap);
+    if (currentAlign === align) {
+        if (typeof onComplete === 'function') onComplete();
+        return;
+    }
+
+    var prefersReducedMotion = (window.disableAnimations === true) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (prefersReducedMotion) {
+        applyAlignmentStylesDirect(alignWrap, align);
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+        if (typeof onComplete === 'function') {
+            onComplete();
+        }
+        return;
+    }
+
+    // Сбрасываем незавершённые анимации, если пользователь быстро переключает опции
+    var ve = document.getElementById('contentVisual');
+    if (ve) {
+        var running = ve.querySelectorAll('[data-wrap-animating="true"]');
+        for (var r = 0; r < running.length; r++) {
+            if (typeof running[r]._wrapAnimCleanup === 'function') {
+                running[r]._wrapAnimCleanup();
+            }
+        }
+    }
+    if (typeof alignWrap._wrapAnimCleanup === 'function') {
+        alignWrap._wrapAnimCleanup();
+    }
+
+    // Определяем целевой медиа-элемент (.blog-image-wrap внутри alignWrap).
+    // При выравнивании по левому/правому краю или центру alignWrap имеет width: 100%,
+    // а реально перемещается именно внутренний блок .blog-image-wrap за счёт text-align.
+    var mediaTarget = alignWrap.querySelector('.blog-image-wrap') || alignWrap;
+    if (typeof mediaTarget._wrapAnimCleanup === 'function') {
+        mediaTarget._wrapAnimCleanup();
+    }
+
+    // 1. FIRST: Запоминаем исходные координаты изображения и следующих элементов
+    var imgRectBefore = mediaTarget.getBoundingClientRect();
+
+    var siblingsToWatch = [];
+    var sib = alignWrap.nextElementSibling;
+    var count = 0;
+    while (sib && count < 15) {
+        if (sib.nodeType === Node.ELEMENT_NODE &&
+            !sib.classList.contains('image-toolbar') &&
+            !sib.classList.contains('image-align-dropdown') &&
+            sib.id !== 'editorGlobalMediaOverlay') {
+            siblingsToWatch.push(sib);
+            count++;
+        }
+        sib = sib.nextElementSibling;
+    }
+
+    var beforeData = [];
+    for (var i = 0; i < siblingsToWatch.length; i++) {
+        var sEl = siblingsToWatch[i];
+        beforeData.push({
+            el: sEl,
+            rect: getElementReflowRect(sEl)
+        });
+    }
+
+    // 2. Применяем стили нового выравнивания (DOM мгновенно перестраивается)
+    applyAlignmentStylesDirect(alignWrap, align);
+
+    // 3. LAST: Считываем новые координаты после reflow
+    var imgRectAfter = mediaTarget.getBoundingClientRect();
+    var imgDx = imgRectBefore.left - imgRectAfter.left;
+    var imgDy = imgRectBefore.top - imgRectAfter.top;
+
+    var containerRect = ve ? ve.getBoundingClientRect() : null;
+
+    // Гарантируем, что картинка не выходит за пределы поля редактора
+    if (containerRect && (Math.abs(imgDx) > 1)) {
+        if (imgRectAfter.left + imgDx < containerRect.left + 8) {
+            imgDx = (containerRect.left + 8) - imgRectAfter.left;
+        }
+        if (imgRectAfter.right + imgDx > containerRect.right - 8) {
+            imgDx = (containerRect.right - 8) - imgRectAfter.right;
+        }
+    }
+
+    var siblingAnimations = [];
+    for (var j = 0; j < beforeData.length; j++) {
+        var item = beforeData[j];
+        var rectAfter = getElementReflowRect(item.el);
+        if (!item.rect || !rectAfter) continue;
+
+        var dx = item.rect.left - rectAfter.left;
+        var dy = item.rect.top - rectAfter.top;
+
+        // Для полноразмерных блочных элементов (параграфы p, div, h1-h6, списки, цитаты)
+        // горизонтальный сдвиг строго 0, чтобы текст никогда не вылетал за границы статьи.
+        // Перемещение происходит строго по вертикали (dy) из позиции под картинкой в бок от картинки.
+        if (!containerRect || item.el.offsetWidth >= containerRect.width - 60 || /^(P|DIV|H[1-6]|BLOCKQUOTE|UL|OL)$/i.test(item.el.tagName)) {
+            dx = 0;
+        } else if (Math.abs(dx) > 1) {
+            if (rectAfter.left + dx < containerRect.left + 8) {
+                dx = (containerRect.left + 8) - rectAfter.left;
+            }
+            if (rectAfter.right + dx > containerRect.right - 8) {
+                dx = (containerRect.right - 8) - rectAfter.right;
+            }
+        }
+
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+            siblingAnimations.push({
+                el: item.el,
+                dx: dx,
+                dy: dy
+            });
+        }
+    }
+
+    var imgMoved = Math.abs(imgDx) > 1 || Math.abs(imgDy) > 1;
+
+    // Если ничего не сдвинулось, сразу вызываем колбэк
+    if (!imgMoved && siblingAnimations.length === 0) {
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+        if (typeof onComplete === 'function') {
+            onComplete();
+        }
+        return;
+    }
+
+    // 4. INVERT: Перемещаем элементы обратно на их начальные визуальные координаты
+    var animatedElements = [];
+
+    if (imgMoved) {
+        mediaTarget.style.willChange = 'transform';
+        mediaTarget.style.transition = 'none';
+        mediaTarget.style.transform = 'translate3d(' + imgDx + 'px, ' + imgDy + 'px, 0)';
+        mediaTarget.setAttribute('data-wrap-animating', 'true');
+        animatedElements.push(mediaTarget);
+    }
+
+    for (var k = 0; k < siblingAnimations.length; k++) {
+        var sAnim = siblingAnimations[k];
+        sAnim.el.style.willChange = 'transform';
+        sAnim.el.style.transition = 'none';
+        sAnim.el.style.transform = 'translate3d(' + sAnim.dx + 'px, ' + sAnim.dy + 'px, 0)';
+        sAnim.el.setAttribute('data-wrap-animating', 'true');
+        animatedElements.push(sAnim.el);
+    }
+
+    // Принудительный reflow для регистрации браузером начальных transform
+    mediaTarget.getBoundingClientRect();
+
+    var animFrameId = null;
+    var cleanupTimeout = null;
+
+    function cleanup() {
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
+        if (cleanupTimeout) {
+            clearTimeout(cleanupTimeout);
+            cleanupTimeout = null;
+        }
+
+        if (mediaTarget) {
+            mediaTarget.style.transition = '';
+            mediaTarget.style.transform = '';
+            mediaTarget.style.willChange = '';
+            mediaTarget.removeAttribute('data-wrap-animating');
+            delete mediaTarget._wrapAnimCleanup;
+            if (mediaTarget.getAttribute('style') === '') {
+                mediaTarget.removeAttribute('style');
+            }
+        }
+
+        if (alignWrap && alignWrap !== mediaTarget) {
+            alignWrap.style.transition = '';
+            alignWrap.style.transform = '';
+            alignWrap.style.willChange = '';
+            alignWrap.removeAttribute('data-wrap-animating');
+            delete alignWrap._wrapAnimCleanup;
+        }
+
+        for (var m = 0; m < animatedElements.length; m++) {
+            var el = animatedElements[m];
+            if (el && el !== mediaTarget && el !== alignWrap) {
+                el.style.transition = '';
+                el.style.transform = '';
+                el.style.willChange = '';
+                el.removeAttribute('data-wrap-animating');
+                delete el._wrapAnimCleanup;
+                if (el.getAttribute('style') === '') {
+                    el.removeAttribute('style');
+                }
+            }
+        }
+
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+
+        if (typeof onComplete === 'function') {
+            var cb = onComplete;
+            onComplete = null;
+            cb();
+        }
+    }
+
+    mediaTarget._wrapAnimCleanup = cleanup;
+    alignWrap._wrapAnimCleanup = cleanup;
+    for (var n = 0; n < animatedElements.length; n++) {
+        animatedElements[n]._wrapAnimCleanup = cleanup;
+    }
+
+    // 5. PLAY: Плавно анимируем к естественным координатам translate3d(0, 0, 0)
+    var duration = 380;
+    var easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+    requestAnimationFrame(function () {
+        if (imgMoved) {
+            mediaTarget.style.transition = 'transform ' + duration + 'ms ' + easing;
+            mediaTarget.style.transform = 'translate3d(0, 0, 0)';
+        }
+
+        for (var p = 0; p < siblingAnimations.length; p++) {
+            var target = siblingAnimations[p];
+            var delay = Math.min(p * 25, 120);
+            target.el.style.transition = 'transform ' + duration + 'ms ' + easing + ' ' + delay + 'ms';
+            target.el.style.transform = 'translate3d(0, 0, 0)';
+        }
+    });
+
+    // Синхронное слежение рамки оверлея за перемещающимся изображением
+    var animStartTime = performance.now();
+    var animTotalDuration = duration + Math.min(siblingAnimations.length * 25, 120) + 40;
+
+    function trackOverlayLoop() {
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+        if (performance.now() - animStartTime < animTotalDuration) {
+            animFrameId = requestAnimationFrame(trackOverlayLoop);
+        }
+    }
+    animFrameId = requestAnimationFrame(trackOverlayLoop);
+
+    cleanupTimeout = setTimeout(cleanup, animTotalDuration);
+}
+
+function applyMediaAlignment(alignWrap, align, animate, onComplete) {
+    if (!alignWrap) return;
+
+    if (animate === true) {
+        animateMediaAlignment(alignWrap, align, onComplete);
+    } else {
+        applyAlignmentStylesDirect(alignWrap, align);
+        if (typeof updateOverlayPosition === 'function') {
+            updateOverlayPosition();
+        }
+        if (typeof onComplete === 'function') {
+            onComplete();
+        }
+    }
+}
+window.applyMediaAlignment = applyMediaAlignment;
+
 function wrapExistingEditorImages() {
     var ve = document.getElementById('contentVisual');
     if (!ve || ve.style.display === 'none') return;
@@ -784,17 +1614,14 @@ function wrapExistingEditorImages() {
         if (!alignWrap) {
             alignWrap = document.createElement('div');
             alignWrap.className = 'blog-image-align-wrap';
-            alignWrap.style.textAlign = 'left';
             alignWrap.setAttribute('data-image-id', 'gallery-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
             wrap.parentNode.insertBefore(alignWrap, wrap);
             alignWrap.appendChild(wrap);
+            applyMediaAlignment(alignWrap, 'left');
+        } else {
+            var currentAlign = getMediaAlignment(alignWrap);
+            applyMediaAlignment(alignWrap, currentAlign);
         }
-
-        alignWrap.style.display = 'block';
-        alignWrap.style.margin = '14px 0';
-        alignWrap.style.width = '100%';
-        alignWrap.style.clear = 'both';
-        alignWrap.style.position = 'relative';
     });
 
     var imgs = ve.querySelectorAll('img.blog-image, img[src], video, audio, iframe, pre.code-block, a.custom-blog-btn');
@@ -842,16 +1669,14 @@ function wrapExistingEditorImages() {
         if (!alignWrap) {
             alignWrap = document.createElement('div');
             alignWrap.className = 'blog-image-align-wrap';
-            alignWrap.style.textAlign = 'left';
             alignWrap.setAttribute('data-image-id', type + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
             wrap.parentNode.insertBefore(alignWrap, wrap);
             alignWrap.appendChild(wrap);
+            applyMediaAlignment(alignWrap, 'left');
+        } else {
+            var currentAlign = getMediaAlignment(alignWrap);
+            applyMediaAlignment(alignWrap, currentAlign);
         }
-        alignWrap.style.display = 'block';
-        alignWrap.style.margin = '14px 0';
-        alignWrap.style.width = '100%';
-        alignWrap.style.clear = 'both';
-        alignWrap.style.position = 'relative';
 
         if (type === 'img') {
             img.style.display = 'block';
@@ -873,6 +1698,9 @@ function wrapExistingEditorImages() {
 
         if (type === 'pre' || type === 'button') {
             img.setAttribute('contenteditable', 'false');
+            if (type === 'pre') {
+                updateCodeBlockBadgeScroll(img);
+            }
         }
     }
 }
@@ -917,7 +1745,7 @@ function showGlobalMediaOverlay(mediaWrap) {
     resizeHandles.forEach(h => h.style.display = (isFile || isAscii || isCode || isGrid || isBtn) ? 'none' : 'block');
 
     var alignWrap = mediaWrap.closest('.blog-image-align-wrap');
-    var align = alignWrap ? (alignWrap.style.textAlign || 'left') : 'left';
+    var align = getMediaAlignment(alignWrap);
     overlay.querySelectorAll('.image-align-option').forEach(function (opt) {
         if (opt.getAttribute('data-align') === align) {
             opt.classList.add('active');
@@ -927,7 +1755,10 @@ function showGlobalMediaOverlay(mediaWrap) {
     });
 
     var dropdown = overlay.querySelector('.image-align-dropdown');
-    if (dropdown) dropdown.style.display = 'none';
+    if (dropdown) {
+        dropdown.style.display = 'none';
+        dropdown.classList.remove('show');
+    }
     var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
     if (alignBtn) alignBtn.classList.remove('active');
 }
@@ -936,6 +1767,13 @@ function hideGlobalMediaOverlay() {
     var overlay = document.getElementById('editorGlobalMediaOverlay');
     if (overlay) {
         overlay.style.display = 'none';
+        var dropdown = overlay.querySelector('.image-align-dropdown');
+        if (dropdown) {
+            dropdown.style.display = 'none';
+            dropdown.classList.remove('show');
+        }
+        var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
+        if (alignBtn) alignBtn.classList.remove('active');
     }
     activeTarget = null;
 }
@@ -1032,6 +1870,12 @@ function initGlobalMediaOverlayDOM() {
     overlay.className = 'editor-global-media-overlay';
     overlay.style.cssText = 'display: none; position: absolute; pointer-events: none; z-index: 990;';
 
+    var tFloatLeft = (typeof window.t === 'function') ? window.t('toolbar.align_float_left', 'Обтекание слева') : 'Обтекание слева';
+    var tFloatRight = (typeof window.t === 'function') ? window.t('toolbar.align_float_right', 'Обтекание справа') : 'Обтекание справа';
+    var tCenter = (typeof window.t === 'function') ? window.t('toolbar.align_center', 'По центру') : 'По центру';
+    var tLeft = (typeof window.t === 'function') ? window.t('toolbar.align_left', 'По левому краю') : 'По левому краю';
+    var tRight = (typeof window.t === 'function') ? window.t('toolbar.align_right', 'По правому краю') : 'По правому краю';
+
     overlay.innerHTML =
         '<div class="media-overlay-outline" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; box-shadow: 0 0 0 2px var(--primary-color, #4CAF50); pointer-events: none; border-radius: 8px;"></div>' +
         '<div class="image-toolbar" style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); padding: 6px; border-radius: 10px; z-index: 10; pointer-events: auto;">' +
@@ -1040,10 +1884,12 @@ function initGlobalMediaOverlayDOM() {
         '    <button type="button" class="image-toolbar-btn" data-action="edit" title="Редактировать">✏️</button>' +
         '    <button type="button" class="image-toolbar-btn" data-action="delete" title="Удалить">🗑</button>' +
         '</div>' +
-        '<div class="image-align-dropdown" style="position: absolute; top: 48px; right: 8px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); border-radius: 10px; padding: 6px; display: none; flex-direction: column; gap: 4px; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 20; pointer-events: auto;">' +
-        '    <button type="button" class="image-align-option" data-align="left"><span>◄</span> По левому краю</button>' +
-        '    <button type="button" class="image-align-option" data-align="center"><span>≡</span> По центру</button>' +
-        '    <button type="button" class="image-align-option" data-align="right"><span>►</span> По правому краю</button>' +
+        '<div class="image-align-dropdown" style="position: absolute; top: 48px; right: 8px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); border-radius: 10px; padding: 6px; display: none; flex-direction: column; gap: 4px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 20; pointer-events: auto;">' +
+        '    <button type="button" class="image-align-option" data-align="float-left" title="Картинка слева, текст справа"><span>◧</span> ' + tFloatLeft + '</button>' +
+        '    <button type="button" class="image-align-option" data-align="float-right" title="Картинка справа, текст слева"><span>◨</span> ' + tFloatRight + '</button>' +
+        '    <button type="button" class="image-align-option" data-align="center" title="По центру (без обтекания)"><span>≡</span> ' + tCenter + '</button>' +
+        '    <button type="button" class="image-align-option" data-align="left" title="По левому краю (без обтекания)"><span>◄</span> ' + tLeft + '</button>' +
+        '    <button type="button" class="image-align-option" data-align="right" title="По правому краю (без обтекания)"><span>►</span> ' + tRight + '</button>' +
         '</div>' +
         '<div class="image-size-indicator" style="position: absolute; bottom: 8px; left: 8px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-family: monospace; pointer-events: none;"></div>' +
         '<div class="image-resize-handle bottom-right" style="position: absolute; width: 12px; height: 12px; background: var(--primary-color, #4CAF50); border: 2px solid #fff; border-radius: 50%; cursor: nwse-resize; z-index: 11; bottom: -6px; right: -6px; pointer-events: auto;"></div>' +
@@ -1084,12 +1930,24 @@ function initGlobalMediaOverlayDOM() {
 
             if (action === 'align') {
                 if (dropdown) {
-                    var isOpen = dropdown.style.display === 'flex';
-                    dropdown.style.display = isOpen ? 'none' : 'flex';
-                    if (!isOpen) {
-                        toolbarBtn.classList.add('active');
-                    } else {
+                    var isOpen = dropdown.classList.contains('show') || dropdown.style.display === 'flex';
+                    if (isOpen) {
+                        dropdown.style.display = 'none';
+                        dropdown.classList.remove('show');
                         toolbarBtn.classList.remove('active');
+                    } else {
+                        dropdown.style.display = 'flex';
+                        dropdown.classList.add('show');
+                        toolbarBtn.classList.add('active');
+
+                        var dRect = dropdown.getBoundingClientRect();
+                        if (dRect.left < 8) {
+                            dropdown.style.left = '8px';
+                            dropdown.style.right = 'auto';
+                        } else {
+                            dropdown.style.left = 'auto';
+                            dropdown.style.right = '8px';
+                        }
                     }
                 }
             } else if (action === 'resize') {
@@ -1164,19 +2022,27 @@ function initGlobalMediaOverlayDOM() {
             var align = alignOption.getAttribute('data-align');
             var alignWrap = activeTarget ? activeTarget.closest('.blog-image-align-wrap') : null;
             if (alignWrap) {
-                alignWrap.style.textAlign = align;
-
                 overlay.querySelectorAll('.image-align-option').forEach(function (opt) {
                     opt.classList.remove('active');
                 });
                 alignOption.classList.add('active');
 
                 var dropdown = overlay.querySelector('.image-align-dropdown');
-                if (dropdown) dropdown.style.display = 'none';
+                if (dropdown) {
+                    dropdown.style.display = 'none';
+                    dropdown.classList.remove('show');
+                }
                 var alignBtn = overlay.querySelector('.image-toolbar-btn[data-action="align"]');
                 if (alignBtn) alignBtn.classList.remove('active');
 
-                updateOverlayPosition();
+                applyMediaAlignment(alignWrap, align, true, function () {
+                    if (typeof saveToHistory === 'function') {
+                        saveToHistory();
+                    }
+                    if (typeof markEditorDirty === 'function') {
+                        markEditorDirty();
+                    }
+                });
             }
         }
     });
@@ -1335,6 +2201,20 @@ document.addEventListener('click', function (e) {
 
 window.addEventListener('scroll', updateOverlayPosition, { capture: true, passive: true });
 window.addEventListener('resize', updateOverlayPosition);
+
+// Фиксация плашки с названием языка в блоках кода (.code-block) при скролле внутри редактора
+function updateCodeBlockBadgeScroll(el) {
+    if (!el) return;
+    el.style.setProperty('--code-scroll-x', el.scrollLeft + 'px');
+    el.style.setProperty('--code-scroll-y', el.scrollTop + 'px');
+}
+
+window.addEventListener('scroll', function (e) {
+    var target = e.target;
+    if (target && target.classList && target.classList.contains('code-block')) {
+        updateCodeBlockBadgeScroll(target);
+    }
+}, { capture: true, passive: true });
 
 initImageAlignmentHandlers();
 
@@ -1560,14 +2440,17 @@ initImageAlignmentHandlers();
         contentTa.addEventListener('keydown', onUndoRedoShortcut);
     }
 
-    // Позволяет кликнуть по пустому пространству редактора ниже последнего блока для продолжения ввода
+    // Позволяет кликнуть по пустому пространству редактора ниже последнего блока или сбоку от обтекаемого элемента для продолжения ввода
     contentVisual.addEventListener('click', function (e) {
         if (e.target !== contentVisual) return;
         const lastEl = contentVisual.lastElementChild;
         if (!lastEl) return;
         const rect = lastEl.getBoundingClientRect();
-        if (e.clientY > rect.bottom) {
-            // Кликнули ниже всех элементов редактора
+        const isFloated = lastEl.classList.contains('align-float-left') || lastEl.classList.contains('align-float-right');
+        const clickedBelow = e.clientY > rect.bottom;
+        const clickedBeside = isFloated && (e.clientY >= rect.top && e.clientY <= rect.bottom);
+
+        if (clickedBelow || clickedBeside) {
             if (lastEl.tagName === 'P' && typeof VisualEngine !== 'undefined' && VisualEngine.isEmpty(lastEl)) {
                 VisualEngine.setCursorToEnd(lastEl);
                 VisualEngine.saveSelection();
@@ -2875,6 +3758,7 @@ function insertCodeBlock() {
         editingCodeBlockTarget.setAttribute('data-language', language);
         editingCodeBlockTarget.innerHTML = escapedCode;
         editingCodeBlockTarget.setAttribute('contenteditable', 'false');
+        updateCodeBlockBadgeScroll(editingCodeBlockTarget);
         const wrap = editingCodeBlockTarget.closest('.blog-image-wrap');
         if (wrap) {
             wrap.setAttribute('data-media-type', 'pre');

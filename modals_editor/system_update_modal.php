@@ -20,7 +20,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeSystemUpdateModal()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeSystemUpdateModal()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -43,9 +43,14 @@
                     Выберите архив .zip с новой версией NPBlog для автоматической установки.
                 </p>
                 <input type="file" id="systemUpdateInput" accept=".zip" style="display: none;" onchange="handleSystemUpdatePreview()">
-                <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="modal-btn modal-btn-primary" style="width: 100%; justify-content: center; padding: 12px;" data-i18n="modals.sys_select_btn">
-                    📦 Выбрать архив (.zip)
-                </button>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="modal-btn modal-btn-primary" style="width: 100%; justify-content: center; padding: 12px;" data-i18n="modals.sys_select_btn">
+                        📦 Выбрать архив (.zip)
+                    </button>
+                    <a href="update_system.php?action=export_package" class="modal-btn modal-btn-secondary" style="width: 100%; justify-content: center; padding: 8px 12px; font-size: 13px; text-decoration: none;" data-i18n="modals.sys_export_btn">
+                        💾 Скачать готовый архив обновления (.zip)
+                    </a>
+                </div>
             </div>
 
             <!-- Шаг 2: Предпросмотр обновления -->
@@ -67,7 +72,7 @@
 
             <!-- Шаг 3: Прогресс обновления -->
             <div id="updateProgressContainer" style="display: none; flex-direction: column; gap: 10px; margin-top: 16px;">
-                <p id="updateStatusText" class="modal-text" style="font-weight: 600; text-align: center; margin: 0;">Подготовка к обновлению...</p>
+                <p id="updateStatusText" class="modal-text" style="font-weight: 600; text-align: center; margin: 0;" data-i18n="modals.update_preparing">Подготовка к обновлению...</p>
                 <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.1); border-radius: 999px; overflow: hidden;">
                     <div id="updateProgressBar" style="width: 0%; height: 100%; background: #10b981; border-radius: 999px; transition: width 0.3s ease;"></div>
                 </div>
@@ -77,7 +82,7 @@
             <div id="updateSuccessContainer" style="display: none; flex-direction: column; gap: 14px; align-items: center; text-align: center; padding: 20px 0;">
                 <div style="font-size: 40px;">🎉</div>
                 <p style="color: #10b981; font-weight: 700; font-size: 18px; margin: 0;" data-i18n="modals.sys_success">Обновление успешно завершено!</p>
-                <button type="button" onclick="window.location.reload()" class="modal-btn modal-btn-primary" style="padding: 10px 24px;" data-i18n="modals.sys_reload_page">
+                <button type="button" onclick="try { localStorage.setItem('npblog_just_updated', 'true'); } catch(e){} window.location.reload();" class="modal-btn modal-btn-primary" style="padding: 10px 24px;" data-i18n="modals.sys_reload_page">
                     🔄 Обновить страницу
                 </button>
             </div>
@@ -104,7 +109,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeRestoreModal()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeRestoreModal()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 

@@ -15,8 +15,8 @@
     --modal-z-index-base: 10000;
     --modal-radius: 14px;
     --modal-radius-inner: 10px;
-    --modal-transition-speed: 0.36s;
-    --modal-transition-ease: cubic-bezier(0.2, 0.9, 0.3, 1);
+    --modal-transition-speed: 0.28s;
+    --modal-transition-ease: cubic-bezier(0.16, 1, 0.3, 1);
     --modal-transition-fast: 0.2s;
     
     /* Colors fallback if not defined in editor */
@@ -189,7 +189,7 @@ body.modal-open {
     overflow-x: hidden;
     overflow-y: auto;
     opacity: 0;
-    transition: opacity var(--modal-transition-speed) ease;
+    opacity: 0;
 }
 
 .modal-overlay.is-active,
@@ -197,14 +197,14 @@ body.modal-open {
 .np-modal-overlay.is-active {
     display: flex;
     opacity: 1;
-    animation: modalBackdropFadeIn var(--modal-transition-speed) ease forwards;
+    animation: modalBackdropFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .modal-overlay.is-closing,
 .modal-backdrop.is-closing,
 .np-modal-overlay.is-closing {
     opacity: 0;
-    animation: modalBackdropFadeOut var(--modal-transition-speed) ease forwards;
+    animation: modalBackdropFadeOut 0.24s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     pointer-events: none;
 }
 
@@ -214,7 +214,8 @@ body.modal-open {
 .modal-dialog,
 .modal-window,
 .modal-container,
-.np-modal-dialog {
+.np-modal-dialog,
+.modal-content {
     position: relative;
     width: 100%;
     max-width: 540px;
@@ -230,15 +231,34 @@ body.modal-open {
     box-sizing: border-box;
     overflow: hidden;
     transform-origin: center center;
-    opacity: 0;
-    animation: modalZoomIn var(--modal-transition-speed) var(--modal-transition-ease) forwards;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, width 0.2s ease, max-width 0.2s ease;
+
+    /* Base resting state (Web Animations API drives dynamic flyout entrance & exit) */
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    opacity: 1;
+    transition: box-shadow 0.2s ease,
+        border-color 0.2s ease,
+        width 0.2s ease,
+        max-width 0.2s ease;
+    will-change: transform, opacity;
 }
 
+/* Active State */
+.modal-overlay.is-active:not(.is-closing) .modal-dialog,
+.modal-overlay.is-active:not(.is-closing) .modal-window,
+.modal-overlay.is-active:not(.is-closing) .modal-container,
+.modal-overlay.is-active:not(.is-closing) .np-modal-dialog,
+.modal-overlay.is-active:not(.is-closing) .modal-content {
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    opacity: 1;
+    border-radius: var(--modal-radius);
+}
+
+/* Closing State */
 .modal-overlay.is-closing .modal-dialog,
 .modal-overlay.is-closing .modal-window,
+.modal-overlay.is-closing .modal-container,
 .modal-backdrop.is-closing .modal-dialog {
-    animation: modalZoomOut var(--modal-transition-speed) ease forwards;
+    pointer-events: none;
 }
 
 /* Shake feedback animation */
@@ -248,12 +268,12 @@ body.modal-open {
 }
 
 /* Slide animation variants */
-.modal-slide-down .modal-dialog {
-    animation-name: modalSlideDown;
+.modal-slide-down.is-active:not(.is-closing) .modal-dialog {
+    animation: modalSlideDown 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.modal-slide-up .modal-dialog {
-    animation-name: modalSlideUp;
+.modal-slide-up.is-active:not(.is-closing) .modal-dialog {
+    animation: modalSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ==============================================================================
@@ -729,6 +749,15 @@ body.modal-is-dragging * {
     font-family: inherit;
 }
 
+.modal-input:not(textarea),
+.modal-select {
+    height: 42px;
+}
+
+.modal-select {
+    cursor: pointer;
+}
+
 .modal-input:focus,
 .modal-textarea:focus,
 .modal-select:focus {
@@ -845,17 +874,31 @@ body.modal-is-dragging * {
     left: 3px;
     bottom: 3px;
     background-color: white;
-    transition: .24s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform .24s cubic-bezier(0.16, 1, 0.3, 1), background-color .2s ease;
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.modal-switch-control:hover .modal-switch-slider {
+    background-color: rgba(128, 128, 128, 0.4);
+}
+
+.modal-switch-control input:focus-visible + .modal-switch-slider {
+    outline: 2px solid var(--modal-color-primary);
+    outline-offset: 2px;
 }
 
 .modal-switch-control input:checked + .modal-switch-slider {
     background-color: var(--modal-color-primary);
 }
 
+.modal-switch-control:hover input:checked + .modal-switch-slider {
+    background-color: var(--modal-color-primary-hover, var(--modal-color-primary));
+}
+
 .modal-switch-control input:checked + .modal-switch-slider:before {
     transform: translateX(18px);
+    background-color: var(--modal-color-primary-text, #ffffff);
 }
 
 /* File Dropzone Area */
@@ -879,6 +922,164 @@ body.modal-is-dragging * {
     font-size: 28px;
     margin-bottom: 8px;
     opacity: 0.8;
+}
+
+/* ==============================================================================
+ * Custom File Picker Component (.modal-file-picker)
+ * ============================================================================== */
+.modal-file-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 42px;
+    min-height: 42px;
+    padding: 4px 10px 4px 4px;
+    background-color: var(--modal-input-bg);
+    border: 1px solid var(--modal-border);
+    border-radius: var(--modal-radius-inner);
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: border-color var(--modal-transition-fast, 0.2s) ease, box-shadow var(--modal-transition-fast, 0.2s) ease, background-color var(--modal-transition-fast, 0.2s) ease;
+    position: relative;
+    user-select: none;
+    outline: none;
+}
+
+.modal-file-picker:hover {
+    border-color: var(--modal-text);
+}
+
+.modal-file-picker:focus-visible,
+.modal-file-picker.is-focused {
+    border-color: var(--modal-text);
+    box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.15);
+}
+
+.modal-file-picker.is-dragover {
+    border-color: var(--modal-color-info, #3b82f6);
+    background-color: rgba(59, 130, 246, 0.08);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.modal-file-picker-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 14px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: calc(var(--modal-radius-inner) - 2px);
+    border: 1px solid var(--modal-border);
+    background: rgba(128, 128, 128, 0.08);
+    color: var(--modal-text);
+    cursor: pointer;
+    transition: all var(--modal-transition-fast, 0.15s) ease;
+    pointer-events: none;
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+.modal-file-picker:hover .modal-file-picker-btn {
+    background: rgba(128, 128, 128, 0.16);
+    border-color: var(--modal-text);
+}
+
+.modal-file-picker-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+}
+
+.modal-file-picker-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
+.modal-file-picker-text {
+    font-size: 0.88rem;
+    color: var(--modal-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color var(--modal-transition-fast, 0.15s) ease;
+}
+
+.modal-file-picker.has-file .modal-file-picker-text {
+    color: var(--modal-text);
+    font-weight: 500;
+}
+
+.modal-file-picker-size {
+    font-size: 0.78rem;
+    color: var(--modal-text-muted);
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
+.modal-file-picker-clear {
+    display: none;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    background: transparent;
+    border: none;
+    color: var(--modal-text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+    border-radius: 4px;
+    transition: all var(--modal-transition-fast, 0.15s) ease;
+    line-height: 1;
+}
+
+.modal-file-picker-clear:hover {
+    color: var(--modal-color-danger, #ef4444);
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.modal-file-picker.has-file .modal-file-picker-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Fallback/Native input[type="file"] styled with .modal-input */
+.modal-input[type="file"] {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--modal-text-muted);
+    height: 42px;
+    min-height: 42px;
+}
+
+.modal-input[type="file"]::file-selector-button {
+    margin-right: 12px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: calc(var(--modal-radius-inner) - 2px);
+    border: 1px solid var(--modal-border);
+    background-color: rgba(128, 128, 128, 0.08);
+    color: var(--modal-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--modal-transition-fast, 0.2s) ease;
+    font-family: inherit;
+}
+
+.modal-input[type="file"]::file-selector-button:hover {
+    background-color: rgba(128, 128, 128, 0.16);
+    border-color: var(--modal-text);
 }
 
 /* ==============================================================================
@@ -925,6 +1126,7 @@ body.modal-is-dragging * {
     outline: none;
     text-decoration: none;
     box-sizing: border-box;
+    white-space: nowrap;
     transition: background-color var(--modal-transition-speed) var(--modal-transition-ease),
         border-color var(--modal-transition-speed) var(--modal-transition-ease),
         color var(--modal-transition-speed) var(--modal-transition-ease),
@@ -933,6 +1135,30 @@ body.modal-is-dragging * {
     user-select: none;
     position: relative;
     line-height: 1.3;
+}
+
+.modal-btn .modal-btn-svg,
+.modal-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    display: inline-block;
+    vertical-align: middle;
+    stroke: currentColor;
+    color: inherit;
+    opacity: 1;
+}
+
+.modal-btn-primary svg,
+.modal-btn-primary .modal-btn-svg {
+    color: var(--modal-color-primary-text);
+    stroke: currentColor;
+}
+
+[data-theme="dark"] .modal-btn-primary svg,
+[data-theme="dark"] .modal-btn-primary .modal-btn-svg {
+    color: var(--modal-color-primary-text, #09090b);
+    stroke: var(--modal-color-primary-text, #09090b);
 }
 
 .modal-btn:hover {
@@ -995,6 +1221,19 @@ body.modal-is-dragging * {
     color: #ffffff;
 }
 
+/* Secondary Button */
+.modal-btn-secondary {
+    background-color: rgba(128, 128, 128, 0.08);
+    color: var(--modal-text);
+    border-color: var(--modal-border);
+}
+
+.modal-btn-secondary:hover {
+    background-color: rgba(128, 128, 128, 0.16);
+    border-color: rgba(128, 128, 128, 0.35);
+    color: var(--modal-text);
+}
+
 /* Ghost / Flat Button */
 .modal-btn-ghost {
     background: transparent;
@@ -1007,10 +1246,29 @@ body.modal-is-dragging * {
     border-color: transparent;
 }
 
+/* Ghost Danger Button */
+.modal-btn-ghost-danger {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--modal-color-danger);
+}
+
+.modal-btn-ghost-danger:hover {
+    background-color: var(--modal-color-danger-bg);
+    border-color: var(--modal-color-danger-border);
+    color: var(--modal-color-danger-hover);
+}
+
 /* Loading State on Buttons */
 .modal-btn.is-loading {
     color: transparent !important;
     pointer-events: none;
+}
+
+.modal-btn.is-loading svg,
+.modal-btn.is-loading .modal-btn-svg,
+.modal-btn.is-loading .modal-btn-icon {
+    visibility: hidden;
 }
 
 .modal-btn.is-loading::after {
@@ -1033,6 +1291,11 @@ body.modal-is-dragging * {
 .modal-btn-success.is-loading::after {
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top-color: #ffffff;
+}
+
+[data-theme="dark"] .modal-btn-primary.is-loading::after {
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-top-color: var(--modal-color-primary-text, #09090b);
 }
 
 /* ==============================================================================
@@ -1133,3 +1396,20 @@ body.modal-is-dragging * {
     z-index: 100000 !important;
 }
 
+/* ==============================================================================
+ * Отключение анимаций модальных окон при data-disable-animations="true"
+ * ============================================================================== */
+html[data-disable-animations="true"],
+body[data-disable-animations="true"],
+[data-disable-animations="true"] .modal-overlay,
+[data-disable-animations="true"] .modal-dialog,
+[data-disable-animations="true"] .modal-backdrop,
+[data-disable-animations="true"] .modal-window,
+[data-disable-animations="true"] .modal-btn {
+    --modal-transition-speed: 0.001s !important;
+    --modal-transition-fast: 0.001s !important;
+    animation-duration: 0.001s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001s !important;
+    transition-delay: 0s !important;
+}

@@ -27,6 +27,72 @@
     const instanceMap = new WeakMap();
     const idMap = new Map();
 
+    // Trigger tracking for Apple-style button flyout animations
+    let lastClickTarget = null;
+    let lastClickRect = null;
+    let lastClickPos = null;
+    let lastClickTime = 0;
+
+    /**
+     * Record interaction coordinates and target element for morphing entrance
+     */
+    function recordClickEvent(e) {
+        if (!e) return;
+        const potential = (e.target && typeof e.target.closest === 'function')
+            ? (e.target.closest('button, a, [role="button"], input[type="button"], input[type="submit"], [data-modal-open], [data-modal-target], .format-btn, .editor-menu-item, .more-menu-item, .bottom-bar-btn, .custom-select-trigger, .modal-tab-btn, .dialog-btn, .context-menu-item, .editor-context-item, [onclick], li, tr') || e.target)
+            : e.target;
+        if (potential) {
+            lastClickTarget = potential;
+            try {
+                const r = potential.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    lastClickRect = {
+                        left: r.left,
+                        top: r.top,
+                        width: r.width,
+                        height: r.height
+                    };
+                }
+            } catch (err) {
+                lastClickRect = null;
+            }
+        }
+        lastClickPos = { x: e.clientX, y: e.clientY };
+        lastClickTime = performance.now();
+    }
+
+    // Capture user interaction points globally
+    document.addEventListener('pointerdown', recordClickEvent, true);
+    document.addEventListener('click', recordClickEvent, true);
+
+    /**
+     * Resolve most recent user click / trigger element
+     */
+    function resolveRecentTrigger() {
+        const now = performance.now();
+        if (now - lastClickTime < 1800) {
+            if (lastClickRect && lastClickRect.width > 0) {
+                return lastClickRect;
+            }
+            if (lastClickTarget && lastClickTarget.isConnected) {
+                return lastClickTarget;
+            }
+            if (lastClickPos && (lastClickPos.x || lastClickPos.y)) {
+                return lastClickPos;
+            }
+        }
+        if (document.activeElement && document.activeElement !== document.body && document.activeElement !== document.documentElement) {
+            const activeEl = document.activeElement;
+            if (!activeEl.closest('.modal-overlay')) {
+                const r = activeEl.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                    return activeEl;
+                }
+            }
+        }
+        return null;
+    }
+
     /**
      * Helper to get translated string if i18n engine is present
      */
@@ -110,7 +176,7 @@
             // Check if element is already an overlay or the inner dialog
             if (el.classList.contains('modal-overlay') || el.classList.contains('modal-backdrop') || el.classList.contains('np-modal-overlay')) {
                 this.overlay = el;
-                this.dialog = el.querySelector('.modal-dialog, .modal-window, .modal-container') || el.firstElementChild;
+                this.dialog = el.querySelector('.modal-dialog, .modal-window, .modal-container, .modal-content') || el.firstElementChild;
             } else {
                 // Wrap inner dialog into an overlay if needed
                 this.dialog = el;
@@ -550,9 +616,94 @@
         }
 
         /**
+         * Calculate Apple Liquid Spring flyout geometry relative to trigger
+         * @param {HTMLElement|Object|null} trigger
+         * @returns {{ x: number, y: number, scaleX: number, scaleY: number, radius: string }}
+         */
+        calculateFlyout(trigger) {
+            let rect = null;
+            let centerX = null;
+            let centerY = null;
+            let width = 44;
+            let height = 36;
+
+            if (trigger instanceof HTMLElement) {
+                if (trigger.isConnected) {
+                    const r = trigger.getBoundingClientRect();
+                    if (r.width > 0 && r.height > 0) {
+                        rect = r;
+                    }
+                }
+            } else if (trigger && typeof trigger === 'object') {
+                if (typeof trigger.left === 'number' && typeof trigger.top === 'number' && typeof trigger.width === 'number') {
+                    rect = trigger;
+                } else if (typeof trigger.x === 'number' && typeof trigger.y === 'number') {
+                    centerX = trigger.x;
+                    centerY = trigger.y;
+                }
+            }
+
+            // Fallback to recent click rect if trigger had 0 width (e.g. inside closing dropdown)
+            if (!rect && lastClickRect && lastClickRect.width > 0) {
+                rect = lastClickRect;
+            }
+
+            if (rect) {
+                centerX = rect.left + rect.width / 2;
+                centerY = rect.top + rect.height / 2;
+                width = rect.width;
+                height = rect.height;
+            }
+
+            // If still no position, check recent click position or activeElement
+            if (centerX === null || centerY === null) {
+                const recent = resolveRecentTrigger();
+                if (recent && recent !== trigger) {
+                    return this.calculateFlyout(recent);
+                }
+            }
+
+            if (centerX !== null && centerY !== null) {
+                const isMobile = window.innerWidth <= 600;
+                const dialogWidth = (this.dialog && this.dialog.offsetWidth) ? this.dialog.offsetWidth : 540;
+                const dialogHeight = (this.dialog && this.dialog.offsetHeight) ? this.dialog.offsetHeight : 380;
+                const dialogCenterX = window.innerWidth / 2;
+                const dialogCenterY = isMobile
+                    ? (window.innerHeight - 8 - Math.round(dialogHeight / 2))
+                    : (window.innerHeight / 2);
+
+                const flyX = Math.round(centerX - dialogCenterX);
+                const flyY = Math.round(centerY - dialogCenterY);
+
+                let scaleX = dialogWidth > 0 ? (width / dialogWidth) : 0.2;
+                let scaleY = dialogHeight > 0 ? (height / dialogHeight) : 0.1;
+
+                scaleX = Math.max(0.08, Math.min(0.38, scaleX));
+                scaleY = Math.max(0.05, Math.min(0.32, scaleY));
+
+                return {
+                    x: flyX,
+                    y: flyY,
+                    scaleX: parseFloat(scaleX.toFixed(3)),
+                    scaleY: parseFloat(scaleY.toFixed(3)),
+                    radius: '28px'
+                };
+            }
+
+            // Fallback when opened programmatically without user click
+            return {
+                x: 0,
+                y: 20,
+                scaleX: 0.94,
+                scaleY: 0.94,
+                radius: 'var(--modal-radius, 14px)'
+            };
+        }
+
+        /**
          * Open the modal
          */
-        async open() {
+        async open(trigger = null) {
             if (this.isOpen) return this;
 
             // Preserve editor selection before focus shifts into modal
@@ -576,28 +727,80 @@
             this.overlay.classList.remove('is-closing');
             this.overlay.style.display = 'flex';
 
-            // Force reflow for CSS animation
-            void this.overlay.offsetHeight;
+            // Resolve trigger and calculate Apple Liquid Spring flyout geometry
+            const resolvedTrigger = trigger || this.options.trigger || resolveRecentTrigger();
+            this.activeTrigger = resolvedTrigger;
+            const fly = this.calculateFlyout(resolvedTrigger);
+            this._lastFly = fly;
+
+            // Reset any previous inline drag transforms so entrance runs cleanly
+            if (this.dragState) {
+                this.dragState.currentX = 0;
+                this.dragState.currentY = 0;
+                this.dragState.xOffset = 0;
+                this.dragState.yOffset = 0;
+            }
+            this.dialog.style.transform = '';
+
+            // Cancel any previous running animation
+            if (this._currentAnimation) {
+                try { this._currentAnimation.cancel(); } catch (e) {}
+                this._currentAnimation = null;
+            }
+
             this.overlay.classList.add('is-active');
 
             // Apply translations dynamically
             applySubtreeTranslations(this.overlay);
 
+            // Initialize custom file pickers inside this modal
+            initModalFilePickers(this.overlay);
+
             // Register in active stack
             activeModals.push(this);
             this.isOpen = true;
 
-            // Clear CSS animation lock after entrance finishes so dragging and custom transforms work freely
-            const onAnimationEnd = () => {
-                if (this.isOpen && !this.overlay.classList.contains('is-closing')) {
-                    this.dialog.style.animation = 'none';
-                    this.dialog.style.opacity = '1';
-                }
-            };
-            this.dialog.addEventListener('animationend', onAnimationEnd, { once: true });
-
             // Lock document body scroll
             document.body.classList.add('modal-open');
+
+            // Play Web Animations API flyout entrance
+            if (typeof this.dialog.animate === 'function') {
+                const prefersReducedMotion = (window.disableAnimations === true) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+                const duration = prefersReducedMotion ? 1 : 340;
+
+                const startTransform = `translate3d(${fly.x}px, ${fly.y}px, 0) scale(${fly.scaleX}, ${fly.scaleY})`;
+                const targetTransform = 'translate3d(0, 0, 0) scale(1, 1)';
+
+                const anim = this.dialog.animate([
+                    {
+                        transform: startTransform,
+                        opacity: 0,
+                        borderRadius: fly.radius || '28px'
+                    },
+                    {
+                        transform: targetTransform,
+                        opacity: 1,
+                        borderRadius: 'var(--modal-radius, 14px)'
+                    }
+                ], {
+                    duration: duration,
+                    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                    fill: 'both'
+                });
+
+                this._currentAnimation = anim;
+                anim.onfinish = () => {
+                    if (this._currentAnimation === anim) {
+                        this._currentAnimation = null;
+                        try {
+                            anim.cancel();
+                        } catch (e) {}
+                        this.dialog.style.transform = '';
+                        this.dialog.style.opacity = '';
+                        this.dialog.style.borderRadius = '';
+                    }
+                };
+            }
 
             // Focus management
             this.trapFocus();
@@ -625,7 +828,13 @@
 
             this.triggerEvent('modal:close');
 
-            // Play exit animation
+            // Cancel any ongoing open animation
+            if (this._currentAnimation) {
+                try { this._currentAnimation.cancel(); } catch (e) {}
+                this._currentAnimation = null;
+            }
+
+            // Play exit animation: smoothly fly back and collapse into opening trigger button
             this.overlay.classList.remove('is-active');
             this.overlay.classList.add('is-closing');
 
@@ -640,7 +849,43 @@
                 document.body.classList.remove('modal-open');
             }
 
+            const fly = (this.activeTrigger ? this.calculateFlyout(this.activeTrigger) : null) || this._lastFly || this.calculateFlyout(resolveRecentTrigger());
+
+            const prefersReducedMotion = (window.disableAnimations === true) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            const closeDuration = prefersReducedMotion ? 1 : 260;
+
+            if (typeof this.dialog.animate === 'function') {
+                const currentTransform = this.dialog.style.transform || 'translate3d(0, 0, 0) scale(1, 1)';
+                const toTransform = `translate3d(${fly.x}px, ${fly.y}px, 0) scale(${fly.scaleX}, ${fly.scaleY})`;
+
+                const closeAnim = this.dialog.animate([
+                    {
+                        transform: currentTransform,
+                        opacity: 1,
+                        borderRadius: 'var(--modal-radius, 14px)'
+                    },
+                    {
+                        transform: toTransform,
+                        opacity: 0,
+                        borderRadius: fly.radius || '28px'
+                    }
+                ], {
+                    duration: closeDuration,
+                    easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                    fill: 'both'
+                });
+                this._currentAnimation = closeAnim;
+            }
+
             setTimeout(() => {
+                if (this._currentAnimation) {
+                    try { this._currentAnimation.cancel(); } catch (e) {}
+                    this._currentAnimation = null;
+                }
+                this.dialog.style.transform = '';
+                this.dialog.style.opacity = '';
+                this.dialog.style.borderRadius = '';
+
                 this.overlay.style.display = 'none';
                 this.overlay.classList.remove('is-closing');
                 this.isOpen = false;
@@ -654,7 +899,7 @@
                 if (this.options.destroyOnClose || this.isDynamic) {
                     this.destroy();
                 }
-            }, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--modal-transition-speed') || '0.24') * 1000);
+            }, closeDuration);
 
             return this;
         }
@@ -849,10 +1094,168 @@
             e.preventDefault();
             const target = trigger.getAttribute('data-modal-open') || trigger.getAttribute('data-modal-target');
             if (target) {
-                Modal.open(target);
+                Modal.open(target, { trigger: trigger });
             }
         }
     });
+
+    /**
+     * ==============================================================================
+     * File Picker Component Support (.modal-file-picker)
+     * ==============================================================================
+     */
+
+    /**
+     * Format byte values to human readable string (KB, MB)
+     * @param {number} bytes
+     * @returns {string}
+     */
+    function formatFileSize(bytes) {
+        if (!bytes || bytes <= 0) return '';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    /**
+     * Initialize custom file pickers (.modal-file-picker)
+     * @param {HTMLElement|Document} root
+     */
+    function initModalFilePickers(root = document) {
+        if (!root || !root.querySelectorAll) return;
+        const pickers = root.querySelectorAll('.modal-file-picker');
+        pickers.forEach(picker => {
+            if (picker.dataset.pickerInitialized === 'true') return;
+            picker.dataset.pickerInitialized = 'true';
+
+            const input = picker.querySelector('input[type="file"]');
+            if (!input) return;
+
+            const textEl = picker.querySelector('.modal-file-picker-text');
+            const sizeEl = picker.querySelector('.modal-file-picker-size');
+            const clearBtn = picker.querySelector('.modal-file-picker-clear');
+
+            if (!picker.hasAttribute('tabindex')) {
+                picker.setAttribute('tabindex', '0');
+            }
+
+            const updateState = () => {
+                const file = input.files && input.files[0];
+                if (file) {
+                    picker.classList.add('has-file');
+                    if (textEl) {
+                        textEl.removeAttribute('data-i18n');
+                        textEl.textContent = file.name;
+                        textEl.title = file.name;
+                    }
+                    if (sizeEl) {
+                        sizeEl.textContent = `(${formatFileSize(file.size)})`;
+                    }
+                } else {
+                    picker.classList.remove('has-file');
+                    if (textEl) {
+                        textEl.setAttribute('data-i18n', 'common.no_file_chosen');
+                        textEl.textContent = translate('common.no_file_chosen', 'Файл не выбран');
+                        textEl.removeAttribute('title');
+                    }
+                    if (sizeEl) {
+                        sizeEl.textContent = '';
+                    }
+                }
+            };
+
+            input.addEventListener('change', updateState);
+
+            picker.addEventListener('click', (e) => {
+                if (e.target.closest('.modal-file-picker-clear')) return;
+                if (e.target === input) return;
+                input.click();
+            });
+
+            picker.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    if (!e.target.closest('.modal-file-picker-clear')) {
+                        e.preventDefault();
+                        input.click();
+                    }
+                }
+            });
+
+            input.addEventListener('focus', () => picker.classList.add('is-focused'));
+            input.addEventListener('blur', () => picker.classList.remove('is-focused'));
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    input.value = '';
+                    updateState();
+                    const changeEvent = new Event('change', { bubbles: true });
+                    input.dispatchEvent(changeEvent);
+                });
+            }
+
+            picker.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                picker.classList.add('is-dragover');
+            });
+
+            picker.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                picker.classList.remove('is-dragover');
+            });
+
+            picker.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                picker.classList.remove('is-dragover');
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    try {
+                        input.files = e.dataTransfer.files;
+                    } catch (err) {
+                        // DataTransfer assignment fallback
+                    }
+                    updateState();
+                    const changeEvent = new Event('change', { bubbles: true });
+                    input.dispatchEvent(changeEvent);
+                }
+            });
+
+            updateState();
+        });
+    }
+
+    /**
+     * Programmatically reset a custom file picker
+     * @param {HTMLElement|string} target
+     */
+    function resetModalFilePicker(target) {
+        if (!target) return;
+        let el = typeof target === 'string' ? (document.querySelector(target) || document.getElementById(target)) : target;
+        if (!el) return;
+
+        let input = el.tagName === 'INPUT' && el.type === 'file' ? el : el.querySelector('input[type="file"]');
+        if (!input) return;
+
+        input.value = '';
+        const picker = input.closest('.modal-file-picker');
+        if (picker) {
+            picker.classList.remove('has-file');
+            const textEl = picker.querySelector('.modal-file-picker-text');
+            const sizeEl = picker.querySelector('.modal-file-picker-size');
+            if (textEl) {
+                textEl.setAttribute('data-i18n', 'common.no_file_chosen');
+                textEl.textContent = translate('common.no_file_chosen', 'Файл не выбран');
+                textEl.removeAttribute('title');
+            }
+            if (sizeEl) {
+                sizeEl.textContent = '';
+            }
+        }
+    }
 
     /**
      * ==============================================================================
@@ -873,7 +1276,7 @@
                     instance.setupDraggable();
                 }
             }
-            return instance.open();
+            return instance.open(options.trigger || null);
         },
 
         /**
@@ -943,7 +1346,7 @@
          */
         create(config) {
             const instance = new ModalInstance(config);
-            instance.open();
+            instance.open(config.trigger || null);
             return instance;
         },
 
@@ -1144,12 +1547,33 @@
                     return modal.close();
                 }
             };
-        }
+        },
+
+        /**
+         * Initialize custom file pickers within a container
+         */
+        initFilePickers: initModalFilePickers,
+
+        /**
+         * Reset a custom file picker programmatically
+         */
+        resetFilePicker: resetModalFilePicker
     };
+
+    // Auto-initialize custom file pickers on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initModalFilePickers(document);
+        });
+    } else {
+        initModalFilePickers(document);
+    }
 
     // Expose globally
     window.Modal = Modal;
     window.NPModal = Modal;
     window.ModalFramework = Modal;
+    window.initModalFilePickers = initModalFilePickers;
+    window.resetModalFilePicker = resetModalFilePicker;
 
 })(window, document);

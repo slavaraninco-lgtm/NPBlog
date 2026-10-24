@@ -13,21 +13,17 @@ class Auth
     private static function getTokensFilePath(): string
     {
         $rootDir = defined('NPBLOG_ROOT') ? NPBLOG_ROOT : dirname(__DIR__, 2);
-        $primary = $rootDir . '/data/api_tokens.json';
-        if (file_exists($primary)) {
-            return $primary;
-        }
+        $primary = $rootDir . '/api_tokens.json';
 
-        $settingsFile = $rootDir . '/editor_settings.json';
-        if (file_exists($settingsFile)) {
-            $settings = json_decode(@file_get_contents($settingsFile) ?: '[]', true) ?: [];
-            if (!empty($settings['blog_paths'][0])) {
-                $p = $settings['blog_paths'][0];
-                $isAbsolute = (strpos($p, '/') === 0) || (strpos($p, '\\') === 0) || (strlen($p) >= 2 && $p[1] === ':');
-                if (!$isAbsolute) {
-                    $p = $rootDir . '/' . ltrim($p, '/\\');
+        // Automatic backward-compatibility migration if legacy file still exists in data/
+        if (!file_exists($primary)) {
+            $legacy = $rootDir . '/data/api_tokens.json';
+            if (file_exists($legacy)) {
+                @rename($legacy, $primary);
+                if (file_exists($primary)) {
+                    return $primary;
                 }
-                return rtrim(str_replace('\\', '/', $p), '/') . '/api_tokens.json';
+                return $legacy;
             }
         }
 

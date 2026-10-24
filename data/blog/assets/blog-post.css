@@ -64,10 +64,17 @@ h1 {
 
 .content {
     margin-top: 20px;
-    font-size: 1.1em;
-    line-height: 1.8;
+    font-size: 14px;
+    line-height: 1.6;
     word-wrap: break-word;
     overflow-wrap: break-word;
+}
+
+.content::after,
+.post-content::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 .content hr {
@@ -111,6 +118,64 @@ h1 {
     width: 100%;
     clear: both;
     position: relative;
+    box-sizing: border-box;
+}
+
+.blog-image-align-wrap.align-left {
+    display: block;
+    text-align: left;
+    margin: 14px 0;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-center {
+    display: block;
+    text-align: center;
+    margin: 14px auto;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-right {
+    display: block;
+    text-align: right;
+    margin: 14px 0;
+    width: 100%;
+    clear: both;
+    float: none;
+}
+
+.blog-image-align-wrap.align-float-left {
+    display: block;
+    float: left;
+    clear: none;
+    width: auto;
+    max-width: 70%;
+    margin: 6px 20px 14px 0;
+    text-align: left;
+}
+
+.blog-image-align-wrap.align-float-right {
+    display: block;
+    float: right;
+    clear: none;
+    width: auto;
+    max-width: 70%;
+    margin: 6px 0 14px 20px;
+    text-align: right;
+}
+
+@media (max-width: 640px) {
+    .blog-image-align-wrap.align-float-left,
+    .blog-image-align-wrap.align-float-right {
+        float: none !important;
+        max-width: 100% !important;
+        margin: 14px auto !important;
+        clear: both !important;
+    }
 }
 .blog-image-wrap {
     position: relative;
@@ -198,6 +263,7 @@ h1 {
 }
 
 .content p {
+    margin-top: 0;
     margin-bottom: 0;
 }
 
@@ -840,18 +906,37 @@ html.is-android .blog-ascii-art {
     position: absolute;
     top: 2px;
     right: 5px;
+    transform: translate(var(--code-scroll-x, 0px), var(--code-scroll-y, 0px));
     background: #fff;
     padding: 0 5px;
     font-size: 12px;
     color: #666;
     border: 1px solid #ddd;
     border-radius: 4px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.code-block:not([data-language])::before,
+.code-block[data-language=""]::before {
+    display: none;
 }
 
 [data-theme="dark"] .code-block::before {
     background: #000;
     color: #ccc;
     border-color: #444;
+}
+
+[data-theme="dark"][data-amoled="true"] .code-block {
+    background: #000000;
+    border-color: #333;
+}
+
+[data-theme="dark"][data-amoled="true"] .code-block::before {
+    background: #111111;
+    border-color: #333;
+    color: #ccc;
 }
 
 .blog-smile {

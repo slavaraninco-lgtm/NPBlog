@@ -10,7 +10,7 @@ if ($action === 'list_backups') {
     if (is_dir($dir)) {
         $files = scandir($dir);
         foreach ($files as $file) {
-            if (str_ends_with($file, '.zip')) {
+            if (substr($file, -4) === '.zip') {
                 $backups[] = [
                     'filename' => $file,
                     'size' => filesize($dir . $file),

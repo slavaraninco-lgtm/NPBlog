@@ -11,6 +11,36 @@ $data = json_decode($rawInput, true);
 
 $settingsFile = __DIR__ . '/editor_settings.json';
 
+// Обработка полного сброса настроек к шаблону
+if (!empty($data['reset_all_settings'])) {
+    $exampleFile = __DIR__ . '/editor_settings.example.json';
+    if (file_exists($exampleFile)) {
+        if (@copy($exampleFile, $settingsFile)) {
+            unset($_SESSION['active_blog_path']);
+            unset($_SESSION['backup_path']);
+            unset($_SESSION['autosave_path']);
+            unset($_SESSION['editor_backup_path']);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Настройки успешно сброшены к стандартным'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        } else {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Не удалось скопировать файл шаблона настроек'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    } else {
+        echo json_encode([
+            'success' => false,
+            'error' => 'Файл шаблона editor_settings.example.json не найден'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+
 // Загружаем существующие настройки
 $existingSettings = [];
 if (file_exists($settingsFile)) {
@@ -21,6 +51,21 @@ if (file_exists($settingsFile)) {
 // Обновляем настройки
 if (isset($data['hideEditorModeButtons'])) {
     $existingSettings['hideEditorModeButtons'] = (bool)$data['hideEditorModeButtons'];
+}
+
+if (isset($data['bottomBar']) && is_array($data['bottomBar'])) {
+    $currentBottomBar = isset($existingSettings['bottomBar']) && is_array($existingSettings['bottomBar']) ? $existingSettings['bottomBar'] : [];
+    $existingSettings['bottomBar'] = [
+        'showModeToggle' => isset($data['bottomBar']['showModeToggle']) ? !empty($data['bottomBar']['showModeToggle']) : ($currentBottomBar['showModeToggle'] ?? true),
+        'showBlogSelector' => isset($data['bottomBar']['showBlogSelector']) ? !empty($data['bottomBar']['showBlogSelector']) : ($currentBottomBar['showBlogSelector'] ?? true),
+        'showDrafts' => isset($data['bottomBar']['showDrafts']) ? !empty($data['bottomBar']['showDrafts']) : ($currentBottomBar['showDrafts'] ?? false),
+        'showIncludes' => isset($data['bottomBar']['showIncludes']) ? !empty($data['bottomBar']['showIncludes']) : ($currentBottomBar['showIncludes'] ?? false),
+        'showWordCount' => isset($data['bottomBar']['showWordCount']) ? !empty($data['bottomBar']['showWordCount']) : ($currentBottomBar['showWordCount'] ?? false),
+        'showAutosaveBadge' => isset($data['bottomBar']['showAutosaveBadge']) ? !empty($data['bottomBar']['showAutosaveBadge']) : ($currentBottomBar['showAutosaveBadge'] ?? true)
+    ];
+    if (isset($data['bottomBar']['showModeToggle'])) {
+        $existingSettings['hideEditorModeButtons'] = empty($data['bottomBar']['showModeToggle']);
+    }
 }
 
 if (isset($data['language'])) {
@@ -41,6 +86,10 @@ if (isset($data['enableUndoRedo'])) {
 
 if (isset($data['smoothTyping'])) {
     $existingSettings['smoothTyping'] = (bool)$data['smoothTyping'];
+}
+
+if (isset($data['disableAnimations'])) {
+    $existingSettings['disableAnimations'] = (bool)$data['disableAnimations'];
 }
 
 if (isset($data['headerBottomPosition'])) {
@@ -171,6 +220,38 @@ if (isset($data['rss_use_first_line'])) {
 }
 if (isset($data['rss_content_template'])) {
     $existingSettings['rss_content_template'] = $data['rss_content_template'];
+}
+
+if (isset($data['auto_update_check'])) {
+    $existingSettings['auto_update_check'] = (bool)$data['auto_update_check'];
+}
+
+if (isset($data['update_channel'])) {
+    $channel = strtolower(trim((string)$data['update_channel']));
+    if ($channel === 'canary' || $channel === 'stable') {
+        $existingSettings['update_channel'] = $channel;
+    }
+}
+
+if (isset($data['update_repo'])) {
+    $repo = trim((string)$data['update_repo']);
+    $repo = preg_replace('#^https?://github\.com/#i', '', $repo);
+    $repo = preg_replace('#^github\.com/#i', '', $repo);
+    $repo = trim($repo, '/');
+    $repo = preg_replace('/\.git$/i', '', $repo);
+    if ($repo === '' || !preg_match('#^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$#', $repo)) {
+        $repo = 'slavaraninco-lgtm/NPBlog';
+    }
+    $existingSettings['update_repo'] = $repo;
+}
+
+if (isset($data['update_github_token'])) {
+    $token = trim((string)$data['update_github_token']);
+    // Validate token format (GitHub tokens: ghp_, github_pat_, or alphanumeric)
+    if ($token !== '' && !preg_match('#^[a-zA-Z0-9_.-]+$#', $token)) {
+        $token = '';
+    }
+    $existingSettings['update_github_token'] = $token;
 }
 
 if (isset($data['ip_whitelist_enabled'])) {

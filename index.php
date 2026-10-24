@@ -57,12 +57,16 @@ $availableCodes = getAvailableLanguageCodes();
 $defaultLang = !empty($availableCodes) ? $availableCodes[0] : 'ru';
 $settingsFile = 'editor_settings.json';
 $amoled = false;
+$disableAnimations = false;
 $activeTheme = 'dark';
 $currentLanguage = $defaultLang;
 if (file_exists($settingsFile)) {
     $settings = json_decode(file_get_contents($settingsFile), true);
     if (!empty($settings['amoledTheme'])) {
         $amoled = true;
+    }
+    if (!empty($settings['disableAnimations'])) {
+        $disableAnimations = true;
     }
     if (!empty($settings['activeTheme'])) {
         $activeTheme = $settings['activeTheme'];
@@ -86,15 +90,16 @@ if (file_exists($versionFile)) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars($currentLanguage); ?>"<?php echo $amoled ? ' data-amoled="true"' : ''; ?>>
+<html lang="<?php echo htmlspecialchars($currentLanguage); ?>"<?php echo $amoled ? ' data-amoled="true"' : ''; ?><?php echo $disableAnimations ? ' data-disable-animations="true"' : ''; ?>>
 <head>
-    <title>Редактор</title>
+    <title data-i18n="header.editor_title">Редактор</title>
     <meta charset="utf-8">
     <meta name="csrf-token" content="<?php echo isset($_SESSION['csrf_token']) ? $_SESSION['csrf_token'] : ''; ?>">
     <script src="lang/i18n.js?v=<?php echo file_exists(__DIR__ . '/lang/i18n.js') ? filemtime(__DIR__ . '/lang/i18n.js') : time(); ?>"></script>
     <script>
         window.NPBLOG_AVAILABLE_LANGUAGES = <?php echo json_encode($availableLanguages, JSON_UNESCAPED_UNICODE); ?>;
         window.NPBLOG_LANG = '<?php echo htmlspecialchars($currentLanguage); ?>';
+        window.disableAnimations = <?php echo $disableAnimations ? 'true' : 'false'; ?>;
         const savedTheme = localStorage.getItem('theme') || '<?php echo $activeTheme; ?>';
         if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -277,8 +282,8 @@ if (file_exists($versionFile)) {
         <div class="tutorial-spotlight" id="tutorialSpotlight"></div>
         <div class="tutorial-tooltip" id="tutorialTooltip">
             <div class="tutorial-header">
-                <span class="tutorial-step-badge" id="tutorialStepBadge">Шаг 1 из 17</span>
-                <button type="button" class="tutorial-close-btn" onclick="skipTutorial()" title="Закрыть (Esc)">×</button>
+                <span class="tutorial-step-badge" id="tutorialStepBadge" data-i18n="tutorial.step_counter">Шаг 1 из 17</span>
+                <button type="button" class="tutorial-close-btn" onclick="skipTutorial()" data-i18n-title="common.close_esc" title="Закрыть (Esc)">×</button>
             </div>
             <div class="tutorial-progress-bar">
                 <div class="tutorial-progress-fill" id="tutorialProgressFill"></div>
@@ -308,7 +313,7 @@ if (file_exists($versionFile)) {
     <!-- Фиксированный хеадер редактора -->
     <header class="editor-header">
         <div class="header-left">
-            <div id="toolbar-row-1" class="toolbar-row" data-placeholder="Ряд 1">
+            <div id="toolbar-row-1" class="toolbar-row" data-placeholder="Ряд 1" data-i18n-placeholder="header.row_1_ph">
                 <span class="header-logo">NPBlog</span>
             <span class="toolbar-divider" id="logoDivider"></span>
             
@@ -411,49 +416,59 @@ if (file_exists($versionFile)) {
             <span class="toolbar-divider" id="divider-more"></span>
             
             <div class="more-menu-wrap" id="moreMenuWrap">
-                <button type="button" class="format-btn" title="Прочее" data-i18n-title="toolbar.more" onclick="toggleMoreMenu()">⋯</button>
+                <button type="button" class="format-btn more-menu-trigger" id="moreMenuBtn" title="Прочее" data-i18n-title="toolbar.more" onclick="toggleMoreMenu()"><span class="more-menu-dots">⋯</span></button>
                 <div class="more-menu-dropdown" id="moreMenuDropdown">
-                    <button type="button" class="more-menu-item" onclick="saveDraft()" data-i18n="more_menu.save_draft">Сохранить в черновик</button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleDraftsSubmenu(event)">
+                    <div class="more-menu-item has-submenu" id="draftsMenuItem" onclick="toggleDraftsSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.drafts">Черновики</span>
-                        <div class="more-submenu" id="draftsSubmenu">
-                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                        <div class="more-submenu has-action-header" id="draftsSubmenu" onclick="event.stopPropagation()">
+                            <button type="button" class="more-submenu-item more-submenu-action" onclick="saveDraft(event)">
+                                <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_draft">Сохранить в черновик</span>
+                            </button>
+                            <div class="more-submenu-divider"></div>
+                            <div class="more-submenu-list" id="draftsSubmenuList">
+                                <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                            </div>
                         </div>
-                    </button>
-                    <button type="button" class="more-menu-item" onclick="openSaveInclude()" data-i18n="more_menu.save_include">Сохранить в includes</button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleIncludesSubmenu(event)">
+                    </div>
+                    <div class="more-menu-item has-submenu" id="includesMenuItem" onclick="toggleIncludesSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.insert_include">Вставить</span>
-                        <div class="more-submenu" id="includesSubmenu">
-                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                        <div class="more-submenu has-action-header" id="includesSubmenu" onclick="event.stopPropagation()">
+                            <button type="button" class="more-submenu-item more-submenu-action" onclick="openSaveInclude(event)">
+                                <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_include">Сохранить в includes</span>
+                            </button>
+                            <div class="more-submenu-divider"></div>
+                            <div class="more-submenu-list" id="includesSubmenuList">
+                                <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                            </div>
                         </div>
-                    </button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleArticlesSubmenu(event)">
+                    </div>
+                    <div class="more-menu-item has-submenu" id="articlesMenuItem" onclick="toggleArticlesSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.insert_article_link">Вставить ссылку на статью</span>
                         <div class="more-submenu" id="articlesSubmenu">
                             <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
-                    </button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleTocSubmenu(event)">
+                    </div>
+                    <div class="more-menu-item has-submenu" id="tocMenuItem" onclick="toggleTocSubmenu(event)" role="button" tabindex="0">
                         <span data-i18n="more_menu.toc">Содержание</span>
                         <div class="more-submenu" id="tocSubmenu">
                             <div class="more-submenu-empty" data-i18n="more_menu.no_anchors">Нет якорей в статье</div>
                         </div>
-                    </button>
+                    </div>
+                    <div class="more-menu-item has-submenu" id="smilesMenuItem" onclick="toggleSmilesSubmenu(event)" role="button" tabindex="0">
+                        <span data-i18n="more_menu.smiles">Смайлы</span>
+                        <div class="more-submenu" id="smilesSubmenu">
+                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                        </div>
+                    </div>
                     <button type="button" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
                     <button type="button" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
                     <button type="button" class="more-menu-item" onclick="openFormulaDialog()" data-i18n="toolbar.formula">Вставить формулу</button>
                     <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
                     <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
-                    <button type="button" class="more-menu-item has-submenu" onclick="toggleSmilesSubmenu(event)">
-                        <span data-i18n="more_menu.smiles">Смайлы</span>
-                        <div class="more-submenu" id="smilesSubmenu">
-                            <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
-                        </div>
-                    </button>
                 </div>
             </div>
             </div>
-            <div id="toolbar-row-2" class="toolbar-row" data-placeholder="Ряд 2"></div>
+            <div id="toolbar-row-2" class="toolbar-row" data-placeholder="Ряд 2" data-i18n-placeholder="header.row_2_ph"></div>
         </div>
         
         <div class="header-right">
@@ -474,7 +489,7 @@ if (file_exists($versionFile)) {
                     <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='<?php echo getDataUrl('blog.html'); ?>'" data-i18n="header.menu_go_to_blog">Перейти к Blog.html</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openSystemUpdateModal()" data-i18n="header.menu_update_npblog">Обновить NPBlog</button>
                     <?php if (!empty($passwordHash)): ?>
-                    <button type="button" class="editor-menu-item" role="menuitem" onclick="lockEditor()" style="color: #ef4444; font-weight: 600; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;" data-i18n="header.menu_lock">Заблокировать</button>
+                    <button type="button" class="editor-menu-item editor-menu-item-lock" role="menuitem" onclick="lockEditor()" data-i18n="header.menu_lock">Заблокировать</button>
                     <?php endif; ?>
                     <?php
                     $editorVersion = 'unknown';
@@ -493,7 +508,7 @@ if (file_exists($versionFile)) {
             </div>
         </div>
     </header>
-<!-- тест2 -->
+
     <form id="blogForm">
         <input class="content228 editor-field" type="text" id="title" placeholder="Заголовок статьи" data-i18n-placeholder="header.placeholder_title" required>
         <textarea class="content228 editor-field" id="content" placeholder="Содержание статьи" data-i18n-placeholder="header.placeholder_content" style="display:none;"></textarea>
@@ -512,11 +527,49 @@ if (file_exists($versionFile)) {
                 <select id="blogSelector" class="bottom-bar-blog-select" onchange="selectActiveBlog(this.value)">
                 </select>
             </div>
+            <!-- Кнопка и выпадающий список Черновики в нижней панели -->
+            <div class="bottom-bar-dropdown" id="bottomBarDraftsContainer" style="display: none;">
+                <button type="button" class="bottom-bar-btn" id="bottomBarDraftsBtn" onclick="toggleBottomBarDrafts(event)" title="Черновики" data-i18n-title="more_menu.drafts">
+                    <span data-i18n="more_menu.drafts">Черновики</span>
+                    <span class="bottom-bar-btn-arrow">▾</span>
+                </button>
+                <div class="more-submenu has-action-header bottom-bar-submenu" id="bottomBarDraftsSubmenu" onclick="event.stopPropagation()">
+                    <button type="button" class="more-submenu-item more-submenu-action" onclick="saveDraft(event)">
+                        <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_draft">Сохранить в черновик</span>
+                    </button>
+                    <div class="more-submenu-divider"></div>
+                    <div class="more-submenu-list" id="bottomBarDraftsSubmenuList">
+                        <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Кнопка и выпадающий список Includes в нижней панели -->
+            <div class="bottom-bar-dropdown" id="bottomBarIncludesContainer" style="display: none;">
+                <button type="button" class="bottom-bar-btn" id="bottomBarIncludesBtn" onclick="toggleBottomBarIncludes(event)" title="Includes" data-i18n-title="bottom_bar.item_includes_title">
+                    <span data-i18n="bottom_bar.item_includes_title">Includes</span>
+                    <span class="bottom-bar-btn-arrow">▾</span>
+                </button>
+                <div class="more-submenu has-action-header bottom-bar-submenu" id="bottomBarIncludesSubmenu" onclick="event.stopPropagation()">
+                    <button type="button" class="more-submenu-item more-submenu-action" onclick="openSaveInclude(event)">
+                        <span class="more-submenu-action-icon">+</span> <span data-i18n="more_menu.save_include">Сохранить в includes</span>
+                    </button>
+                    <div class="more-submenu-divider"></div>
+                    <div class="more-submenu-list" id="bottomBarIncludesSubmenuList">
+                        <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="editor-bottom-bar-right">
+            <!-- Счётчик слов и символов -->
+            <div id="bottomBarStats" class="bottom-bar-stats" style="display: none;" title="Статистика текста" data-i18n-title="bottom_bar.stats_tooltip">
+                <span class="bottom-bar-stat-item"><span data-i18n="bottom_bar.words_count">Слов</span>: <strong id="bottomBarWordCount">0</strong></span>
+                <span class="bottom-bar-stat-sep">•</span>
+                <span class="bottom-bar-stat-item"><span data-i18n="bottom_bar.chars_count">Символов</span>: <strong id="bottomBarCharCount">0</strong></span>
+            </div>
             <!-- Таймер автосохранения (чисто текст, кликабельный для открытия менеджера) -->
             <div id="autosaveBadge" onclick="openAutosaveManager()" onmousedown="event.preventDefault()" style="display: none;" title="Менеджер автосохранений" data-i18n-title="header.menu_autosave_manager">
-                <span id="autosaveBadgeText">Автосохранение через 60с</span>
+                <span id="autosaveBadgeText" data-i18n="header.autosave_badge_timer">Автосохранение через 60с</span>
             </div>
         </div>
     </footer>
@@ -542,13 +595,22 @@ if (file_exists($versionFile)) {
 
     <!-- -->
 
-        <div class="manage-posts" id="managePosts">
+    <div class="manage-posts" id="managePosts">
         <div class="manage-posts-header">
             <h2 data-i18n="header.manage_posts_title">Все статьи</h2>
-            <button type="button" class="close-manage" onclick="toggleManagePosts()" aria-label="Закрыть">×</button>
-        </div>
-        <div style="padding: 16px 16px 0;">
-            <input type="text" id="postsSearchInput" class="posts-search-input" placeholder="🔍 Поиск по статьям..." data-i18n-placeholder="header.manage_posts_search" oninput="filterPosts()">
+            <div class="manage-posts-actions">
+                <div class="posts-search-widget" id="postsSearchWidget">
+                    <button type="button" class="posts-search-toggle-btn" id="postsSearchToggleBtn" onclick="togglePostsSearch(event)" data-i18n-title="header.manage_posts_search" title="Поиск статей" data-i18n-aria="header.manage_posts_search" aria-label="Поиск статей">
+                        <svg class="posts-search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </button>
+                    <input type="text" class="posts-search-input" id="postsSearchInput" placeholder="Поиск статей..." data-i18n-placeholder="header.manage_posts_search_ph" oninput="filterPosts()" autocomplete="off">
+                    <button type="button" class="posts-search-clear-btn" id="postsSearchClearBtn" onclick="closeOrClearPostsSearch(event)" data-i18n-title="common.close" title="Закрыть" data-i18n-aria="common.close" aria-label="Закрыть">×</button>
+                </div>
+                <button type="button" class="close-manage" onclick="toggleManagePosts()" data-i18n-aria="common.close" aria-label="Закрыть">×</button>
+            </div>
         </div>
         <div id="postsList"></div>
     </div>
@@ -571,7 +633,7 @@ if (file_exists($versionFile)) {
 <div id="fontSizeDialog" class="dialog">
     <div class="dialog-content">
         <h3 data-i18n="toolbar.font_size">Указать размер шрифта</h3>
-        <input type="number" id="customFontSize" min="8" max="72" placeholder="Размер в px">
+        <input type="number" id="customFontSize" min="8" max="72" placeholder="Размер в px" data-i18n-placeholder="toolbar.font_size_px_ph">
         <div class="dialog-buttons">
             <button onclick="setCustomFontSize()" data-i18n="common.apply">Применить</button>
             <button onclick="closeFontSizeDialog()" data-i18n="common.cancel">Отмена</button>
@@ -657,12 +719,18 @@ foreach ($editorJsFiles as $jsFile) {
 
 <!-- Модальные окна обновления и отката системы -->
 <?php safe_include_editor_modal('system_update_modal.php'); ?>
+<?php safe_include_editor_modal('update_success_modal.php'); ?>
+<?php safe_include_editor_modal('auto_update_modal.php'); ?>
+<?php safe_include_editor_modal('canary_warning_modal.php'); ?>
 
 <!-- Модальное окно публикации и загрузки по FTP -->
 <?php safe_include_editor_modal('ftp_upload_modal.php'); ?>
 
 <!-- Модальное окно первоначальной настройки -->
 <?php safe_include_editor_modal('initial_setup_modal.php'); ?>
+
+<!-- Модальное окно предупреждения о пути к блогу (/CHANGE/ME) -->
+<?php safe_include_editor_modal('blog_path_warning_modal.php'); ?>
 
 <script>
 function openRestoreModal() {
@@ -754,6 +822,34 @@ let currentSelectedFont = null;
 function openAdditionalSettings(postId, postTitle) {
     currentAdditionalPostId = postId;
     document.getElementById('additionalSettingsPostTitle').textContent = (window.t ? window.t('modals.post_label', 'Статья: ') : 'Статья: ') + postTitle;
+    
+    // Сброс и загрузка превью статьи
+    const previewInput = document.getElementById('postPreviewInput');
+    if (previewInput) {
+        previewInput.value = '';
+        if (window.resetModalFilePicker) resetModalFilePicker(previewInput);
+    }
+    const previewUrlInput = document.getElementById('postPreviewUrlInput');
+    if (previewUrlInput) previewUrlInput.value = '';
+    const currentPreviewInfo = document.getElementById('currentPostPreviewInfo');
+    if (currentPreviewInfo) currentPreviewInfo.style.display = 'none';
+
+    fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now())
+        .then(response => response.ok ? response.json() : [])
+        .then(posts => {
+            const currentPost = Array.isArray(posts) ? posts.find(p => p.id === postId) : null;
+            if (currentPost && currentPost.preview && currentPreviewInfo) {
+                const previewImg = document.getElementById('currentPostPreviewImg');
+                const previewPath = document.getElementById('currentPostPreviewPath');
+                const isAbs = /^(?:https?:\/\/|\/)/i.test(currentPost.preview);
+                const src = isAbs ? currentPost.preview : ('serve_data.php?file=' + encodeURIComponent(currentPost.preview) + '&t=' + Date.now());
+                if (previewImg) previewImg.src = src;
+                if (previewPath) previewPath.textContent = currentPost.preview;
+                if (previewUrlInput) previewUrlInput.value = currentPost.preview;
+                currentPreviewInfo.style.display = 'block';
+            }
+        })
+        .catch(err => console.warn('Could not load post preview:', err));
     
     // Загружаем настройки из post_backgrounds.json
     fetch('get_post_backgrounds.php?postId=' + postId)
@@ -885,7 +981,17 @@ function closeAdditionalSettings() {
         }
     }
     const bgInput = document.getElementById('backgroundInput');
-    if (bgInput) bgInput.value = '';
+    if (bgInput) {
+        bgInput.value = '';
+        if (window.resetModalFilePicker) resetModalFilePicker(bgInput);
+    }
+    const previewInput = document.getElementById('postPreviewInput');
+    if (previewInput) {
+        previewInput.value = '';
+        if (window.resetModalFilePicker) resetModalFilePicker(previewInput);
+    }
+    const previewUrlInput = document.getElementById('postPreviewUrlInput');
+    if (previewUrlInput) previewUrlInput.value = '';
     currentAdditionalPostId = null;
 }
 
@@ -915,6 +1021,7 @@ function uploadBackground() {
         if (data.success) {
             showAlert(window.t ? window.t('notifications.bg_uploaded_alert', 'Фон успешно загружен') : 'Фон успешно загружен');
             fileInput.value = '';
+            if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
             
             // Обновляем отображение текущего фона
             const bgPreview = document.getElementById('currentBackgroundPreview');
@@ -1036,6 +1143,119 @@ function saveOverlaySettings() {
     });
 }
 
+function savePostPreview() {
+    if (!currentAdditionalPostId) return;
+    
+    const fileInput = document.getElementById('postPreviewInput');
+    const urlInput = document.getElementById('postPreviewUrlInput');
+    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+    const url = urlInput ? urlInput.value.trim() : '';
+    
+    if (file) {
+        const formData = new FormData();
+        formData.append('action', 'upload');
+        formData.append('postId', currentAdditionalPostId);
+        formData.append('preview', file);
+        
+        fetch('save_post_preview.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(window.t ? window.t('notifications.post_preview_saved', 'Превью статьи успешно сохранено!') : 'Превью статьи успешно сохранено!');
+                fileInput.value = '';
+                if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
+                
+                const previewImg = document.getElementById('currentPostPreviewImg');
+                const previewPath = document.getElementById('currentPostPreviewPath');
+                const currentPreviewInfo = document.getElementById('currentPostPreviewInfo');
+                if (previewImg) previewImg.src = 'serve_data.php?file=' + encodeURIComponent(data.preview) + '&t=' + Date.now();
+                if (previewPath) previewPath.textContent = data.preview;
+                if (urlInput) urlInput.value = data.preview;
+                if (currentPreviewInfo) currentPreviewInfo.style.display = 'block';
+            } else {
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка:', err);
+            showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+        });
+    } else if (url) {
+        fetch('save_post_preview.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'set_url',
+                postId: currentAdditionalPostId,
+                url: url
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(window.t ? window.t('notifications.post_preview_saved', 'Превью статьи успешно сохранено!') : 'Превью статьи успешно сохранено!');
+                const previewImg = document.getElementById('currentPostPreviewImg');
+                const previewPath = document.getElementById('currentPostPreviewPath');
+                const currentPreviewInfo = document.getElementById('currentPostPreviewInfo');
+                const isAbs = /^(?:https?:\/\/|\/)/i.test(data.preview);
+                const src = isAbs ? data.preview : ('serve_data.php?file=' + encodeURIComponent(data.preview) + '&t=' + Date.now());
+                if (previewImg) previewImg.src = src;
+                if (previewPath) previewPath.textContent = data.preview;
+                if (currentPreviewInfo) currentPreviewInfo.style.display = 'block';
+            } else {
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка:', err);
+            showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+        });
+    } else {
+        showAlert(window.t ? window.t('settings.post_preview_select_first', 'Выберите файл или укажите ссылку на изображение') : 'Выберите файл или укажите ссылку на изображение');
+    }
+}
+
+function removePostPreview() {
+    if (!currentAdditionalPostId) return;
+    
+    showConfirm(window.t ? window.t('settings.post_preview_delete_confirm', 'Удалить изображение превью для этой статьи?') : 'Удалить изображение превью для этой статьи?').then(result => {
+        if (!result) return;
+        
+        fetch('save_post_preview.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'remove',
+                postId: currentAdditionalPostId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(window.t ? window.t('notifications.post_preview_removed', 'Превью статьи удалено!') : 'Превью статьи удалено!');
+                const currentPreviewInfo = document.getElementById('currentPostPreviewInfo');
+                if (currentPreviewInfo) currentPreviewInfo.style.display = 'none';
+                const urlInput = document.getElementById('postPreviewUrlInput');
+                if (urlInput) urlInput.value = '';
+                const fileInput = document.getElementById('postPreviewInput');
+                if (fileInput) {
+                    fileInput.value = '';
+                    if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
+                }
+            } else {
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка:', err);
+            showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+        });
+    });
+}
+
 // Глобальные параметры
 function checkTemplateAndToggleTabs() {
     return new Promise((resolve) => {
@@ -1096,6 +1316,13 @@ function openGlobalSettings() {
         }
     }
     
+    // Синхронизируем видимость кнопки сохранения путей в подвале
+    const activeNavBtn = document.querySelector('.global-nav-btn.active');
+    const pathsSaveBtn = document.getElementById('globalPathsSaveBtn');
+    if (pathsSaveBtn) {
+        pathsSaveBtn.style.display = (activeNavBtn && activeNavBtn.dataset.section === 'paths') ? 'inline-flex' : 'none';
+    }
+
     checkTemplateAndToggleTabs().then(() => {
         loadGlobalBackground();
     });
@@ -1111,6 +1338,10 @@ function closeGlobalSettings() {
             setTimeout(() => modal.style.display = 'none', 300);
         }
     }
+    const gBg = document.getElementById('globalBackgroundInput');
+    if (gBg) { gBg.value = ''; if (window.resetModalFilePicker) resetModalFilePicker(gBg); }
+    const bBg = document.getElementById('blogBackgroundInput');
+    if (bBg) { bBg.value = ''; if (window.resetModalFilePicker) resetModalFilePicker(bBg); }
 }
 
 function showGlobalSection(sectionName) {
@@ -1131,6 +1362,12 @@ function showGlobalSection(sectionName) {
         section.style.display = 'none';
     });
     document.getElementById('globalSection-' + sectionName).style.display = 'block';
+
+    // Управление видимостью кнопки сохранения путей в подвале
+    const pathsSaveBtn = document.getElementById('globalPathsSaveBtn');
+    if (pathsSaveBtn) {
+        pathsSaveBtn.style.display = (sectionName === 'paths') ? 'inline-flex' : 'none';
+    }
     
     // Обновляем заголовок
     const titles = {
@@ -1144,7 +1381,8 @@ function showGlobalSection(sectionName) {
         'paths': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_paths', 'Пути к блoгам') : 'Пути к блoгам'),
         'security': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_security', 'Безопасность и доступ') : 'Безопасность и доступ'),
         'seo': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_seo', 'SEO и соцсети') : 'SEO и соцсети'),
-        'language': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_language', 'Язык') : 'Язык')
+        'language': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_language', 'Язык') : 'Язык'),
+        'updates': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_updates', 'Обновления') : 'Обновления')
     };
     document.getElementById('globalSectionTitle').textContent = titles[sectionName] || '';
     
@@ -1170,6 +1408,8 @@ function showGlobalSection(sectionName) {
         loadSeoSettings();
     } else if (sectionName === 'language') {
         loadLanguageSettings();
+    } else if (sectionName === 'updates') {
+        loadUpdateSettings();
     }
 }
 
@@ -1190,13 +1430,13 @@ function selectLanguageOption(lang, autoSave) {
     cards.forEach(function(c) {
         var cLang = c.getAttribute('data-lang-code');
         var radio = document.getElementById('langRadio-' + cLang);
+        c.style.borderColor = '';
+        c.style.background = '';
         if (cLang === lang) {
-            c.style.borderColor = 'var(--primary-color, #4CAF50)';
-            c.style.background = 'rgba(76, 175, 80, 0.08)';
+            c.classList.add('is-selected');
             if (radio) radio.checked = true;
         } else {
-            c.style.borderColor = 'var(--border-color)';
-            c.style.background = 'transparent';
+            c.classList.remove('is-selected');
             if (radio) radio.checked = false;
         }
     });
@@ -1242,6 +1482,7 @@ function loadRssSection() {
     document.getElementById('rssHtmlCode').value = htmlCode;
     
     // 3. Генерируем чистый JS код без заготовленных стилей
+    var embedPrefix = window.t ? window.t('settings.rss_new_post_prefix', 'Вышла новая статья: ') : 'Вышла новая статья: ';
     var jsCode = '<script>\n' +
         '(function() {\n' +
         '    // Путь к вашей папке блога относительно главной страницы\n' +
@@ -1263,7 +1504,7 @@ function loadRssSection() {
         '            var link = document.createElement("a");\n' +
         '            link.href = blogPath + latestPost.filename;\n' +
         '            link.className = "npblog-rss-link";\n' +
-        '            link.textContent = "Вышла новая статья: " + latestPost.title;\n\n' +
+        '            link.textContent = ' + JSON.stringify(embedPrefix) + ' + latestPost.title;\n\n' +
         '            tickerContainer.appendChild(link);\n' +
         '        })\n' +
         '        .catch(function(err) {\n' +
@@ -1275,13 +1516,15 @@ function loadRssSection() {
     
     // 4. Отрисовываем чистый предпросмотр в админке
     var previewContainer = document.getElementById('rssLivePreviewContainer');
-    previewContainer.innerHTML = '<div style="font-size: 14px; color: var(--text-color); opacity: 0.6; font-style: italic;">Загрузка данных...</div>';
+    const loadingText = window.t ? window.t('settings.rss_preview_loading', 'Загрузка данных...') : 'Загрузка данных...';
+    previewContainer.innerHTML = '<div style="font-size: 14px; color: var(--text-color); opacity: 0.6; font-style: italic;">' + loadingText + '</div>';
     
     fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now())
         .then(response => response.json())
         .then(posts => {
             if (!posts || posts.length === 0) {
-                previewContainer.innerHTML = '<div style="font-size: 14px; color: #f44336; font-weight: 500;">Нет опубликованных статей для вывода в виджет</div>';
+                const emptyText = window.t ? window.t('settings.rss_preview_empty', 'Нет опубликованных статей для вывода в виджет') : 'Нет опубликованных статей для вывода в виджет';
+                previewContainer.innerHTML = '<div style="font-size: 14px; color: #f44336; font-weight: 500;">' + emptyText + '</div>';
                 return;
             }
             
@@ -1294,7 +1537,8 @@ function loadRssSection() {
             link.href = DATA_URL_PREFIX + 'blog/' + latestPost.filename;
             link.target = '_blank';
             link.className = 'npblog-rss-link';
-            link.textContent = 'Вышла новая статья: ' + latestPost.title;
+            const prefix = window.t ? window.t('settings.rss_new_post_prefix', 'Вышла новая статья: ') : 'Вышла новая статья: ';
+            link.textContent = prefix + latestPost.title;
             
             // Простые дефолтные стили ссылок браузера для чистого превью
             link.style.color = '#3b82f6';
@@ -1425,6 +1669,7 @@ function uploadGlobalBackground() {
         if (data.success) {
             showAlert(window.t ? window.t('notifications.global_bg_applied_all', 'Глобальный фон успешно загружен и применен ко всем статьям') : 'Глобальный фон успешно загружен и применен ко всем статьям');
             fileInput.value = '';
+            if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
             loadGlobalBackground();
         } else {
             showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
@@ -1678,6 +1923,11 @@ function loadBlogViewSettings() {
         .then(settings => {
             document.getElementById('blogPageTitle').value = settings.title || 'Блог';
             
+            const layoutSelect = document.getElementById('blogPostsLayout');
+            if (layoutSelect) {
+                layoutSelect.value = settings.layout || 'list';
+            }
+            
             // Загружаем инфо о текущем фоне
             const bgInfo = document.getElementById('currentBlogBackgroundInfo');
             if (settings.background) {
@@ -1698,6 +1948,10 @@ function loadBlogViewSettings() {
         })
         .catch(() => {
             document.getElementById('blogPageTitle').value = 'Блог';
+            const layoutSelect = document.getElementById('blogPostsLayout');
+            if (layoutSelect) {
+                layoutSelect.value = 'list';
+            }
             document.getElementById('currentBlogBackgroundInfo').style.display = 'none';
         });
 }
@@ -1725,6 +1979,7 @@ function uploadBlogBackground() {
         if (data.success) {
             showAlert(window.t ? window.t('notifications.blog_bg_uploaded', 'Фон для blog.html успешно загружен и применен') : 'Фон для blog.html успешно загружен и применен');
             fileInput.value = '';
+            if (window.resetModalFilePicker) resetModalFilePicker(fileInput);
             loadBlogViewSettings();
         } else {
             showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
@@ -1858,7 +2113,7 @@ function updateAutosaveBadge(statusText = null) {
     }
 
     if (typeof isEditorDirty !== 'undefined' && !isEditorDirty) {
-        badge.textContent = '✓ Сохранено';
+        badge.textContent = '✓ ' + (window.t ? window.t('header.autosave_badge_saved', 'Сохранено') : 'Сохранено');
         return;
     }
 
@@ -1905,7 +2160,11 @@ function startAutosave() {
     
     const badgeContainer = document.getElementById('autosaveBadge');
     if (badgeContainer) {
-        badgeContainer.style.display = 'inline-flex';
+        if (window.bottomBarSettings && window.bottomBarSettings.showAutosaveBadge === false) {
+            badgeContainer.style.display = 'none';
+        } else {
+            badgeContainer.style.display = 'inline-flex';
+        }
     }
 }
 
@@ -1922,6 +2181,7 @@ function stopAutosave() {
 }
 
 function performAutosave() {
+    if (window.activeMediaUploadsCount && window.activeMediaUploadsCount > 0) return;
     const title = document.getElementById('title')?.value?.trim() || '';
     const ve = document.getElementById('contentVisual');
     const ta = document.getElementById('content');
@@ -1988,6 +2248,7 @@ document.addEventListener('DOMContentLoaded', () => {
         titleEl.addEventListener('input', () => {
             if (typeof markEditorDirty === 'function') markEditorDirty();
             updateAutosaveBadge();
+            if (typeof updateBottomBarStats === 'function') updateBottomBarStats();
         });
     }
 
@@ -1996,6 +2257,16 @@ document.addEventListener('DOMContentLoaded', () => {
         contentEl.addEventListener('input', () => {
             if (typeof markEditorDirty === 'function') markEditorDirty();
             updateAutosaveBadge();
+            if (typeof updateBottomBarStats === 'function') updateBottomBarStats();
+        });
+    }
+
+    const visualEl = document.getElementById('contentVisual');
+    if (visualEl) {
+        visualEl.addEventListener('input', () => {
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            updateAutosaveBadge();
+            if (typeof updateBottomBarStats === 'function') updateBottomBarStats();
         });
     }
 });
@@ -2231,13 +2502,14 @@ function deleteAutosaveById(id) {
 
 function saveBlogViewSettings() {
     const title = document.getElementById('blogPageTitle').value.trim() || 'Блог';
+    const layout = document.getElementById('blogPostsLayout') ? document.getElementById('blogPostsLayout').value : 'list';
     
     fetch('save_blog_view_settings.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ title: title })
+        body: JSON.stringify({ action: 'save', title: title, layout: layout })
     })
     .then(response => response.json())
     .then(data => {
@@ -2245,6 +2517,35 @@ function saveBlogViewSettings() {
             showAlert(window.t ? window.t('notifications.blogview_saved_notice', 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.') : 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
         } else {
             showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+    });
+}
+
+function saveBlogViewLayout(action) {
+    const layout = (document.getElementById('blogPostsLayout') && document.getElementById('blogPostsLayout').value) || 'list';
+    
+    fetch('save_blog_view_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: action || 'save', layout: layout })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (action === 'apply_all') {
+                const count = data.updated_count || 1;
+                showAlert(window.t ? window.t('notifications.blogview_layout_applied_all', 'Вид успешно применен для всех блогов ({count})!', { count: count }) : ('Вид успешно применен для всех блогов (' + count + ')!'));
+            } else {
+                showAlert(window.t ? window.t('notifications.blogview_layout_saved', 'Вид отображения успешно сохранен для текущего блога!') : 'Вид отображения успешно сохранен для текущего блога!');
+            }
+        } else {
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : ('Ошибка: ' + data.error));
         }
     })
     .catch(error => {
@@ -2307,10 +2608,13 @@ function renderCrossBlogNavItems() {
         div.style.marginBottom = '10px';
         div.style.alignItems = 'center';
         
+        const btnNamePh = window.t ? window.t('header.cross_nav_btn_name_ph', 'Название кнопки') : 'Название кнопки';
+        const btnUrlPh = window.t ? window.t('header.cross_nav_url_ph', 'URL (например: ../data2/blog.html)') : 'URL (например: ../data2/blog.html)';
+        const btnDeleteTitle = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
         div.innerHTML = `
-            <input type="text" value="${item.text.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'text', this.value)" placeholder="Название кнопки" style="flex: 1; min-width: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-            <input type="text" value="${item.url.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'url', this.value)" placeholder="URL (например: ../data2/blog.html)" style="flex: 2; min-width: 150px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-            <button type="button" onclick="removeCrossBlogNavItem(${index})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 18px; padding: 4px;" title="Удалить">✖</button>
+            <input type="text" value="${item.text.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'text', this.value)" placeholder="${btnNamePh}" data-i18n-placeholder="header.cross_nav_btn_name_ph" style="flex: 1; min-width: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
+            <input type="text" value="${item.url.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'url', this.value)" placeholder="${btnUrlPh}" data-i18n-placeholder="header.cross_nav_url_ph" style="flex: 2; min-width: 150px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
+            <button type="button" onclick="removeCrossBlogNavItem(${index})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 18px; padding: 4px;" data-i18n-title="common.delete" title="${btnDeleteTitle}">✖</button>
         `;
         container.appendChild(div);
     });
@@ -2397,6 +2701,7 @@ function loadAndApplyAllSettings() {
                 const amoledTheme = settings.amoledTheme || false;
                 const enableUndoRedo = settings.enableUndoRedo || false;
                 const smoothTyping = settings.smoothTyping || false;
+                const disableAnimations = settings.disableAnimations || false;
                 const headerBottomPosition = settings.headerBottomPosition || false;
                 const enableMarkdown = settings.enableMarkdown || false;
                 const enableApi = settings.enableApi !== undefined ? settings.enableApi : true;
@@ -2406,6 +2711,7 @@ function loadAndApplyAllSettings() {
                 const amoledCheck = document.getElementById('amoledTheme');
                 const enableUndoRedoCheck = document.getElementById('enableUndoRedo');
                 const smoothTypingCheck = document.getElementById('smoothTyping');
+                const disableAnimationsCheck = document.getElementById('disableAnimations');
                 const headerBottomCheck = document.getElementById('headerBottomPosition');
                 const enableMarkdownCheck = document.getElementById('enableMarkdown');
                 const enableApiCheck = document.getElementById('enableApi');
@@ -2415,10 +2721,34 @@ function loadAndApplyAllSettings() {
                 if (amoledCheck) amoledCheck.checked = amoledTheme;
                 if (enableUndoRedoCheck) enableUndoRedoCheck.checked = enableUndoRedo;
                 if (smoothTypingCheck) smoothTypingCheck.checked = smoothTyping;
+                if (disableAnimationsCheck) disableAnimationsCheck.checked = disableAnimations;
                 if (headerBottomCheck) headerBottomCheck.checked = headerBottomPosition;
                 if (enableMarkdownCheck) enableMarkdownCheck.checked = enableMarkdown;
                 if (enableApiCheck) enableApiCheck.checked = enableApi;
                 if (contentWidthInput) contentWidthInput.value = contentWidth;
+
+                // Настройки обновлений
+                const autoUpdateCheck = (settings.auto_update_check !== undefined) ? !!settings.auto_update_check : true;
+                const updateChannel = settings.update_channel || 'stable';
+                const updateRepo = settings.update_repo || 'slavaraninco-lgtm/NPBlog';
+
+                const settingAutoUpdateCheckEl = document.getElementById('settingAutoUpdateCheck');
+                const settingUpdateChannelEl = document.getElementById('settingUpdateChannel');
+                const settingUpdateRepoEl = document.getElementById('settingUpdateRepo');
+
+                if (settingAutoUpdateCheckEl) settingAutoUpdateCheckEl.checked = autoUpdateCheck;
+                if (settingUpdateChannelEl) settingUpdateChannelEl.value = updateChannel;
+                if (settingUpdateRepoEl) settingUpdateRepoEl.value = updateRepo;
+
+                // Apply disable animations state
+                window.disableAnimations = disableAnimations;
+                if (disableAnimations) {
+                    document.documentElement.setAttribute('data-disable-animations', 'true');
+                    document.body.setAttribute('data-disable-animations', 'true');
+                } else {
+                    document.documentElement.removeAttribute('data-disable-animations');
+                    document.body.removeAttribute('data-disable-animations');
+                }
 
                 // Apply content width dynamically
                 window.editorContentWidth = contentWidth;
@@ -2467,17 +2797,21 @@ function loadAndApplyAllSettings() {
                     updateAmoledState();
                 }
                 
-                // Переключение отображения переключателя режимов
-                const modeToggle = document.getElementById('bottomModeToggle') || document.getElementById('headerModeToggle');
-                if (modeToggle) {
-                    if (hideModeButtons) {
-                        modeToggle.style.display = 'none';
-                        if (typeof setMode === 'function') {
-                            setMode('visual');
-                        }
-                    } else {
-                        modeToggle.style.display = 'inline-flex';
-                    }
+                // Переключение отображения переключателя режимов и статус-бара
+                let bottomBarSettings = settings.bottomBar;
+                if (!bottomBarSettings) {
+                    bottomBarSettings = {
+                        showModeToggle: !hideModeButtons,
+                        showBlogSelector: true,
+                        showDrafts: false,
+                        showIncludes: false,
+                        showWordCount: false,
+                        showAutosaveBadge: true
+                    };
+                }
+                window.bottomBarSettings = bottomBarSettings;
+                if (typeof applyBottomBarSettings === 'function') {
+                    applyBottomBarSettings(bottomBarSettings);
                 }
                 
                 // Переключение отображения кнопок истории (undo/redo)
@@ -2537,6 +2871,9 @@ function loadAndApplyAllSettings() {
                 window.allBlogPaths = blogPaths;
                 window.currentActiveBlogPath = settings.active_blog_path || blogPaths[0];
                 window.serverAppDir = settings.app_dir || '';
+                window.suggestedServerDataPath = settings.suggested_data_path || '';
+                
+                checkBlogPathWarning(window.currentActiveBlogPath, settings.initial_setup_completed);
                 
                 renderBlogPathsInputs(blogPaths, window.currentActiveBlogPath);
                 updateBlogSelectorUI(blogPaths, window.currentActiveBlogPath);
@@ -2615,6 +2952,13 @@ function loadAndApplyAllSettings() {
                             openInitialSetupModal();
                         }
                     }, 200);
+                } else if (settings.auto_update_check !== false) {
+                    // Автоматическая проверка обновлений при каждом запуске
+                    setTimeout(() => {
+                        if (typeof checkSystemAutoUpdate === 'function') {
+                            checkSystemAutoUpdate(false);
+                        }
+                    }, 800);
                 }
             }
         })
@@ -2635,13 +2979,165 @@ function loadAppearanceSettings() {
     loadAndApplyAllSettings();
 }
 
+// Проверка и управление модальным окном предупреждения о дефолтном пути /CHANGE/ME
+function openBlogPathWarningModal() {
+    if (window.Modal) {
+        Modal.open('#blogPathWarningModal');
+    } else {
+        const modal = document.getElementById('blogPathWarningModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('is-active'), 10);
+        }
+    }
+}
+
+function closeBlogPathWarningModal() {
+    if (window.Modal) {
+        Modal.close('#blogPathWarningModal');
+    } else {
+        const modal = document.getElementById('blogPathWarningModal');
+        if (modal) {
+            modal.classList.remove('is-active');
+            setTimeout(() => modal.style.display = 'none', 200);
+        }
+    }
+}
+
+function checkBlogPathWarning(activeBlogPath, initialSetupCompleted) {
+    const isChangeMe = !activeBlogPath || 
+                       activeBlogPath === '/CHANGE/ME' || 
+                       activeBlogPath.trim() === '/CHANGE/ME' ||
+                       activeBlogPath.indexOf('CHANGE/ME') !== -1 ||
+                       activeBlogPath.indexOf('CHANGE\\ME') !== -1;
+    if (isChangeMe) {
+        // Если активен мастер первоначальной настройки, не перекрываем его
+        if (initialSetupCompleted === false) {
+            return;
+        }
+        setTimeout(() => {
+            openBlogPathWarningModal();
+        }, 350);
+    } else {
+        closeBlogPathWarningModal();
+    }
+}
+
+function autoFixBlogPath() {
+    const suggested = window.suggestedServerDataPath || (window.serverAppDir ? (window.serverAppDir + '/data') : 'data');
+    fetch('save_editor_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN || ''
+        },
+        body: JSON.stringify({
+            active_blog_path: suggested,
+            blog_paths: [suggested],
+            data_path: suggested
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof showNotification === 'function') {
+                showNotification('Путь к блогу успешно настроен: ' + suggested, 'success');
+            } else {
+                alert('Путь к блогу успешно настроен: ' + suggested);
+            }
+            closeBlogPathWarningModal();
+            if (typeof loadAppearanceSettings === 'function') {
+                loadAppearanceSettings();
+            }
+        } else {
+            const err = data.error || 'Не удалось сохранить путь';
+            if (typeof showNotification === 'function') {
+                showNotification('Ошибка: ' + err, 'error');
+            } else {
+                alert('Ошибка: ' + err);
+            }
+        }
+    })
+    .catch(err => {
+        if (typeof showNotification === 'function') {
+            showNotification('Ошибка сохранения: ' + err.message, 'error');
+        } else {
+            alert('Ошибка сохранения: ' + err.message);
+        }
+    });
+}
+
+function confirmResetAllSettings() {
+    const msg = (typeof t === 'function') 
+        ? t('settings.reset_all_confirm', 'Вы действительно хотите сбросить все настройки редактора к значениям по умолчанию? Все пользовательские параметры путей, темы и интерфейса будут сброшены.')
+        : 'Вы действительно хотите сбросить все настройки редактора к значениям по умолчанию? Все пользовательские параметры путей, темы и интерфейса будут сброшены.';
+        
+    if (window.Modal && typeof window.Modal.confirm === 'function') {
+        Modal.confirm({
+            title: (typeof t === 'function') ? t('settings.exp_reset_all_btn', 'Сброс всех настроек') : 'Сброс всех настроек',
+            message: msg,
+            danger: true,
+            confirmText: (typeof t === 'function') ? t('common.reset', 'Сбросить') : 'Сбросить',
+            cancelText: (typeof t === 'function') ? t('common.cancel', 'Отмена') : 'Отмена'
+        }).then(confirmed => {
+            if (confirmed) resetAllSettings();
+        });
+    } else if (confirm(msg)) {
+        resetAllSettings();
+    }
+}
+
+function resetAllSettings() {
+    fetch('save_editor_settings.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN || ''
+        },
+        body: JSON.stringify({ reset_all_settings: true })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof showNotification === 'function') {
+                showNotification(data.message || 'Настройки успешно сброшены к стандартным', 'success');
+            } else {
+                alert(data.message || 'Настройки успешно сброшены к стандартным');
+            }
+            if (window.Modal) {
+                if (typeof closeGlobalSettings === 'function') closeGlobalSettings();
+                if (typeof closeBlogPathWarningModal === 'function') closeBlogPathWarningModal();
+            }
+            setTimeout(() => {
+                window.location.reload();
+            }, 600);
+        } else {
+            const err = data.error || 'Ошибка сброса настроек';
+            if (typeof showNotification === 'function') {
+                showNotification('Ошибка: ' + err, 'error');
+            } else {
+                alert('Ошибка: ' + err);
+            }
+        }
+    })
+    .catch(err => {
+        alert('Ошибка сети при сбросе настроек: ' + err.message);
+    });
+}
+
 function saveAppearanceSettings() {
     const hideModeCheck = document.getElementById('hideEditorModeButtons');
     const hideButtons = hideModeCheck ? hideModeCheck.checked : false;
-    const amoled = document.getElementById('amoledTheme').checked;
-    const smooth = document.getElementById('smoothTyping').checked;
-    const headerBottom = document.getElementById('headerBottomPosition').checked;
-    const contentWidth = parseInt(document.getElementById('settingsContentWidth').value) || 920;
+    const amoledCheck = document.getElementById('amoledTheme');
+    const amoled = amoledCheck ? amoledCheck.checked : false;
+    const smoothCheck = document.getElementById('smoothTyping');
+    const smooth = smoothCheck ? smoothCheck.checked : false;
+    const disableAnimationsCheck = document.getElementById('disableAnimations');
+    const disableAnimations = disableAnimationsCheck ? disableAnimationsCheck.checked : false;
+    const headerBottomCheck = document.getElementById('headerBottomPosition');
+    const headerBottom = headerBottomCheck ? headerBottomCheck.checked : false;
+    const contentWidthInput = document.getElementById('settingsContentWidth');
+    const contentWidth = contentWidthInput ? (parseInt(contentWidthInput.value) || 920) : 920;
     
     fetch('save_editor_settings.php', {
         method: 'POST',
@@ -2652,6 +3148,7 @@ function saveAppearanceSettings() {
             hideEditorModeButtons: hideButtons,
             amoledTheme: amoled,
             smoothTyping: smooth,
+            disableAnimations: disableAnimations,
             headerBottomPosition: headerBottom,
             contentWidth: contentWidth
         })
@@ -3218,7 +3715,7 @@ function updateBlogSelectorUI(paths, activePath) {
     const selector = document.getElementById('blogSelector');
     if (!container || !selector) return;
     
-    if (!Array.isArray(paths) || paths.length <= 1) {
+    if (!Array.isArray(paths) || paths.length <= 1 || (window.bottomBarSettings && window.bottomBarSettings.showBlogSelector === false)) {
         container.style.display = 'none';
         return;
     }
@@ -3868,11 +4365,29 @@ function handleSystemUpdatePreview() {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(async response => {
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Non-JSON server response on preview:', text);
+            let errMsg = 'Сбой ответа сервера (HTTP ' + response.status + ')';
+            if (response.status === 413) {
+                errMsg = 'Архив слишком большой (HTTP 413). Превышен лимит загрузки на сервере.';
+            } else if (text && text.includes('Maximum execution time')) {
+                errMsg = 'Превышен лимит времени выполнения PHP на сервере.';
+            } else if (text && text.includes('ZipArchive')) {
+                errMsg = 'На сервере отсутствует расширение php-zip (ZipArchive).';
+            }
+            throw new Error(errMsg);
+        }
+        return data;
+    })
     .then(data => {
         document.getElementById('updateProgressContainer').style.display = 'none';
         
-            if (data.success) {
+        if (data.success) {
             updateToken = data.token;
             updateRootFolder = data.rootFolder;
             
@@ -3896,14 +4411,14 @@ function handleSystemUpdatePreview() {
             
             document.getElementById('updatePreviewContainer').style.display = 'flex';
         } else {
-            showNotification(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error, 'error');
+            showNotification(data.error ? ('Ошибка: ' + data.error) : (window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива'), 'error');
             document.getElementById('systemUpdateBtn').style.display = 'block';
             input.value = '';
         }
     })
     .catch(error => {
         console.error('Update preview error:', error);
-        showNotification(window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива', 'error');
+        showNotification(error.message || (window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива'), 'error');
         document.getElementById('updateProgressContainer').style.display = 'none';
         document.getElementById('systemUpdateBtn').style.display = 'block';
         input.value = '';
@@ -3923,61 +4438,619 @@ function startSystemUpdateProcess() {
         },
         body: JSON.stringify({ token: updateToken, rootFolder: updateRootFolder })
     })
-    .then(response => response.json())
+    .then(async response => {
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Non-JSON server response on update:', text);
+            let errMsg = 'Сбой ответа сервера (HTTP ' + response.status + ')';
+            if (response.status === 504 || response.status === 502) {
+                errMsg = 'Таймаут сервера (504 Gateway Timeout). Слишком много файлов для бэкапа.';
+            } else if (text && text.includes('Maximum execution time')) {
+                errMsg = 'Превышен лимит времени выполнения PHP (max_execution_time).';
+            } else if (text && text.includes('Memory limit')) {
+                errMsg = 'Превышен лимит памяти PHP (memory_limit).';
+            }
+            throw new Error(errMsg);
+        }
+        return data;
+    })
     .then(data => {
         if (data.success) {
+            try {
+                localStorage.setItem('npblog_just_updated', 'true');
+            } catch (e) {
+                console.warn('localStorage error:', e);
+            }
             document.getElementById('updateProgressBar').style.width = '100%';
             document.getElementById('updateProgressContainer').style.display = 'none';
             document.getElementById('updateSuccessContainer').style.display = 'flex';
         } else {
             document.getElementById('updateProgressContainer').style.display = 'none';
             document.getElementById('systemUpdateBtn').style.display = 'block';
-            showNotification(window.t ? window.t('notifications.update_error_param', 'Ошибка обновления: ' + data.error, { error: data.error }) : 'Ошибка обновления: ' + data.error, 'error');
+            showNotification(data.error ? ('Ошибка обновления: ' + data.error) : (window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении'), 'error');
         }
     })
     .catch(error => {
         console.error('Update process error:', error);
         document.getElementById('updateProgressContainer').style.display = 'none';
         document.getElementById('systemUpdateBtn').style.display = 'block';
-        showNotification(window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении', 'error');
+        showNotification(error.message || (window.t ? window.t('notifications.update_critical_error', 'Критическая ошибка при обновлении') : 'Критическая ошибка при обновлении'), 'error');
     });
 }
+
+// ==============================================================================
+// Система автоматических обновлений (Stable & Canary)
+// ==============================================================================
+let currentAutoUpdateData = null;
+let autoUpdatePollTimer = null;
+let previousUpdateChannel = 'stable';
+
+function loadUpdateSettings() {
+    fetch('get_editor_settings.php?t=' + Date.now())
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.settings) {
+                const s = data.settings;
+                const checkEl = document.getElementById('settingAutoUpdateCheck');
+                const chanEl = document.getElementById('settingUpdateChannel');
+                const repoEl = document.getElementById('settingUpdateRepo');
+                const tokenEl = document.getElementById('settingUpdateGithubToken');
+                
+                const autoCheck = (s.auto_update_check !== undefined) ? !!s.auto_update_check : true;
+                const channel = s.update_channel || 'stable';
+                const repo = s.update_repo || 'slavaraninco-lgtm/NPBlog';
+                const token = s.update_github_token || '';
+                
+                previousUpdateChannel = channel;
+                if (checkEl) checkEl.checked = autoCheck;
+                if (chanEl) chanEl.value = channel;
+                if (repoEl) repoEl.value = repo;
+                if (tokenEl) tokenEl.value = token;
+            }
+        })
+        .catch(err => {
+            console.error('Error loading update settings:', err);
+        });
+}
+
+function handleUpdateChannelChange(newVal) {
+    if (newVal === 'canary') {
+        openCanaryWarningModal();
+    } else {
+        previousUpdateChannel = 'stable';
+    }
+}
+
+function openCanaryWarningModal() {
+    if (window.Modal) {
+        Modal.open('#canaryWarningModal');
+    } else {
+        const modal = document.getElementById('canaryWarningModal');
+        if (modal) modal.style.display = 'flex';
+    }
+}
+
+function confirmCanaryMode() {
+    previousUpdateChannel = 'canary';
+    const chanEl = document.getElementById('settingUpdateChannel');
+    if (chanEl) chanEl.value = 'canary';
+    if (window.Modal) {
+        Modal.close('#canaryWarningModal');
+    } else {
+        const modal = document.getElementById('canaryWarningModal');
+        if (modal) modal.style.display = 'none';
+    }
+}
+
+function cancelCanaryMode() {
+    const chanEl = document.getElementById('settingUpdateChannel');
+    if (chanEl) chanEl.value = previousUpdateChannel || 'stable';
+    if (window.Modal) {
+        Modal.close('#canaryWarningModal');
+    } else {
+        const modal = document.getElementById('canaryWarningModal');
+        if (modal) modal.style.display = 'none';
+    }
+}
+
+function resetUpdateRepoToDefault() {
+    const repoEl = document.getElementById('settingUpdateRepo');
+    if (repoEl) repoEl.value = 'slavaraninco-lgtm/NPBlog';
+}
+
+function saveUpdateSettings() {
+    const checkEl = document.getElementById('settingAutoUpdateCheck');
+    const chanEl = document.getElementById('settingUpdateChannel');
+    const repoEl = document.getElementById('settingUpdateRepo');
+    const tokenEl = document.getElementById('settingUpdateGithubToken');
+    
+    const payload = {
+        auto_update_check: checkEl ? checkEl.checked : true,
+        update_channel: chanEl ? chanEl.value : 'stable',
+        update_repo: repoEl ? repoEl.value.trim() : 'slavaraninco-lgtm/NPBlog',
+        update_github_token: tokenEl ? tokenEl.value.trim() : ''
+    };
+    
+    fetch('save_editor_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            previousUpdateChannel = payload.update_channel;
+            showNotification(window.t ? window.t('notifications.update_settings_saved', 'Настройки обновлений успешно сохранены') : 'Настройки обновлений успешно сохранены', 'success');
+        } else {
+            showNotification(data.error || (window.t ? window.t('notifications.save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек'), 'error');
+        }
+    })
+    .catch(err => {
+        showNotification(err.message || 'Ошибка сети', 'error');
+    });
+}
+
+function checkSystemAutoUpdate(isManual = false) {
+    const checkBtn = document.getElementById('manualCheckUpdateBtn');
+    if (isManual && checkBtn) {
+        checkBtn.classList.add('is-loading');
+        checkBtn.disabled = true;
+    }
+    
+    const chanEl = document.getElementById('settingUpdateChannel');
+    const repoEl = document.getElementById('settingUpdateRepo');
+    const channelParam = chanEl ? encodeURIComponent(chanEl.value) : '';
+    const repoParam = repoEl ? encodeURIComponent(repoEl.value.trim()) : '';
+    
+    let url = 'update_system.php?action=check_auto_update&t=' + Date.now();
+    if (isManual) {
+        url += '&force=1';
+    }
+    if (channelParam) url += '&channel=' + channelParam;
+    if (repoParam) url += '&repo=' + repoParam;
+    
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (isManual && checkBtn) {
+                checkBtn.classList.remove('is-loading');
+                checkBtn.disabled = false;
+            }
+            if (data.success) {
+                if (data.hasUpdate) {
+                    openAutoUpdateModal(data);
+                } else if (isManual) {
+                    const msg = window.t ? window.t('notifications.up_to_date', 'У вас установлена самая актуальная версия NPBlog ({version})', { version: data.currentVersion || '' }) : `У вас установлена самая актуальная версия NPBlog (${data.currentVersion || ''})`;
+                    showNotification(msg, 'info');
+                }
+            } else {
+                if (isManual) {
+                    showNotification(data.error || 'Ошибка проверки обновлений', 'error');
+                }
+            }
+        })
+        .catch(err => {
+            if (isManual && checkBtn) {
+                checkBtn.classList.remove('is-loading');
+                checkBtn.disabled = false;
+                showNotification(err.message || 'Ошибка сети при проверке обновлений', 'error');
+            }
+        });
+}
+
+function openAutoUpdateModal(updateData) {
+    currentAutoUpdateData = updateData;
+    
+    const curVerEl = document.getElementById('autoUpdateCurrentVersion');
+    const newVerEl = document.getElementById('autoUpdateNewVersion');
+    const badgeEl = document.getElementById('autoUpdateChannelBadge');
+    const clContainer = document.getElementById('autoUpdateChangelogList');
+    
+    if (curVerEl) curVerEl.textContent = updateData.currentVersion || 'Unknown';
+    if (newVerEl) newVerEl.textContent = updateData.latestVersion || 'Unknown';
+    
+    if (badgeEl) {
+        if (updateData.channel === 'canary') {
+            badgeEl.textContent = 'Canary';
+            badgeEl.style.background = '#f59e0b';
+            badgeEl.style.color = '#fff';
+        } else {
+            badgeEl.textContent = 'Stable';
+            badgeEl.style.background = 'var(--primary-color, #10b981)';
+            badgeEl.style.color = '#fff';
+        }
+    }
+    
+    if (clContainer) {
+        clContainer.innerHTML = '';
+        if (Array.isArray(updateData.changelog) && updateData.changelog.length > 0) {
+            const ul = document.createElement('ul');
+            ul.style.cssText = 'margin: 0; padding-left: 18px; line-height: 1.6;';
+            updateData.changelog.forEach(item => {
+                const li = document.createElement('li');
+                li.style.marginBottom = '4px';
+                li.textContent = item;
+                ul.appendChild(li);
+            });
+            clContainer.appendChild(ul);
+        } else {
+            clContainer.innerHTML = '<span style="opacity: 0.6;">' + (window.t ? window.t('modals.auto_update_no_changelog', 'Нет описания изменений для этой версии.') : 'Нет описания изменений для этой версии.') + '</span>';
+        }
+    }
+    
+    const infoBox = document.getElementById('autoUpdateInfoContainer');
+    const progBox = document.getElementById('autoUpdateProgressContainer');
+    const succBox = document.getElementById('autoUpdateSuccessContainer');
+    const footer = document.getElementById('autoUpdateFooter');
+    const startBtn = document.getElementById('autoUpdateStartBtn');
+    const cancelBtn = document.getElementById('autoUpdateCancelBtn');
+    const closeBtn = document.getElementById('autoUpdateHeaderCloseBtn');
+    
+    if (infoBox) infoBox.style.display = 'block';
+    if (progBox) progBox.style.display = 'none';
+    if (succBox) succBox.style.display = 'none';
+    if (footer) footer.style.display = 'flex';
+    if (startBtn) startBtn.style.display = 'inline-flex';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    if (closeBtn) closeBtn.style.display = 'flex';
+    
+    if (window.Modal) {
+        Modal.open('#autoUpdateModal');
+    } else {
+        const modal = document.getElementById('autoUpdateModal');
+        if (modal) modal.style.display = 'flex';
+    }
+}
+
+function closeAutoUpdateModal() {
+    if (autoUpdatePollTimer) {
+        clearInterval(autoUpdatePollTimer);
+        autoUpdatePollTimer = null;
+    }
+    if (window.Modal) {
+        Modal.close('#autoUpdateModal');
+    } else {
+        const modal = document.getElementById('autoUpdateModal');
+        if (modal) modal.style.display = 'none';
+    }
+}
+
+function startAutoUpdateProcess() {
+    if (!currentAutoUpdateData) return;
+    
+    const infoBox = document.getElementById('autoUpdateInfoContainer');
+    const progBox = document.getElementById('autoUpdateProgressContainer');
+    const succBox = document.getElementById('autoUpdateSuccessContainer');
+    const footer = document.getElementById('autoUpdateFooter');
+    const startBtn = document.getElementById('autoUpdateStartBtn');
+    const cancelBtn = document.getElementById('autoUpdateCancelBtn');
+    const closeBtn = document.getElementById('autoUpdateHeaderCloseBtn');
+    const progressBar = document.getElementById('autoUpdateProgressBar');
+    const statusText = document.getElementById('autoUpdateStatusText');
+    const percentText = document.getElementById('autoUpdateProgressPercent');
+    const detailText = document.getElementById('autoUpdateProgressDetail');
+    
+    if (infoBox) infoBox.style.display = 'none';
+    if (progBox) progBox.style.display = 'flex';
+    if (succBox) succBox.style.display = 'none';
+    if (startBtn) startBtn.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (closeBtn) closeBtn.style.display = 'none';
+    
+    if (progressBar) progressBar.style.width = '8%';
+    if (percentText) percentText.textContent = '8%';
+    if (statusText) statusText.textContent = window.t ? window.t('modals.auto_update_downloading', 'Скачивание архива с GitHub...') : 'Скачивание архива с GitHub...';
+    if (detailText) detailText.textContent = window.t ? window.t('modals.auto_update_connecting', 'Подключение к GitHub...') : 'Подключение к GitHub...';
+    
+    // Запуск периодического опроса прогресса скачивания
+    const startProgressPolling = (token) => {
+        if (autoUpdatePollTimer) clearInterval(autoUpdatePollTimer);
+        autoUpdatePollTimer = setInterval(() => {
+            fetch('update_system.php?action=auto_update_progress&token=' + encodeURIComponent(token) + '&t=' + Date.now())
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success && res.progress) {
+                        const p = res.progress;
+                        if (p.percent && progressBar) {
+                            progressBar.style.width = p.percent + '%';
+                            if (percentText) percentText.textContent = p.percent + '%';
+                        }
+                        if (p.message && statusText) statusText.textContent = p.message;
+                        if (p.detail && detailText) detailText.textContent = p.detail;
+                    }
+                })
+                .catch(() => {});
+        }, 400);
+    };
+    
+    const payload = {
+        channel: currentAutoUpdateData.channel,
+        repo: currentAutoUpdateData.repo,
+        tag: currentAutoUpdateData.tag || '',
+        commit: currentAutoUpdateData.commit || '',
+        archiveUrl: currentAutoUpdateData.archiveUrl || '',
+        changelog: currentAutoUpdateData.changelog || []
+    };
+    
+    fetch('update_system.php?action=prepare_auto_update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(async response => {
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('prepare_auto_update non-json response:', text);
+            throw new Error('Сбой ответа сервера при загрузке архива (HTTP ' + response.status + ')');
+        }
+        return data;
+    })
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.error || 'Ошибка при подготовке архива обновления');
+        }
+        
+        if (autoUpdatePollTimer) {
+            clearInterval(autoUpdatePollTimer);
+            autoUpdatePollTimer = null;
+        }
+        
+        if (progressBar) progressBar.style.width = '75%';
+        if (percentText) percentText.textContent = '75%';
+        if (statusText) statusText.textContent = window.t ? window.t('modals.auto_update_applying', 'Создание бэкапа и замена файлов системы...') : 'Создание бэкапа и замена файлов системы...';
+        if (detailText) detailText.textContent = window.t ? window.t('modals.auto_update_safe_copy', 'Резервное копирование и атомарная установка...') : 'Резервное копирование и атомарная установка...';
+        
+        // Шаг 2: Применение обновления через существующую систему update_system.php?action=update
+        return fetch('update_system.php?action=update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                token: data.token,
+                rootFolder: data.rootFolder
+            })
+        });
+    })
+    .then(async response => {
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('update_system update non-json response:', text);
+            throw new Error('Сбой ответа сервера при применении файлов обновления');
+        }
+        return data;
+    })
+    .then(updateResult => {
+        if (autoUpdatePollTimer) {
+            clearInterval(autoUpdatePollTimer);
+            autoUpdatePollTimer = null;
+        }
+        
+        if (updateResult.success) {
+            try {
+                localStorage.setItem('npblog_just_updated', 'true');
+            } catch (e) {}
+            
+            if (progressBar) progressBar.style.width = '100%';
+            if (percentText) percentText.textContent = '100%';
+            if (progBox) progBox.style.display = 'none';
+            if (footer) footer.style.display = 'none';
+            if (succBox) succBox.style.display = 'flex';
+        } else {
+            throw new Error(updateResult.error || 'Не удалось применить файлы обновления');
+        }
+    })
+    .catch(err => {
+        console.error('Auto update error:', err);
+        if (autoUpdatePollTimer) {
+            clearInterval(autoUpdatePollTimer);
+            autoUpdatePollTimer = null;
+        }
+        
+        if (statusText) {
+            statusText.textContent = 'Ошибка: ' + (err.message || 'Сбой обновления');
+            statusText.style.color = '#ef4444';
+        }
+        if (detailText) detailText.textContent = 'Обновление отменено, система сохранена без изменений';
+        if (cancelBtn) {
+            cancelBtn.style.display = 'inline-flex';
+            cancelBtn.textContent = window.t ? window.t('common.close', 'Закрыть') : 'Закрыть';
+        }
+        if (closeBtn) closeBtn.style.display = 'flex';
+        
+        showNotification(err.message || 'Ошибка обновления', 'error');
+    });
+}
+
+/**
+ * ==============================================================================
+ * Уведомление об успешном обновлении NPBlog и просмотр списка изменений
+ * ==============================================================================
+ */
+let updateSuccessChangelogVisible = false;
+
+function openUpdateSuccessNoticeModal(versionOverride) {
+    if (window.Modal) {
+        Modal.open('#updateSuccessNoticeModal');
+    } else {
+        const modal = document.getElementById('updateSuccessNoticeModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+    }
+
+    loadUpdateSuccessChangelog(versionOverride);
+}
+
+function closeUpdateSuccessNoticeModal() {
+    if (window.Modal) {
+        Modal.close('#updateSuccessNoticeModal');
+    } else {
+        const modal = document.getElementById('updateSuccessNoticeModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+    }
+}
+
+function openUpdateChangelogModal(versionOverride) {
+    if (window.Modal) {
+        Modal.open('#updateChangelogModal');
+    } else {
+        const modal = document.getElementById('updateChangelogModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+    }
+
+    loadUpdateSuccessChangelog(versionOverride);
+}
+
+function closeUpdateChangelogModal() {
+    if (window.Modal) {
+        Modal.close('#updateChangelogModal');
+    } else {
+        const modal = document.getElementById('updateChangelogModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+    }
+}
+
+function openChangelogModalFromNotice() {
+    closeUpdateSuccessNoticeModal();
+    setTimeout(() => {
+        openUpdateChangelogModal();
+    }, 150);
+}
+
+function loadUpdateSuccessChangelog(versionOverride) {
+    const versionEl = document.getElementById('updateSuccessNoticeVersion');
+    const modalVersionEl = document.getElementById('updateChangelogModalVersion');
+    const listContainer = document.getElementById('updateSuccessChangelogList');
+    
+    const formattedOverride = versionOverride ? versionOverride.replace(/^v/, '') : null;
+    if (formattedOverride) {
+        if (versionEl) versionEl.textContent = formattedOverride;
+        if (modalVersionEl) modalVersionEl.textContent = formattedOverride;
+    }
+
+    if (listContainer) {
+        listContainer.innerHTML = '<div style="opacity: 0.6; font-size: 13px;">' + 
+            (window.t ? window.t('modals.update_changelog_loading', 'Загрузка списка изменений...') : 'Загрузка списка изменений...') + 
+            '</div>';
+    }
+
+    fetch('update_system.php?action=get_changelog&t=' + Date.now())
+        .then(response => {
+            if (!response.ok) throw new Error('Network error');
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.success) {
+                if (!formattedOverride) {
+                    let displayVer = '2.305';
+                    if (data.dev === true || data.dev === 'true' || data.version === 'dev') {
+                        displayVer = (data.version && data.version !== 'dev') ? data.version + ' (dev)' : 'dev';
+                    } else if (data.version && data.version !== 'Unknown') {
+                        displayVer = data.version.replace(/^v/, '');
+                    }
+                    if (versionEl) versionEl.textContent = displayVer;
+                    if (modalVersionEl) modalVersionEl.textContent = displayVer;
+                }
+
+                if (listContainer) {
+                    if (Array.isArray(data.changelog) && data.changelog.length > 0) {
+                        const ul = document.createElement('ul');
+                        ul.style.cssText = 'margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.6; color: var(--modal-text);';
+                        data.changelog.forEach(item => {
+                            const li = document.createElement('li');
+                            li.style.cssText = 'margin-bottom: 6px;';
+                            li.textContent = item;
+                            ul.appendChild(li);
+                        });
+                        listContainer.innerHTML = '';
+                        listContainer.appendChild(ul);
+                    } else {
+                        const emptyMsg = window.t ? window.t('modals.update_changelog_empty', 'Список изменений для этой версии не указан.') : 'Список изменений для этой версии не указан.';
+                        listContainer.innerHTML = '<div style="opacity: 0.7; font-size: 13px; color: var(--modal-text);">' + emptyMsg + '</div>';
+                    }
+                }
+            } else {
+                if (listContainer) {
+                    const emptyMsg = window.t ? window.t('modals.update_changelog_empty', 'Список изменений для этой версии не указан.') : 'Список изменений для этой версии не указан.';
+                    listContainer.innerHTML = '<div style="opacity: 0.7; font-size: 13px; color: var(--modal-text);">' + emptyMsg + '</div>';
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Error loading changelog:', err);
+            if (listContainer) {
+                const emptyMsg = window.t ? window.t('modals.update_changelog_empty', 'Список изменений для этой версии не указан.') : 'Список изменений для этой версии не указан.';
+                listContainer.innerHTML = '<div style="opacity: 0.7; font-size: 13px; color: var(--modal-text);">' + emptyMsg + '</div>';
+            }
+        });
+}
+
+window.openUpdateSuccessNoticeModal = openUpdateSuccessNoticeModal;
+window.closeUpdateSuccessNoticeModal = closeUpdateSuccessNoticeModal;
+window.openUpdateChangelogModal = openUpdateChangelogModal;
+window.closeUpdateChangelogModal = closeUpdateChangelogModal;
+window.openChangelogModalFromNotice = openChangelogModalFromNotice;
 </script>
 
 <!-- Модальное окно Редактора изображений -->
-<div id="imageEditorModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 10005; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: var(--bg-color); border-radius: 16px; max-width: 95vw; width: 1200px; height: 90vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-color);">
+<div id="imageEditorModal" class="modal-overlay" data-size="xl">
+    <div class="modal-dialog modal-xl" style="max-width: 95vw; width: 1200px; height: 90vh; max-height: 90vh; display: flex; flex-direction: column;">
         <!-- Заголовок -->
-        <div style="padding: 15px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.03);">
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-                <h3 style="margin: 0; color: var(--text-color); font-size: 18px; display: flex; align-items: center; gap: 10px;">
-                    <span>🎨</span> <span data-i18n="modals.img_editor_title">Редактор изображений</span>
-                </h3>
-                <p class="modal-subtitle" style="margin: 0; font-size: 12px; opacity: 0.7; color: var(--text-color);" data-i18n="modals.img_editor_subtitle">Рисование, аннотации, стрелки и обрезка</p>
+        <div class="modal-header">
+            <div class="modal-header-start">
+                <div class="modal-titles">
+                    <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+                        <span>🎨</span> <span data-i18n="modals.img_editor_title">Редактор изображений</span>
+                    </h3>
+                    <p class="modal-subtitle" data-i18n="modals.img_editor_subtitle">Рисование, аннотации, стрелки и обрезка</p>
+                </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" id="imgEditorUndoBtn" onclick="undoImgEditorState()" class="global-action-btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px;" title="Отменить последнее действие (Ctrl+Z)" data-i18n-title="modals.img_editor_undo_title">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+            <div class="modal-header-actions" style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" id="imgEditorUndoBtn" onclick="undoImgEditorState()" class="modal-btn modal-btn-ghost" style="padding: 6px 14px; font-size: 13px; display: flex; align-items: center; gap: 6px;" title="Отменить последнее действие (Ctrl+Z)" data-i18n-title="modals.img_editor_undo_title">
+                    <svg class="modal-btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 7v6h6" />
                         <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
                     </svg>
-                    <span data-i18n="modals.ascii_undo">Отменить</span>
+                    <span class="btn-text" data-i18n="modals.ascii_undo">Отменить</span>
                 </button>
-                <button type="button" onclick="saveImgEditorChanges()" class="global-action-btn global-action-btn-primary" style="padding: 6px 18px; font-size: 14px; background: var(--accent-color); color: #fff; border: none; font-weight: bold; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
-                    <span>💾</span> <span data-i18n="common.save">Сохранить</span>
+                <button type="button" onclick="saveImgEditorChanges()" class="modal-btn modal-btn-primary" style="padding: 6px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                    <svg class="modal-btn-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    <span class="btn-text" data-i18n="common.save">Сохранить</span>
                 </button>
-                <button type="button" onclick="closeImgEditorModal()" style="background: transparent; border: none; font-size: 32px; color: var(--text-color); cursor: pointer; line-height: 1; padding: 0 5px; margin-left: 10px;" title="Закрыть" data-i18n-title="common.close">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeImgEditorModal()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
         
         <!-- Основная область -->
-        <div style="flex: 1; display: flex; overflow: hidden; background: rgba(0,0,0,0.05);">
+        <div class="modal-body" style="padding: 0; flex: 1; display: flex; overflow: hidden;">
             <!-- Левая панель инструментов -->
-            <div style="width: 260px; border-right: 2px solid var(--border-color); background: var(--bg-color); display: flex; flex-direction: column; gap: 20px; padding: 25px; overflow-y: auto;">
+            <div style="width: 260px; border-right: 1px solid var(--border-color); background: var(--modal-bg); display: flex; flex-direction: column; gap: 20px; padding: 20px; overflow-y: auto; box-sizing: border-box;">
                 
                 <!-- Инструменты -->
                 <div>
-                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_tools">Инструменты</h4>
+                    <h4 style="margin: 0 0 12px 0; color: var(--modal-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_tools">Инструменты</h4>
                     <div style="display: flex; flex-direction: column; gap: 8px;" id="imgEditorToolsContainer">
                         <button type="button" class="img-editor-tool-btn active" data-tool="pencil" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); text-align: left; cursor: pointer; font-weight: 500; width: 100%;">
                             <span style="font-size: 16px;">✏️</span> <span data-i18n="modals.img_editor_tool_pencil">Карандаш</span>
@@ -3999,7 +5072,7 @@ function startSystemUpdateProcess() {
                 
                 <!-- Цвет -->
                 <div id="imgEditorColorSection">
-                    <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_color">Цвет</h4>
+                    <h4 style="margin: 0 0 12px 0; color: var(--modal-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_color">Цвет</h4>
                     <div style="display: flex; flex-direction: column; gap: 10px;">
                         <input type="color" id="imgEditorColorPicker" value="#ff0000" style="width: 100%; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; padding: 2px; cursor: pointer; background: transparent;">
                         <!-- Пресеты -->
@@ -4021,8 +5094,8 @@ function startSystemUpdateProcess() {
                 <!-- Толщина -->
                 <div id="imgEditorSizeSection">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <h4 style="margin: 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" id="imgEditorSizeLabel">Толщина кисти</h4>
-                        <span id="imgEditorSizeValue" style="color: var(--text-color); font-weight: bold; font-size: 12px;">5 px</span>
+                        <h4 style="margin: 0; color: var(--modal-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" id="imgEditorSizeLabel" data-i18n="modals.img_editor_brush_thickness">Толщина кисти</h4>
+                        <span id="imgEditorSizeValue" style="color: var(--modal-text); font-weight: bold; font-size: 12px;">5 px</span>
                     </div>
                     <input type="range" id="imgEditorSizeSlider" min="1" max="50" value="5" style="width: 100%; cursor: pointer;">
                 </div>
@@ -4030,20 +5103,20 @@ function startSystemUpdateProcess() {
                 <!-- Размер шрифта -->
                 <div id="imgEditorFontSizeSection" style="display: none;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <h4 style="margin: 0; color: var(--text-color); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">Размер текста</h4>
-                        <span id="imgEditorFontSizeValue" style="color: var(--text-color); font-weight: bold; font-size: 12px;">30 px</span>
+                        <h4 style="margin: 0; color: var(--modal-text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;" data-i18n="modals.img_editor_font_size">Размер текста</h4>
+                        <span id="imgEditorFontSizeValue" style="color: var(--modal-text); font-weight: bold; font-size: 12px;">30 px</span>
                     </div>
                     <input type="range" id="imgEditorFontSizeSlider" min="10" max="100" value="30" style="width: 100%; cursor: pointer;">
                 </div>
                 
-                <div style="margin-top: auto; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.03); font-size: 12px; color: var(--text-color); opacity: 0.8; border: 1px solid var(--border-color);">
-                    <strong>💡 Подсказка:</strong><br>
-                    <span id="imgEditorHelpText">Рисуйте мышкой на изображении зажав левую кнопку.</span>
+                <div style="margin-top: auto; padding: 12px; border-radius: 8px; background: rgba(128,128,128,0.06); font-size: 12px; color: var(--modal-text); opacity: 0.8; border: 1px solid var(--border-color);">
+                    <strong data-i18n="modals.img_editor_tip">💡 Подсказка:</strong><br>
+                    <span id="imgEditorHelpText" data-i18n="modals.img_editor_help_pencil">Рисуйте мышкой на изображении зажав левую кнопку.</span>
                 </div>
             </div>
             
             <!-- Центральная область холста -->
-            <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 30px; overflow: auto; position: relative;" id="imgEditorCanvasContainer">
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow: auto; position: relative;" id="imgEditorCanvasContainer">
                 <canvas id="imgEditorCanvas" style="box-shadow: 0 4px 30px rgba(0,0,0,0.15); max-width: 100%; max-height: 100%; object-fit: contain; cursor: crosshair; background-image: radial-gradient(var(--border-color) 15%, transparent 16%), radial-gradient(var(--border-color) 15%, transparent 16%); background-size: 16px 16px; background-position: 0 0, 8px 8px; background-color: var(--bg-color); border: 1px dashed var(--border-color);"></canvas>
             </div>
         </div>
@@ -4070,35 +5143,77 @@ let imgEditorStartX = 0;
 let imgEditorStartY = 0;
 
 function openImageEditorModal(imgElement) {
+    if (!imgElement) return;
     imgEditorTargetImg = imgElement;
     imgEditorCanvas = document.getElementById('imgEditorCanvas');
+    if (!imgEditorCanvas) return;
     imgEditorCtx = imgEditorCanvas.getContext('2d');
     
-    const modal = document.getElementById('imageEditorModal');
-    modal.style.display = 'flex';
-    modal.classList.add('show');
+    if (window.Modal) {
+        Modal.open('#imageEditorModal', { trigger: imgElement });
+    } else {
+        const modal = document.getElementById('imageEditorModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('is-active');
+            modal.classList.add('show');
+        }
+    }
+    
+    const cleanSrc = (imgElement.src || '').replace(/[?&]t=\d+/, '');
+    
+    function loadIntoCanvas(source) {
+        if (!source || !imgEditorCanvas || !imgEditorCtx) return;
+        const w = source.naturalWidth || source.width || 800;
+        const h = source.naturalHeight || source.height || 600;
+        imgEditorCanvas.width = w;
+        imgEditorCanvas.height = h;
+        
+        imgEditorCtx.clearRect(0, 0, w, h);
+        imgEditorCtx.drawImage(source, 0, 0);
+        
+        try {
+            imgEditorHistory = [imgEditorCtx.getImageData(0, 0, w, h)];
+        } catch (e) {
+            console.warn('Canvas getImageData tainted or failed:', e);
+            imgEditorHistory = [];
+        }
+        updateImgEditorUndoBtnState();
+        setImgEditorTool('pencil');
+    }
     
     const tempImg = new Image();
     tempImg.crossOrigin = 'anonymous'; 
     tempImg.onload = function() {
-        imgEditorCanvas.width = tempImg.naturalWidth;
-        imgEditorCanvas.height = tempImg.naturalHeight;
-        
-        imgEditorCtx.clearRect(0, 0, imgEditorCanvas.width, imgEditorCanvas.height);
-        imgEditorCtx.drawImage(tempImg, 0, 0);
-        
-        imgEditorHistory = [imgEditorCtx.getImageData(0, 0, imgEditorCanvas.width, imgEditorCanvas.height)];
-        updateImgEditorUndoBtnState();
-        
-        setImgEditorTool('pencil');
+        loadIntoCanvas(tempImg);
     };
-    tempImg.src = imgElement.src.replace(/[?&]t=\d+/, '');
+    tempImg.onerror = function() {
+        // Fallback without crossOrigin (for same-origin or local paths)
+        const fallbackImg = new Image();
+        fallbackImg.onload = function() {
+            loadIntoCanvas(fallbackImg);
+        };
+        fallbackImg.onerror = function() {
+            if (imgElement.complete && imgElement.naturalWidth > 0) {
+                loadIntoCanvas(imgElement);
+            }
+        };
+        fallbackImg.src = cleanSrc;
+    };
+    tempImg.src = cleanSrc;
 }
 
 function closeImgEditorModal() {
-    const modal = document.getElementById('imageEditorModal');
-    modal.style.display = 'none';
-    modal.classList.remove('show');
+    if (window.Modal) {
+        Modal.close('#imageEditorModal');
+    } else {
+        const modal = document.getElementById('imageEditorModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('is-active');
+            modal.classList.remove('show');
+        }
+    }
     imgEditorTargetImg = null;
 }
 
@@ -4153,19 +5268,19 @@ function setImgEditorTool(tool) {
         colorSection.style.display = 'block';
         sizeSection.style.display = 'none';
         fontSizeSection.style.display = 'block';
-        helpText.textContent = 'Кликните на изображение, чтобы добавить текст в эту точку.';
+        helpText.textContent = window.t ? window.t('modals.img_editor_help_text', 'Кликните на изображение, чтобы добавить текст в эту точку.') : 'Кликните на изображение, чтобы добавить текст в эту точку.';
     } else if (tool === 'pixelate') {
         colorSection.style.display = 'none';
         sizeSection.style.display = 'block';
         fontSizeSection.style.display = 'none';
-        sizeLabel.textContent = 'Размер кисти размытия';
-        helpText.textContent = 'Зажмите кнопку мыши и водите по областям, которые хотите размыть пикселями.';
+        sizeLabel.textContent = window.t ? window.t('modals.img_editor_blur_size', 'Размер кисти размытия') : 'Размер кисти размытия';
+        helpText.textContent = window.t ? window.t('modals.img_editor_help_pixelate', 'Зажмите кнопку мыши и водите по областям, которые хотите размыть пикселями.') : 'Зажмите кнопку мыши и водите по областям, которые хотите размыть пикселями.';
     } else {
         colorSection.style.display = 'block';
         sizeSection.style.display = 'block';
         fontSizeSection.style.display = 'none';
-        sizeLabel.textContent = 'Толщина кисти';
-        helpText.textContent = 'Зажмите кнопку мыши и рисуйте на изображении.';
+        sizeLabel.textContent = window.t ? window.t('modals.img_editor_brush_thickness', 'Толщина кисти') : 'Толщина кисти';
+        helpText.textContent = window.t ? window.t('modals.img_editor_help_draw', 'Зажмите кнопку мыши и рисуйте на изображении.') : 'Зажмите кнопку мыши и рисуйте на изображении.';
     }
 }
 
@@ -4388,6 +5503,20 @@ function saveImgEditorChanges() {
 document.addEventListener('DOMContentLoaded', function() {
     loadAndApplyAllSettings();
     
+    // Проверка показа модального окна успешного обновления после перезагрузки страницы
+    try {
+        if (localStorage.getItem('npblog_just_updated') === 'true') {
+            localStorage.removeItem('npblog_just_updated');
+            setTimeout(function() {
+                if (typeof openUpdateSuccessNoticeModal === 'function') {
+                    openUpdateSuccessNoticeModal();
+                }
+            }, 350);
+        }
+    } catch (e) {
+        console.warn('Update notice check error:', e);
+    }
+    
     const canvas = document.getElementById('imgEditorCanvas');
     if (!canvas) return;
     
@@ -4446,7 +5575,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('keydown', function(e) {
         const modal = document.getElementById('imageEditorModal');
-        if (modal && modal.style.display === 'flex') {
+        if (modal && (modal.classList.contains('is-active') || modal.style.display === 'flex')) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 undoImgEditorState();
@@ -4531,6 +5660,22 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(adjustHeaderPadding, 500);
 
     // --- КАСТОМИЗАЦИЯ ВЕРХНЕЙ ПАНЕЛИ ---
+
+    /**
+     * Организует элементы внутри меню "Прочее" (#moreMenuDropdown):
+     * выпадающие списки (подменю с .has-submenu) размещаются сверху,
+     * а обычные кнопки действий и перемещенные элементы — снизу.
+     */
+    function organizeMoreMenuDropdown() {
+        const dropdown = document.getElementById('moreMenuDropdown');
+        if (!dropdown) return;
+        const submenus = Array.from(dropdown.children).filter(el => el.classList.contains('has-submenu'));
+        const others = Array.from(dropdown.children).filter(el => !el.classList.contains('has-submenu'));
+        submenus.forEach(el => dropdown.appendChild(el));
+        others.forEach(el => dropdown.appendChild(el));
+    }
+    window.organizeMoreMenuDropdown = organizeMoreMenuDropdown;
+    document.addEventListener('DOMContentLoaded', organizeMoreMenuDropdown);
 
     // Применяет сохраненный порядок и видимость кнопок хедера
     function applyHeaderLayout(layout) {
@@ -4628,6 +5773,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
+        organizeMoreMenuDropdown();
         adjustHeaderPadding();
     }
 
@@ -4743,6 +5889,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dropdown.querySelectorAll('*').forEach(item => {
                 item.style.opacity = '';
             });
+            organizeMoreMenuDropdown();
         }
         adjustHeaderPadding();
     }
@@ -4764,18 +5911,28 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!menu) return;
         
         // Позиционируем и показываем кастомное меню
-        menu.style.left = e.clientX + 'px';
-        menu.style.top = e.clientY + 'px';
         menu.style.display = 'block';
+        let left = e.clientX;
+        let top = e.clientY;
+        const menuWidth = 200;
+        const menuHeight = 90;
+        if (left + menuWidth > window.innerWidth) {
+            left = Math.max(10, window.innerWidth - menuWidth - 10);
+        }
+        if (top + menuHeight > window.innerHeight) {
+            top = Math.max(10, window.innerHeight - menuHeight - 10);
+        }
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
         
         // Обновляем пункт Скрыть/Показать / Удалить (для кастомных разделителей)
         const visibilityBtn = document.getElementById('ctxToggleVisibility');
         if (target.id.startsWith('divider-custom-')) {
-            visibilityBtn.innerText = 'Удалить';
+            visibilityBtn.innerText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
         } else if (target.classList.contains('customizer-hidden')) {
-            visibilityBtn.innerText = 'Показать';
+            visibilityBtn.innerText = window.t ? window.t('header.customizer_show', 'Показать') : 'Показать';
         } else {
-            visibilityBtn.innerText = 'Скрыть';
+            visibilityBtn.innerText = window.t ? window.t('header.customizer_hide', 'Скрыть') : 'Скрыть';
         }
         
         // Обновляем пункт Переместить в меню / Вернуть на панель
@@ -4786,9 +5943,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             positionBtn.style.display = 'block';
             if (target.parentNode === dropdown) {
-                positionBtn.innerText = 'Вернуть на панель';
+                positionBtn.innerText = window.t ? window.t('header.customizer_return_to_panel', 'Вернуть на панель') : 'Вернуть на панель';
             } else {
-                positionBtn.innerText = 'Перенести в "Прочее"';
+                positionBtn.innerText = window.t ? window.t('header.customizer_move_to_more', 'Перенести в "Прочее"') : 'Перенести в "Прочее"';
             }
         }
         
@@ -4827,6 +5984,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Переносим в выпадающее меню
                 if (dropdown) {
                     dropdown.appendChild(target);
+                    organizeMoreMenuDropdown();
                     showNotification(window.t ? window.t('notifications.tb_item_moved_more', 'Элемент перенесен в меню "Прочее"') : 'Элемент перенесен в меню "Прочее"', 'info');
                 }
             }
@@ -4971,6 +6129,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (dropdown && originalDropdownHTML) {
             dropdown.innerHTML = originalDropdownHTML;
+            organizeMoreMenuDropdown();
         }
         
         // Загружаем сохраненный макет заново
@@ -5022,6 +6181,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (dropdown) {
+            organizeMoreMenuDropdown();
             dropdown.querySelectorAll('*').forEach(el => {
                 if (el.id && el.parentNode === dropdown) {
                     layout.push({
@@ -5098,7 +6258,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const preview = document.getElementById(previewId);
             if (input && preview) {
                 input.addEventListener('change', function() {
-                    const file = this.files[0];
+                    const file = this.files && this.files[0];
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = function(e) {
@@ -5116,38 +6276,577 @@ document.addEventListener('DOMContentLoaded', function() {
         setupBgPreview('backgroundInput', 'currentBackgroundPreview', 'currentBackgroundInfo');
         setupBgPreview('globalBackgroundInput', 'currentGlobalBackgroundPreview');
         setupBgPreview('blogBackgroundInput', 'currentBlogBackgroundPreview');
+        setupBottomBarCustomizer();
+        setupHeaderContextMenu();
     });
 
-    // Закрытие контекстных меню при клике в любое место
-    document.addEventListener('click', function() {
+    /**
+     * Инициализация контекстного меню верхней панели (хедера).
+     * Обрабатывает открытие кастомного контекстного меню по ПКМ на верхней панели для запуска режима редактирования.
+     */
+    function setupHeaderContextMenu() {
+        const header = document.querySelector('.editor-header');
+        if (!header) return;
+
+        header.addEventListener('contextmenu', function(e) {
+            // Если уже находимся в режиме кастомизации хедера, работает контекстное меню элементов (customizerContextMenu)
+            if (document.body.classList.contains('header-customizing')) {
+                return;
+            }
+
+            // Не перехватываем клики внутри открытого выпадающего меню редактора
+            if (e.target.closest('.editor-menu-dropdown')) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Закрываем контекстные меню нижней панели, редактора и кастомизатора
+            const customizerMenu = document.getElementById('customizerContextMenu');
+            if (customizerMenu) customizerMenu.style.display = 'none';
+            const editorMenu = document.getElementById('editorContextMenu');
+            if (editorMenu) editorMenu.style.display = 'none';
+            const dividerMenu = document.getElementById('dividerDropdownMenu');
+            if (dividerMenu) dividerMenu.style.display = 'none';
+            const bottomMenu = document.getElementById('bottomBarContextMenu');
+            if (bottomMenu) bottomMenu.style.display = 'none';
+
+            const menu = document.getElementById('headerContextMenu');
+            if (!menu) return;
+
+            menu.style.display = 'block';
+
+            let left = e.clientX;
+            let top = e.clientY;
+            const menuWidth = 200;
+            const menuHeight = 50;
+
+            if (left + menuWidth > window.innerWidth) {
+                left = Math.max(10, window.innerWidth - menuWidth - 10);
+            }
+            if (top + menuHeight > window.innerHeight) {
+                top = Math.max(10, window.innerHeight - menuHeight - 10);
+            }
+
+            menu.style.left = left + 'px';
+            menu.style.top = top + 'px';
+        });
+    }
+
+    function startHeaderCustomizationFromContextMenu() {
+        const menu = document.getElementById('headerContextMenu');
+        if (menu) menu.style.display = 'none';
+        startHeaderCustomization();
+    }
+
+    /**
+     * Инициализация кастомизации нижней панели (статус-бара).
+     * Обрабатывает открытие кастомного контекстного меню по ПКМ на строке состояния.
+     */
+    function setupBottomBarCustomizer() {
+        const bottomBar = document.getElementById('editorBottomBar');
+        if (!bottomBar) return;
+
+        bottomBar.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Закрываем контекстные меню хедера и редактора
+            const customizerMenu = document.getElementById('customizerContextMenu');
+            if (customizerMenu) customizerMenu.style.display = 'none';
+            const editorMenu = document.getElementById('editorContextMenu');
+            if (editorMenu) editorMenu.style.display = 'none';
+            const dividerMenu = document.getElementById('dividerDropdownMenu');
+            if (dividerMenu) dividerMenu.style.display = 'none';
+            const headerMenu = document.getElementById('headerContextMenu');
+            if (headerMenu) headerMenu.style.display = 'none';
+
+            const menu = document.getElementById('bottomBarContextMenu');
+            if (!menu) return;
+
+            menu.style.display = 'block';
+
+            let left = e.clientX;
+            let top = e.clientY;
+            const menuWidth = 200;
+            const menuHeight = 50;
+
+            if (left + menuWidth > window.innerWidth) {
+                left = Math.max(10, window.innerWidth - menuWidth - 10);
+            }
+            if (top + menuHeight > window.innerHeight) {
+                top = Math.max(10, window.innerHeight - menuHeight - 10);
+            }
+
+            menu.style.left = left + 'px';
+            menu.style.top = top + 'px';
+        });
+    }
+
+    /**
+     * Открывает боковую панель кастомизации нижней панели (справа).
+     */
+    function openBottomBarCustomizer() {
+        const menu = document.getElementById('bottomBarContextMenu');
+        if (menu) menu.style.display = 'none';
+
+        const settings = window.bottomBarSettings || {
+            showModeToggle: true,
+            showBlogSelector: true,
+            showWordCount: false,
+            showAutosaveBadge: true
+        };
+
+        const toggleMode = document.getElementById('bottomBarToggleMode');
+        const toggleBlog = document.getElementById('bottomBarToggleBlog');
+        const toggleDrafts = document.getElementById('bottomBarToggleDrafts');
+        const toggleIncludes = document.getElementById('bottomBarToggleIncludes');
+        const toggleStats = document.getElementById('bottomBarToggleStats');
+        const toggleAutosave = document.getElementById('bottomBarToggleAutosave');
+
+        if (toggleMode) toggleMode.checked = settings.showModeToggle !== false;
+        if (toggleBlog) toggleBlog.checked = settings.showBlogSelector !== false;
+        if (toggleDrafts) toggleDrafts.checked = settings.showDrafts === true;
+        if (toggleIncludes) toggleIncludes.checked = settings.showIncludes === true;
+        if (toggleStats) toggleStats.checked = settings.showWordCount === true;
+        if (toggleAutosave) toggleAutosave.checked = settings.showAutosaveBadge !== false;
+
+        const drawer = document.getElementById('bottomBarCustomizerDrawer');
+        const backdrop = document.getElementById('bottomBarDrawerBackdrop');
+        if (drawer) drawer.classList.add('open');
+        if (backdrop) backdrop.classList.add('open');
+    }
+
+    /**
+     * Закрывает боковую панель кастомизации нижней панели.
+     */
+    function closeBottomBarCustomizer() {
+        const drawer = document.getElementById('bottomBarCustomizerDrawer');
+        const backdrop = document.getElementById('bottomBarDrawerBackdrop');
+        if (drawer) drawer.classList.remove('open');
+        if (backdrop) backdrop.classList.remove('open');
+    }
+
+    /**
+     * Обработчик переключения чекбокса в боковой панели.
+     * Мгновенно применяет изменения в UI и сохраняет их на сервере.
+     * @param {string} key Имя параметра
+     * @param {boolean} value Значение чекбокса
+     */
+    function onBottomBarOptionChange(key, value) {
+        if (!window.bottomBarSettings) {
+            window.bottomBarSettings = {
+                showModeToggle: true,
+                showBlogSelector: true,
+                showDrafts: false,
+                showIncludes: false,
+                showWordCount: false,
+                showAutosaveBadge: true
+            };
+        }
+        window.bottomBarSettings[key] = !!value;
+        applyBottomBarSettings(window.bottomBarSettings);
+        persistBottomBarSettings(window.bottomBarSettings);
+    }
+
+    /**
+     * Сохраняет настройки нижней панели на сервере в фоновом режиме.
+     * @param {Object} settings Объект настроек нижней панели
+     */
+    function persistBottomBarSettings(settings) {
+        fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bottomBar: settings })
+        }).catch(err => {
+            console.error('Ошибка сохранения настроек нижней панели:', err);
+        });
+    }
+
+    /**
+     * Обработчик кнопки «Сохранить» в боковой панели.
+     */
+    function saveBottomBarCustomizer() {
+        const settings = {
+            showModeToggle: document.getElementById('bottomBarToggleMode') ? document.getElementById('bottomBarToggleMode').checked : true,
+            showBlogSelector: document.getElementById('bottomBarToggleBlog') ? document.getElementById('bottomBarToggleBlog').checked : true,
+            showDrafts: document.getElementById('bottomBarToggleDrafts') ? document.getElementById('bottomBarToggleDrafts').checked : false,
+            showIncludes: document.getElementById('bottomBarToggleIncludes') ? document.getElementById('bottomBarToggleIncludes').checked : false,
+            showWordCount: document.getElementById('bottomBarToggleStats') ? document.getElementById('bottomBarToggleStats').checked : false,
+            showAutosaveBadge: document.getElementById('bottomBarToggleAutosave') ? document.getElementById('bottomBarToggleAutosave').checked : true
+        };
+
+        window.bottomBarSettings = settings;
+        applyBottomBarSettings(settings);
+
+        fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bottomBar: settings })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof showNotification === 'function') {
+                    showNotification(window.t ? window.t('bottom_bar.saved_notification', 'Настройки нижней панели сохранены') : 'Настройки нижней панели сохранены', 'success');
+                }
+                closeBottomBarCustomizer();
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка сохранения настроек нижней панели:', err);
+            closeBottomBarCustomizer();
+        });
+    }
+
+    /**
+     * Сбрасывает настройки нижней панели к значениям по умолчанию.
+     */
+    function resetBottomBarSettings() {
+        const defaults = {
+            showModeToggle: true,
+            showBlogSelector: true,
+            showDrafts: false,
+            showIncludes: false,
+            showWordCount: false,
+            showAutosaveBadge: true
+        };
+
+        const toggleMode = document.getElementById('bottomBarToggleMode');
+        const toggleBlog = document.getElementById('bottomBarToggleBlog');
+        const toggleDrafts = document.getElementById('bottomBarToggleDrafts');
+        const toggleIncludes = document.getElementById('bottomBarToggleIncludes');
+        const toggleStats = document.getElementById('bottomBarToggleStats');
+        const toggleAutosave = document.getElementById('bottomBarToggleAutosave');
+
+        if (toggleMode) toggleMode.checked = defaults.showModeToggle;
+        if (toggleBlog) toggleBlog.checked = defaults.showBlogSelector;
+        if (toggleDrafts) toggleDrafts.checked = defaults.showDrafts;
+        if (toggleIncludes) toggleIncludes.checked = defaults.showIncludes;
+        if (toggleStats) toggleStats.checked = defaults.showWordCount;
+        if (toggleAutosave) toggleAutosave.checked = defaults.showAutosaveBadge;
+
+        window.bottomBarSettings = defaults;
+        applyBottomBarSettings(defaults);
+        persistBottomBarSettings(defaults);
+
+        if (typeof showNotification === 'function') {
+            showNotification(window.t ? window.t('bottom_bar.saved_notification', 'Настройки нижней панели сохранены') : 'Настройки нижней панели сохранены', 'info');
+        }
+    }
+
+    /**
+     * Применяет настройки видимости элементов на нижней панели.
+     * @param {Object} settings
+     */
+    function applyBottomBarSettings(settings) {
+        if (!settings) return;
+
+        // 1. Режимы редактора («Визуально» / «Код»)
+        const modeToggle = document.getElementById('bottomModeToggle') || document.getElementById('headerModeToggle');
+        if (modeToggle) {
+            if (settings.showModeToggle === false) {
+                modeToggle.style.display = 'none';
+                if (typeof setMode === 'function') setMode('visual');
+            } else {
+                modeToggle.style.display = 'inline-flex';
+            }
+        }
+
+        // 2. Селектор блога
+        const blogSelectorContainer = document.getElementById('blogSelectorContainer');
+        const blogSelector = document.getElementById('blogSelector');
+        if (blogSelectorContainer) {
+            if (settings.showBlogSelector === false) {
+                blogSelectorContainer.style.display = 'none';
+            } else if (blogSelector && blogSelector.options.length > 1) {
+                blogSelectorContainer.style.display = 'inline-flex';
+            }
+        }
+
+        // 3. Счётчик слов и символов
+        const statsEl = document.getElementById('bottomBarStats');
+        if (statsEl) {
+            if (settings.showWordCount === true) {
+                statsEl.style.display = 'inline-flex';
+                updateBottomBarStats();
+            } else {
+                statsEl.style.display = 'none';
+            }
+        }
+
+        // 4. Индикатор автосохранения
+        const autosaveBadge = document.getElementById('autosaveBadge');
+        if (autosaveBadge) {
+            if (settings.showAutosaveBadge === false) {
+                autosaveBadge.style.display = 'none';
+            } else if (typeof autosaveEnabled !== 'undefined' && autosaveEnabled) {
+                autosaveBadge.style.display = 'inline-flex';
+            }
+        }
+
+        // 5. Черновики
+        const draftsContainer = document.getElementById('bottomBarDraftsContainer');
+        if (draftsContainer) {
+            draftsContainer.style.display = settings.showDrafts === true ? 'inline-flex' : 'none';
+        }
+
+        // 6. Includes
+        const includesContainer = document.getElementById('bottomBarIncludesContainer');
+        if (includesContainer) {
+            includesContainer.style.display = settings.showIncludes === true ? 'inline-flex' : 'none';
+        }
+    }
+
+    /**
+     * Пересчитывает и обновляет количество слов и символов на нижней панели.
+     */
+    function updateBottomBarStats() {
+        const statsEl = document.getElementById('bottomBarStats');
+        if (!statsEl || statsEl.style.display === 'none') return;
+
+        let text = '';
+        const isVisual = !document.body.classList.contains('code-mode');
+        if (isVisual) {
+            const visual = document.getElementById('contentVisual');
+            text = visual ? (visual.innerText || visual.textContent || '') : '';
+        } else {
+            const code = document.getElementById('content');
+            text = code ? code.value : '';
+        }
+
+        const trimmed = text.trim();
+        const words = trimmed ? (trimmed.match(/\S+/g) || []).length : 0;
+        const chars = text.length;
+
+        const wordsEl = document.getElementById('bottomBarWordCount');
+        const charsEl = document.getElementById('bottomBarCharCount');
+        if (wordsEl) wordsEl.textContent = words;
+        if (charsEl) charsEl.textContent = chars;
+    }
+
+    /**
+     * Открывает/закрывает выпадающий список черновиков в нижней панели.
+     * @param {Event} [event]
+     */
+    function toggleBottomBarDrafts(event) {
+        if (event) event.stopPropagation();
+        const container = document.getElementById('bottomBarDraftsContainer');
+        if (!container) return;
+        const isOpen = container.classList.contains('is-open');
+
+        closeAllBottomBarDropdowns();
+
+        if (!isOpen) {
+            container.classList.add('is-open');
+            if (typeof loadDraftsList === 'function') {
+                loadDraftsList();
+            }
+        }
+    }
+
+    /**
+     * Открывает/закрывает выпадающий список includes в нижней панели.
+     * @param {Event} [event]
+     */
+    function toggleBottomBarIncludes(event) {
+        if (event) event.stopPropagation();
+        const container = document.getElementById('bottomBarIncludesContainer');
+        if (!container) return;
+        const isOpen = container.classList.contains('is-open');
+
+        closeAllBottomBarDropdowns();
+
+        if (!isOpen) {
+            container.classList.add('is-open');
+            if (typeof loadIncludesList === 'function') {
+                loadIncludesList();
+            }
+        }
+    }
+
+    /**
+     * Закрывает все открытые выпадающие списки на нижней панели.
+     */
+    function closeAllBottomBarDropdowns() {
+        document.querySelectorAll('.bottom-bar-dropdown.is-open').forEach(function(el) {
+            el.classList.remove('is-open');
+        });
+    }
+
+    window.toggleBottomBarDrafts = toggleBottomBarDrafts;
+    window.toggleBottomBarIncludes = toggleBottomBarIncludes;
+    window.closeAllBottomBarDropdowns = closeAllBottomBarDropdowns;
+    window.setupHeaderContextMenu = setupHeaderContextMenu;
+    window.startHeaderCustomizationFromContextMenu = startHeaderCustomizationFromContextMenu;
+
+    // Закрытие контекстных меню и выпадающих списков при клике в любое место
+    document.addEventListener('click', function(e) {
         const menu = document.getElementById('customizerContextMenu');
         if (menu) menu.style.display = 'none';
         const dividerMenu = document.getElementById('dividerDropdownMenu');
         if (dividerMenu) dividerMenu.style.display = 'none';
+        const bottomMenu = document.getElementById('bottomBarContextMenu');
+        if (bottomMenu) bottomMenu.style.display = 'none';
+        const headerMenu = document.getElementById('headerContextMenu');
+        if (headerMenu) headerMenu.style.display = 'none';
+        if (!e.target.closest('.bottom-bar-dropdown')) {
+            closeAllBottomBarDropdowns();
+        }
+    });
+
+    // Закрытие контекстных меню при клике ПКМ вне соответствующих панелей
+    document.addEventListener('contextmenu', function(e) {
+        if (!e.target.closest('#editorBottomBar')) {
+            const bottomMenu = document.getElementById('bottomBarContextMenu');
+            if (bottomMenu) bottomMenu.style.display = 'none';
+        }
+        if (!e.target.closest('.editor-header')) {
+            const headerMenu = document.getElementById('headerContextMenu');
+            if (headerMenu) headerMenu.style.display = 'none';
+        }
+    });
+
+    // Закрытие меню, выпадающих списков и боковой панели по клавише Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const bottomMenu = document.getElementById('bottomBarContextMenu');
+            if (bottomMenu && bottomMenu.style.display !== 'none') {
+                bottomMenu.style.display = 'none';
+            }
+            const headerMenu = document.getElementById('headerContextMenu');
+            if (headerMenu && headerMenu.style.display !== 'none') {
+                headerMenu.style.display = 'none';
+            }
+            const drawer = document.getElementById('bottomBarCustomizerDrawer');
+            if (drawer && drawer.classList.contains('open')) {
+                closeBottomBarCustomizer();
+            }
+            closeAllBottomBarDropdowns();
+        }
     });
 </script>
 
 <!-- Панель управления кастомизацией хедера -->
-<div id="headerCustomizerBar" style="display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--bg-color); border: 2px solid var(--primary-color, #4CAF50); border-radius: 12px; padding: 16px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.35); z-index: 10005; align-items: center; gap: 16px; box-sizing: border-box; flex-wrap: wrap; justify-content: center;">
-    <span style="color: var(--text-color); font-weight: 600; font-size: 14px; margin-right: 8px;">Режим редактирования панели: перетаскивайте кнопки, ПКМ — меню опций.</span>
-    <div style="display: flex; gap: 8px; align-items: center;">
-        <div style="position: relative; display: inline-block;">
-            <button type="button" onclick="toggleDividerDropdown(event)" class="global-action-btn global-action-btn-accent" style="padding: 8px 16px; border-width: 1px;">+ Разделитель</button>
-            <div id="dividerDropdownMenu" class="customizer-dropdown-menu" style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.25); z-index: 10006; min-width: 180px; padding: 4px 0;">
-                <div class="customizer-dropdown-item" onclick="createCustomDivider('line')" style="padding: 10px 16px; cursor: pointer; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: left; transition: background 0.2s;">Обычный разделитель</div>
-                <div class="customizer-dropdown-item" onclick="createCustomDivider('spacer')" style="padding: 10px 16px; cursor: pointer; color: var(--text-color); font-size: 13px; font-weight: 500; text-align: left; transition: background 0.2s;">Пустой разделитель</div>
+<div id="headerCustomizerBar">
+    <div class="customizer-bar-hint">
+        <span class="customizer-bar-badge">🎨</span>
+        <span class="customizer-bar-text" data-i18n="header.customizer_mode_hint">Режим редактирования панели: перетаскивайте кнопки, ПКМ — меню опций.</span>
+    </div>
+    <div class="customizer-actions-wrap">
+        <div class="customizer-dropdown-wrap">
+            <button type="button" onclick="toggleDividerDropdown(event)" class="customizer-btn customizer-btn-accent" data-i18n="header.customizer_add_divider">+ Разделитель</button>
+            <div id="dividerDropdownMenu" class="customizer-dropdown-menu" style="display: none;">
+                <div class="customizer-dropdown-item" onclick="createCustomDivider('line')" data-i18n="header.customizer_divider_line">Обычный разделитель</div>
+                <div class="customizer-dropdown-item" onclick="createCustomDivider('spacer')" data-i18n="header.customizer_divider_spacer">Пустой разделитель</div>
             </div>
         </div>
-        <button type="button" onclick="saveHeaderCustomization()" class="global-action-btn global-action-btn-primary" style="padding: 8px 16px; border-width: 1px;">Применить</button>
-        <button type="button" onclick="cancelHeaderCustomization()" class="global-action-btn global-action-btn-secondary" style="padding: 8px 16px; border-width: 1px;">Отмена</button>
+        <button type="button" onclick="saveHeaderCustomization()" class="customizer-btn customizer-btn-primary" data-i18n="common.apply">Применить</button>
+        <button type="button" onclick="cancelHeaderCustomization()" class="customizer-btn customizer-btn-ghost" data-i18n="common.cancel">Отмена</button>
     </div>
 </div>
 
-<!-- Контекстное меню для кастомизации хедера -->
-<div id="customizerContextMenu" style="display: none; position: fixed; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 100007; min-width: 180px; padding: 4px 0;">
-    <button type="button" id="ctxToggleVisibility" class="context-menu-item" style="display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; font-weight: 500;">Скрыть</button>
-    <button type="button" id="ctxTogglePosition" class="context-menu-item" style="display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 14px; font-weight: 500;">Перенести в "Прочее"</button>
+<!-- Контекстное меню для верхней панели -->
+<div id="headerContextMenu" class="customizer-context-menu" style="display: none; position: fixed;">
+    <button type="button" class="context-menu-item" onclick="startHeaderCustomizationFromContextMenu()" data-i18n="header.customize_panel">Настроить панель</button>
 </div>
+
+<!-- Контекстное меню для элементов хедера в режиме кастомизации -->
+<div id="customizerContextMenu" style="display: none; position: fixed;">
+    <button type="button" id="ctxToggleVisibility" class="context-menu-item" data-i18n="header.customizer_hide">Скрыть</button>
+    <button type="button" id="ctxTogglePosition" class="context-menu-item" data-i18n="header.customizer_move_to_more">Перенести в "Прочее"</button>
+</div>
+
+<!-- Контекстное меню для нижней панели -->
+<div id="bottomBarContextMenu" class="customizer-context-menu" style="display: none; position: fixed;">
+    <button type="button" class="context-menu-item" onclick="openBottomBarCustomizer()" data-i18n="bottom_bar.customize">Настроить панель</button>
+</div>
+
+<!-- Оверлей и боковая панель кастомизации нижней панели (Drawer) -->
+<div id="bottomBarDrawerBackdrop" class="bottom-bar-drawer-backdrop" onclick="closeBottomBarCustomizer()"></div>
+<aside id="bottomBarCustomizerDrawer" class="bottom-bar-drawer" role="dialog" aria-modal="true" aria-label="Настройка нижней панели">
+    <div class="bottom-bar-drawer-header">
+        <div class="bottom-bar-drawer-titles">
+            <h3 class="bottom-bar-drawer-title" data-i18n="bottom_bar.drawer_title">Настройка нижней панели</h3>
+            <p class="bottom-bar-drawer-subtitle" data-i18n="bottom_bar.drawer_subtitle">Выберите элементы для отображения в строке состояния</p>
+        </div>
+        <button type="button" class="bottom-bar-drawer-close" onclick="closeBottomBarCustomizer()" data-i18n-aria="common.close" aria-label="Закрыть">×</button>
+    </div>
+
+    <div class="bottom-bar-drawer-body">
+        <label class="bottom-bar-option-card" for="bottomBarToggleMode">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_mode_toggle_title">Режимы («Визуально» / «Код»)</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_mode_toggle_desc">Переключение между визуальным редактором и кодом</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleMode" onchange="onBottomBarOptionChange('showModeToggle', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleBlog">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_blog_selector_title">Выбор блога</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_blog_selector_desc">Выпадающий список активного блога</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleBlog" onchange="onBottomBarOptionChange('showBlogSelector', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleDrafts">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_drafts_title">Черновики</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_drafts_desc">Кнопка и всплывающий список сохранённых черновиков</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleDrafts" onchange="onBottomBarOptionChange('showDrafts', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleIncludes">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_includes_title">Includes</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_includes_desc">Кнопка и всплывающий список сохранённых блоков includes</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleIncludes" onchange="onBottomBarOptionChange('showIncludes', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleStats">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_word_count_title">Счётчик слов и символов</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_word_count_desc">Статистика объёма текста текущей статьи</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleStats" onchange="onBottomBarOptionChange('showWordCount', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+
+        <label class="bottom-bar-option-card" for="bottomBarToggleAutosave">
+            <div class="bottom-bar-option-info">
+                <div class="bottom-bar-option-title" data-i18n="bottom_bar.item_autosave_title">Индикатор автосохранения</div>
+                <div class="bottom-bar-option-desc" data-i18n="bottom_bar.item_autosave_desc">Таймер обратного отсчёта и статус сохранения</div>
+            </div>
+            <div class="bottom-bar-switch">
+                <input type="checkbox" id="bottomBarToggleAutosave" onchange="onBottomBarOptionChange('showAutosaveBadge', this.checked)">
+                <span class="bottom-bar-switch-slider"></span>
+            </div>
+        </label>
+    </div>
+
+    <div class="bottom-bar-drawer-footer">
+        <button type="button" class="bottom-bar-drawer-btn bottom-bar-drawer-btn-ghost" onclick="resetBottomBarSettings()" data-i18n="bottom_bar.reset_defaults">По умолчанию</button>
+        <button type="button" class="bottom-bar-drawer-btn bottom-bar-drawer-btn-primary" onclick="saveBottomBarCustomizer()" data-i18n="common.save">Сохранить</button>
+    </div>
+</aside>
 
 <!-- Диалог восстановления сессии -->
 <?php safe_include_editor_modal('session_expired_modal.php'); ?>

@@ -21,7 +21,7 @@
                 </div>
             </div>
             <div class="modal-header-actions">
-                <button type="button" class="modal-close-btn" onclick="closeThemeManager()" data-modal-close title="Закрыть">×</button>
+                <button type="button" class="modal-close-btn" onclick="closeThemeManager()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
             </div>
         </div>
 
@@ -70,7 +70,7 @@
                 <!-- Поле просмотра/редактирования кастомного CSS -->
                 <div id="customCssContainer" style="display: none; margin-top: 12px;">
                     <label class="modal-label" for="customCssEditor" data-i18n="modals.theme_code_label">Код кастомных CSS стилей:</label>
-                    <textarea id="customCssEditor" class="modal-textarea" style="height: 140px; font-family: Consolas, Monaco, monospace; font-size: 12px;" placeholder="/* Вставьте ваш CSS код здесь */&#10;:root {&#10;    --bg-color: #1e1e2e;&#10;    --text-color: #cdd6f4;&#10;}"></textarea>
+                    <textarea id="customCssEditor" class="modal-textarea" style="height: 140px; font-family: Consolas, Monaco, monospace; font-size: 12px;" data-i18n-placeholder="modals.theme_css_ph" placeholder="/* Вставьте ваш CSS код здесь */&#10;:root {&#10;    --bg-color: #1e1e2e;&#10;    --text-color: #cdd6f4;&#10;}"></textarea>
                     <div style="margin-top: 8px;">
                         <button type="button" onclick="saveCustomCssCode()" class="modal-btn modal-btn-primary" style="font-size: 12px;" data-i18n="modals.theme_apply_code_btn">Применить код CSS</button>
                     </div>
