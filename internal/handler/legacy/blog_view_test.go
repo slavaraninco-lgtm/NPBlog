@@ -52,8 +52,9 @@ func setupTestHandler(t *testing.T) (*legacy.LegacyHandler, string) {
 	tmpl := service.NewTemplateService(cfg, storage)
 	integrity := service.NewIntegrityService(cfg, storage)
 	ftp := service.NewFtpService(cfg, storage)
+	system := service.NewSystemService(cfg, storage)
 
-	handler := legacy.NewLegacyHandler(cfg, auth, storage, post, draft, backup, media, tmpl, integrity, ftp)
+	handler := legacy.NewLegacyHandler(cfg, auth, storage, post, draft, backup, media, tmpl, integrity, ftp, system)
 	return handler, tmpDir
 }
 

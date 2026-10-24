@@ -17,6 +17,23 @@ function escapeHtmlJS(str) {
 let currentEditId = null;
 let editorMode = 'visual'; // 'visual' | 'code'
 let savedRange = null;
+
+/**
+ * Браузеры могут восстанавливать значение заголовка при перезагрузке страницы.
+ * Очищаем его только в режиме новой статьи, чтобы не затронуть редактирование поста.
+ */
+function resetRestoredNewPostTitle() {
+    if (currentEditId !== null) return;
+
+    const titleInput = document.getElementById('title');
+    if (!titleInput) return;
+
+    titleInput.value = '';
+    titleInput.defaultValue = '';
+}
+
+window.addEventListener('pageshow', resetRestoredNewPostTitle);
+
 window.savedRange = null;
 window.setGlobalSavedRange = function (r) {
     savedRange = r;

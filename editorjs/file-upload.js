@@ -123,14 +123,18 @@ function formatFileSize(bytes) {
 }
 
 function loadDocumentsList() {
-    fetch('get_documents.php')
-        .then(response => response.json())
-        .then(data => {
-            const listContainer = document.getElementById('fileUploadList');
+    const listFetch = (window.api && window.api.media)
+        ? window.api.media.listDocuments()
+        : fetch('/api/v1/media/documents').then(r => r.json()).then(d => (d.files || (d.data && d.data.files) || []));
 
-            if (data.success && data.files.length > 0) {
+    Promise.resolve(listFetch)
+        .then(files => {
+            const listContainer = document.getElementById('fileUploadList');
+            if (!listContainer) return;
+
+            if (Array.isArray(files) && files.length > 0) {
                 listContainer.innerHTML = '';
-                data.files.forEach(file => {
+                files.forEach(file => {
                     const item = document.createElement('div');
                     item.className = 'file-upload-item';
 
@@ -299,22 +303,16 @@ function uploadDocument(fileToUpload = null) {
 function deleteDocument(filePath) {
     showConfirm(window.t ? window.t('notifications.confirm_delete_file', 'Удалить этот файл?') : 'Удалить этот файл?').then(result => {
         if (!result) return;
+        const filename = filePath.split('/').pop().split('\\').pop();
 
-        fetch('delete_document.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ filePath: filePath })
-        })
-            .then(response => response.json())
+        const delAction = (window.api && window.api.media)
+            ? window.api.media.deleteDocument(filename)
+            : fetch(`/api/v1/media/documents/${encodeURIComponent(filename)}`, { method: 'DELETE' }).then(r => r.json());
+
+        Promise.resolve(delAction)
             .then(data => {
-                if (data.success) {
-                    showNotification(window.t ? window.t('notifications.file_deleted', 'Файл удален') : 'Файл удален', 'success');
-                    loadDocumentsList();
-                } else {
-                    showNotification(window.t ? window.t('notifications.file_delete_error_param', 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка удаления: ' + (data.error || 'Неизвестная ошибка'), 'error');
-                }
+                showNotification(window.t ? window.t('notifications.file_deleted', 'Файл удален') : 'Файл удален', 'success');
+                loadDocumentsList();
             })
             .catch(error => {
                 console.error('Ошибка:', error);

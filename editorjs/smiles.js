@@ -164,27 +164,26 @@ async function loadSmileSetsList() {
     if (!listContainer) return;
 
     try {
-        const response = await fetch('get_smiles.php?t=' + Date.now());
-        const data = await response.json();
+        const fetchSmiles = (window.api && window.api.media) 
+            ? window.api.media.listSmiles() 
+            : fetch('/api/v1/media/smiles?t=' + Date.now()).then(r => r.json()).then(d => (d.data || d));
+        const raw = await fetchSmiles;
+        const sets = raw.sets || raw.smiles || raw || {};
 
-        if (data.success) {
-            const setNames = Object.keys(data.sets);
-            if (setNames.length === 0) {
-                listContainer.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">' + (window.t ? window.t('modals.smiles_no_sets', 'Нет загруженных наборов') : 'Нет загруженных наборов') + '</div>';
-            } else {
-                const pcsTemplate = window.t ? window.t('modals.smiles_count_pcs', '({count} шт.)') : '({count} шт.)';
-                const delText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
-                listContainer.innerHTML = setNames.map(name => {
-                    const count = data.sets[name].length;
-                    const countFormatted = pcsTemplate.replace('{count}', count);
-                    return `<div class="smile-set-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-color); transition: background 0.2s;" onmouseover="this.style.background='rgba(128,128,128,0.04)'" onmouseout="this.style.background='transparent'">
-                        <span class="smile-set-name" style="font-weight: 500; font-size: 14px;">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.5; margin-left: 8px;">${countFormatted}</span></span>
-                        <button type="button" class="smile-set-delete-btn" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(239,68,68,0.4)'" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">${delText}</button>
-                    </div>`;
-                }).join('');
-            }
+        const setNames = Object.keys(sets);
+        if (setNames.length === 0) {
+            listContainer.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 10px; color: var(--text-color);">' + (window.t ? window.t('modals.smiles_no_sets', 'Нет загруженных наборов') : 'Нет загруженных наборов') + '</div>';
         } else {
-            listContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">' + (window.t ? window.t('modals.smiles_load_error', 'Ошибка загрузки списка') : 'Ошибка загрузки списка') + '</div>';
+            const pcsTemplate = window.t ? window.t('modals.smiles_count_pcs', '({count} шт.)') : '({count} шт.)';
+            const delText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
+            listContainer.innerHTML = setNames.map(name => {
+                const count = (sets[name] || []).length;
+                const countFormatted = pcsTemplate.replace('{count}', count);
+                return `<div class="smile-set-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-color); transition: background 0.2s;" onmouseover="this.style.background='rgba(128,128,128,0.04)'" onmouseout="this.style.background='transparent'">
+                    <span class="smile-set-name" style="font-weight: 500; font-size: 14px;">${escapeHtml(name)} <span class="smile-set-count" style="font-size: 12px; opacity: 0.5; margin-left: 8px;">${countFormatted}</span></span>
+                    <button type="button" class="smile-set-delete-btn" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(239,68,68,0.4)'" onclick="deleteSmileSet('${escapeHtmlJS(name)}')">${delText}</button>
+                </div>`;
+            }).join('');
         }
     } catch (error) {
         console.error('Error loading smile sets:', error);
@@ -291,35 +290,34 @@ async function loadSmilesSubmenuList() {
     if (!submenu) return;
 
     try {
-        const response = await fetch('get_smiles.php?t=' + Date.now());
-        const data = await response.json();
+        const fetchSmiles = (window.api && window.api.media) 
+            ? window.api.media.listSmiles() 
+            : fetch('/api/v1/media/smiles?t=' + Date.now()).then(r => r.json()).then(d => (d.data || d));
+        const raw = await fetchSmiles;
+        const sets = raw.sets || raw.smiles || raw || {};
 
-        if (data.success) {
-            const setNames = Object.keys(data.sets);
-            const nonEmptySets = setNames.filter(name => data.sets[name].length > 0);
+        const setNames = Object.keys(sets);
+        const nonEmptySets = setNames.filter(name => sets[name] && sets[name].length > 0);
 
-            if (nonEmptySets.length === 0) {
-                submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_smiles_hint', 'Нет смайлов. Добавьте их через "Наборы смайлов"') : 'Нет смайлов. Добавьте их через "Наборы смайлов"') + '</div>';
-            } else {
-                let html = '<div class="smiles-submenu-container">';
-                nonEmptySets.forEach(setName => {
-                    html += `<div class="smile-set-section">
-                        <div class="smile-set-title">${escapeHtml(setName)}</div>
-                        <div class="smile-items-grid">`;
-
-                    data.sets[setName].forEach(url => {
-                        html += `<button type="button" class="smile-item-btn" onclick="insertSmile('${escapeHtmlJS(url)}')" title="Вставить смайл">
-                            <img src="${url}" alt="smile">
-                        </button>`;
-                    });
-
-                    html += `</div></div>`;
-                });
-                html += '</div>';
-                submenu.innerHTML = html;
-            }
+        if (nonEmptySets.length === 0) {
+            submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.no_smiles_hint', 'Нет смайлов. Добавьте их через "Наборы смайлов"') : 'Нет смайлов. Добавьте их через "Наборы смайлов"') + '</div>';
         } else {
-            submenu.innerHTML = '<div class="more-submenu-empty">' + (window.t ? window.t('more_menu.smiles_load_error', 'Ошибка загрузки смайлов') : 'Ошибка загрузки смайлов') + '</div>';
+            let html = '<div class="smiles-submenu-container">';
+            nonEmptySets.forEach(setName => {
+                html += `<div class="smile-set-section">
+                    <div class="smile-set-title">${escapeHtml(setName)}</div>
+                    <div class="smile-items-grid">`;
+
+                sets[setName].forEach(url => {
+                    html += `<button type="button" class="smile-item-btn" onclick="insertSmile('${escapeHtmlJS(url)}')" title="Вставить смайл">
+                        <img src="${url}" alt="smile">
+                    </button>`;
+                });
+
+                html += `</div></div>`;
+            });
+            html += '</div>';
+            submenu.innerHTML = html;
         }
     } catch (error) {
         console.error('Error loading smiles for submenu:', error);

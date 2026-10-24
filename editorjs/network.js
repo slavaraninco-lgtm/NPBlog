@@ -14,9 +14,11 @@ function toggleManagePosts() {
 }
 
 function loadPosts() {
-    // Добавляем timestamp для предотвращения кэширования
-    fetch('serve_data.php?file=blog/posts-meta.json&t=' + Date.now())
-        .then(response => response.json())
+    const fetchArticles = (window.api && window.api.posts)
+        ? window.api.posts.list()
+        : fetch('/api/v1/posts').then(r => r.json()).then(d => d.data || d);
+
+    fetchArticles
         .then(posts => {
             const postsList = document.getElementById('postsList');
             if (!posts || posts.length === 0) {
@@ -87,7 +89,7 @@ function editPost(postId) {
     };
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
-    fetch('get_post_content.php', {
+    fetch('/get_post_content.php', {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({ id: postId })
@@ -355,7 +357,7 @@ function closeDeleteConfirm() {
 function confirmDelete() {
     if (!deletePostId) return;
 
-    fetch('delete_post.php', {
+    fetch('/delete_post.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -394,7 +396,7 @@ function togglePinPost(postId, event) {
     };
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
-    fetch('toggle_pin_post.php', {
+    fetch('/toggle_pin_post.php', {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({ id: postId })
@@ -479,7 +481,7 @@ function handleSubmit(e) {
         floatingSaveBtn.textContent = 'Сохранение...';
     }
 
-    const endpoint = currentEditId ? 'update_post.php' : 'save_post.php';
+    const endpoint = currentEditId ? '/update_post.php' : '/save_post.php';
     const data = { title: title, content: content };
     if (currentEditId) { data.id = currentEditId; }
     fetch(endpoint, {

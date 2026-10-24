@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const extension = file.type === 'image/jpeg' || file.type === 'image/jpg' ? 'jpg' : 'png';
             formData.append('image', file, `clipboard-${Date.now()}.${extension}`);
 
-            fetch('upload_image.php', {
+            fetch('/upload_image.php', {
                 method: 'POST',
                 body: formData
             })
@@ -764,7 +764,7 @@ function initEditorMediaDragDrop() {
         }
 
         const formData = new FormData();
-        const endpoint = isVideo ? 'upload_video.php' : 'upload_image.php';
+        const endpoint = isVideo ? '/upload_video.php' : '/upload_image.php';
         if (isVideo) {
             formData.append('video', file);
         } else {
@@ -1126,7 +1126,7 @@ function processImage() {
     Promise.all(files.map(function (file) {
         const formData = new FormData();
         formData.append('image', file);
-        return fetch('upload_image.php', {
+        return fetch('/upload_image.php', {
             method: 'POST',
             headers: getMediaRequestHeaders(),
             body: formData
@@ -1244,7 +1244,7 @@ function uploadImage(file, width, height, widthUnit, heightUnit, caption) {
     formData.append('heightUnit', heightUnit || '');
     formData.append('caption', caption || '');
 
-    fetch('upload_image.php', {
+    fetch('/upload_image.php', {
         method: 'POST',
         headers: getMediaRequestHeaders(),
         body: formData
@@ -2791,7 +2791,7 @@ function uploadVideoFileDirect(file) {
     };
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
-    fetch('upload_video.php', {
+    fetch('/upload_video.php', {
         method: 'POST',
         headers: headers,
         body: formData
@@ -2855,7 +2855,7 @@ function uploadAudioFileDirect(file) {
     };
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
-    fetch('upload_audio.php', {
+    fetch('/upload_audio.php', {
         method: 'POST',
         headers: headers,
         body: formData
@@ -3126,8 +3126,11 @@ function uploadAudioFile() {
 }
 
 function loadAudioFilesList() {
-    fetch('get_audio_files.php')
-        .then(response => response.json())
+    const fetchAudios = (window.api && window.api.media)
+        ? window.api.media.listAudio().then(files => ({ success: true, files }))
+        : fetch('/get_audio_files.php').then(r => r.json());
+
+    fetchAudios
         .then(data => {
             const list = document.getElementById('audioFilesList');
             if (!list) return;
@@ -3214,7 +3217,7 @@ function deleteAudioFile(fileName) {
         };
         if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
-        fetch('delete_audio.php', {
+        fetch('/delete_audio.php', {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({ filename: fileName })
@@ -3250,8 +3253,11 @@ function uploadVideoFile() {
 }
 
 function loadVideoFilesList() {
-    fetch('get_video_files.php')
-        .then(response => response.json())
+    const fetchVideos = (window.api && window.api.media)
+        ? window.api.media.listVideo().then(files => ({ success: true, files }))
+        : fetch('/get_video_files.php').then(r => r.json());
+
+    fetchVideos
         .then(data => {
             const list = document.getElementById('videoFilesList');
             if (!list) return;
@@ -3338,7 +3344,7 @@ function deleteVideoFile(fileName) {
         };
         if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
-        fetch('delete_video.php', {
+        fetch('/delete_video.php', {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({ filename: fileName })

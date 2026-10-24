@@ -6,7 +6,7 @@ let postTemplatesMeta = {};
 let defaultTemplateName = 'main';
 
 function openTemplateManager() {
-    fetch('get_templates.php')
+    return fetch('/get_templates.php?details=1')
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -25,6 +25,7 @@ function openTemplateManager() {
             }
         })
         .catch(err => {
+            console.error('Template manager:', err);
             showNotification('Ошибка загрузки шаблонов', 'error');
         });
 }
@@ -247,7 +248,7 @@ async function handleTemplateUpload(input) {
         formData.append('template_file', file);
 
         try {
-            const res = await fetch('upload_template.php', {
+            const res = await fetch('/upload_template.php', {
                 method: 'POST',
                 body: formData
             });
@@ -354,7 +355,7 @@ function saveTemplateData() {
         return Promise.reject('Empty title');
     }
 
-    return fetch('save_template.php', {
+    return fetch('/save_template.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -382,7 +383,7 @@ function saveTemplateData() {
 function saveAndApplyTemplateToAll() {
     saveTemplateData()
         .then(() => {
-            return fetch('apply_template.php', {
+            return fetch('/apply_template.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -480,7 +481,7 @@ function filterTemplatePosts() {
 }
 
 function applyTemplateToPost(postId) {
-    fetch('apply_template.php', {
+    fetch('/apply_template.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -509,7 +510,7 @@ function deleteCurrentTemplate() {
     showConfirm('Вы действительно хотите удалить этот шаблон?').then(confirmed => {
         if (!confirmed) return;
 
-        fetch('delete_template.php', {
+        fetch('/delete_template.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

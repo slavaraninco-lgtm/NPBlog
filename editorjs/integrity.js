@@ -1,12 +1,14 @@
 // ——— Проверка целостности файлов при загрузке ———
 async function checkIntegrity() {
     try {
-        const response = await fetch('check_integrity.php');
-        const data = await response.json();
+        const checkAction = (window.api && window.api.integrity)
+            ? window.api.integrity.check()
+            : fetch('/api/v1/system/integrity').then(r => r.json()).then(d => d.data || d);
+        const data = await checkAction;
 
-        if (!data.success && data.errors.length > 0) {
+        if (data.is_healthy === false || (!data.success && data.errors && data.errors.length > 0)) {
             const overlay = document.getElementById('integrityErrorOverlay');
-            overlay.classList.add('show');
+            if (overlay) overlay.classList.add('show');
         }
     } catch (error) {
         console.error('Ошибка проверки целостности:', error);
@@ -15,31 +17,31 @@ async function checkIntegrity() {
 
 async function fixIntegrityErrors() {
     const button = document.querySelector('.integrity-error-button');
-    button.textContent = 'Исправление...';
-    button.disabled = true;
+    if (button) {
+        button.textContent = 'Исправление...';
+        button.disabled = true;
+    }
 
     try {
-        const response = await fetch('fix_integrity.php');
-        const data = await response.json();
+        const fixAction = (window.api && window.api.integrity)
+            ? window.api.integrity.fix()
+            : fetch('/api/v1/system/integrity/fix', { method: 'POST' }).then(r => r.json()).then(d => d.data || d);
+        const data = await fixAction;
 
-        if (data.success) {
-            showNotification('Все ошибки успешно исправлены!', 'success');
-
-            const overlay = document.getElementById('integrityErrorOverlay');
-            overlay.classList.remove('show');
-
-            button.textContent = 'Исправить';
-            button.disabled = false;
-        } else {
-            showNotification('Не удалось исправить некоторые ошибки: ' + data.errors.join(', '), 'error');
+        showNotification('Все ошибки успешно исправлены!', 'success');
+        const overlay = document.getElementById('integrityErrorOverlay');
+        if (overlay) overlay.classList.remove('show');
+        if (button) {
             button.textContent = 'Исправить';
             button.disabled = false;
         }
     } catch (error) {
         console.error('Ошибка исправления:', error);
         showNotification('Ошибка при исправлении файлов', 'error');
-        button.textContent = 'Исправить';
-        button.disabled = false;
+        if (button) {
+            button.textContent = 'Исправить';
+            button.disabled = false;
+        }
     }
 }
 
@@ -60,7 +62,7 @@ async function checkPostNumbering() {
     fixBtn.style.display = 'none';
 
     try {
-        const response = await fetch('renumber_posts.php', {
+        const response = await fetch('/renumber_posts.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -129,7 +131,7 @@ async function fixNumbering() {
     fixBtn.disabled = true;
 
     try {
-        const response = await fetch('renumber_posts.php', {
+        const response = await fetch('/renumber_posts.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

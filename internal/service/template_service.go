@@ -186,6 +186,82 @@ func (t *TemplateService) DeleteInclude(activeBlogPath, filename string) error {
 	return nil
 }
 
+// GetTemplateManagerData reads the existing PHP-era catalog without migrating or writing user data.
+func (t *TemplateService) GetTemplateManagerData(activeBlogPath string) (map[string]interface{}, error) {
+	dir := t.storage.GetDataPath(activeBlogPath, "blog/templates")
+	var settings struct {
+		Default       string            `json:"default"`
+		PostTemplates map[string]string `json:"post_templates"`
+		Templates     map[string]struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			IsSystem    bool   `json:"is_system"`
+			Path        string `json:"path"`
+		} `json:"templates"`
+	}
+	if err := t.storage.SafeReadJSON(filepath.Join(dir, "settings.json"), &settings); err != nil {
+		return nil, errors.New("настройки шаблонов не найдены или повреждены")
+	}
+	names := make([]string, 0, len(settings.Templates))
+	for name := range settings.Templates {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	items := make([]map[string]interface{}, 0, len(names))
+	for _, name := range names {
+		meta := settings.Templates[name]
+		rel := meta.Path
+		if rel == "" {
+			rel = name + ".html"
+			if name == "main" {
+				rel = "NPBlog/main.html"
+			}
+		}
+		path, err := t.storage.ValidateSafePath(dir, rel)
+		if err != nil {
+			return nil, errors.New("некорректный путь шаблона")
+		}
+		// Resolve symlinks before reading so a catalog entry cannot escape the template directory.
+		resolved, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return nil, errors.New("файл шаблона не найден")
+		}
+		root, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			return nil, errors.New("каталог шаблонов недоступен")
+		}
+		relative, err := filepath.Rel(root, resolved)
+		if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+			return nil, errors.New("некорректный путь шаблона")
+		}
+		code, err := os.ReadFile(resolved)
+		if err != nil {
+			return nil, errors.New("не удалось прочитать шаблон")
+		}
+		items = append(items, map[string]interface{}{
+			"name": name, "title": meta.Title, "description": meta.Description,
+			"is_system": meta.IsSystem, "code": string(code),
+		})
+	}
+	posts := make([]domain.PostMeta, 0)
+	if err := t.storage.SafeReadJSON(t.storage.GetDataPath(activeBlogPath, "blog/posts-meta.json"), &posts); err != nil && !os.IsNotExist(err) {
+		return nil, errors.New("не удалось прочитать список статей")
+	}
+	if posts == nil {
+		posts = make([]domain.PostMeta, 0)
+	}
+	if settings.Default == "" {
+		settings.Default = "main"
+	}
+	if settings.PostTemplates == nil {
+		settings.PostTemplates = make(map[string]string)
+	}
+	return map[string]interface{}{
+		"success": true, "templates": items, "posts": posts,
+		"default": settings.Default, "post_templates": settings.PostTemplates,
+	}, nil
+}
+
 // GetTemplates возвращает список доступных шаблонов и активный шаблон
 func (t *TemplateService) GetTemplates(activeBlogPath string) ([]string, string, error) {
 	templatesDir := t.storage.GetDataPath(activeBlogPath, "blog/templates")

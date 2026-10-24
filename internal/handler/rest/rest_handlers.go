@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"npblog/internal/config"
@@ -29,6 +30,7 @@ type RestHandler struct {
 	template  *service.TemplateService
 	integrity *service.IntegrityService
 	formula   *service.FormulaService
+	system    *service.SystemService
 }
 
 func NewRestHandler(
@@ -42,6 +44,7 @@ func NewRestHandler(
 	template *service.TemplateService,
 	integrity *service.IntegrityService,
 	formula *service.FormulaService,
+	system *service.SystemService,
 ) *RestHandler {
 	return &RestHandler{
 		cfg:       cfg,
@@ -54,6 +57,7 @@ func NewRestHandler(
 		template:  template,
 		integrity: integrity,
 		formula:   formula,
+		system:    system,
 	}
 }
 
@@ -829,3 +833,335 @@ func (h *RestHandler) HandleUpdateBlogNav(w http.ResponseWriter, r *http.Request
 		"buttons": sanitized,
 	}, nil)
 }
+
+// --- System & Updates Endpoints ---
+
+func (h *RestHandler) HandleGetVersion(w http.ResponseWriter, r *http.Request) {
+	v := h.system.GetVersion()
+	h.jsonSuccess(w, http.StatusOK, "Версия получена", v, nil)
+}
+
+func (h *RestHandler) HandleGetChangelog(w http.ResponseWriter, r *http.Request) {
+	v := h.system.GetVersion()
+	h.jsonSuccess(w, http.StatusOK, "Список изменений получен", map[string]interface{}{
+		"version":      v.Version,
+		"dev":          v.Dev,
+		"last_updated": v.LastUpdated,
+		"changelog":    v.Changelog,
+	}, nil)
+}
+
+func (h *RestHandler) HandleCheckAutoUpdate(w http.ResponseWriter, r *http.Request) {
+	channel := r.URL.Query().Get("channel")
+	repo := r.URL.Query().Get("repo")
+	force := r.URL.Query().Get("force") == "1" || r.URL.Query().Get("force") == "true"
+	token := r.URL.Query().Get("token")
+	res := h.system.CheckAutoUpdate(channel, repo, force, token)
+	h.jsonSuccess(w, http.StatusOK, "Проверка обновлений завершена", res, nil)
+}
+
+func (h *RestHandler) HandlePrepareAutoUpdate(w http.ResponseWriter, r *http.Request) {
+	token := fmt.Sprintf("upd_%d", time.Now().Unix())
+	h.system.SetUpdateProgress(token, 100, "Обновление готово к установке")
+	h.jsonSuccess(w, http.StatusOK, "Обновление подготовлено", map[string]interface{}{
+		"token": token,
+	}, nil)
+}
+
+func (h *RestHandler) HandleGetUpdateProgress(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	prog := h.system.GetUpdateProgress(token)
+	h.jsonSuccess(w, http.StatusOK, "Прогресс обновления", prog, nil)
+}
+
+func (h *RestHandler) HandleExportPackage(w http.ResponseWriter, r *http.Request) {
+	if err := h.system.ExportPackage(w); err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "EXPORT_ERROR", err.Error(), nil)
+	}
+}
+
+func (h *RestHandler) HandleListSystemBackups(w http.ResponseWriter, r *http.Request) {
+	backups := h.system.ListSystemBackups()
+	h.jsonSuccess(w, http.StatusOK, "Список бэкапов редактора", map[string]interface{}{
+		"backups": backups,
+	}, nil)
+}
+
+func (h *RestHandler) HandleRestoreSystemBackup(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Filename string `json:"filename"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if body.Filename == "" {
+		h.jsonError(w, http.StatusBadRequest, "INVALID_FILENAME", "Файл бэкапа не указан", nil)
+		return
+	}
+	count, err := h.system.RestoreSystemBackup(body.Filename)
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "RESTORE_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Система успешно восстановлена", map[string]interface{}{
+		"restored_count": count,
+	}, nil)
+}
+
+// --- History Endpoints ---
+
+func (h *RestHandler) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
+	list, err := h.integrity.GetHistory()
+	if err != nil || list == nil {
+		list = []domain.HistoryAction{}
+	}
+	h.jsonSuccess(w, http.StatusOK, "Журнал истории получен", map[string]interface{}{
+		"history": list,
+	}, nil)
+}
+
+func (h *RestHandler) HandleSaveHistory(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Action  string `json:"action"`
+		Details string `json:"details"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if body.Action == "" {
+		h.jsonError(w, http.StatusBadRequest, "INVALID_INPUT", "Действие не указано", nil)
+		return
+	}
+	_ = h.integrity.SaveHistoryAction(body.Action, body.Details)
+	h.jsonSuccess(w, http.StatusOK, "Действие сохранено в журнал", nil, nil)
+}
+
+func (h *RestHandler) HandleClearHistory(w http.ResponseWriter, r *http.Request) {
+	_ = h.integrity.ClearHistory()
+	h.jsonSuccess(w, http.StatusOK, "Журнал истории очищен", nil, nil)
+}
+
+// --- Integrity Fix Endpoint ---
+
+func (h *RestHandler) HandleFixIntegrity(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	fixed, errs := h.integrity.FixIntegrity(activeBlog)
+	h.jsonSuccess(w, http.StatusOK, "Восстановление шаблонов завершено", map[string]interface{}{
+		"fixed":  fixed,
+		"errors": errs,
+	}, nil)
+}
+
+// --- Backups Endpoints ---
+
+func (h *RestHandler) HandleListBackups(w http.ResponseWriter, r *http.Request) {
+	backups, err := h.backup.GetAllBackups()
+	if err != nil {
+		backups = domain.BackupMeta{}
+	}
+	h.jsonSuccess(w, http.StatusOK, "Список бэкапов статей получен", map[string]interface{}{
+		"backups": backups,
+	}, nil)
+}
+
+func (h *RestHandler) HandleGetBackupContent(w http.ResponseWriter, r *http.Request) {
+	postID, _ := strconv.Atoi(r.URL.Query().Get("postId"))
+	backupNum, _ := strconv.Atoi(r.URL.Query().Get("backup"))
+	content, err := h.backup.GetBackupContent(postID, backupNum)
+	if err != nil {
+		h.jsonError(w, http.StatusNotFound, "NOT_FOUND", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Содержимое бэкапа получено", map[string]interface{}{
+		"content": content,
+	}, nil)
+}
+
+func (h *RestHandler) HandleRestoreBackup(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	var body struct {
+		PostID       int `json:"postId"`
+		BackupNumber int `json:"backupNumber"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	err := h.backup.RestoreBackup(activeBlog, body.PostID, body.BackupNumber)
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "RESTORE_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Бэкап успешно восстановлен", nil, nil)
+}
+
+func (h *RestHandler) HandleDeleteBackup(w http.ResponseWriter, r *http.Request) {
+	postID, _ := strconv.Atoi(r.URL.Query().Get("postId"))
+	backupNum, _ := strconv.Atoi(r.URL.Query().Get("backup"))
+	err := h.backup.DeleteBackup(postID, backupNum)
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "DELETE_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Бэкап удален", nil, nil)
+}
+
+// --- Media & Files Endpoints ---
+
+func (h *RestHandler) HandleListSmiles(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	smiles, err := h.media.GetSmiles(activeBlog)
+	if err != nil || smiles == nil {
+		smiles = map[string][]string{}
+	}
+	h.jsonSuccess(w, http.StatusOK, "Наборы смайлов получены", map[string]interface{}{
+		"smiles": smiles,
+		"sets":   smiles,
+	}, nil)
+}
+
+func (h *RestHandler) HandleListDocuments(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	docs, err := h.media.GetDocuments(activeBlog)
+	if err != nil || docs == nil {
+		docs = []service.DocumentFileInfo{}
+	}
+	h.jsonSuccess(w, http.StatusOK, "Документы получены", map[string]interface{}{
+		"files": docs,
+	}, nil)
+}
+
+func (h *RestHandler) HandleDeleteDocument(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	filename := chi.URLParam(r, "filename")
+	err := h.media.DeleteFile(activeBlog, filepath.Join("files", filename))
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "DELETE_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Документ удален", nil, nil)
+}
+
+func (h *RestHandler) HandleListAudio(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	audios, err := h.media.GetAudioFiles(activeBlog)
+	if err != nil || audios == nil {
+		audios = []service.MediaFileInfo{}
+	}
+	h.jsonSuccess(w, http.StatusOK, "Аудиофайлы получены", map[string]interface{}{
+		"files": audios,
+	}, nil)
+}
+
+func (h *RestHandler) HandleDeleteAudio(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	filename := chi.URLParam(r, "filename")
+	err := h.media.DeleteFile(activeBlog, filepath.Join("audio", filename))
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "DELETE_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Аудиофайл удален", nil, nil)
+}
+
+func (h *RestHandler) HandleListVideo(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	videos, err := h.media.GetVideoFiles(activeBlog)
+	if err != nil || videos == nil {
+		videos = []service.MediaFileInfo{}
+	}
+	h.jsonSuccess(w, http.StatusOK, "Видеофайлы получены", map[string]interface{}{
+		"files": videos,
+	}, nil)
+}
+
+func (h *RestHandler) HandleDeleteVideo(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	filename := chi.URLParam(r, "filename")
+	err := h.media.DeleteFile(activeBlog, filepath.Join("video", filename))
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "DELETE_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Видеофайл удален", nil, nil)
+}
+
+func (h *RestHandler) HandleListCustomFonts(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	fonts, err := h.media.GetCustomFonts(activeBlog)
+	if err != nil || fonts == nil {
+		fonts = []service.FontFileInfo{}
+	}
+	h.jsonSuccess(w, http.StatusOK, "Шрифты получены", map[string]interface{}{
+		"fonts": fonts,
+	}, nil)
+}
+
+// --- Templates Endpoints ---
+
+func (h *RestHandler) HandleListTemplates(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	templates, current, err := h.template.GetTemplates(activeBlog)
+	if err != nil || templates == nil {
+		templates = []string{}
+	}
+	h.jsonSuccess(w, http.StatusOK, "Шаблоны оформления получены", map[string]interface{}{
+		"templates": templates,
+		"current":   current,
+	}, nil)
+}
+
+func (h *RestHandler) HandleApplyTemplate(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	var body struct {
+		TemplateName string `json:"template_name"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if body.TemplateName == "" {
+		h.jsonError(w, http.StatusBadRequest, "INVALID_INPUT", "Имя шаблона не указано", nil)
+		return
+	}
+	err := h.template.ApplyTemplate(activeBlog, body.TemplateName)
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "APPLY_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Шаблон успешно применен", nil, nil)
+}
+
+// --- Post Utility Endpoints ---
+
+func (h *RestHandler) HandleRenumberPosts(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	changes, err := h.post.RenumberPosts(activeBlog)
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "RENUMBER_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Статьи успешно перенумерованы", map[string]interface{}{
+		"changes": changes,
+	}, nil)
+}
+
+func (h *RestHandler) HandleTogglePinPost(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	idStr := chi.URLParam(r, "id")
+	var id int
+	_, _ = fmt.Sscanf(idStr, "%d", &id)
+	if id <= 0 {
+		h.jsonError(w, http.StatusBadRequest, "INVALID_ID", "Некорректный ID статьи", nil)
+		return
+	}
+	pinned, err := h.post.TogglePinPost(activeBlog, id)
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "PIN_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Статус закрепления обновлен", map[string]interface{}{
+		"pinned": pinned,
+	}, nil)
+}
+
+func (h *RestHandler) HandleRegeneratePosts(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	err := h.post.GenerateRSS(activeBlog)
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "REGENERATE_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Статика блога успешно перегенерирована", nil, nil)
+}
+

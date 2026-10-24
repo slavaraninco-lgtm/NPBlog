@@ -50,14 +50,18 @@ function saveToHistory(force = true, markDirty = true) {
 }
 
 function saveHistoryToFile() {
-    fetch('save_history.php', {
+    if (window.api && window.api.history) {
+        window.api.history.save('edit', `Снимок редактирования (шаг ${historyIndex})`).catch(() => {});
+        return;
+    }
+    fetch('/api/v1/system/history', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            history: historyStack,
-            index: historyIndex
+            action: 'edit',
+            details: `Снимок редактирования (шаг ${historyIndex})`
         })
     }).catch(error => {
         console.error('Ошибка сохранения истории:', error);
@@ -65,14 +69,18 @@ function saveHistoryToFile() {
 }
 
 function loadHistoryFromFile() {
-    fetch('get_history.php?t=' + Date.now())
+    if (window.api && window.api.history) {
+        window.api.history.list().then(list => {
+            updateUndoRedoButtons();
+        }).catch(error => {
+            console.error('Ошибка загрузки истории:', error);
+        });
+        return;
+    }
+    fetch('/api/v1/system/history')
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                historyStack = data.history || [];
-                historyIndex = data.index ?? -1;
-                updateUndoRedoButtons();
-            }
+            updateUndoRedoButtons();
         })
         .catch(error => {
             console.error('Ошибка загрузки истории:', error);
@@ -166,8 +174,14 @@ function clearHistory() {
     updateUndoRedoButtons();
 
     // Очищаем файл истории
-    fetch('clear_history.php', {
-        method: 'POST'
+    if (window.api && window.api.history) {
+        window.api.history.clear().catch(error => {
+            console.error('Ошибка очистки истории:', error);
+        });
+        return;
+    }
+    fetch('/api/v1/system/history', {
+        method: 'DELETE'
     }).catch(error => {
         console.error('Ошибка очистки истории:', error);
     });

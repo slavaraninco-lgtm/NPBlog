@@ -52,8 +52,9 @@ func setupTestRouter(t *testing.T) (http.Handler, string) {
 	tmpl := service.NewTemplateService(cfg, storage)
 	integrity := service.NewIntegrityService(cfg, storage)
 	formula := service.NewFormulaService(cfg)
+	system := service.NewSystemService(cfg, storage)
 
-	restHandler := rest.NewRestHandler(cfg, auth, storage, post, draft, backup, media, tmpl, integrity, formula)
+	restHandler := rest.NewRestHandler(cfg, auth, storage, post, draft, backup, media, tmpl, integrity, formula, system)
 
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(api chi.Router) {

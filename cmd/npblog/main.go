@@ -41,17 +41,18 @@ func main() {
 	integrityService := service.NewIntegrityService(cfg, storageService)
 	ftpService := service.NewFtpService(cfg, storageService)
 	formulaService := service.NewFormulaService(cfg)
+	systemService := service.NewSystemService(cfg, storageService)
 
 	mw := middleware.NewMiddlewareManager(cfg, authService, storageService)
 
 	editorHandler := web.NewEditorPageHandler(cfg, authService, storageService, hybridFS)
 	legacyHandler := legacy.NewLegacyHandler(
 		cfg, authService, storageService, postService, draftService, backupService,
-		mediaService, templateService, integrityService, ftpService,
+		mediaService, templateService, integrityService, ftpService, systemService,
 	)
 	restHandler := rest.NewRestHandler(
 		cfg, authService, storageService, postService, draftService, backupService,
-		mediaService, templateService, integrityService, formulaService,
+		mediaService, templateService, integrityService, formulaService, systemService,
 	)
 
 	r := chi.NewRouter()
@@ -175,6 +176,19 @@ func main() {
 	r.Get("/ftp_upload_stream.php", legacyHandler.HandleFtpUploadStream)
 	r.Post("/ftp_upload_stream.php", legacyHandler.HandleFtpUploadStream)
 
+	// Системные обновления и обслуживание
+	r.Get("/update_system.php", legacyHandler.HandleUpdateSystem)
+	r.Post("/update_system.php", legacyHandler.HandleUpdateSystem)
+	r.Get("/restore_system.php", legacyHandler.HandleRestoreSystem)
+	r.Post("/restore_system.php", legacyHandler.HandleRestoreSystem)
+	r.Post("/remove_global_background.php", legacyHandler.HandleRemoveGlobalBackground)
+	r.Post("/save_post_preview.php", legacyHandler.HandleSavePostPreview)
+	r.Post("/save_autosave_settings.php", legacyHandler.HandleSaveAutosaveSettings)
+	r.Post("/delete_custom_templates.php", legacyHandler.HandleDeleteCustomTemplates)
+	r.Post("/regenerate_seo.php", legacyHandler.HandleRegenerateSEO)
+	r.Get("/update_background_styles.php", legacyHandler.HandleUpdateBackgroundStyles)
+	r.Post("/update_background_styles.php", legacyHandler.HandleUpdateBackgroundStyles)
+
 	// --- REST API v1 маршруты ---
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Post("/auth/login", restHandler.HandleLogin)
@@ -185,9 +199,12 @@ func main() {
 
 		api.Get("/posts", restHandler.HandleListPosts)
 		api.Post("/posts", restHandler.HandleCreatePost)
+		api.Post("/posts/renumber", restHandler.HandleRenumberPosts)
+		api.Post("/posts/regenerate", restHandler.HandleRegeneratePosts)
 		api.Get("/posts/{id}", restHandler.HandleGetPost)
 		api.Put("/posts/{id}", restHandler.HandleUpdatePost)
 		api.Delete("/posts/{id}", restHandler.HandleDeletePost)
+		api.Post("/posts/{id}/pin", restHandler.HandleTogglePinPost)
 
 		api.Route("/autosaves", func(sub chi.Router) {
 			sub.Get("/", restHandler.HandleListAutosaves)
@@ -210,6 +227,29 @@ func main() {
 			sub.Delete("/{filename}", restHandler.HandleDeleteInclude)
 		})
 
+		api.Route("/backups", func(sub chi.Router) {
+			sub.Get("/", restHandler.HandleListBackups)
+			sub.Post("/restore", restHandler.HandleRestoreBackup)
+			sub.Get("/{filename}", restHandler.HandleGetBackupContent)
+			sub.Delete("/{filename}", restHandler.HandleDeleteBackup)
+		})
+
+		api.Route("/templates", func(sub chi.Router) {
+			sub.Get("/", restHandler.HandleListTemplates)
+			sub.Post("/apply", restHandler.HandleApplyTemplate)
+		})
+
+		api.Route("/media", func(sub chi.Router) {
+			sub.Get("/smiles", restHandler.HandleListSmiles)
+			sub.Get("/documents", restHandler.HandleListDocuments)
+			sub.Delete("/documents/{filename}", restHandler.HandleDeleteDocument)
+			sub.Get("/audio", restHandler.HandleListAudio)
+			sub.Delete("/audio/{filename}", restHandler.HandleDeleteAudio)
+			sub.Get("/video", restHandler.HandleListVideo)
+			sub.Delete("/video/{filename}", restHandler.HandleDeleteVideo)
+			sub.Get("/fonts", restHandler.HandleListCustomFonts)
+		})
+
 		api.Route("/settings", func(sub chi.Router) {
 			sub.Get("/editor", restHandler.HandleGetEditorSettings)
 			sub.Put("/editor", restHandler.HandleUpdateEditorSettings)
@@ -223,8 +263,23 @@ func main() {
 
 		api.Post("/formulas/render", restHandler.HandleRenderFormula)
 
-		api.Get("/system/status", restHandler.HandleSystemStatus)
-		api.Get("/system/integrity", restHandler.HandleSystemIntegrity)
+		api.Route("/system", func(sub chi.Router) {
+			sub.Get("/status", restHandler.HandleSystemStatus)
+			sub.Get("/integrity", restHandler.HandleSystemIntegrity)
+			sub.Post("/integrity/fix", restHandler.HandleFixIntegrity)
+			sub.Get("/version", restHandler.HandleGetVersion)
+			sub.Get("/changelog", restHandler.HandleGetChangelog)
+			sub.Get("/history", restHandler.HandleGetHistory)
+			sub.Post("/history", restHandler.HandleSaveHistory)
+			sub.Delete("/history", restHandler.HandleClearHistory)
+
+			sub.Get("/updates/check", restHandler.HandleCheckAutoUpdate)
+			sub.Post("/updates/prepare", restHandler.HandlePrepareAutoUpdate)
+			sub.Get("/updates/progress", restHandler.HandleGetUpdateProgress)
+			sub.Get("/updates/export", restHandler.HandleExportPackage)
+			sub.Get("/backups", restHandler.HandleListSystemBackups)
+			sub.Post("/restore", restHandler.HandleRestoreSystemBackup)
+		})
 	})
 
 	// --- Отдача статических файлов редактора через HybridFS ---
@@ -255,6 +310,7 @@ func main() {
 	})
 
 	serverAddr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
+	r.Get("/{blog}/*", legacyHandler.HandleBlogFile)
 	srv := &http.Server{
 		Addr:         serverAddr,
 		Handler:      r,

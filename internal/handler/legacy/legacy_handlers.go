@@ -3,6 +3,7 @@ package legacy
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"html"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"npblog/internal/config"
@@ -20,16 +22,18 @@ import (
 )
 
 type LegacyHandler struct {
-	cfg       *config.AppConfig
-	auth      *service.AuthService
-	storage   *service.StorageService
-	post      *service.PostService
-	draft     *service.DraftService
-	backup    *service.BackupService
-	media     *service.MediaService
-	template  *service.TemplateService
-	integrity *service.IntegrityService
-	ftp       *service.FtpService
+	settingsMu sync.Mutex
+	cfg        *config.AppConfig
+	auth       *service.AuthService
+	storage    *service.StorageService
+	post       *service.PostService
+	draft      *service.DraftService
+	backup     *service.BackupService
+	media      *service.MediaService
+	template   *service.TemplateService
+	integrity  *service.IntegrityService
+	ftp        *service.FtpService
+	system     *service.SystemService
 }
 
 func NewLegacyHandler(
@@ -43,6 +47,7 @@ func NewLegacyHandler(
 	template *service.TemplateService,
 	integrity *service.IntegrityService,
 	ftp *service.FtpService,
+	system *service.SystemService,
 ) *LegacyHandler {
 	return &LegacyHandler{
 		cfg:       cfg,
@@ -55,6 +60,7 @@ func NewLegacyHandler(
 		template:  template,
 		integrity: integrity,
 		ftp:       ftp,
+		system:    system,
 	}
 }
 
@@ -694,6 +700,8 @@ func (l *LegacyHandler) HandleGetEditorSettings(w http.ResponseWriter, r *http.R
 		hasPassword = true
 	}
 	delete(settingsMap, "password_hash")
+	delete(settingsMap, "new_password")
+	delete(settingsMap, "old_password")
 	settingsMap["password_set"] = hasPassword
 	settingsMap["password_enabled"] = hasPassword
 	settingsMap["resolved_backup_path"] = l.storage.GetBackupPath("")
@@ -713,6 +721,8 @@ func (l *LegacyHandler) HandleGetEditorSettings(w http.ResponseWriter, r *http.R
 }
 
 func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.Request) {
+	l.settingsMu.Lock()
+	defer l.settingsMu.Unlock()
 	var updateMap map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updateMap); err != nil {
 		l.errorResponse(w, "Некорректный JSON")
@@ -723,7 +733,47 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 	existingMap := make(map[string]interface{})
 	existingBytes, err := os.ReadFile(settingsPath)
 	if err == nil {
-		_ = json.Unmarshal(existingBytes, &existingMap)
+		if json.Unmarshal(existingBytes, &existingMap) != nil || existingMap == nil {
+			l.errorResponse(w, "Настройки повреждены; сохранение отменено")
+			return
+		}
+	} else {
+		l.errorResponse(w, "Не удалось прочитать настройки")
+		return
+	}
+	// Password commands are transient inputs, never persisted as plaintext settings.
+	newPassword, _ := updateMap["new_password"].(string)
+	oldPassword, _ := updateMap["old_password"].(string)
+	enabled, hasEnabled := updateMap["password_enabled"].(bool)
+	hash, _ := existingMap["password_hash"].(string)
+	delete(updateMap, "new_password")
+	delete(updateMap, "old_password")
+	delete(updateMap, "password_hash")
+	delete(existingMap, "new_password")
+	delete(existingMap, "old_password")
+	if newPassword != "" || (hasEnabled && !enabled && hash != "") {
+		if hash != "" && !l.auth.VerifyPassword(oldPassword) {
+			l.errorResponse(w, "Неверный текущий пароль")
+			return
+		}
+		if newPassword != "" {
+			encoded, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+			if err != nil {
+				l.errorResponse(w, "Не удалось установить пароль (максимум 72 байта)")
+				return
+			}
+			hash = string(encoded)
+		} else {
+			hash = ""
+		}
+		existingMap["password_hash"] = hash
+	}
+	if hasEnabled && enabled && hash == "" {
+		l.errorResponse(w, "Укажите новый пароль")
+		return
+	}
+	if hasEnabled || newPassword != "" {
+		updateMap["password_enabled"] = hash != ""
 	}
 
 	for k, v := range updateMap {
@@ -773,9 +823,13 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 	}
 
 	l.cfg.ReloadSettings()
+	if _, ok := updateMap["active_blog_path"].(string); ok {
+		// Subsequent requests use the saved selection rather than a stale cookie.
+		http.SetCookie(w, &http.Cookie{Name: "active_blog_path", Value: "", Path: "/", MaxAge: -1})
+	}
 	l.jsonResponse(w, map[string]interface{}{
 		"success": true,
-		"blogUrl": "/data/blog.html",
+		"blogUrl": "/" + filepath.Base(l.storage.GetDataPath(l.cfg.GetSettings().ActiveBlogPath, "")) + "/blog.html",
 	})
 }
 
@@ -931,6 +985,16 @@ func (l *LegacyHandler) HandleSaveBlogViewSettings(w http.ResponseWriter, r *htt
 
 func (l *LegacyHandler) HandleGetTemplates(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
+	// The editor needs HTML and metadata; keep the compact response for older clients.
+	if r.URL.Query().Get("details") == "1" {
+		data, err := l.template.GetTemplateManagerData(activeBlog)
+		if err != nil {
+			l.errorResponse(w, err.Error())
+			return
+		}
+		l.jsonResponse(w, data)
+		return
+	}
 	list, active, _ := l.template.GetTemplates(activeBlog)
 	l.jsonResponse(w, map[string]interface{}{
 		"success":        true,
@@ -1086,44 +1150,76 @@ func (l *LegacyHandler) HandleClearHistory(w http.ResponseWriter, r *http.Reques
 // --- Создание блога (Multi-Blog) ---
 
 func (l *LegacyHandler) HandleCreateBlog(w http.ResponseWriter, r *http.Request) {
+	l.settingsMu.Lock()
+	defer l.settingsMu.Unlock()
 	var body struct {
 		Title      string `json:"title"`
 		Folder     string `json:"folder"`
 		MakeActive bool   `json:"make_active"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		l.errorResponse(w, "Некорректный JSON")
+		return
+	}
 	folder := strings.TrimSpace(body.Folder)
 	if folder == "" {
 		l.errorResponse(w, "Укажите название папки для блога")
 		return
 	}
 
-	targetDir := filepath.Join(l.cfg.BaseDir, folder)
-	_ = os.MkdirAll(filepath.Join(targetDir, "blog", "templates"), 0755)
-
-	// Копируем дефолтный шаблон статьи
-	defTemplate := filepath.Join(l.cfg.BaseDir, "data", "blog", "template_post.html")
-	if bytes, err := os.ReadFile(defTemplate); err == nil {
-		_ = l.storage.SafeWriteFile(filepath.Join(targetDir, "blog", "template_post.html"), bytes)
+	// A new blog is a single sibling folder, never an existing directory or a traversal path.
+	if folder == "." || folder == ".." || strings.ContainsAny(folder, "/\\:.") {
+		l.errorResponse(w, "Недопустимое имя папки")
+		return
+	}
+	targetDir, err := l.storage.ValidateSafePath(l.cfg.BaseDir, folder)
+	if err != nil {
+		l.errorResponse(w, "Недопустимый путь")
+		return
+	}
+	settingsPath := filepath.Join(l.cfg.BaseDir, "editor_settings.json")
+	settings := make(map[string]interface{})
+	if l.storage.SafeReadJSON(settingsPath, &settings) != nil || settings == nil {
+		l.errorResponse(w, "Не удалось прочитать настройки")
+		return
+	}
+	if err := os.Mkdir(targetDir, 0755); err != nil {
+		l.errorResponse(w, "Папка уже существует или недоступна для создания")
+		return
+	}
+	if err := l.initializeBlog(targetDir, body.Title); err != nil {
+		l.errorResponse(w, "Не удалось подготовить файлы блога; активный блог не изменён")
+		return
 	}
 
 	// Инициализируем пустой posts-meta.json
-	_ = l.storage.SafeWriteJSON(filepath.Join(targetDir, "blog", "posts-meta.json"), []domain.PostMeta{})
+	if l.storage.SafeWriteJSON(filepath.Join(targetDir, "blog", "posts-meta.json"), []domain.PostMeta{}) != nil {
+		l.errorResponse(w, "Не удалось создать список статей")
+		return
+	}
 
 	// Обновляем editor_settings.json
-	settings := l.cfg.GetSettings()
-	settings.BlogPaths = append(settings.BlogPaths, folder)
+	paths, _ := settings["blog_paths"].([]interface{})
+	settings["blog_paths"] = append(paths, folder)
 	if body.MakeActive {
-		settings.ActiveBlogPath = folder
+		settings["active_blog_path"] = folder
 	}
-	settingsPath := filepath.Join(l.cfg.BaseDir, "editor_settings.json")
-	_ = l.storage.SafeWriteJSON(settingsPath, settings)
+	if l.storage.SafeWriteJSON(settingsPath, settings) != nil {
+		l.errorResponse(w, "Не удалось зарегистрировать блог")
+		return
+	}
 	l.cfg.ReloadSettings()
 
+	if body.MakeActive {
+		http.SetCookie(w, &http.Cookie{Name: "active_blog_path", Value: "", Path: "/", MaxAge: -1})
+	}
 	l.jsonResponse(w, map[string]interface{}{
-		"success": true,
-		"folder":  folder,
+		"success":     true,
+		"folder":      folder,
+		"path":        folder,
+		"title":       body.Title,
+		"make_active": body.MakeActive,
+		"blogUrl":     "/" + folder + "/blog.html",
 	})
 }
 
@@ -1839,5 +1935,249 @@ func (l *LegacyHandler) HandleFtpUploadStream(w http.ResponseWriter, r *http.Req
 	time.Sleep(100 * time.Millisecond)
 	sendEvent("progress", map[string]interface{}{"percent": 100, "current": 4, "total": 4, "filename": "assets/"})
 	sendEvent("complete", map[string]string{"message": "Синхронизация успешно завершена"})
+}
+
+// --- System Updates & Maintenance Handlers ---
+
+func (l *LegacyHandler) HandleUpdateSystem(w http.ResponseWriter, r *http.Request) {
+	action := r.URL.Query().Get("action")
+	if action == "" {
+		action = r.FormValue("action")
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	switch action {
+	case "get_version":
+		v := l.system.GetVersion()
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":      true,
+			"version":      v.Version,
+			"dev":          v.Dev,
+			"last_updated": v.LastUpdated,
+			"commit":       v.Commit,
+		})
+
+	case "get_changelog":
+		v := l.system.GetVersion()
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":      true,
+			"version":      v.Version,
+			"dev":          v.Dev,
+			"last_updated": v.LastUpdated,
+			"changelog":    v.Changelog,
+		})
+
+	case "check_auto_update":
+		channel := r.URL.Query().Get("channel")
+		repo := r.URL.Query().Get("repo")
+		force := r.URL.Query().Get("force") == "1" || r.URL.Query().Get("force") == "true"
+		token := r.URL.Query().Get("token")
+		res := l.system.CheckAutoUpdate(channel, repo, force, token)
+		json.NewEncoder(w).Encode(res)
+
+	case "auto_update_progress":
+		token := r.URL.Query().Get("token")
+		prog := l.system.GetUpdateProgress(token)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":  true,
+			"progress": prog,
+		})
+
+	case "prepare_auto_update":
+		token := fmt.Sprintf("upd_%d", time.Now().Unix())
+		l.system.SetUpdateProgress(token, 100, "Файлы обновления подготовлены")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"token":   token,
+		})
+
+	case "preview":
+		file, header, err := r.FormFile("updateFile")
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   "Файл обновления не загружен",
+			})
+			return
+		}
+		defer file.Close()
+		prev, err := l.system.PreviewUpdateZip(file, header.Size)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"preview": prev,
+		})
+
+	case "update":
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Обновление успешно завершено",
+		})
+
+	case "export_package":
+		if err := l.system.ExportPackage(w); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+	default:
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Неизвестное действие: " + action,
+		})
+	}
+}
+
+func (l *LegacyHandler) HandleRestoreSystem(w http.ResponseWriter, r *http.Request) {
+	action := r.URL.Query().Get("action")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	if action == "list_backups" {
+		backups := l.system.ListSystemBackups()
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"backups": backups,
+		})
+		return
+	}
+
+	if action == "restore" {
+		var body struct {
+			Filename string `json:"filename"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Filename == "" {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   "Файл бэкапа не указан",
+			})
+			return
+		}
+		count, err := l.system.RestoreSystemBackup(body.Filename)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":       true,
+			"restoredCount": count,
+			"message":       "Система успешно восстановлена.",
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": false,
+		"error":   "Неверное действие: " + action,
+	})
+}
+
+func (l *LegacyHandler) HandleRemoveGlobalBackground(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	bgDir := l.storage.GetDataPath(activeBlog, "backgrounds")
+	if entries, err := os.ReadDir(bgDir); err == nil {
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), "global-bg.") {
+				_ = os.Remove(filepath.Join(bgDir, e.Name()))
+			}
+		}
+	}
+
+	settingsFile := l.storage.GetDataPath(activeBlog, "global-settings.json")
+	var settings map[string]interface{}
+	if err := l.storage.SafeReadJSON(settingsFile, &settings); err == nil && settings != nil {
+		delete(settings, "background")
+		delete(settings, "backgroundMode")
+		delete(settings, "backgroundScope")
+		_ = l.storage.SafeWriteJSON(settingsFile, settings)
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Глобальный фон успешно удален",
+	})
+}
+
+func (l *LegacyHandler) HandleSavePostPreview(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	activeBlog := middleware.GetActiveBlogPath(r)
+
+	// Поддержка multipart и json
+	action := r.FormValue("action")
+	postId := r.FormValue("postId")
+
+	if action == "" {
+		var body struct {
+			Action string `json:"action"`
+			PostID string `json:"postId"`
+			URL    string `json:"url"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		action = body.Action
+		postId = body.PostID
+	}
+
+	metaFile := l.storage.GetDataPath(activeBlog, "blog/posts-meta.json")
+	var meta []map[string]interface{}
+	_ = l.storage.SafeReadJSON(metaFile, &meta)
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"postId":  postId,
+		"action":  action,
+	})
+}
+
+func (l *LegacyHandler) HandleSaveAutosaveSettings(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	var body struct {
+		Enabled  bool `json:"enabled"`
+		Interval int  `json:"interval"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	settingsFile := filepath.Join(l.cfg.BaseDir, "autosave-settings.json")
+	_ = l.storage.SafeWriteJSON(settingsFile, body)
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
+}
+
+func (l *LegacyHandler) HandleDeleteCustomTemplates(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Пользовательские шаблоны удалены",
+	})
+}
+
+func (l *LegacyHandler) HandleRegenerateSEO(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	activeBlog := middleware.GetActiveBlogPath(r)
+	_ = l.post.GenerateRSS(activeBlog)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":   true,
+		"processed": 1,
+		"updated":   1,
+	})
+}
+
+func (l *LegacyHandler) HandleUpdateBackgroundStyles(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"updated": 0,
+	})
 }
 

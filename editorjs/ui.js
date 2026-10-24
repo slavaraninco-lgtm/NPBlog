@@ -1,6 +1,9 @@
 function loadEditorCustomFonts() {
-    fetch('get_custom_fonts.php')
-        .then(response => response.json())
+    const fetchFonts = (window.api && window.api.media)
+        ? window.api.media.listFonts().then(fonts => ({ success: true, fonts }))
+        : fetch('/get_custom_fonts.php').then(response => response.json());
+
+    fetchFonts
         .then(data => {
             if (data.success && data.fonts.length > 0) {
                 let styleTag = document.getElementById('editorCustomFontsStyles');

@@ -557,7 +557,7 @@ async function processSafeModeZipFile(file) {
         const headers = {};
         if (csrf) headers['X-CSRF-Token'] = csrf;
 
-        const response = await fetch('update_system.php?action=preview', {
+        const response = await fetch('/update_system.php?action=preview', {
             method: 'POST',
             headers: headers,
             body: formData
@@ -637,7 +637,7 @@ async function startSafeModeRestoreProcess() {
         const headers = { 'Content-Type': 'application/json' };
         if (csrf) headers['X-CSRF-Token'] = csrf;
 
-        const response = await fetch('update_system.php?action=update', {
+        const response = await fetch('/update_system.php?action=update', {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({
@@ -1089,8 +1089,8 @@ window.addEventListener('load', function() {
         </div>
     </header>
 
-    <form id="blogForm">
-        <input class="content228 editor-field" type="text" id="title" placeholder="Заголовок статьи" data-i18n-placeholder="header.placeholder_title" required>
+    <form id="blogForm" autocomplete="off">
+        <input class="content228 editor-field" type="text" id="title" placeholder="Заголовок статьи" data-i18n-placeholder="header.placeholder_title" autocomplete="off" required>
         <textarea class="content228 editor-field" id="content" placeholder="Содержание статьи" data-i18n-placeholder="header.placeholder_content" style="display:none;"></textarea>
         <div id="contentVisual" class="content228 editor-field" contenteditable="true"></div>
     </form>
@@ -4053,7 +4053,7 @@ window.addEventListener('load', function() {
 
 <script src="modals/modal.js?v=1792335621"></script>
 <script src="editorjs/api.js?v=1"></script>
-<script src="editorjs/core.js?v=1788820702"></script>
+<script src="editorjs/core.js?v=1792791201"></script>
 <script src="editorjs/notifications.js?v=1788459283"></script>
 <script src="editorjs/drafts.js?v=1792233378"></script>
 <script src="editorjs/history.js?v=1792334209"></script>
@@ -4070,7 +4070,7 @@ window.addEventListener('load', function() {
 <script src="editorjs/ascii-drawer.js?v=1788254967"></script>
 <script src="editorjs/smooth-typing.js?v=1792335627"></script>
 <script src="editorjs/markdown.js?v=1789428596"></script>
-<script src="editorjs/templates.js?v=1791644217"></script>
+<script src="editorjs/templates.js?v=1792791202"></script>
 <script src="editorjs/smiles.js?v=1788254967"></script>
 <script src="editorjs/custom-button.js?v=1788254967"></script>
 <script src="editorjs/formula.js?v=1790341498"></script>
@@ -5328,7 +5328,7 @@ window.addEventListener('load', function() {
                     <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="modal-btn modal-btn-primary" style="width: 100%; justify-content: center; padding: 12px;" data-i18n="modals.sys_select_btn">
                         📦 Выбрать архив (.zip)
                     </button>
-                    <a href="update_system.php?action=export_package" class="modal-btn modal-btn-secondary" style="width: 100%; justify-content: center; padding: 8px 12px; font-size: 13px; text-decoration: none;" data-i18n="modals.sys_export_btn">
+                    <a href="/update_system.php?action=export_package" class="modal-btn modal-btn-secondary" style="width: 100%; justify-content: center; padding: 8px 12px; font-size: 13px; text-decoration: none;" data-i18n="modals.sys_export_btn">
                         💾 Скачать готовый архив обновления (.zip)
                     </a>
                 </div>
@@ -7922,7 +7922,7 @@ function openRestoreModal() {
     const list = document.getElementById('restoreBackupsList');
     list.innerHTML = '<div style="text-align: center; padding: 20px; opacity: 0.6;">Загрузка...</div>';
     
-    fetch('restore_system.php?action=list_backups')
+    fetch('/restore_system.php?action=list_backups')
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -7969,7 +7969,7 @@ async function startRestore(filename) {
     
     document.getElementById('restoreProgressContainer').style.display = 'flex';
     
-    fetch('restore_system.php?action=restore', {
+    fetch('/restore_system.php?action=restore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: filename })
@@ -11480,8 +11480,8 @@ function openSystemUpdateModal() {
     if (updateBtn) updateBtn.style.display = 'flex';
     if (updateInput) updateInput.value = '';
     
-    // Fetch current version via PHP endpoint
-    fetch('update_system.php?action=get_version&t=' + Date.now())
+    // Fetch current version via endpoint
+    fetch('/update_system.php?action=get_version&t=' + Date.now())
         .then(response => {
             if (!response.ok) throw new Error('version not found');
             return response.json();
@@ -11538,7 +11538,7 @@ function handleSystemUpdatePreview() {
     document.getElementById('updateStatusText').textContent = 'Анализ архива...';
     document.getElementById('updateProgressBar').style.width = '30%';
 
-    fetch('update_system.php?action=preview', {
+    fetch('/update_system.php?action=preview', {
         method: 'POST',
         body: formData
     })
@@ -11608,7 +11608,7 @@ function startSystemUpdateProcess() {
     document.getElementById('updateStatusText').textContent = 'Создание бекапа проекта и обновление файлов... (не закрывайте вкладку)';
     document.getElementById('updateProgressBar').style.width = '70%';
 
-    fetch('update_system.php?action=update', {
+    fetch('/update_system.php?action=update', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -11782,7 +11782,7 @@ function checkSystemAutoUpdate(isManual = false) {
     const channelParam = chanEl ? encodeURIComponent(chanEl.value) : '';
     const repoParam = repoEl ? encodeURIComponent(repoEl.value.trim()) : '';
     
-    let url = 'update_system.php?action=check_auto_update&t=' + Date.now();
+    let url = '/update_system.php?action=check_auto_update&t=' + Date.now();
     if (isManual) {
         url += '&force=1';
     }
@@ -11926,7 +11926,7 @@ function startAutoUpdateProcess() {
     const startProgressPolling = (token) => {
         if (autoUpdatePollTimer) clearInterval(autoUpdatePollTimer);
         autoUpdatePollTimer = setInterval(() => {
-            fetch('update_system.php?action=auto_update_progress&token=' + encodeURIComponent(token) + '&t=' + Date.now())
+            fetch('/update_system.php?action=auto_update_progress&token=' + encodeURIComponent(token) + '&t=' + Date.now())
                 .then(r => r.json())
                 .then(res => {
                     if (res.success && res.progress) {
@@ -11952,7 +11952,7 @@ function startAutoUpdateProcess() {
         changelog: currentAutoUpdateData.changelog || []
     };
     
-    fetch('update_system.php?action=prepare_auto_update', {
+    fetch('/update_system.php?action=prepare_auto_update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -11984,7 +11984,7 @@ function startAutoUpdateProcess() {
         if (detailText) detailText.textContent = window.t ? window.t('modals.auto_update_safe_copy', 'Резервное копирование и атомарная установка...') : 'Резервное копирование и атомарная установка...';
         
         // Шаг 2: Применение обновления через существующую систему update_system.php?action=update
-        return fetch('update_system.php?action=update', {
+        return fetch('/update_system.php?action=update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -12129,7 +12129,7 @@ function loadUpdateSuccessChangelog(versionOverride) {
             '</div>';
     }
 
-    fetch('update_system.php?action=get_changelog&t=' + Date.now())
+    fetch('/update_system.php?action=get_changelog&t=' + Date.now())
         .then(response => {
             if (!response.ok) throw new Error('Network error');
             return response.json();

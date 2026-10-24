@@ -1,4 +1,14 @@
 {
+    "crossBlogNav": [
+        {
+            "text": "Блог",
+            "url": "../data/blog.html"
+        },
+        {
+            "text": "тест",
+            "url": "../data_test/blog.html"
+        }
+    ],
     "layout": "list",
     "title": "Мой новый блог"
 }

@@ -210,6 +210,168 @@
                 return await request(`/api/v1/posts/${id}`, {
                     method: 'DELETE'
                 });
+            },
+            async renumber() {
+                return await request('/api/v1/posts/renumber', {
+                    method: 'POST'
+                });
+            },
+            async togglePin(id) {
+                return await request(`/api/v1/posts/${id}/pin`, {
+                    method: 'POST'
+                });
+            },
+            async regenerate() {
+                return await request('/api/v1/posts/regenerate', {
+                    method: 'POST'
+                });
+            }
+        },
+
+        // --- History ---
+        history: {
+            async list() {
+                const res = await request('/api/v1/system/history');
+                return res.data && res.data.history ? res.data.history : (res.history || []);
+            },
+            async save(action, details) {
+                return await request('/api/v1/system/history', {
+                    method: 'POST',
+                    body: { action, details: details || '' }
+                });
+            },
+            async clear() {
+                return await request('/api/v1/system/history', {
+                    method: 'DELETE'
+                });
+            }
+        },
+
+        // --- System & Updates ---
+        system: {
+            async getVersion() {
+                const res = await request('/api/v1/system/version?t=' + Date.now());
+                return res.data || res;
+            },
+            async getChangelog() {
+                const res = await request('/api/v1/system/changelog?t=' + Date.now());
+                return res.data || res;
+            },
+            async checkAutoUpdate(params = {}) {
+                const qs = new URLSearchParams(params).toString();
+                const res = await request(`/api/v1/system/updates/check?${qs}`);
+                return res.data || res;
+            },
+            async prepareAutoUpdate(data) {
+                const res = await request('/api/v1/system/updates/prepare', {
+                    method: 'POST',
+                    body: data || {}
+                });
+                return res.data || res;
+            },
+            async getUpdateProgress(token) {
+                const res = await request(`/api/v1/system/updates/progress?token=${encodeURIComponent(token)}&t=${Date.now()}`);
+                return res.data || res;
+            },
+            async listBackups() {
+                const res = await request('/api/v1/system/backups');
+                return res.data && res.data.backups ? res.data.backups : (res.backups || []);
+            },
+            async restoreBackup(filename) {
+                return await request('/api/v1/system/restore', {
+                    method: 'POST',
+                    body: { filename }
+                });
+            }
+        },
+
+        // --- Integrity ---
+        integrity: {
+            async check() {
+                const res = await request('/api/v1/system/integrity');
+                return res.data || res;
+            },
+            async fix() {
+                const res = await request('/api/v1/system/integrity/fix', {
+                    method: 'POST'
+                });
+                return res.data || res;
+            }
+        },
+
+        // --- Backups ---
+        backups: {
+            async list() {
+                const res = await request('/api/v1/backups');
+                return res.data && res.data.backups ? res.data.backups : (res.backups || []);
+            },
+            async get(postId, backupNum) {
+                const res = await request(`/api/v1/backups/content?postId=${postId}&backup=${backupNum}`);
+                return res.data || res;
+            },
+            async restore(postId, backupNum) {
+                return await request('/api/v1/backups/restore', {
+                    method: 'POST',
+                    body: { postId, backupNumber: backupNum }
+                });
+            },
+            async delete(postId, backupNum) {
+                return await request(`/api/v1/backups?postId=${postId}&backup=${backupNum}`, {
+                    method: 'DELETE'
+                });
+            }
+        },
+
+        // --- Media & Files ---
+        media: {
+            async listSmiles() {
+                const res = await request('/api/v1/media/smiles?t=' + Date.now());
+                return res.data && res.data.smiles ? res.data.smiles : (res.smiles || {});
+            },
+            async listDocuments() {
+                const res = await request('/api/v1/media/documents?t=' + Date.now());
+                return res.data && res.data.files ? res.data.files : (res.files || []);
+            },
+            async deleteDocument(filename) {
+                return await request(`/api/v1/media/documents/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+            },
+            async listAudio() {
+                const res = await request('/api/v1/media/audio?t=' + Date.now());
+                return res.data && res.data.files ? res.data.files : (res.files || []);
+            },
+            async deleteAudio(filename) {
+                return await request(`/api/v1/media/audio/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+            },
+            async listVideo() {
+                const res = await request('/api/v1/media/video?t=' + Date.now());
+                return res.data && res.data.files ? res.data.files : (res.files || []);
+            },
+            async deleteVideo(filename) {
+                return await request(`/api/v1/media/video/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+            },
+            async listFonts() {
+                const res = await request('/api/v1/media/fonts?t=' + Date.now());
+                return res.data && res.data.fonts ? res.data.fonts : (res.fonts || []);
+            }
+        },
+
+        // --- Templates ---
+        templates: {
+            async list() {
+                const res = await request('/api/v1/templates?t=' + Date.now());
+                return res.data && res.data.templates ? res.data.templates : (res.templates || []);
+            },
+            async apply(templateName) {
+                return await request('/api/v1/templates/apply', {
+                    method: 'POST',
+                    body: { template_name: templateName }
+                });
             }
         }
     };

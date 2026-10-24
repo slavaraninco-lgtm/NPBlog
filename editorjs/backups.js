@@ -14,17 +14,15 @@ async function openBackupManager() {
     }
 
     try {
-        const response = await fetch('get_backups.php');
-        const data = await response.json();
+        const fetchBackups = (window.api && window.api.backups)
+            ? window.api.backups.list()
+            : fetch('/get_backups.php').then(r => r.json()).then(d => d.backups || (d.data && d.data.backups) || {});
+        const backups = await fetchBackups;
 
-        if (data.success) {
-            if (Object.keys(data.backups).length === 0) {
-                if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_no_backups', 'Нет сохраненных бэкапов') : 'Нет сохраненных бэкапов') + '</div>';
-            } else {
-                renderBackups(data.backups);
-            }
+        if (Object.keys(backups).length === 0) {
+            if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_no_backups', 'Нет сохраненных бэкапов') : 'Нет сохраненных бэкапов') + '</div>';
         } else {
-            if (content) content.innerHTML = '<div class="backup-empty">' + (window.t ? window.t('modals.backup_load_error', 'Ошибка загрузки бэкапов') : 'Ошибка загрузки бэкапов') + '</div>';
+            renderBackups(backups);
         }
     } catch (error) {
         console.error('Ошибка загрузки бэкапов:', error);
@@ -103,7 +101,7 @@ function toggleBackupGroup(postId) {
 
 async function viewBackup(postId, filename) {
     try {
-        const response = await fetch('get_backup_content.php', {
+        const response = await fetch('/get_backup_content.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json; charset=utf-8',
@@ -138,7 +136,7 @@ function restoreBackup(postId, filename, backupNumber, backupDate) {
         showNotification('Восстановление бэкапа...', 'info');
 
         try {
-            const response = await fetch('restore_backup.php', {
+            const response = await fetch('/restore_backup.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json; charset=utf-8',
@@ -184,7 +182,7 @@ function deleteBackup(postId, filename, backupNumber, backupDate) {
         showNotification('Удаление бэкапа...', 'info');
 
         try {
-            const response = await fetch('delete_backup.php', {
+            const response = await fetch('/delete_backup.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json; charset=utf-8',
