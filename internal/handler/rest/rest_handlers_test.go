@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -319,6 +320,97 @@ func TestRestEditorSettings(t *testing.T) {
 
 	if wPut.Code != http.StatusOK {
 		t.Fatalf("Expected 200 on update editor settings, got %d: %s", wPut.Code, wPut.Body.String())
+	}
+
+	// 3. Security: Enable password for the first time
+	secPayload := map[string]interface{}{
+		"password_enabled": true,
+		"new_password":     "supersecret123",
+	}
+	bodySec, _ := json.Marshal(secPayload)
+	reqSec := httptest.NewRequest(http.MethodPut, "/api/v1/settings/editor", bytes.NewReader(bodySec))
+	reqSec.Header.Set("Content-Type", "application/json")
+	wSec := httptest.NewRecorder()
+	router.ServeHTTP(wSec, reqSec)
+	if wSec.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on enabling password, got %d: %s", wSec.Code, wSec.Body.String())
+	}
+
+	// 4. Verify password_set is true and hash is not leaked
+	reqGetSec := httptest.NewRequest(http.MethodGet, "/api/v1/settings/editor", nil)
+	wGetSec := httptest.NewRecorder()
+	router.ServeHTTP(wGetSec, reqGetSec)
+	var getResp struct {
+		Data struct {
+			Settings map[string]interface{} `json:"settings"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(wGetSec.Body.Bytes(), &getResp)
+	if getResp.Data.Settings["password_set"] != true {
+		t.Fatalf("Expected password_set == true, got %v", getResp.Data.Settings["password_set"])
+	}
+	if _, leaked := getResp.Data.Settings["password_hash"]; leaked {
+		t.Fatalf("password_hash must not be leaked to client!")
+	}
+
+	// 5. Try to change password with wrong old password
+	wrongChangePayload := map[string]interface{}{
+		"password_enabled": true,
+		"old_password":     "wrongpassword",
+		"new_password":     "newsupersecret456",
+	}
+	bodyWrong, _ := json.Marshal(wrongChangePayload)
+	reqWrong := httptest.NewRequest(http.MethodPut, "/api/v1/settings/editor", bytes.NewReader(bodyWrong))
+	reqWrong.Header.Set("Content-Type", "application/json")
+	wWrong := httptest.NewRecorder()
+	router.ServeHTTP(wWrong, reqWrong)
+	if wWrong.Code != http.StatusBadRequest {
+		t.Fatalf("Expected 400 on wrong old password, got %d: %s", wWrong.Code, wWrong.Body.String())
+	}
+
+	// 6. Disable password with correct password
+	disablePayload := map[string]interface{}{
+		"password_enabled": false,
+		"old_password":     "supersecret123",
+	}
+	bodyDisable, _ := json.Marshal(disablePayload)
+	reqDisable := httptest.NewRequest(http.MethodPut, "/api/v1/settings/editor", bytes.NewReader(bodyDisable))
+	reqDisable.Header.Set("Content-Type", "application/json")
+	wDisable := httptest.NewRecorder()
+	router.ServeHTTP(wDisable, reqDisable)
+	if wDisable.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on disable password, got %d: %s", wDisable.Code, wDisable.Body.String())
+	}
+
+	// 7. Verify password is now disabled
+	wGetDisabled := httptest.NewRecorder()
+	router.ServeHTTP(wGetDisabled, httptest.NewRequest(http.MethodGet, "/api/v1/settings/editor", nil))
+	var getDisabledResp struct {
+		Data struct {
+			Settings map[string]interface{} `json:"settings"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(wGetDisabled.Body.Bytes(), &getDisabledResp)
+	if getDisabledResp.Data.Settings["password_set"] != false {
+		t.Fatalf("Expected password_set == false, got %v", getDisabledResp.Data.Settings["password_set"])
+	}
+
+	// 8. Enable IP Whitelist and verify allowed_ips.txt
+	ipPayload := map[string]interface{}{
+		"ip_whitelist_enabled": true,
+	}
+	bodyIP, _ := json.Marshal(ipPayload)
+	reqIP := httptest.NewRequest(http.MethodPut, "/api/v1/settings/editor", bytes.NewReader(bodyIP))
+	reqIP.Header.Set("Content-Type", "application/json")
+	reqIP.RemoteAddr = "192.168.1.100:12345"
+	wIP := httptest.NewRecorder()
+	router.ServeHTTP(wIP, reqIP)
+	if wIP.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on IP whitelist enable, got %d: %s", wIP.Code, wIP.Body.String())
+	}
+	allowedBytes, err := os.ReadFile(filepath.Join(tmpDir, "allowed_ips.txt"))
+	if err != nil || !strings.Contains(string(allowedBytes), "192.168.1.100") {
+		t.Fatalf("Expected allowed_ips.txt to contain 192.168.1.100, got %s (err: %v)", string(allowedBytes), err)
 	}
 }
 

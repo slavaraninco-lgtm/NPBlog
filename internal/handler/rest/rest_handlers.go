@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/crypto/bcrypt"
 	"npblog/internal/config"
 	"npblog/internal/domain"
 	"npblog/internal/middleware"
@@ -134,7 +135,10 @@ func (h *RestHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RestHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	h.jsonSuccess(w, http.StatusOK, "Токен успешно отозван", nil, nil)
+	if cookie, err := r.Cookie("npblog_session"); err == nil {
+		h.auth.DestroySession(w, cookie.Value)
+	}
+	h.jsonSuccess(w, http.StatusOK, "Сессия успешно завершена", nil, nil)
 }
 
 func (h *RestHandler) HandleMe(w http.ResponseWriter, r *http.Request) {
@@ -499,6 +503,22 @@ func (h *RestHandler) HandleGetEditorSettings(w http.ResponseWriter, r *http.Req
 	if settings == nil {
 		settings = make(map[string]interface{})
 	}
+
+	hasPassword := false
+	if ph, ok := settings["password_hash"].(string); ok && ph != "" {
+		hasPassword = true
+	}
+	delete(settings, "password_hash")
+	delete(settings, "new_password")
+	delete(settings, "old_password")
+	settings["password_set"] = hasPassword
+	settings["password_enabled"] = hasPassword
+	settings["resolved_backup_path"] = h.storage.GetBackupPath("")
+	settings["resolved_autosave_path"] = h.storage.GetAutosavePath("")
+	settings["resolved_editor_backup_path"] = filepath.Join(h.cfg.BaseDir, "data_backup")
+	settings["app_dir"] = h.cfg.BaseDir
+	settings["suggested_data_path"] = filepath.Join(h.cfg.BaseDir, "data")
+
 	h.jsonSuccess(w, http.StatusOK, "Настройки редактора получены", map[string]interface{}{
 		"settings": settings,
 	}, nil)
@@ -515,9 +535,74 @@ func (h *RestHandler) HandleUpdateEditorSettings(w http.ResponseWriter, r *http.
 	existingMap := make(map[string]interface{})
 	existingBytes, err := os.ReadFile(settingsPath)
 	if err == nil {
-		_ = json.Unmarshal(existingBytes, &existingMap)
+		if json.Unmarshal(existingBytes, &existingMap) != nil || existingMap == nil {
+			h.jsonError(w, http.StatusInternalServerError, "settings_corrupted", "Настройки повреждены; сохранение отменено", nil)
+			return
+		}
+	} else {
+		h.jsonError(w, http.StatusInternalServerError, "read_error", "Не удалось прочитать настройки", nil)
+		return
 	}
 
+	// Обработка паролей
+	newPassword, _ := updateMap["new_password"].(string)
+	oldPassword, _ := updateMap["old_password"].(string)
+	enabled, hasEnabled := updateMap["password_enabled"].(bool)
+	hash, _ := existingMap["password_hash"].(string)
+	pSet, hasPSet := existingMap["password_set"].(bool)
+	pEn, hasPEn := existingMap["password_enabled"].(bool)
+	isPasswordActive := hash != "" && ((hasPSet && pSet) || (hasPEn && pEn))
+
+	delete(updateMap, "new_password")
+	delete(updateMap, "old_password")
+	delete(updateMap, "password_hash")
+	delete(existingMap, "new_password")
+	delete(existingMap, "old_password")
+
+	if isPasswordActive {
+		// Пароль уже активен: изменение или отключение требует проверки старого пароля
+		if newPassword != "" || (hasEnabled && !enabled) {
+			if !h.auth.VerifyHash(hash, oldPassword) {
+				h.jsonError(w, http.StatusBadRequest, "invalid_password", "Неверный текущий пароль", nil)
+				return
+			}
+		}
+	}
+
+	if hasEnabled && !enabled {
+		hash = ""
+	} else if newPassword != "" {
+		encoded, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			h.jsonError(w, http.StatusBadRequest, "password_too_long", "Не удалось установить пароль (максимум 72 байта)", nil)
+			return
+		}
+		hash = string(encoded)
+	}
+
+	if hasEnabled && enabled && hash == "" && newPassword == "" {
+		h.jsonError(w, http.StatusBadRequest, "missing_password", "Укажите новый пароль", nil)
+		return
+	}
+
+	existingMap["password_hash"] = hash
+	existingMap["password_set"] = (hash != "")
+	existingMap["password_enabled"] = (hash != "")
+	updateMap["password_set"] = (hash != "")
+	updateMap["password_enabled"] = (hash != "")
+
+	// Обработка IP Whitelist: авто-добавление текущего IP при включении
+	if ipWhitelistVal, ok := updateMap["ip_whitelist_enabled"].(bool); ok {
+		existingMap["ip_whitelist_enabled"] = ipWhitelistVal
+		if ipWhitelistVal {
+			clientIP := h.auth.GetClientIP(r)
+			if clientIP != "" {
+				_ = h.auth.AddAllowedIP(clientIP)
+			}
+		}
+	}
+
+	// Слияние остальных полей
 	for k, v := range updateMap {
 		if k == "bottomBar" {
 			if newBB, ok := v.(map[string]interface{}); ok {
@@ -565,9 +650,21 @@ func (h *RestHandler) HandleUpdateEditorSettings(w http.ResponseWriter, r *http.
 	}
 
 	h.cfg.ReloadSettings()
+
+	if newPassword != "" {
+		h.auth.ResetLockout(h.auth.GetClientIP(r), middleware.GetActiveBlogPath(r))
+		_ = h.auth.CreateSession(w)
+	}
+
+	sanitizedMap := make(map[string]interface{})
+	for k, v := range existingMap {
+		sanitizedMap[k] = v
+	}
+	delete(sanitizedMap, "password_hash")
+
 	h.jsonSuccess(w, http.StatusOK, "Настройки редактора обновлены", map[string]interface{}{
-		"settings": existingMap,
-		"blogUrl":  "/data/blog.html",
+		"settings": sanitizedMap,
+		"blogUrl":  "/" + filepath.Base(h.storage.GetDataPath(h.cfg.GetSettings().ActiveBlogPath, "")) + "/blog.html",
 	}, nil)
 }
 

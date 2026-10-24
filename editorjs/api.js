@@ -33,7 +33,19 @@
             body
         };
 
-        const response = await fetch(url, config);
+        let response;
+        try {
+            response = await fetch(url, config);
+        } catch (fetchErr) {
+            if (window.ConnectionMonitor) {
+                window.ConnectionMonitor.notifyLost();
+            }
+            throw fetchErr;
+        }
+
+        if (response.ok && window.ConnectionMonitor && !window.ConnectionMonitor.isOnline()) {
+            window.ConnectionMonitor.notifyRestored();
+        }
         
         let json;
         try {
@@ -60,6 +72,16 @@
 
     const api = {
         request,
+
+        // --- Auth ---
+        auth: {
+            async logout() {
+                const res = await request('/api/v1/auth/logout', {
+                    method: 'POST'
+                });
+                return res.data || res;
+            }
+        },
 
         // --- Autosaves ---
         autosaves: {

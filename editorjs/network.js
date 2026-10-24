@@ -613,4 +613,146 @@ if (fontSizeCustomMainInput) {
             applyCustomFontSize('fontSizeWrapMain');
         }
     });
-}
+}
+
+/**
+ * ==============================================================================
+ * Connection Monitor - Server Health & Auto-Reconnection Controller
+ * ==============================================================================
+ */
+(function(window) {
+    'use strict';
+
+    let isConnectionLost = false;
+    let heartbeatTimer = null;
+    let reconnectTimer = null;
+    let consecutiveFailures = 0;
+    const HEARTBEAT_INTERVAL = 8000; // 8 секунд в штатном режиме
+    const RECONNECT_INTERVAL = 1500; // 1.5 секунды при потере соединения
+    const PING_TIMEOUT = 3000;       // 3 секунды таймаут на опрос
+
+    async function pingServer() {
+        if (!navigator.onLine) {
+            return false;
+        }
+
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), PING_TIMEOUT) : null;
+
+        try {
+            const resp = await fetch('/api/v1/system/status?t=' + Date.now(), {
+                method: 'GET',
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json' },
+                signal: controller ? controller.signal : undefined
+            });
+            if (timeoutId) clearTimeout(timeoutId);
+            return resp.ok;
+        } catch (err) {
+            if (timeoutId) clearTimeout(timeoutId);
+            return false;
+        }
+    }
+
+    function showConnectionLostModal() {
+        if (isConnectionLost) return;
+        isConnectionLost = true;
+
+        if (window.Modal) {
+            window.Modal.open('#connectionLostModal');
+        } else {
+            const el = document.getElementById('connectionLostModal');
+            if (el) {
+                el.classList.add('show', 'active');
+                el.style.display = 'flex';
+            }
+        }
+
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+
+        if (!reconnectTimer) {
+            reconnectTimer = setInterval(async () => {
+                const ok = await pingServer();
+                if (ok) {
+                    hideConnectionLostModal();
+                }
+            }, RECONNECT_INTERVAL);
+        }
+    }
+
+    function hideConnectionLostModal() {
+        if (!isConnectionLost) return;
+        isConnectionLost = false;
+        consecutiveFailures = 0;
+
+        if (reconnectTimer) {
+            clearInterval(reconnectTimer);
+            reconnectTimer = null;
+        }
+
+        if (window.Modal) {
+            window.Modal.close('#connectionLostModal');
+        } else {
+            const el = document.getElementById('connectionLostModal');
+            if (el) {
+                el.classList.remove('show', 'active');
+                el.style.display = 'none';
+            }
+        }
+
+        if (typeof showNotification === 'function') {
+            const msg = window.t
+                ? window.t('notifications.connection_restored', 'Соединение с сервером успешно восстановлено!')
+                : 'Соединение с сервером успешно восстановлено!';
+            showNotification(msg, 'success');
+        }
+
+        startHeartbeat();
+    }
+
+    async function checkHealth() {
+        const ok = await pingServer();
+        if (ok) {
+            if (isConnectionLost) {
+                hideConnectionLostModal();
+            } else {
+                consecutiveFailures = 0;
+            }
+        } else {
+            consecutiveFailures++;
+            if (consecutiveFailures >= 1) {
+                showConnectionLostModal();
+            }
+        }
+    }
+
+    function startHeartbeat() {
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        heartbeatTimer = setInterval(checkHealth, HEARTBEAT_INTERVAL);
+    }
+
+    window.addEventListener('offline', () => {
+        showConnectionLostModal();
+    });
+
+    window.addEventListener('online', () => {
+        checkHealth();
+    });
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(startHeartbeat, 3000);
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(startHeartbeat, 3000);
+        });
+    }
+
+    window.ConnectionMonitor = {
+        isOnline: () => !isConnectionLost,
+        notifyLost: () => showConnectionLostModal(),
+        notifyRestored: () => hideConnectionLostModal(),
+        checkNow: checkHealth
+    };
+})(window);
+

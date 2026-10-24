@@ -82,11 +82,22 @@ func (s *SystemService) GetChangelog() []string {
 // CheckAutoUpdate проверяет наличие обновлений на GitHub (Releases или Canary)
 func (s *SystemService) CheckAutoUpdate(channel, repo string, force bool, githubToken string) UpdateCheckResult {
 	current := s.GetVersion()
+	settings := s.cfg.GetSettings()
+
+	if repo == "" {
+		repo = settings.UpdateRepo
+	}
 	if repo == "" {
 		repo = "slavaraninco-lgtm/NPBlog"
 	}
+	if channel == "" {
+		channel = settings.UpdateChannel
+	}
 	if channel != "canary" {
 		channel = "stable"
+	}
+	if githubToken == "" {
+		githubToken = settings.UpdateGithubToken
 	}
 
 	res := UpdateCheckResult{

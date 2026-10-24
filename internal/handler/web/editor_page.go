@@ -259,6 +259,11 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 
 	hasPassword := settings.PasswordHash != ""
 
+	lockBtnDisplay := "none"
+	if hasPassword {
+		lockBtnDisplay = "block"
+	}
+
 	// Подстановка чистых плейсхолдеров
 	content = strings.ReplaceAll(content, "{{CSRF_TOKEN}}", csrfToken)
 	content = strings.ReplaceAll(content, "{{AVAILABLE_LANGUAGES}}", string(langBytes))
@@ -270,6 +275,7 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 	content = strings.ReplaceAll(content, "{{VERSION}}", version)
 	content = strings.ReplaceAll(content, "{{SETUP_DEFAULT_DATA_PATH}}", fmt.Sprintf("%q", defaultDataPath))
 	content = strings.ReplaceAll(content, "{{SETUP_HAS_PASSWORD}}", fmt.Sprintf("%t", hasPassword))
+	content = strings.ReplaceAll(content, "{{LOCK_BTN_DISPLAY}}", lockBtnDisplay)
 	content = strings.ReplaceAll(content, "{{AMOLED_ATTR}}", amoledAttr)
 	content = strings.ReplaceAll(content, "{{DISABLE_ANIMATIONS_ATTR}}", disableAnimAttr)
 

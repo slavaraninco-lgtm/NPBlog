@@ -744,6 +744,29 @@ window.addEventListener('load', function() {
 });
 </script>
     
+    <!-- Модальное окно потери соединения с сервером -->
+    <div id="connectionLostModal" class="modal-overlay" data-size="sm" data-backdrop-close="false" data-esc-close="false" style="z-index: 99999;">
+        <div class="modal-dialog modal-sm" style="text-align: center; max-width: 420px;">
+            <div class="modal-body" style="padding: 32px 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;">
+                <div class="modal-titles" style="text-align: center;">
+                    <h3 class="modal-title" style="font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; color: var(--modal-text);" data-i18n="modals.connection_lost_title">Потеряно соединение с сервером</h3>
+                    <p class="modal-subtitle" style="font-size: 0.88rem; opacity: 0.75; margin: 0; color: var(--modal-text);" data-i18n="modals.connection_lost_subtitle">Редактор временно не может связаться с сервером</p>
+                </div>
+                
+                <div style="margin: 8px 0; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+                    <div class="modal-spinner" style="width: 36px; height: 36px; border-width: 3px; border-color: rgba(128, 128, 128, 0.2); border-top-color: var(--primary-color, #4f46e5);"></div>
+                    <div style="font-size: 0.92rem; font-weight: 600; color: var(--modal-text); display: flex; align-items: center; gap: 6px;">
+                        <span data-i18n="modals.connection_lost_reconnecting">Попытка восстановить соединение...</span>
+                    </div>
+                </div>
+
+                <p style="font-size: 0.8rem; opacity: 0.6; margin: 0; color: var(--modal-text); line-height: 1.4;" data-i18n="modals.connection_lost_hint">
+                    Пожалуйста, подождите или проверьте, запущен ли сервер
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Диалог подтверждения удаления -->
     <div id="deleteConfirmOverlay" class="modal-overlay" data-size="sm">
     <div class="modal-dialog modal-sm">
@@ -1083,7 +1106,8 @@ window.addEventListener('load', function() {
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openFtpModal()" data-i18n="header.menu_ftp_publish">Опубликовать по FTP</button>
                     <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='/data/blog.html'" data-i18n="header.menu_go_to_blog">Перейти к Blog.html</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openSystemUpdateModal()" data-i18n="header.menu_update_npblog">Обновить NPBlog</button>
-                                                            <div class="editor-menu-version">ver dev</div>
+                    <button type="button" class="editor-menu-item editor-menu-item-lock" id="lockEditorBtn" role="menuitem" onclick="lockEditor()" style="display: {{LOCK_BTN_DISPLAY}};" data-i18n="header.menu_lock">Заблокировать</button>
+                    <div class="editor-menu-version">ver dev</div>
                 </div>
             </div>
         </div>
@@ -5318,6 +5342,72 @@ window.addEventListener('load', function() {
                 </button>
             </div>
 
+            <!-- Блок проверки обновлений с GitHub -->
+            <div class="modal-section-card" id="systemGitHubUpdateCard" style="padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02));">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 16px;">🐙</span>
+                        <span style="font-weight: 600; font-size: 13.5px;" data-i18n="modals.sys_github_check_title">Проверка обновлений (GitHub)</span>
+                        <span id="systemGitHubChannelBadge" class="modal-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--border-color); color: var(--text-color); display: none;">Stable</span>
+                    </div>
+                    <button type="button" id="systemGitHubRecheckBtn" onclick="checkGitHubUpdateInModal(true)" class="modal-btn modal-btn-ghost" style="padding: 4px 8px; font-size: 12px; height: auto;" title="Проверить снова" data-i18n-title="modals.sys_github_check_btn">
+                        🔄 <span data-i18n="modals.sys_github_check_btn">Проверить снова</span>
+                    </button>
+                </div>
+
+                <!-- Состояние: Загрузка -->
+                <div id="systemGitHubLoading" style="display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-color); opacity: 0.85;">
+                    <div class="modal-spinner" style="width: 18px; height: 18px; border-width: 2px;"></div>
+                    <span data-i18n="modals.sys_github_checking">Проверка наличия обновлений на GitHub...</span>
+                </div>
+
+                <!-- Состояние: Версия актуальна -->
+                <div id="systemGitHubUpToDate" style="display: none; padding: 6px 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; color: var(--modal-color-success, #10b981); font-weight: 600; font-size: 13.5px;">
+                        <span>✅</span>
+                        <span id="systemGitHubUpToDateText" data-i18n="modals.sys_github_up_to_date">У вас установлена самая актуальная версия</span>
+                    </div>
+                    <p style="font-size: 12px; opacity: 0.7; margin: 4px 0 0 24px;" id="systemGitHubUpToDateDetail">Репозиторий актуален, обновлений не требуется.</p>
+                </div>
+
+                <!-- Состояние: Доступно обновление -->
+                <div id="systemGitHubAvailable" style="display: none; padding: 4px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 20px;">🚀</span>
+                            <div>
+                                <div style="font-weight: 700; font-size: 14px; color: var(--modal-color-primary, #3b82f6);" id="systemGitHubAvailableTitle">Доступна новая версия: ...</div>
+                                <div style="font-size: 12px; opacity: 0.75;" id="systemGitHubAvailableSubtitle">Нажмите кнопку для установки обновления</div>
+                            </div>
+                        </div>
+                        <button type="button" id="systemGitHubInstallBtn" onclick="installGitHubUpdateFromModal()" class="modal-btn modal-btn-primary" style="padding: 6px 14px; font-size: 13px;" data-i18n="modals.sys_github_install_btn">
+                            ✨ Обновить сейчас
+                        </button>
+                    </div>
+
+                    <!-- Список изменений (если есть) -->
+                    <div id="systemGitHubChangelogWrap" style="display: none; margin-top: 8px;">
+                        <div style="font-size: 12px; font-weight: 600; margin-bottom: 4px;" data-i18n="modals.auto_update_changelog_title">Список изменений:</div>
+                        <div id="systemGitHubChangelogList" style="max-height: 120px; overflow-y: auto; background: var(--bg-card, rgba(0,0,0,0.04)); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.5;"></div>
+                    </div>
+                </div>
+
+                <!-- Состояние: Ошибка -->
+                <div id="systemGitHubError" style="display: none; padding: 6px 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; color: var(--modal-color-warning, #f59e0b); font-size: 13px;">
+                        <span>⚠️</span>
+                        <span id="systemGitHubErrorText">Не удалось проверить обновления</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Разделитель: Ручная установка -->
+            <div id="systemUpdateDivider" style="display: flex; align-items: center; gap: 12px; margin: 18px 0 14px 0;">
+                <div style="flex: 1; height: 1px; background: var(--border-color); opacity: 0.4;"></div>
+                <span style="font-size: 12px; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;" data-i18n="modals.sys_or_local_archive">Или установка из локального архива (.zip)</span>
+                <div style="flex: 1; height: 1px; background: var(--border-color); opacity: 0.4;"></div>
+            </div>
+
             <!-- Шаг 1: Выбор архива -->
             <div id="updateSelectContainer">
                 <p class="modal-text" style="margin-bottom: 12px;" data-i18n="modals.sys_choose_archive">
@@ -5325,12 +5415,9 @@ window.addEventListener('load', function() {
                 </p>
                 <input type="file" id="systemUpdateInput" accept=".zip" style="display: none;" onchange="handleSystemUpdatePreview()">
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="modal-btn modal-btn-primary" style="width: 100%; justify-content: center; padding: 12px;" data-i18n="modals.sys_select_btn">
+                    <button type="button" id="systemUpdateBtn" onclick="document.getElementById('systemUpdateInput').click()" class="modal-btn modal-btn-secondary" style="width: 100%; justify-content: center; padding: 12px;" data-i18n="modals.sys_select_btn">
                         📦 Выбрать архив (.zip)
                     </button>
-                    <a href="/update_system.php?action=export_package" class="modal-btn modal-btn-secondary" style="width: 100%; justify-content: center; padding: 8px 12px; font-size: 13px; text-decoration: none;" data-i18n="modals.sys_export_btn">
-                        💾 Скачать готовый архив обновления (.zip)
-                    </a>
                 </div>
             </div>
 
@@ -10081,7 +10168,11 @@ function loadAndApplyAllSettings() {
                     currentResolvedEditorBackupPath.textContent = settings.resolved_editor_backup_path || settings.editor_backup_path || 'editor_backup';
                 }
                 
-                const passwordEnabled = settings.password_set || false;
+                const passwordEnabled = !!(settings.password_set || settings.password_enabled);
+                const lockBtn = document.getElementById('lockEditorBtn');
+                if (lockBtn) {
+                    lockBtn.style.display = passwordEnabled ? 'block' : 'none';
+                }
                 const ipWhitelistEnabled = settings.ip_whitelist_enabled || false;
                 
                 const ipWhitelistCheck = document.getElementById('settingsIpWhitelistEnabled');
@@ -10523,39 +10614,44 @@ function saveSecuritySettings() {
         }
     }
     
-    fetch('save_editor_settings.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const inputs = [
-                'settingsNewPassword', 'settingsConfirmPassword',
-                'changeSettingsOldPassword', 'changeSettingsNewPassword', 'changeSettingsConfirmPassword',
-                'disableSettingsPassword'
-            ];
-            inputs.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            
-            loadAndApplyAllSettings();
-            showAlert(window.t ? window.t('notifications.sec_settings_saved', 'Настройки безопасности успешно сохранены!') : 'Настройки безопасности успешно сохранены!');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        } else {
-            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + data.error, { error: data.error }) : 'Ошибка: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка:', error);
-        showAlert(window.t ? window.t('notifications.sec_save_error', 'Ошибка сохранения настроек безопасности') : 'Ошибка сохранения настроек безопасности');
-    });
+    const savePromise = (window.api && window.api.settings)
+        ? window.api.settings.updateEditor(payload)
+        : fetch('save_editor_settings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        }).then(response => response.json());
+
+    savePromise
+        .then(data => {
+            if (data && data.success !== false) {
+                const inputs = [
+                    'settingsNewPassword', 'settingsConfirmPassword',
+                    'changeSettingsOldPassword', 'changeSettingsNewPassword', 'changeSettingsConfirmPassword',
+                    'disableSettingsPassword'
+                ];
+                inputs.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                
+                loadAndApplyAllSettings();
+                showAlert(window.t ? window.t('notifications.sec_settings_saved', 'Настройки безопасности успешно сохранены!') : 'Настройки безопасности успешно сохранены!');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                const errMsg = (data && (data.message || data.error)) || 'Неизвестная ошибка';
+                showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + errMsg, { error: errMsg }) : 'Ошибка: ' + errMsg);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            const errMsg = error.message || error;
+            showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + errMsg, { error: errMsg }) : 'Ошибка: ' + errMsg);
+        });
 }
 
 // --- Функции управления путями к блогам ---
@@ -11263,19 +11359,22 @@ function saveCustomCssCode() {
 }
 
 function lockEditor() {
-    fetch('logout.php', { method: 'POST' })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
+    const logoutPromise = (window.api && window.api.auth)
+        ? window.api.auth.logout()
+        : fetch('logout.php', { method: 'POST' }).then(response => response.json());
+
+    logoutPromise
+        .then(data => {
+            if (!data || data.success !== false) {
+                window.location.reload();
+            } else {
+                showAlert(window.t ? window.t('notifications.lock_editor_failed', 'Не удалось заблокировать редактор') : 'Не удалось заблокировать редактор');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
             window.location.reload();
-        } else {
-            showAlert(window.t ? window.t('notifications.lock_editor_failed', 'Не удалось заблокировать редактор') : 'Не удалось заблокировать редактор');
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка:', error);
-        window.location.reload();
-    });
+        });
 }
 
 // Функции для работы с пользовательскими шрифтами
@@ -11454,6 +11553,154 @@ function applyCustomFont(fontName) {
 // Система обновления NPBlog
 let updateToken = '';
 let updateRootFolder = '';
+let lastGitHubUpdateData = null;
+
+function checkGitHubUpdateInModal(force = false) {
+    const card = document.getElementById('systemGitHubUpdateCard');
+    if (!card) return;
+
+    const loadingEl = document.getElementById('systemGitHubLoading');
+    const upToDateEl = document.getElementById('systemGitHubUpToDate');
+    const availableEl = document.getElementById('systemGitHubAvailable');
+    const errorEl = document.getElementById('systemGitHubError');
+    const recheckBtn = document.getElementById('systemGitHubRecheckBtn');
+    const badgeEl = document.getElementById('systemGitHubChannelBadge');
+
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (upToDateEl) upToDateEl.style.display = 'none';
+    if (availableEl) availableEl.style.display = 'none';
+    if (errorEl) errorEl.style.display = 'none';
+
+    if (recheckBtn) {
+        recheckBtn.disabled = true;
+        recheckBtn.style.opacity = '0.6';
+    }
+
+    const chanEl = document.getElementById('settingUpdateChannel');
+    const repoEl = document.getElementById('settingUpdateRepo');
+    const channelParam = chanEl ? encodeURIComponent(chanEl.value) : '';
+    const repoParam = repoEl ? encodeURIComponent(repoEl.value.trim()) : '';
+
+    let url = '/update_system.php?action=check_auto_update&t=' + Date.now();
+    if (force) {
+        url += '&force=1';
+    }
+    if (channelParam) url += '&channel=' + channelParam;
+    if (repoParam) url += '&repo=' + repoParam;
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (recheckBtn) {
+                recheckBtn.disabled = false;
+                recheckBtn.style.opacity = '1';
+            }
+
+            if (!data || !data.success) {
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    const errText = document.getElementById('systemGitHubErrorText');
+                    if (errText) {
+                        errText.textContent = (data && data.error) ? data.error : (window.t ? window.t('notifications.update_check_error', 'Не удалось проверить обновления') : 'Не удалось проверить обновления');
+                    }
+                }
+                return;
+            }
+
+            // Обновляем бейдж канала
+            if (badgeEl) {
+                badgeEl.style.display = 'inline-block';
+                if (data.channel === 'canary') {
+                    badgeEl.textContent = 'Canary';
+                    badgeEl.style.background = '#f59e0b';
+                    badgeEl.style.color = '#fff';
+                } else {
+                    badgeEl.textContent = 'Stable';
+                    badgeEl.style.background = 'var(--modal-color-success, #10b981)';
+                    badgeEl.style.color = '#fff';
+                }
+            }
+
+            // Обновляем отображение текущей версии если доступно
+            if (data.currentVersion) {
+                const versionEl = document.getElementById('currentSysVersion');
+                if (versionEl) {
+                    versionEl.textContent = data.currentVersion;
+                }
+            }
+
+            if (data.hasUpdate) {
+                lastGitHubUpdateData = data;
+                if (availableEl) {
+                    availableEl.style.display = 'block';
+                    const titleEl = document.getElementById('systemGitHubAvailableTitle');
+                    if (titleEl) {
+                        const verText = data.latestVersion || data.tag || 'New';
+                        titleEl.textContent = window.t ? window.t('modals.sys_github_update_available', 'Доступно обновление: {version}', { version: verText }) : `Доступно обновление: ${verText}`;
+                    }
+
+                    const clWrap = document.getElementById('systemGitHubChangelogWrap');
+                    const clList = document.getElementById('systemGitHubChangelogList');
+                    if (clWrap && clList) {
+                        clList.innerHTML = '';
+                        if (Array.isArray(data.changelog) && data.changelog.length > 0) {
+                            clWrap.style.display = 'block';
+                            const ul = document.createElement('ul');
+                            ul.style.cssText = 'margin: 0; padding-left: 18px; line-height: 1.5;';
+                            data.changelog.forEach(item => {
+                                const li = document.createElement('li');
+                                li.style.marginBottom = '3px';
+                                li.textContent = item;
+                                ul.appendChild(li);
+                            });
+                            clList.appendChild(ul);
+                        } else {
+                            clWrap.style.display = 'none';
+                        }
+                    }
+                }
+            } else {
+                lastGitHubUpdateData = null;
+                if (upToDateEl) {
+                    upToDateEl.style.display = 'block';
+                    const upText = document.getElementById('systemGitHubUpToDateText');
+                    if (upText) {
+                        const curVer = data.currentVersion || '';
+                        upText.textContent = window.t ? window.t('modals.sys_github_up_to_date', 'У вас установлена самая актуальная версия ({version})', { version: curVer }) : `У вас установлена самая актуальная версия (${curVer})`;
+                    }
+                    const upDetail = document.getElementById('systemGitHubUpToDateDetail');
+                    if (upDetail) {
+                        upDetail.textContent = window.t ? window.t('modals.sys_github_up_to_date_detail', 'Репозиторий {repo} ({channel}) актуален, обновлений не требуется.', { repo: data.repo || 'NPBlog', channel: data.channel || 'stable' }) : `Репозиторий ${data.repo || 'NPBlog'} (${data.channel || 'stable'}) актуален, обновлений не требуется.`;
+                    }
+                }
+            }
+        })
+        .catch(err => {
+            console.error('checkGitHubUpdateInModal error:', err);
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (recheckBtn) {
+                recheckBtn.disabled = false;
+                recheckBtn.style.opacity = '1';
+            }
+            if (errorEl) {
+                errorEl.style.display = 'block';
+                const errText = document.getElementById('systemGitHubErrorText');
+                if (errText) {
+                    errText.textContent = (err && err.message) ? err.message : (window.t ? window.t('notifications.update_check_error', 'Не удалось проверить обновления') : 'Не удалось проверить обновления');
+                }
+            }
+        });
+}
+
+function installGitHubUpdateFromModal() {
+    if (!lastGitHubUpdateData) return;
+    closeSystemUpdateModal();
+    openAutoUpdateModal(lastGitHubUpdateData);
+}
 
 function openSystemUpdateModal() {
     if (window.Modal) {
@@ -11472,13 +11719,22 @@ function openSystemUpdateModal() {
     const startBtn = document.getElementById('startUpdateProcessBtn');
     const updateBtn = document.getElementById('systemUpdateBtn');
     const updateInput = document.getElementById('systemUpdateInput');
+    const ghCard = document.getElementById('systemGitHubUpdateCard');
+    const ghDiv = document.getElementById('systemUpdateDivider');
+    const selectCont = document.getElementById('updateSelectContainer');
     
+    if (ghCard) ghCard.style.display = 'block';
+    if (ghDiv) ghDiv.style.display = 'flex';
+    if (selectCont) selectCont.style.display = 'block';
     if (previewContainer) previewContainer.style.display = 'none';
     if (progressContainer) progressContainer.style.display = 'none';
     if (successContainer) successContainer.style.display = 'none';
     if (startBtn) startBtn.style.display = 'none';
     if (updateBtn) updateBtn.style.display = 'flex';
     if (updateInput) updateInput.value = '';
+    
+    // Запускаем проверку обновлений GitHub
+    checkGitHubUpdateInModal(false);
     
     // Fetch current version via endpoint
     fetch('/update_system.php?action=get_version&t=' + Date.now())
@@ -11529,6 +11785,14 @@ function handleSystemUpdatePreview() {
     const input = document.getElementById('systemUpdateInput');
     const file = input.files[0];
     if (!file) return;
+
+    const ghCard = document.getElementById('systemGitHubUpdateCard');
+    const ghDiv = document.getElementById('systemUpdateDivider');
+    const selectCont = document.getElementById('updateSelectContainer');
+
+    if (ghCard) ghCard.style.display = 'none';
+    if (ghDiv) ghDiv.style.display = 'none';
+    if (selectCont) selectCont.style.display = 'none';
 
     const formData = new FormData();
     formData.append('updateFile', file);
@@ -11589,6 +11853,9 @@ function handleSystemUpdatePreview() {
             document.getElementById('updatePreviewContainer').style.display = 'flex';
         } else {
             showNotification(data.error ? ('Ошибка: ' + data.error) : (window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива'), 'error');
+            if (ghCard) ghCard.style.display = 'block';
+            if (ghDiv) ghDiv.style.display = 'flex';
+            if (selectCont) selectCont.style.display = 'block';
             document.getElementById('systemUpdateBtn').style.display = 'block';
             input.value = '';
         }
@@ -11597,6 +11864,9 @@ function handleSystemUpdatePreview() {
         console.error('Update preview error:', error);
         showNotification(error.message || (window.t ? window.t('notifications.update_analyze_error', 'Ошибка при анализе архива') : 'Ошибка при анализе архива'), 'error');
         document.getElementById('updateProgressContainer').style.display = 'none';
+        if (ghCard) ghCard.style.display = 'block';
+        if (ghDiv) ghDiv.style.display = 'flex';
+        if (selectCont) selectCont.style.display = 'block';
         document.getElementById('systemUpdateBtn').style.display = 'block';
         input.value = '';
     });

@@ -746,34 +746,57 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 	oldPassword, _ := updateMap["old_password"].(string)
 	enabled, hasEnabled := updateMap["password_enabled"].(bool)
 	hash, _ := existingMap["password_hash"].(string)
+	pSet, hasPSet := existingMap["password_set"].(bool)
+	pEn, hasPEn := existingMap["password_enabled"].(bool)
+	isPasswordActive := hash != "" && ((hasPSet && pSet) || (hasPEn && pEn))
+
 	delete(updateMap, "new_password")
 	delete(updateMap, "old_password")
 	delete(updateMap, "password_hash")
 	delete(existingMap, "new_password")
 	delete(existingMap, "old_password")
-	if newPassword != "" || (hasEnabled && !enabled && hash != "") {
-		if hash != "" && !l.auth.VerifyPassword(oldPassword) {
-			l.errorResponse(w, "Неверный текущий пароль")
-			return
-		}
-		if newPassword != "" {
-			encoded, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-			if err != nil {
-				l.errorResponse(w, "Не удалось установить пароль (максимум 72 байта)")
+
+	if isPasswordActive {
+		// Пароль уже активен: изменение или отключение требует проверки старого пароля
+		if newPassword != "" || (hasEnabled && !enabled) {
+			if !l.auth.VerifyHash(hash, oldPassword) {
+				l.errorResponse(w, "Неверный текущий пароль")
 				return
 			}
-			hash = string(encoded)
-		} else {
-			hash = ""
 		}
-		existingMap["password_hash"] = hash
 	}
-	if hasEnabled && enabled && hash == "" {
+
+	if hasEnabled && !enabled {
+		hash = ""
+	} else if newPassword != "" {
+		encoded, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			l.errorResponse(w, "Не удалось установить пароль (максимум 72 байта)")
+			return
+		}
+		hash = string(encoded)
+	}
+
+	if hasEnabled && enabled && hash == "" && newPassword == "" {
 		l.errorResponse(w, "Укажите новый пароль")
 		return
 	}
-	if hasEnabled || newPassword != "" {
-		updateMap["password_enabled"] = hash != ""
+
+	existingMap["password_hash"] = hash
+	existingMap["password_set"] = (hash != "")
+	existingMap["password_enabled"] = (hash != "")
+	updateMap["password_set"] = (hash != "")
+	updateMap["password_enabled"] = (hash != "")
+
+	// Обработка IP Whitelist: авто-добавление текущего IP при включении
+	if ipWhitelistVal, ok := updateMap["ip_whitelist_enabled"].(bool); ok {
+		existingMap["ip_whitelist_enabled"] = ipWhitelistVal
+		if ipWhitelistVal {
+			clientIP := l.auth.GetClientIP(r)
+			if clientIP != "" {
+				_ = l.auth.AddAllowedIP(clientIP)
+			}
+		}
 	}
 
 	for k, v := range updateMap {
@@ -823,6 +846,10 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 	}
 
 	l.cfg.ReloadSettings()
+	if newPassword != "" {
+		l.auth.ResetLockout(l.auth.GetClientIP(r), middleware.GetActiveBlogPath(r))
+		_ = l.auth.CreateSession(w)
+	}
 	if _, ok := updateMap["active_blog_path"].(string); ok {
 		// Subsequent requests use the saved selection rather than a stale cookie.
 		http.SetCookie(w, &http.Cookie{Name: "active_blog_path", Value: "", Path: "/", MaxAge: -1})

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -100,6 +101,44 @@ func (a *AuthService) CheckIPWhitelist(clientIP string) (bool, error) {
 	return false, nil
 }
 
+// AddAllowedIP добавляет IP в allowed_ips.txt, если его там ещё нет
+func (a *AuthService) AddAllowedIP(clientIP string) error {
+	clientIP = strings.TrimSpace(clientIP)
+	if clientIP == "" {
+		return nil
+	}
+
+	ipsFile := filepath.Join(a.cfg.BaseDir, "allowed_ips.txt")
+	content, err := os.ReadFile(ipsFile)
+	if err == nil {
+		lines := strings.Split(string(content), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if idx := strings.Index(line, "#"); idx != -1 {
+				line = strings.TrimSpace(line[:idx])
+			}
+			if line == clientIP {
+				return nil // Уже в списке
+			}
+		}
+	}
+
+	newEntry := ""
+	if len(content) > 0 && !strings.HasSuffix(string(content), "\n") {
+		newEntry = "\n"
+	}
+	newEntry += fmt.Sprintf("%s # Auto-added on enable\n", clientIP)
+
+	f, err := os.OpenFile(ipsFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(newEntry)
+	return err
+}
+
 // GetLockoutInfo возвращает состояние блокировки IP
 func (a *AuthService) GetLockoutInfo(clientIP, activeBlogPath string) (bool, int64, int) {
 	lockoutFile := a.storage.GetDataPath(activeBlogPath, "login_lockouts.json")
@@ -168,12 +207,15 @@ func (a *AuthService) ResetLockout(clientIP, activeBlogPath string) {
 // VerifyPassword проверяет пароль с хэшем из editor_settings.json
 func (a *AuthService) VerifyPassword(password string) bool {
 	settings := a.cfg.GetSettings()
-	hash := settings.PasswordHash
+	return a.VerifyHash(settings.PasswordHash, password)
+}
+
+// VerifyHash проверяет пароль с заданным bcrypt хэшем
+func (a *AuthService) VerifyHash(hash, password string) bool {
 	if hash == "" {
 		return true
 	}
 
-	// Нормализация bcrypt префикса для совместимости PHP $2y$ -> Go $2a$
 	normHash := hash
 	if strings.HasPrefix(normHash, "$2y$") {
 		normHash = "$2a$" + normHash[4:]
