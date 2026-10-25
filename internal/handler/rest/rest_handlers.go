@@ -232,12 +232,16 @@ func (h *RestHandler) HandleDeletePost(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, _ := strconv.Atoi(idStr)
 
-	if err := h.post.DeletePost(activeBlog, id); err != nil {
+	renumbered, err := h.post.DeletePost(activeBlog, id)
+	if err != nil {
 		h.jsonError(w, http.StatusInternalServerError, "server_error", err.Error(), nil)
 		return
 	}
 
-	h.jsonSuccess(w, http.StatusOK, "Статья успешно удалена", nil, nil)
+	_ = h.integrity.SaveHistoryAction("delete_post", fmt.Sprintf("Удалена статья #%d", id))
+	h.jsonSuccess(w, http.StatusOK, "Статья успешно удалена", map[string]interface{}{
+		"renumbered": renumbered,
+	}, nil)
 }
 
 // --- Formulas Route (KaTeX) ---
@@ -1313,11 +1317,35 @@ func (h *RestHandler) HandleApplyTemplate(w http.ResponseWriter, r *http.Request
 
 func (h *RestHandler) HandleRenumberPosts(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
+	var body struct {
+		Action string `json:"action"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+	if body.Action == "" {
+		body.Action = r.URL.Query().Get("action")
+	}
+
+	if body.Action == "check" {
+		issues, err := h.post.CheckNumbering(activeBlog)
+		if err != nil {
+			h.jsonError(w, http.StatusInternalServerError, "CHECK_ERROR", err.Error(), nil)
+			return
+		}
+		h.jsonSuccess(w, http.StatusOK, "Проверка нумерации завершена", map[string]interface{}{
+			"needsFix": len(issues) > 0,
+			"issues":   issues,
+		}, nil)
+		return
+	}
+
 	changes, err := h.post.RenumberPosts(activeBlog)
 	if err != nil {
 		h.jsonError(w, http.StatusInternalServerError, "RENUMBER_ERROR", err.Error(), nil)
 		return
 	}
+	_ = h.integrity.SaveHistoryAction("renumber_posts", fmt.Sprintf("Перенумеровано статей: %d", len(changes)))
 	h.jsonSuccess(w, http.StatusOK, "Статьи успешно перенумерованы", map[string]interface{}{
 		"changes": changes,
 	}, nil)

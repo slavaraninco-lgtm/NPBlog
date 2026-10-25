@@ -14,9 +14,11 @@ type PostMeta struct {
 type BackupMeta map[string]PostBackupInfo
 
 type PostBackupInfo struct {
-	PostID    int           `json:"postId"`
+	PostID    interface{}   `json:"postId"`
 	PostTitle string        `json:"postTitle"`
 	Backups   []BackupEntry `json:"backups"`
+	Deleted   bool          `json:"deleted,omitempty"`
+	DeletedAt string        `json:"deletedAt,omitempty"`
 }
 
 type BackupEntry struct {

@@ -5887,6 +5887,71 @@ window.addEventListener('load', function() {
 <script>
 let ftpUploadActive = false;
 
+function loadFtpModalSettings() {
+    fetch('ftp.php?action=get_settings')
+        .then(r => r.json())
+        .then(data => {
+            if (!data || !data.success) return;
+            const creds = data.credentials || {};
+            const blogSelect = document.getElementById('ftpModalBlogToUpload');
+            if (blogSelect && Array.isArray(data.availableBlogPaths) && data.availableBlogPaths.length > 0) {
+                blogSelect.innerHTML = '';
+                data.availableBlogPaths.forEach(path => {
+                    const opt = document.createElement('option');
+                    opt.value = path;
+                    const folder = path.replace(/\\/g, '/').split('/').filter(Boolean).pop() || path;
+                    opt.textContent = `${folder} (${path})`;
+                    if (path === data.currentActiveBlog) opt.selected = true;
+                    blogSelect.appendChild(opt);
+                });
+            }
+
+            if (creds && creds.ftpServer) {
+                const proto = creds.ftpProtocol || 'ftp';
+                const serverEl = document.getElementById('ftpModalServer');
+                const protoEl = document.getElementById('ftpModalProtocol');
+                const portEl = document.getElementById('ftpModalPort');
+                const userEl = document.getElementById('ftpModalUsername');
+                const dirEl = document.getElementById('ftpModalDirectory');
+                const sslEl = document.getElementById('ftpModalSsl');
+                const skipEl = document.getElementById('ftpModalSkipExisting');
+
+                if (serverEl) serverEl.value = creds.ftpServer || '';
+                if (protoEl) protoEl.value = proto;
+                if (portEl) portEl.value = creds.ftpPort || (proto === 'sftp' ? 22 : 21);
+                if (userEl) userEl.value = creds.ftpUsername || '';
+                if (dirEl) dirEl.value = creds.ftpDirectory || creds.ftpRemoteDir || '';
+                if (sslEl) sslEl.checked = !!creds.ftpSsl;
+                if (skipEl) skipEl.checked = (creds.ftpSkipExisting !== 0 && creds.ftpSkipExisting !== '0');
+
+                // Карточка сохраненных параметров
+                const box = document.getElementById('ftpSavedInfoBox');
+                if (box) {
+                    box.style.display = 'block';
+                    const spProto = document.getElementById('ftpSavedProtoText');
+                    const spServer = document.getElementById('ftpSavedServerText');
+                    const spPort = document.getElementById('ftpSavedPortText');
+                    const spUser = document.getElementById('ftpSavedUserText');
+                    const spDir = document.getElementById('ftpSavedDirText');
+                    const spDate = document.getElementById('ftpSavedDate');
+
+                    if (spProto) spProto.textContent = proto.toUpperCase();
+                    if (spServer) spServer.textContent = creds.ftpServer || '';
+                    if (spPort) spPort.textContent = creds.ftpPort || (proto === 'sftp' ? 22 : 21);
+                    if (spUser) spUser.textContent = creds.ftpUsername || '';
+                    if (spDir) spDir.textContent = creds.ftpDirectory || creds.ftpRemoteDir || '';
+                    if (spDate) spDate.textContent = creds.saved_at || '';
+                }
+
+                const resetBtn = document.getElementById('ftpModalResetBtn');
+                if (resetBtn) resetBtn.style.display = 'inline-flex';
+
+                onFtpModalProtocolChange();
+            }
+        })
+        .catch(err => console.warn('Could not load FTP settings:', err));
+}
+
 function openFtpModal() {
     if (window.Modal) {
         Modal.open('#ftpUploadModal');
@@ -5894,6 +5959,7 @@ function openFtpModal() {
         const modal = document.getElementById('ftpUploadModal');
         if (modal) modal.style.display = 'flex';
     }
+    loadFtpModalSettings();
 }
 
 function closeFtpModal() {
@@ -6240,7 +6306,8 @@ function startFtpModalUpload() {
     fetch('ftp_upload_stream.php', {
         method: 'POST',
         headers: {
-            'X-CSRF-Token': csrfToken
+            'X-CSRF-Token': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
         },
         body: formData
     })
@@ -6363,6 +6430,10 @@ function startFtpModalUpload() {
         if (resetBtn) resetBtn.disabled = false;
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadFtpModalSettings();
+});
 </script>
 
 <!-- Модальное окно первоначальной настройки -->

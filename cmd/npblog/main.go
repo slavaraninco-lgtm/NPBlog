@@ -316,8 +316,8 @@ func main() {
 	srv := &http.Server{
 		Addr:         serverAddr,
 		Handler:      r,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 0, // Не ограничиваем время записи для поддержки непрерывных SSE потоков (FTP синхронизация и др.)
 		IdleTimeout:  120 * time.Second,
 	}
 

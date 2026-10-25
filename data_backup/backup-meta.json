@@ -1,50 +1,56 @@
 {
     "1": {
         "postId": 1,
-        "postTitle": "Тест статей",
-        "backups": [
-            {
-                "backupNumber": 1,
-                "filename": "1-1.html",
-                "date": "24.10.2026 23:56",
-                "title": "Тест статей"
-            }
-        ]
-    },
-    "2": {
-        "postId": 2,
-        "postTitle": "апрпарап",
-        "backups": [
-            {
-                "backupNumber": 1,
-                "filename": "2-1.html",
-                "date": "24.10.2026 09:45",
-                "title": "апрпарап"
-            }
-        ]
-    },
-    "3": {
-        "postId": 3,
-        "postTitle": "тестовая статья 2",
-        "backups": [
-            {
-                "backupNumber": 1,
-                "filename": "3-1.html",
-                "date": "21.10.2026 21:21",
-                "title": "тестовая статья 2"
-            }
-        ]
-    },
-    "4": {
-        "postId": 4,
         "postTitle": "Тест функций",
         "backups": [
             {
                 "backupNumber": 1,
-                "filename": "4-1.html",
+                "filename": "1-1.html",
                 "date": "25.10.2026 00:00",
                 "title": "Тест функций"
             }
         ]
+    },
+    "deleted_2_1792917995": {
+        "postId": 0,
+        "postTitle": "[УДАЛЕНО] аывавыаыв",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "2-1.html",
+                "date": "25.10.2026 11:46",
+                "title": "аывавыаыв"
+            }
+        ],
+        "deleted": true,
+        "deletedAt": "25.10.2026 11:46"
+    },
+    "deleted_2_1792917999": {
+        "postId": 0,
+        "postTitle": "[УДАЛЕНО] ываывавы",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "2-1.html",
+                "date": "25.10.2026 11:46",
+                "title": "ываывавы"
+            }
+        ],
+        "deleted": true,
+        "deletedAt": "25.10.2026 11:46"
+    },
+    "deleted_2_1792918008": {
+        "postId": 0,
+        "postTitle": "[УДАЛЕНО] 4",
+        "backups": [
+            {
+                "backupNumber": 1,
+                "filename": "2-1.html",
+                "date": "25.10.2026 11:46",
+                "title": "4"
+            }
+        ],
+        "deleted": true,
+        "deletedAt": "25.10.2026 11:46"
     }
 }

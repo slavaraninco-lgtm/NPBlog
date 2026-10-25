@@ -23,6 +23,12 @@ type RenumberChange struct {
 	Title string `json:"title"`
 }
 
+type NumberingIssue struct {
+	Title      string `json:"title"`
+	CurrentID  int    `json:"currentId"`
+	ExpectedID int    `json:"expectedId"`
+}
+
 type PostService struct {
 	cfg     *config.AppConfig
 	storage *StorageService
@@ -348,28 +354,110 @@ func (p *PostService) UpdatePost(activeBlogPath string, id int, title, rawConten
 	return nil
 }
 
-// DeletePost удаляет статью
-func (p *PostService) DeletePost(activeBlogPath string, id int) error {
+// DeletePost удаляет статью с автоматической перенумерацией оставшихся статей
+func (p *PostService) DeletePost(activeBlogPath string, id int) (bool, error) {
 	blogDir := p.storage.GetDataPath(activeBlogPath, "blog")
 	postFile := filepath.Join(blogDir, fmt.Sprintf("post-%d.html", id))
 	_ = os.Remove(postFile)
 
 	metaFile := filepath.Join(blogDir, "posts-meta.json")
 	var meta []domain.PostMeta
-	_ = p.storage.SafeReadJSON(metaFile, &meta)
+	if err := p.storage.SafeReadJSON(metaFile, &meta); err != nil {
+		return false, errors.New("метаданные не найдены")
+	}
 
-	var newMeta []domain.PostMeta
-	for _, m := range meta {
-		if m.ID != id {
-			newMeta = append(newMeta, m)
+	postIndex := -1
+	var deletedPostTitle string
+	for idx, m := range meta {
+		if m.ID == id {
+			postIndex = idx
+			deletedPostTitle = m.Title
+			break
 		}
 	}
-	_ = p.storage.SafeWriteJSON(metaFile, newMeta)
+
+	if postIndex == -1 {
+		return false, errors.New("статья не найдена")
+	}
+
+	// Удаляем настройки фона статьи и файл фона (если был назначен)
+	bgFile := p.storage.GetDataPath(activeBlogPath, "post_backgrounds.json")
+	var bgCfg domain.PostBackgroundConfig
+	if err := p.storage.SafeReadJSON(bgFile, &bgCfg); err == nil && bgCfg.Posts != nil {
+		idStr := strconv.Itoa(id)
+		if item, exists := bgCfg.Posts[idStr]; exists {
+			if item != nil && item.Image != "" {
+				bgImgFile := p.storage.GetDataPath(activeBlogPath, filepath.Join("backgrounds", filepath.Base(item.Image)))
+				_ = os.Remove(bgImgFile)
+			}
+			delete(bgCfg.Posts, idStr)
+			_ = p.storage.SafeWriteJSON(bgFile, bgCfg)
+		}
+	}
+
+	// Помечаем бэкапы удаленной статьи как [УДАЛЕНО]
+	backupMetaFile := p.storage.GetBackupPath("backup-meta.json")
+	var backupMeta domain.BackupMeta
+	_ = p.storage.SafeReadJSON(backupMetaFile, &backupMeta)
+	if backupMeta != nil {
+		idKey := strconv.Itoa(id)
+		if bInfo, exists := backupMeta[idKey]; exists {
+			deletedKey := fmt.Sprintf("deleted_%d_%d", id, time.Now().Unix())
+			oldBackupDir := p.storage.GetBackupPath(idKey)
+			newBackupDir := p.storage.GetBackupPath(deletedKey)
+
+			if _, err := os.Stat(oldBackupDir); err == nil {
+				_ = os.Rename(oldBackupDir, newBackupDir)
+			}
+
+			bInfo.PostID = 0
+			bInfo.PostTitle = "[УДАЛЕНО] " + deletedPostTitle
+			bInfo.Deleted = true
+			bInfo.DeletedAt = time.Now().Format("02.01.2006 15:04")
+			backupMeta[deletedKey] = bInfo
+			delete(backupMeta, idKey)
+			_ = p.storage.SafeWriteJSON(backupMetaFile, backupMeta)
+		}
+	}
+
+	// Удаляем статью из posts-meta.json
+	meta = append(meta[:postIndex], meta[postIndex+1:]...)
+	_ = p.storage.SafeWriteJSON(metaFile, meta)
+
+	// Автоматическая перенумерация оставшихся статей после удаления
+	changes, _ := p.RenumberPosts(activeBlogPath)
 
 	go func() {
 		_ = p.GenerateRSS(activeBlogPath)
 	}()
-	return nil
+
+	return len(changes) > 0, nil
+}
+
+// CheckNumbering проверяет целостность нумерации статей
+func (p *PostService) CheckNumbering(activeBlogPath string) ([]NumberingIssue, error) {
+	metaFile := p.storage.GetDataPath(activeBlogPath, "blog/posts-meta.json")
+	var meta []domain.PostMeta
+	if err := p.storage.SafeReadJSON(metaFile, &meta); err != nil || len(meta) == 0 {
+		return nil, nil
+	}
+
+	sort.Slice(meta, func(i, j int) bool {
+		return meta[i].ID < meta[j].ID
+	})
+
+	var issues []NumberingIssue
+	for idx, post := range meta {
+		expectedID := idx + 1
+		if post.ID != expectedID {
+			issues = append(issues, NumberingIssue{
+				Title:      post.Title,
+				CurrentID:  post.ID,
+				ExpectedID: expectedID,
+			})
+		}
+	}
+	return issues, nil
 }
 
 // TogglePinPost закрепляет или открепляет публикацию вверху списка
@@ -408,7 +496,7 @@ func (p *PostService) TogglePinPost(activeBlogPath string, id int) (bool, error)
 	return isPinned, nil
 }
 
-// RenumberPosts упорядочивает ID статей по возрастанию (1..N) с переносом файлов и бэкапов
+// RenumberPosts упорядочивает ID статей по возрастанию (1..N) с переносом файлов, бэкапов и фонов
 func (p *PostService) RenumberPosts(activeBlogPath string) ([]RenumberChange, error) {
 	metaFile := p.storage.GetDataPath(activeBlogPath, "blog/posts-meta.json")
 	var meta []domain.PostMeta
@@ -427,11 +515,24 @@ func (p *PostService) RenumberPosts(activeBlogPath string) ([]RenumberChange, er
 		backupMeta = make(domain.BackupMeta)
 	}
 
+	bgFile := p.storage.GetDataPath(activeBlogPath, "post_backgrounds.json")
+	var bgCfg domain.PostBackgroundConfig
+	hasBgCfg := false
+	if err := p.storage.SafeReadJSON(bgFile, &bgCfg); err == nil {
+		hasBgCfg = true
+		if bgCfg.Posts == nil {
+			bgCfg.Posts = make(map[string]*domain.BackgroundItem)
+		}
+	}
+	newBgPosts := make(map[string]*domain.BackgroundItem)
+
 	var changes []RenumberChange
 	var newMeta []domain.PostMeta
-	newBackupMeta := make(domain.BackupMeta)
 
 	blogDir := p.storage.GetDataPath(activeBlogPath, "blog")
+	bgDir := p.storage.GetDataPath(activeBlogPath, "backgrounds")
+
+	reMetaPostID := regexp.MustCompile(`(?i)<meta\s+name=["']post-id["']\s+content=["']\d+["']\s*/?>`)
 
 	for idx, post := range meta {
 		oldID := post.ID
@@ -448,34 +549,94 @@ func (p *PostService) RenumberPosts(activeBlogPath string) ([]RenumberChange, er
 			newPostFile := filepath.Join(blogDir, fmt.Sprintf("post-%d.html", newID))
 
 			if content, err := os.ReadFile(oldPostFile); err == nil {
+				newTag := fmt.Sprintf(`<meta name="post-id" content="%d">`, newID)
+				content = reMetaPostID.ReplaceAll(content, []byte(newTag))
 				_ = p.storage.SafeWriteFile(newPostFile, content)
-				_ = os.Remove(oldPostFile)
+				if oldPostFile != newPostFile {
+					_ = os.Remove(oldPostFile)
+				}
 			}
 
-			// Переименование папки бэкапов
+			// Перенос и переименование файлов бэкапов
 			oldBackupDir := p.storage.GetBackupPath(strconv.Itoa(oldID))
 			newBackupDir := p.storage.GetBackupPath(strconv.Itoa(newID))
+
 			if _, err := os.Stat(oldBackupDir); err == nil {
-				_ = os.Rename(oldBackupDir, newBackupDir)
+				_ = os.MkdirAll(newBackupDir, 0755)
+				entries, err := os.ReadDir(oldBackupDir)
+				if err == nil {
+					for _, entry := range entries {
+						if entry.IsDir() {
+							continue
+						}
+						oldName := entry.Name()
+						newName := oldName
+						reBackupFile := regexp.MustCompile(fmt.Sprintf(`^%d-(\d+\.html)$`, oldID))
+						if m := reBackupFile.FindStringSubmatch(oldName); len(m) > 1 {
+							newName = fmt.Sprintf("%d-%s", newID, m[1])
+						}
+						oldFilePath := filepath.Join(oldBackupDir, oldName)
+						newFilePath := filepath.Join(newBackupDir, newName)
+
+						if data, err := os.ReadFile(oldFilePath); err == nil {
+							_ = p.storage.SafeWriteFile(newFilePath, data)
+							_ = os.Remove(oldFilePath)
+						}
+					}
+				}
+				_ = os.Remove(oldBackupDir)
+			}
+
+			// Обновление метаданных бэкапов (сохраняя остальные записи)
+			if bInfo, exists := backupMeta[strconv.Itoa(oldID)]; exists {
+				bInfo.PostID = newID
+				for bIdx := range bInfo.Backups {
+					bInfo.Backups[bIdx].Filename = fmt.Sprintf("%d-%d.html", newID, bInfo.Backups[bIdx].BackupNumber)
+				}
+				backupMeta[strconv.Itoa(newID)] = bInfo
+				delete(backupMeta, strconv.Itoa(oldID))
+			}
+
+			// Переименование файла фона, если был привязан
+			if hasBgCfg {
+				oldKey := strconv.Itoa(oldID)
+				if bgItem, exists := bgCfg.Posts[oldKey]; exists && bgItem != nil {
+					if bgItem.Image != "" {
+						ext := filepath.Ext(bgItem.Image)
+						oldBgName := fmt.Sprintf("bg-%d%s", oldID, ext)
+						newBgName := fmt.Sprintf("bg-%d%s", newID, ext)
+						oldBgPath := filepath.Join(bgDir, oldBgName)
+						newBgPath := filepath.Join(bgDir, newBgName)
+						if _, err := os.Stat(oldBgPath); err == nil {
+							_ = os.Rename(oldBgPath, newBgPath)
+							bgItem.Image = newBgName
+						}
+					}
+					newBgPosts[strconv.Itoa(newID)] = bgItem
+				}
+			}
+		} else {
+			// ID не изменился
+			if hasBgCfg {
+				idStr := strconv.Itoa(oldID)
+				if bgItem, exists := bgCfg.Posts[idStr]; exists {
+					newBgPosts[idStr] = bgItem
+				}
 			}
 		}
 
-		// Обновление записей метаданных
 		post.ID = newID
 		post.Filename = fmt.Sprintf("post-%d.html", newID)
 		newMeta = append(newMeta, post)
-
-		if bInfo, exists := backupMeta[strconv.Itoa(oldID)]; exists {
-			bInfo.PostID = newID
-			for bIdx := range bInfo.Backups {
-				bInfo.Backups[bIdx].Filename = fmt.Sprintf("%d-%d.html", newID, bInfo.Backups[bIdx].BackupNumber)
-			}
-			newBackupMeta[strconv.Itoa(newID)] = bInfo
-		}
 	}
 
 	_ = p.storage.SafeWriteJSON(metaFile, newMeta)
-	_ = p.storage.SafeWriteJSON(backupMetaFile, newBackupMeta)
+	_ = p.storage.SafeWriteJSON(backupMetaFile, backupMeta)
+
+	if hasBgCfg {
+		bgCfg.Posts = newBgPosts
+		_ = p.storage.SafeWriteJSON(bgFile, bgCfg)
+	}
 
 	go func() {
 		_ = p.GenerateRSS(activeBlogPath)

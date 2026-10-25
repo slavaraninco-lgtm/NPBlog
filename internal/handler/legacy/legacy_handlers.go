@@ -143,14 +143,16 @@ func (l *LegacyHandler) HandleDeletePost(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := l.post.DeletePost(activeBlog, body.ID); err != nil {
+	renumbered, err := l.post.DeletePost(activeBlog, body.ID)
+	if err != nil {
 		l.errorResponse(w, err.Error())
 		return
 	}
 
 	_ = l.integrity.SaveHistoryAction("delete_post", fmt.Sprintf("Удалена статья #%d", body.ID))
 	l.jsonResponse(w, map[string]interface{}{
-		"success": true,
+		"success":    true,
+		"renumbered": renumbered,
 	})
 }
 
@@ -207,12 +209,37 @@ func (l *LegacyHandler) HandleTogglePinPost(w http.ResponseWriter, r *http.Reque
 
 func (l *LegacyHandler) HandleRenumberPosts(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
+	var body struct {
+		Action string `json:"action"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+	if body.Action == "" {
+		body.Action = r.URL.Query().Get("action")
+	}
+
+	if body.Action == "check" {
+		issues, err := l.post.CheckNumbering(activeBlog)
+		if err != nil {
+			l.errorResponse(w, err.Error())
+			return
+		}
+		l.jsonResponse(w, map[string]interface{}{
+			"success":  true,
+			"needsFix": len(issues) > 0,
+			"issues":   issues,
+		})
+		return
+	}
+
 	changes, err := l.post.RenumberPosts(activeBlog)
 	if err != nil {
 		l.errorResponse(w, err.Error())
 		return
 	}
 
+	_ = l.integrity.SaveHistoryAction("renumber_posts", fmt.Sprintf("Перенумеровано статей: %d", len(changes)))
 	l.jsonResponse(w, map[string]interface{}{
 		"success": true,
 		"changes": changes,
@@ -2005,16 +2032,49 @@ func (l *LegacyHandler) HandleFtp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodPost {
+		_ = r.ParseMultipartForm(10 << 20)
+		_ = r.ParseForm()
+
+		action := r.URL.Query().Get("action")
+		if action == "" {
+			action = r.FormValue("action")
+		}
+
+		if action == "reset" {
+			_ = l.ftp.ResetCredentials()
+			l.jsonResponse(w, map[string]interface{}{
+				"success": true,
+				"message": "Настройки FTP сброшены",
+			})
+			return
+		}
+
 		var body service.FtpCredentials
-		_ = json.NewDecoder(r.Body).Decode(&body)
+		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+			_ = json.NewDecoder(r.Body).Decode(&body)
+		}
 		if body.Server == "" {
-			_ = r.ParseForm()
-			body.Server = r.FormValue("ftpServer")
-			body.Protocol = r.FormValue("ftpProtocol")
+			body.Server = strings.TrimSpace(r.FormValue("ftpServer"))
+			body.Protocol = strings.TrimSpace(r.FormValue("ftpProtocol"))
 			body.Port, _ = strconv.Atoi(r.FormValue("ftpPort"))
-			body.Username = r.FormValue("ftpUsername")
-			body.Password = r.FormValue("ftpPassword")
-			body.RemoteDir = r.FormValue("ftpDirectory")
+			body.Username = strings.TrimSpace(r.FormValue("ftpUsername"))
+			body.RemoteDir = strings.TrimSpace(r.FormValue("ftpDirectory"))
+			if body.RemoteDir == "" {
+				body.RemoteDir = strings.TrimSpace(r.FormValue("ftpRemoteDir"))
+			}
+			body.Ssl, _ = strconv.Atoi(r.FormValue("ftpSsl"))
+			body.SkipExisting, _ = strconv.Atoi(r.FormValue("ftpSkipExisting"))
+		}
+
+		if body.Protocol == "" {
+			body.Protocol = "ftp"
+		}
+		if body.Port <= 0 {
+			if body.Protocol == "sftp" {
+				body.Port = 22
+			} else {
+				body.Port = 21
+			}
 		}
 
 		_ = l.ftp.SaveCredentials(&body)
@@ -2027,9 +2087,75 @@ func (l *LegacyHandler) HandleFtp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l *LegacyHandler) HandleFtpUploadStream(w http.ResponseWriter, r *http.Request) {
+	// 1. Обязательно сначала парсим тело запроса ДО записи в ResponseWriter и ДО flusher.Flush()
+	var server, protocol, username, password, directory, blogToUpload string
+	var port, ssl, skipExisting int
+
+	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		var body struct {
+			Server       string `json:"ftpServer"`
+			Protocol     string `json:"ftpProtocol"`
+			Port         int    `json:"ftpPort"`
+			Username     string `json:"ftpUsername"`
+			Password     string `json:"ftpPassword"`
+			Directory    string `json:"ftpDirectory"`
+			RemoteDir    string `json:"ftpRemoteDir"`
+			Ssl          int    `json:"ftpSsl"`
+			SkipExisting int    `json:"ftpSkipExisting"`
+			BlogToUpload string `json:"blogToUpload"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			server = strings.TrimSpace(body.Server)
+			protocol = strings.ToLower(strings.TrimSpace(body.Protocol))
+			port = body.Port
+			username = strings.TrimSpace(body.Username)
+			password = body.Password
+			directory = strings.TrimSpace(body.Directory)
+			if directory == "" {
+				directory = strings.TrimSpace(body.RemoteDir)
+			}
+			ssl = body.Ssl
+			skipExisting = body.SkipExisting
+			blogToUpload = strings.TrimSpace(body.BlogToUpload)
+		}
+	} else {
+		_ = r.ParseMultipartForm(10 << 20)
+		_ = r.ParseForm()
+
+		server = strings.TrimSpace(r.FormValue("ftpServer"))
+		protocol = strings.ToLower(strings.TrimSpace(r.FormValue("ftpProtocol")))
+		port, _ = strconv.Atoi(r.FormValue("ftpPort"))
+		username = strings.TrimSpace(r.FormValue("ftpUsername"))
+		password = r.FormValue("ftpPassword")
+		directory = strings.TrimSpace(r.FormValue("ftpDirectory"))
+		if directory == "" {
+			directory = strings.TrimSpace(r.FormValue("ftpRemoteDir"))
+		}
+		ssl, _ = strconv.Atoi(r.FormValue("ftpSsl"))
+		skipExisting, _ = strconv.Atoi(r.FormValue("ftpSkipExisting"))
+		blogToUpload = strings.TrimSpace(r.FormValue("blogToUpload"))
+	}
+
+	// Фолбэк на query параметры при необходимости
+	if server == "" {
+		server = strings.TrimSpace(r.URL.Query().Get("ftpServer"))
+	}
+	if username == "" {
+		username = strings.TrimSpace(r.URL.Query().Get("ftpUsername"))
+	}
+	if directory == "" {
+		directory = strings.TrimSpace(r.URL.Query().Get("ftpDirectory"))
+	}
+
+	// 2. Устанавливаем SSE заголовки
 	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	rc := http.NewResponseController(w)
+	_ = rc.SetWriteDeadline(time.Time{})
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -2046,15 +2172,40 @@ func (l *LegacyHandler) HandleFtpUploadStream(w http.ResponseWriter, r *http.Req
 		flusher.Flush()
 	}
 
-	sendEvent("info", map[string]string{"message": "Подготовка к синхронизации файлов блога..."})
-	sendEvent("progress", map[string]interface{}{"percent": 25, "current": 1, "total": 4, "filename": "blog.html"})
-	time.Sleep(100 * time.Millisecond)
-	sendEvent("progress", map[string]interface{}{"percent": 50, "current": 2, "total": 4, "filename": "posts-meta.json"})
-	time.Sleep(100 * time.Millisecond)
-	sendEvent("progress", map[string]interface{}{"percent": 75, "current": 3, "total": 4, "filename": "rss.xml"})
-	time.Sleep(100 * time.Millisecond)
-	sendEvent("progress", map[string]interface{}{"percent": 100, "current": 4, "total": 4, "filename": "assets/"})
-	sendEvent("complete", map[string]string{"message": "Синхронизация успешно завершена"})
+	// 4KB комментарий для немедленного проталкивания любых буферов прокси и веб-сервера
+	fmt.Fprintf(w, ":%s\n\n", strings.Repeat(" ", 4096))
+	flusher.Flush()
+
+	if server == "" || username == "" || password == "" || directory == "" {
+		sendEvent("error", map[string]interface{}{
+			"message": "Пожалуйста, заполните все обязательные поля (Сервер, Пользователь, Пароль, Директория)",
+		})
+		return
+	}
+
+	if protocol == "" {
+		protocol = "ftp"
+	}
+	if port <= 0 {
+		if protocol == "sftp" {
+			port = 22
+		} else {
+			port = 21
+		}
+	}
+
+	creds := &service.FtpCredentials{
+		Server:       server,
+		Protocol:     protocol,
+		Port:         port,
+		Username:     username,
+		Password:     password,
+		RemoteDir:    directory,
+		Ssl:          ssl,
+		SkipExisting: skipExisting,
+	}
+
+	_ = l.ftp.UploadBlogStream(r.Context(), creds, blogToUpload, sendEvent)
 }
 
 // --- System Updates & Maintenance Handlers ---

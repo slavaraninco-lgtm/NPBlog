@@ -1,0 +1,9 @@
+{
+    "ftpServer": "w10.host",
+    "ftpProtocol": "ftp",
+    "ftpPort": 21,
+    "ftpUsername": "g",
+    "ftpDirectory": "/",
+    "ftpSkipExisting": 1,
+    "saved_at": "2026-10-25 12:19:17"
+}
