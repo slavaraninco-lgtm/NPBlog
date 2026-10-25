@@ -3,6 +3,7 @@ package legacy_test
 import (
 	"bytes"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -241,5 +242,106 @@ func TestHandleBlogBackground(t *testing.T) {
 	_ = json.Unmarshal(bytesOnDisk, &savedSettings)
 	if _, exists := savedSettings["background"]; exists {
 		t.Errorf("Expected background to be removed")
+	}
+}
+
+func TestPostBackgroundHandlers_EndToEnd(t *testing.T) {
+	handler, tmpDir := setupTestHandler(t)
+	defer os.RemoveAll(tmpDir)
+
+	blogDir := filepath.Join(tmpDir, "data", "blog")
+	_ = os.MkdirAll(blogDir, 0755)
+
+	// Create post 1 HTML
+	postHTML := `<!DOCTYPE html><html><head><title>Статья</title></head><body style="max-width: 920px;"><button class="theme-toggle">Тема</button><h1>Статья</h1><div class="date">25.10.2026</div><article id="npblog-post-content" class="content"><p>Тело</p></article><a href="../blog.html" class="back-link">Назад</a></body></html>`
+	_ = os.WriteFile(filepath.Join(blogDir, "post-1.html"), []byte(postHTML), 0644)
+	meta := `[{"id":1,"title":"Статья","filename":"post-1.html"}]`
+	_ = os.WriteFile(filepath.Join(blogDir, "posts-meta.json"), []byte(meta), 0644)
+
+	// 1. Upload background for post 1
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	_ = writer.WriteField("postId", "1")
+	_ = writer.WriteField("mode", "cover")
+	_ = writer.WriteField("scope", "content")
+	part, _ := writer.CreateFormFile("background", "wallpaper.png")
+	_, _ = part.Write([]byte("fake_image_bytes"))
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/upload_background.php", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	handler.HandleUploadBackground(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("HandleUploadBackground failed: %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var uploadResp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &uploadResp)
+	if uploadResp["success"] != true || uploadResp["filename"] != "bg-1.png" {
+		t.Errorf("Unexpected upload response: %v", uploadResp)
+	}
+
+	// Verify post-1.html has content-wrapper
+	postBytes, _ := os.ReadFile(filepath.Join(blogDir, "post-1.html"))
+	if !strings.Contains(string(postBytes), "content-wrapper") {
+		t.Errorf("Expected content-wrapper in post-1.html: %s", string(postBytes))
+	}
+
+	// 2. Get post backgrounds
+	reqGet := httptest.NewRequest(http.MethodGet, "/get_post_backgrounds.php?postId=1", nil)
+	wGet := httptest.NewRecorder()
+	handler.HandleGetPostBackgrounds(wGet, reqGet)
+
+	var getResp struct {
+		Success  bool                   `json:"success"`
+		Settings map[string]interface{} `json:"settings"`
+	}
+	_ = json.Unmarshal(wGet.Body.Bytes(), &getResp)
+	if !getResp.Success || getResp.Settings["background"] != "bg-1.png" {
+		t.Errorf("Expected settings.background == bg-1.png, got: %v", getResp)
+	}
+
+	// 3. Save overlay settings
+	overlayPayload := map[string]interface{}{
+		"postId":         1,
+		"overlayEnabled": true,
+		"overlayColor":   "#00ff00",
+		"overlayOpacity": 75,
+	}
+	overlayBytes, _ := json.Marshal(overlayPayload)
+	reqOverlay := httptest.NewRequest(http.MethodPost, "/save_overlay_settings.php", bytes.NewReader(overlayBytes))
+	reqOverlay.Header.Set("Content-Type", "application/json")
+	wOverlay := httptest.NewRecorder()
+	handler.HandleSaveOverlaySettings(wOverlay, reqOverlay)
+
+	if wOverlay.Code != http.StatusOK {
+		t.Fatalf("HandleSaveOverlaySettings failed: %d", wOverlay.Code)
+	}
+
+	postBytes, _ = os.ReadFile(filepath.Join(blogDir, "post-1.html"))
+	if !strings.Contains(string(postBytes), "overlay-wrapper") {
+		t.Errorf("Expected overlay-wrapper in post-1.html: %s", string(postBytes))
+	}
+
+	// 4. Remove background
+	removePayload := map[string]interface{}{"postId": 1}
+	removeBytes, _ := json.Marshal(removePayload)
+	reqRemove := httptest.NewRequest(http.MethodPost, "/remove_background.php", bytes.NewReader(removeBytes))
+	reqRemove.Header.Set("Content-Type", "application/json")
+	wRemove := httptest.NewRecorder()
+	handler.HandleRemoveBackground(wRemove, reqRemove)
+
+	if wRemove.Code != http.StatusOK {
+		t.Fatalf("HandleRemoveBackground failed: %d", wRemove.Code)
+	}
+
+	postBytes, _ = os.ReadFile(filepath.Join(blogDir, "post-1.html"))
+	if strings.Contains(string(postBytes), "content-wrapper") {
+		t.Errorf("content-wrapper should be removed from post-1.html: %s", string(postBytes))
+	}
+	if !strings.Contains(string(postBytes), "overlay-wrapper") {
+		t.Errorf("overlay-wrapper should remain in post-1.html: %s", string(postBytes))
 	}
 }

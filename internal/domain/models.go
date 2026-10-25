@@ -155,7 +155,24 @@ type IncludeMetaItem struct {
 	Size        int64  `json:"size,omitempty"`
 }
 
-// PostBackgroundConfig представляет конфигурацию фонов в post_backgrounds.json
+// PostBgSettings хранит настройки фона и подложки отдельной статьи (data/post_backgrounds.json)
+type PostBgSettings struct {
+	Background      string `json:"background,omitempty"`
+	BackgroundMode  string `json:"backgroundMode,omitempty"`  // cover, contain, repeat
+	BackgroundScope string `json:"backgroundScope,omitempty"` // content, fullpage
+	OverlayEnabled  bool   `json:"overlayEnabled,omitempty"`
+	OverlayColor    string `json:"overlayColor,omitempty"`
+	OverlayOpacity  int    `json:"overlayOpacity,omitempty"`
+}
+
+// GlobalBgSettings хранит настройки глобального фона для статей (data/global-settings.json)
+type GlobalBgSettings struct {
+	Background      string `json:"background,omitempty"`
+	BackgroundMode  string `json:"backgroundMode,omitempty"`  // cover, contain, repeat
+	BackgroundScope string `json:"backgroundScope,omitempty"` // content, fullpage
+}
+
+// PostBackgroundConfig представляет обратную совместимость конфигурации фонов
 type PostBackgroundConfig struct {
 	GlobalBackground *BackgroundItem            `json:"global,omitempty"`
 	BlogBackground   *BackgroundItem            `json:"blog,omitempty"`

@@ -217,6 +217,9 @@ func (p *PostService) SavePost(activeBlogPath, title, rawContent string) (int, e
 		return 0, err
 	}
 
+	// Применение фона (если настроен глобальный или предустановленный)
+	_ = p.ApplyBackgroundForPost(activeBlogPath, nextID)
+
 	// Создание первого бэкапа
 	backupDir := p.storage.GetBackupPath(strconv.Itoa(nextID))
 	_ = os.MkdirAll(backupDir, 0755)
@@ -305,6 +308,9 @@ func (p *PostService) UpdatePost(activeBlogPath string, id int, title, rawConten
 	if err := p.storage.SafeWriteFile(postFile, []byte(articleHTML)); err != nil {
 		return err
 	}
+
+	// Повторное применение фонов и подложек после перезаписи шаблона
+	_ = p.ApplyBackgroundForPost(activeBlogPath, id)
 
 	// Добавление новой ревизии в бэкап
 	backupDir := p.storage.GetBackupPath(strconv.Itoa(id))
@@ -515,16 +521,8 @@ func (p *PostService) RenumberPosts(activeBlogPath string) ([]RenumberChange, er
 		backupMeta = make(domain.BackupMeta)
 	}
 
-	bgFile := p.storage.GetDataPath(activeBlogPath, "post_backgrounds.json")
-	var bgCfg domain.PostBackgroundConfig
-	hasBgCfg := false
-	if err := p.storage.SafeReadJSON(bgFile, &bgCfg); err == nil {
-		hasBgCfg = true
-		if bgCfg.Posts == nil {
-			bgCfg.Posts = make(map[string]*domain.BackgroundItem)
-		}
-	}
-	newBgPosts := make(map[string]*domain.BackgroundItem)
+	bgMap := p.LoadPostBackgroundsMap(activeBlogPath)
+	newBgMap := make(map[string]domain.PostBgSettings)
 
 	var changes []RenumberChange
 	var newMeta []domain.PostMeta
@@ -598,30 +596,27 @@ func (p *PostService) RenumberPosts(activeBlogPath string) ([]RenumberChange, er
 			}
 
 			// Переименование файла фона, если был привязан
-			if hasBgCfg {
-				oldKey := strconv.Itoa(oldID)
-				if bgItem, exists := bgCfg.Posts[oldKey]; exists && bgItem != nil {
-					if bgItem.Image != "" {
-						ext := filepath.Ext(bgItem.Image)
-						oldBgName := fmt.Sprintf("bg-%d%s", oldID, ext)
-						newBgName := fmt.Sprintf("bg-%d%s", newID, ext)
-						oldBgPath := filepath.Join(bgDir, oldBgName)
-						newBgPath := filepath.Join(bgDir, newBgName)
-						if _, err := os.Stat(oldBgPath); err == nil {
-							_ = os.Rename(oldBgPath, newBgPath)
-							bgItem.Image = newBgName
-						}
+			oldKey := strconv.Itoa(oldID)
+			newKey := strconv.Itoa(newID)
+			if settings, exists := bgMap[oldKey]; exists {
+				if settings.Background != "" {
+					ext := filepath.Ext(settings.Background)
+					oldBgName := fmt.Sprintf("bg-%d%s", oldID, ext)
+					newBgName := fmt.Sprintf("bg-%d%s", newID, ext)
+					oldBgPath := filepath.Join(bgDir, oldBgName)
+					newBgPath := filepath.Join(bgDir, newBgName)
+					if _, err := os.Stat(oldBgPath); err == nil {
+						_ = os.Rename(oldBgPath, newBgPath)
+						settings.Background = newBgName
 					}
-					newBgPosts[strconv.Itoa(newID)] = bgItem
 				}
+				newBgMap[newKey] = settings
 			}
 		} else {
 			// ID не изменился
-			if hasBgCfg {
-				idStr := strconv.Itoa(oldID)
-				if bgItem, exists := bgCfg.Posts[idStr]; exists {
-					newBgPosts[idStr] = bgItem
-				}
+			idStr := strconv.Itoa(oldID)
+			if settings, exists := bgMap[idStr]; exists {
+				newBgMap[idStr] = settings
 			}
 		}
 
@@ -632,10 +627,11 @@ func (p *PostService) RenumberPosts(activeBlogPath string) ([]RenumberChange, er
 
 	_ = p.storage.SafeWriteJSON(metaFile, newMeta)
 	_ = p.storage.SafeWriteJSON(backupMetaFile, backupMeta)
+	_ = p.SavePostBackgroundsMap(activeBlogPath, newBgMap)
 
-	if hasBgCfg {
-		bgCfg.Posts = newBgPosts
-		_ = p.storage.SafeWriteJSON(bgFile, bgCfg)
+	// Повторно применяем фоны для всех измененных статей
+	for _, c := range changes {
+		_ = p.ApplyBackgroundForPost(activeBlogPath, c.NewID)
 	}
 
 	go func() {

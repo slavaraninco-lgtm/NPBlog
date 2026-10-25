@@ -83,6 +83,37 @@ func (s *StorageService) GetDataPath(activeBlogPath, subpath string) string {
 	return targetPath
 }
 
+// GetDataURL возвращает URL-путь для клиентских запросов (например, "/data/backgrounds/bg-1.png")
+func (s *StorageService) GetDataURL(activeBlogPath, subpath string) string {
+	target := activeBlogPath
+	settings := s.cfg.GetSettings()
+	if target == "" || target == "/CHANGE/ME" || target == "CHANGE/ME" {
+		if settings.ActiveBlogPath != "" && settings.ActiveBlogPath != "/CHANGE/ME" {
+			target = settings.ActiveBlogPath
+		} else if len(settings.BlogPaths) > 0 && settings.BlogPaths[0] != "/CHANGE/ME" && settings.BlogPaths[0] != "" {
+			target = settings.BlogPaths[0]
+		} else {
+			target = "data"
+		}
+	}
+	if filepath.IsAbs(target) {
+		if rel, err := filepath.Rel(s.cfg.BaseDir, target); err == nil && !strings.HasPrefix(rel, "..") {
+			target = rel
+		}
+	}
+	target = filepath.ToSlash(target)
+	target = strings.Trim(target, "/")
+	if target == "" {
+		target = "data"
+	}
+	sub := filepath.ToSlash(subpath)
+	sub = strings.Trim(sub, "/")
+	if sub != "" {
+		return "/" + target + "/" + sub
+	}
+	return "/" + target
+}
+
 // GetBackupPath возвращает абсолютный путь к каталогу резервных копий
 func (s *StorageService) GetBackupPath(subpath string) string {
 	settings := s.cfg.GetSettings()

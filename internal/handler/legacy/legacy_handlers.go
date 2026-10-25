@@ -1661,11 +1661,15 @@ func (l *LegacyHandler) HandleUploadBackground(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	postID := r.FormValue("postId")
-	mode := r.FormValue("mode")
-	if mode == "" {
-		mode = "cover"
+	postIDStr := r.FormValue("postId")
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil || postID <= 0 {
+		l.errorResponse(w, "Некорректный ID статьи")
+		return
 	}
+
+	mode := r.FormValue("mode")
+	scope := r.FormValue("scope")
 
 	file, header, err := r.FormFile("background")
 	if err != nil {
@@ -1674,19 +1678,17 @@ func (l *LegacyHandler) HandleUploadBackground(w http.ResponseWriter, r *http.Re
 	}
 	defer file.Close()
 
-	data, _ := io.ReadAll(file)
-	filename, err := l.media.UploadBackground(activeBlog, header.Filename, data)
+	data, err := io.ReadAll(file)
+	if err != nil {
+		l.errorResponse(w, "Ошибка чтения файла")
+		return
+	}
+
+	filename, err := l.post.UploadPostBackground(activeBlog, postID, header.Filename, data, mode, scope)
 	if err != nil {
 		l.errorResponse(w, err.Error())
 		return
 	}
-
-	bgItem := &domain.BackgroundItem{
-		Image:  filename,
-		Size:   mode,
-		Repeat: "no-repeat",
-	}
-	_ = l.media.SaveBackground(activeBlog, "post", postID, bgItem)
 
 	l.jsonResponse(w, map[string]interface{}{
 		"success":  true,
@@ -1753,13 +1755,6 @@ func (l *LegacyHandler) HandleUploadBlogBackground(w http.ResponseWriter, r *htt
 	settings["backgroundMode"] = mode
 	_ = l.storage.SafeWriteJSON(settingsPath, settings)
 
-	bgItem := &domain.BackgroundItem{
-		Image:  filename,
-		Size:   mode,
-		Repeat: "no-repeat",
-	}
-	_ = l.media.SaveBackground(activeBlog, "blog", "", bgItem)
-
 	l.jsonResponse(w, map[string]interface{}{
 		"success":  true,
 		"filename": filename,
@@ -1784,7 +1779,6 @@ func (l *LegacyHandler) HandleRemoveBlogBackground(w http.ResponseWriter, r *htt
 		_ = l.storage.SafeWriteJSON(settingsPath, settings)
 	}
 
-	_ = l.media.RemoveBackground(activeBlog, "blog", "")
 	l.jsonResponse(w, map[string]interface{}{"success": true})
 }
 
@@ -1802,19 +1796,20 @@ func (l *LegacyHandler) HandleUploadGlobalBackground(w http.ResponseWriter, r *h
 	}
 	defer file.Close()
 
-	data, _ := io.ReadAll(file)
-	filename, err := l.media.UploadBackground(activeBlog, header.Filename, data)
+	mode := r.FormValue("mode")
+	scope := r.FormValue("scope")
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		l.errorResponse(w, "Ошибка чтения файла")
+		return
+	}
+
+	filename, err := l.post.UploadGlobalBackground(activeBlog, header.Filename, data, mode, scope)
 	if err != nil {
 		l.errorResponse(w, err.Error())
 		return
 	}
-
-	bgItem := &domain.BackgroundItem{
-		Image:  filename,
-		Size:   "cover",
-		Repeat: "no-repeat",
-	}
-	_ = l.media.SaveBackground(activeBlog, "global", "", bgItem)
 
 	l.jsonResponse(w, map[string]interface{}{
 		"success":  true,
@@ -1824,30 +1819,33 @@ func (l *LegacyHandler) HandleUploadGlobalBackground(w http.ResponseWriter, r *h
 
 func (l *LegacyHandler) HandleGetPostBackgrounds(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
-	bg, _ := l.media.GetBackgrounds(activeBlog)
+	postIDStr := r.URL.Query().Get("postId")
+	if postIDStr != "" {
+		postID, err := strconv.Atoi(postIDStr)
+		if err == nil && postID > 0 {
+			settings, _ := l.post.GetPostBackground(activeBlog, postID)
+			l.jsonResponse(w, map[string]interface{}{
+				"success":  true,
+				"settings": settings,
+			})
+			return
+		}
+	}
+
+	bgs, _ := l.post.GetAllPostBackgrounds(activeBlog)
 	l.jsonResponse(w, map[string]interface{}{
 		"success":     true,
-		"backgrounds": bg,
-		"settings":    bg,
+		"backgrounds": bgs,
 	})
 }
 
 func (l *LegacyHandler) HandleUpdatePostBackground(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
 	var body struct {
-		PostID     string  `json:"postId"`
-		Blur       float64 `json:"blur"`
-		Brightness float64 `json:"brightness"`
-		Opacity    float64 `json:"opacity"`
+		PostID int `json:"postId"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-
-	bg, _ := l.media.GetBackgrounds(activeBlog)
-	if item, exists := bg.Posts[body.PostID]; exists {
-		item.Blur = body.Blur
-		item.Brightness = body.Brightness
-		item.Opacity = body.Opacity
-		_ = l.media.SaveBackground(activeBlog, "post", body.PostID, item)
+	if err := json.NewDecoder(r.Body).Decode(&body); err == nil && body.PostID > 0 {
+		_ = l.post.ApplyBackgroundForPost(activeBlog, body.PostID)
 	}
 
 	l.jsonResponse(w, map[string]interface{}{"success": true})
@@ -1855,13 +1853,39 @@ func (l *LegacyHandler) HandleUpdatePostBackground(w http.ResponseWriter, r *htt
 
 func (l *LegacyHandler) HandleRemoveBackground(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
-	postID := r.URL.Query().Get("postId")
-	targetType := r.URL.Query().Get("type")
-	if targetType == "" {
-		targetType = "post"
+	var postID int
+
+	ct := r.Header.Get("Content-Type")
+	if strings.Contains(ct, "application/json") {
+		var body struct {
+			PostID int `json:"postId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			postID = body.PostID
+		}
 	}
-	_ = l.media.RemoveBackground(activeBlog, targetType, postID)
-	l.jsonResponse(w, map[string]interface{}{"success": true})
+
+	if postID <= 0 {
+		if pid, err := strconv.Atoi(r.URL.Query().Get("postId")); err == nil {
+			postID = pid
+		}
+	}
+
+	if postID <= 0 {
+		l.errorResponse(w, "Отсутствует ID статьи")
+		return
+	}
+
+	globalApplied, err := l.post.RemovePostBackground(activeBlog, postID)
+	if err != nil {
+		l.errorResponse(w, err.Error())
+		return
+	}
+
+	l.jsonResponse(w, map[string]interface{}{
+		"success":       true,
+		"globalApplied": globalApplied,
+	})
 }
 
 // --- Навигация и Языки ---
@@ -1986,33 +2010,16 @@ func (l *LegacyHandler) HandleSaveOverlaySettings(w http.ResponseWriter, r *http
 		OverlayColor   string `json:"overlayColor"`
 		OverlayOpacity int    `json:"overlayOpacity"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-
-	bgFile := l.storage.GetDataPath(activeBlog, "post_backgrounds.json")
-	var cfg map[string]interface{}
-	_ = l.storage.SafeReadJSON(bgFile, &cfg)
-	if cfg == nil {
-		cfg = make(map[string]interface{})
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.PostID <= 0 {
+		l.errorResponse(w, "Отсутствует ID статьи")
+		return
 	}
 
-	postKey := strconv.Itoa(body.PostID)
-	postsMap, ok := cfg["posts"].(map[string]interface{})
-	if !ok {
-		postsMap = make(map[string]interface{})
-		cfg["posts"] = postsMap
+	if err := l.post.SaveOverlaySettings(activeBlog, body.PostID, body.OverlayEnabled, body.OverlayColor, body.OverlayOpacity); err != nil {
+		l.errorResponse(w, err.Error())
+		return
 	}
 
-	postObj, ok := postsMap[postKey].(map[string]interface{})
-	if !ok {
-		postObj = make(map[string]interface{})
-		postsMap[postKey] = postObj
-	}
-
-	postObj["overlayEnabled"] = body.OverlayEnabled
-	postObj["overlayColor"] = body.OverlayColor
-	postObj["overlayOpacity"] = body.OverlayOpacity
-
-	_ = l.storage.SafeWriteJSON(bgFile, cfg)
 	l.jsonResponse(w, map[string]interface{}{"success": true})
 }
 
@@ -2354,22 +2361,9 @@ func (l *LegacyHandler) HandleRestoreSystem(w http.ResponseWriter, r *http.Reque
 
 func (l *LegacyHandler) HandleRemoveGlobalBackground(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
-	bgDir := l.storage.GetDataPath(activeBlog, "backgrounds")
-	if entries, err := os.ReadDir(bgDir); err == nil {
-		for _, e := range entries {
-			if strings.HasPrefix(e.Name(), "global-bg.") {
-				_ = os.Remove(filepath.Join(bgDir, e.Name()))
-			}
-		}
-	}
-
-	settingsFile := l.storage.GetDataPath(activeBlog, "global-settings.json")
-	var settings map[string]interface{}
-	if err := l.storage.SafeReadJSON(settingsFile, &settings); err == nil && settings != nil {
-		delete(settings, "background")
-		delete(settings, "backgroundMode")
-		delete(settings, "backgroundScope")
-		_ = l.storage.SafeWriteJSON(settingsFile, settings)
+	if err := l.post.RemoveGlobalBackground(activeBlog); err != nil {
+		l.errorResponse(w, err.Error())
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
