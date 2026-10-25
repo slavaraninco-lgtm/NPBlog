@@ -1058,9 +1058,16 @@ func (h *RestHandler) HandleListBackups(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *RestHandler) HandleGetBackupContent(w http.ResponseWriter, r *http.Request) {
-	postID, _ := strconv.Atoi(r.URL.Query().Get("postId"))
+	postIDKey := r.URL.Query().Get("postId")
 	backupNum, _ := strconv.Atoi(r.URL.Query().Get("backup"))
-	content, err := h.backup.GetBackupContent(postID, backupNum)
+	if backupNum <= 0 {
+		backupNum, _ = strconv.Atoi(r.URL.Query().Get("backupNumber"))
+	}
+	filename := r.URL.Query().Get("filename")
+	if fn := chi.URLParam(r, "filename"); fn != "" && fn != "content" {
+		filename = fn
+	}
+	content, err := h.backup.GetBackupFileContent(postIDKey, filename, backupNum)
 	if err != nil {
 		h.jsonError(w, http.StatusNotFound, "NOT_FOUND", err.Error(), nil)
 		return
@@ -1070,14 +1077,90 @@ func (h *RestHandler) HandleGetBackupContent(w http.ResponseWriter, r *http.Requ
 	}, nil)
 }
 
+func (h *RestHandler) HandleViewBackup(w http.ResponseWriter, r *http.Request) {
+	postIDKey := r.URL.Query().Get("postId")
+	backupNum, _ := strconv.Atoi(r.URL.Query().Get("backup"))
+	if backupNum <= 0 {
+		backupNum, _ = strconv.Atoi(r.URL.Query().Get("backupNumber"))
+	}
+	filename := r.URL.Query().Get("filename")
+	if fn := chi.URLParam(r, "filename"); fn != "" && fn != "content" && fn != "view" {
+		filename = fn
+	}
+	content, err := h.backup.GetBackupFileContent(postIDKey, filename, backupNum)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	activeBlog := middleware.GetActiveBlogPath(r)
+	if blogParam := r.URL.Query().Get("blog"); blogParam != "" {
+		activeBlog = blogParam
+	}
+	if activeBlog == "" {
+		activeBlog = "data"
+	}
+	activeBlog = strings.Trim(filepath.Base(activeBlog), "/\\")
+	baseHref := "/" + activeBlog + "/blog/"
+
+	html := content
+	if !strings.Contains(html, "<base ") && !strings.Contains(html, "<base>") {
+		if strings.Contains(html, "<head>") {
+			html = strings.Replace(html, "<head>", fmt.Sprintf("<head>\n    <base href=\"%s\">", baseHref), 1)
+		} else if strings.Contains(html, "<head ") {
+			re := regexp.MustCompile(`(?i)<head[^>]*>`)
+			html = re.ReplaceAllStringFunc(html, func(m string) string {
+				return fmt.Sprintf("%s\n    <base href=\"%s\">", m, baseHref)
+			})
+		} else {
+			html = fmt.Sprintf("<base href=\"%s\">\n%s", baseHref, html)
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(html))
+}
+
 func (h *RestHandler) HandleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
-	var body struct {
-		PostID       int `json:"postId"`
-		BackupNumber int `json:"backupNumber"`
+	postIDKey := r.URL.Query().Get("postId")
+	filename := r.URL.Query().Get("filename")
+	var backupNum int
+	if bn, err := strconv.Atoi(r.URL.Query().Get("backupNumber")); err == nil {
+		backupNum = bn
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	err := h.backup.RestoreBackup(activeBlog, body.PostID, body.BackupNumber)
+
+	if r.Body != nil {
+		var raw map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&raw); err == nil {
+			if v, ok := raw["postId"]; ok {
+				switch val := v.(type) {
+				case float64:
+					postIDKey = strconv.Itoa(int(val))
+				case string:
+					postIDKey = strings.TrimSpace(val)
+				}
+			}
+			if v, ok := raw["filename"]; ok {
+				if s, ok := v.(string); ok && s != "" {
+					filename = strings.TrimSpace(s)
+				}
+			}
+			if v, ok := raw["backupNumber"]; ok {
+				switch val := v.(type) {
+				case float64:
+					backupNum = int(val)
+				case string:
+					if bn, err := strconv.Atoi(strings.TrimSpace(val)); err == nil {
+						backupNum = bn
+					}
+				}
+			}
+		}
+	}
+
+	err := h.backup.RestoreBackupFile(activeBlog, postIDKey, filename, backupNum)
 	if err != nil {
 		h.jsonError(w, http.StatusInternalServerError, "RESTORE_ERROR", err.Error(), nil)
 		return
@@ -1086,9 +1169,16 @@ func (h *RestHandler) HandleRestoreBackup(w http.ResponseWriter, r *http.Request
 }
 
 func (h *RestHandler) HandleDeleteBackup(w http.ResponseWriter, r *http.Request) {
-	postID, _ := strconv.Atoi(r.URL.Query().Get("postId"))
+	postIDKey := r.URL.Query().Get("postId")
 	backupNum, _ := strconv.Atoi(r.URL.Query().Get("backup"))
-	err := h.backup.DeleteBackup(postID, backupNum)
+	if backupNum <= 0 {
+		backupNum, _ = strconv.Atoi(r.URL.Query().Get("backupNumber"))
+	}
+	filename := r.URL.Query().Get("filename")
+	if fn := chi.URLParam(r, "filename"); fn != "" {
+		filename = fn
+	}
+	err := h.backup.DeleteBackupFile(postIDKey, filename, backupNum)
 	if err != nil {
 		h.jsonError(w, http.StatusInternalServerError, "DELETE_ERROR", err.Error(), nil)
 		return

@@ -78,7 +78,7 @@ function renderBackups(backups) {
                                 ${isDeleted ? '<div class="backup-date" style="color: #d32f2f; font-weight: 600; margin-top: 4px;">' + deletedInfo + '</div>' : ''}
                             </div>
                             <div class="backup-actions">
-                                <button type="button" class="backup-btn view" onclick="viewBackup('${postId}', '${backup.filename}')">${viewText}</button>
+                                <button type="button" class="backup-btn view" onclick="viewBackup('${postId}', '${backup.filename}', ${backup.backupNumber})">${viewText}</button>
                                 ${!isDeleted ? `<button type="button" class="backup-btn restore" onclick="restoreBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">${restoreText}</button>` : ''}
                                 <button type="button" class="backup-btn delete" onclick="deleteBackup('${postId}', '${backup.filename}', ${backup.backupNumber}, '${escapeHtml(backup.date)}')">${deleteText}</button>
                             </div>
@@ -99,29 +99,21 @@ function toggleBackupGroup(postId) {
     }
 }
 
-async function viewBackup(postId, filename) {
+function viewBackup(postId, filename, backupNumber) {
     try {
-        const response = await fetch('/get_backup_content.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-            },
-            body: JSON.stringify({ postId: postId, filename: filename })
-        });
+        const activeBlog = (window.currentActiveBlogPath || 'data').replace(/^\/+|\/+$/g, '');
+        let viewUrl = `/view_backup.php?postId=${encodeURIComponent(postId)}&filename=${encodeURIComponent(filename)}&blog=${encodeURIComponent(activeBlog)}`;
+        if (backupNumber) {
+            viewUrl += `&backupNumber=${encodeURIComponent(backupNumber)}`;
+        }
 
-        const data = await response.json();
-
-        if (data.success) {
-            // Открываем в новом окне
-            const newWindow = window.open('', '_blank');
-            newWindow.document.write(data.content);
-            newWindow.document.close();
-        } else {
-            showNotification('Ошибка: ' + data.error, 'error');
+        const newWindow = window.open(viewUrl, '_blank');
+        if (!newWindow) {
+            showNotification(window.t ? window.t('notifications.popup_blocked', 'Всплывающее окно заблокировано браузером. Разрешите всплывающие окна для просмотра бэкапа.') : 'Всплывающее окно заблокировано браузером. Разрешите всплывающие окна для просмотра бэкапа.', 'warning');
         }
     } catch (error) {
         console.error('Ошибка просмотра бэкапа:', error);
-        showNotification('Ошибка при просмотре бэкапа', 'error');
+        showNotification(window.t ? window.t('notifications.backup_view_error', 'Ошибка при просмотре бэкапа') : 'Ошибка при просмотре бэкапа', 'error');
     }
 }
 
@@ -136,15 +128,18 @@ function restoreBackup(postId, filename, backupNumber, backupDate) {
         showNotification('Восстановление бэкапа...', 'info');
 
         try {
+            const payload = {
+                postId: postId,
+                filename: filename
+            };
+            if (backupNumber) payload.backupNumber = backupNumber;
+
             const response = await fetch('/restore_backup.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json; charset=utf-8',
                 },
-                body: JSON.stringify({
-                    postId: postId,
-                    filename: filename
-                })
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
@@ -156,7 +151,7 @@ function restoreBackup(postId, filename, backupNumber, backupDate) {
                 // Перезагружаем страницу через секунду для отображения восстановленной статьи
                 setTimeout(() => location.reload(), 1000);
             } else {
-                showNotification('Ошибка: ' + data.error, 'error');
+                showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
             }
         } catch (error) {
             console.error('Ошибка восстановления бэкапа:', error);
@@ -182,15 +177,18 @@ function deleteBackup(postId, filename, backupNumber, backupDate) {
         showNotification('Удаление бэкапа...', 'info');
 
         try {
+            const payload = {
+                postId: postId,
+                filename: filename
+            };
+            if (backupNumber) payload.backupNumber = backupNumber;
+
             const response = await fetch('/delete_backup.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json; charset=utf-8',
                 },
-                body: JSON.stringify({
-                    postId: postId,
-                    filename: filename
-                })
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
@@ -200,7 +198,7 @@ function deleteBackup(postId, filename, backupNumber, backupDate) {
                 // Обновляем список бэкапов в окне менеджера
                 openBackupManager();
             } else {
-                showNotification('Ошибка: ' + data.error, 'error');
+                showNotification((window.t ? window.t('common.error', 'Ошибка') : 'Ошибка') + ': ' + data.error, 'error');
             }
         } catch (error) {
             console.error('Ошибка удаления бэкапа:', error);

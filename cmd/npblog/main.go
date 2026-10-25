@@ -97,6 +97,7 @@ func main() {
 	r.Get("/delete_all_autosaves.php", legacyHandler.HandleDeleteAllAutosaves)
 
 	r.Get("/get_backups.php", legacyHandler.HandleGetBackups)
+	r.Get("/view_backup.php", legacyHandler.HandleViewBackup)
 	r.Get("/get_backup_content.php", legacyHandler.HandleGetBackupContent)
 	r.Post("/get_backup_content.php", legacyHandler.HandleGetBackupContent)
 	r.Post("/restore_backup.php", legacyHandler.HandleRestoreBackup)
@@ -229,6 +230,7 @@ func main() {
 
 		api.Route("/backups", func(sub chi.Router) {
 			sub.Get("/", restHandler.HandleListBackups)
+			sub.Get("/view", restHandler.HandleViewBackup)
 			sub.Post("/restore", restHandler.HandleRestoreBackup)
 			sub.Get("/{filename}", restHandler.HandleGetBackupContent)
 			sub.Delete("/{filename}", restHandler.HandleDeleteBackup)
