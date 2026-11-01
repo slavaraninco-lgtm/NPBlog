@@ -80,6 +80,20 @@
                     method: 'POST'
                 });
                 return res.data || res;
+            },
+            async getSessions() {
+                const res = await request('/api/v1/auth/sessions');
+                return res.data && res.data.sessions ? res.data.sessions : (res.sessions || []);
+            },
+            async terminateSession(id) {
+                return await request(`/api/v1/auth/sessions/${encodeURIComponent(id)}`, {
+                    method: 'DELETE'
+                });
+            },
+            async terminateOtherSessions() {
+                return await request('/api/v1/auth/sessions/terminate_others', {
+                    method: 'POST'
+                });
             }
         },
 

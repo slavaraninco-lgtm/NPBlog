@@ -839,6 +839,11 @@ textarea {
     color: #fff;
     font-size: 14px;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
     transition: background-color var(--anim-dur-fast) ease, border-color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
     padding: 0;
 }
@@ -3991,6 +3996,55 @@ button:hover {
 #submitButton:active,
 #floatingSaveBtn:active {
     transform: scale(0.96);
+}
+
+#submitButton:disabled,
+#floatingSaveBtn:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+#submitButton:disabled:hover,
+#floatingSaveBtn:disabled:hover {
+    background: var(--bg-color);
+    color: var(--text-color);
+    transform: none !important;
+}
+
+#submitButton.is-saving,
+#floatingSaveBtn.is-saving {
+    cursor: wait;
+}
+
+#submitButton.editing:disabled:hover,
+#floatingSaveBtn.editing:disabled:hover {
+    background: #e65100;
+    color: #fff;
+    transform: none !important;
+}
+
+.btn-spinner {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: btnSpinnerRotate 0.75s linear infinite;
+    vertical-align: middle;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+@keyframes btnSpinnerRotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 #submitButton.editing,
@@ -7536,6 +7590,19 @@ body.header-bottom {
     .editor-header #submitButton::before {
         content: "💾";
         font-size: 14px;
+    }
+
+    .editor-header #submitButton.is-saving,
+    .editor-header #submitButton.is-saved {
+        font-size: 13px !important;
+        width: auto !important;
+        min-width: 34px !important;
+        padding: 0 12px !important;
+    }
+
+    .editor-header #submitButton.is-saving::before,
+    .editor-header #submitButton.is-saved::before {
+        display: none !important;
     }
 
     .editor-header .editor-menu-btn {

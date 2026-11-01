@@ -90,6 +90,12 @@ func setupTestRouter(t *testing.T) (http.Handler, string) {
 			sub.Get("/blog-nav", restHandler.HandleGetBlogNav)
 			sub.Put("/blog-nav", restHandler.HandleUpdateBlogNav)
 		})
+
+		api.Route("/auth", func(sub chi.Router) {
+			sub.Get("/sessions", restHandler.HandleGetSessions)
+			sub.Delete("/sessions/{id}", restHandler.HandleTerminateSession)
+			sub.Post("/sessions/terminate_others", restHandler.HandleTerminateOtherSessions)
+		})
 	})
 
 	return r, tmpDir
@@ -495,5 +501,75 @@ func TestRestIncludes(t *testing.T) {
 
 	if wDel.Code != http.StatusOK {
 		t.Fatalf("Expected 200 on delete include, got %d: %s", wDel.Code, wDel.Body.String())
+	}
+}
+
+func TestSessions_REST(t *testing.T) {
+	router, tmpDir := setupTestRouter(t)
+	defer os.RemoveAll(tmpDir)
+
+	// Update settings with a password to trigger session creation
+	payload := map[string]interface{}{
+		"password_enabled": true,
+		"new_password":     "supersecret",
+	}
+	body, _ := json.Marshal(payload)
+	reqSave := httptest.NewRequest(http.MethodPut, "/api/v1/settings/editor", bytes.NewReader(body))
+	reqSave.Header.Set("Content-Type", "application/json")
+	reqSave.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0")
+	wSave := httptest.NewRecorder()
+	router.ServeHTTP(wSave, reqSave)
+
+	cookie := wSave.Result().Cookies()[0]
+	if cookie.Name != "npblog_session" {
+		t.Fatalf("expected npblog_session cookie, got %s", cookie.Name)
+	}
+
+	// 1. Get sessions via GET /api/v1/auth/sessions
+	reqGet := httptest.NewRequest(http.MethodGet, "/api/v1/auth/sessions", nil)
+	reqGet.AddCookie(cookie)
+	wGet := httptest.NewRecorder()
+	router.ServeHTTP(wGet, reqGet)
+
+	if wGet.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on get sessions, got %d: %s", wGet.Code, wGet.Body.String())
+	}
+
+	var getResp struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Sessions []struct {
+				ID        string `json:"id"`
+				IsCurrent bool   `json:"is_current"`
+			} `json:"sessions"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(wGet.Body.Bytes(), &getResp)
+	if !getResp.Success || len(getResp.Data.Sessions) == 0 {
+		t.Fatalf("Expected sessions list, got %v", getResp)
+	}
+	if !getResp.Data.Sessions[0].IsCurrent || getResp.Data.Sessions[0].ID != cookie.Value {
+		t.Errorf("Expected first session to be current")
+	}
+
+	// 2. Terminate session via DELETE /api/v1/auth/sessions/{id}
+	reqDel := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/sessions/"+cookie.Value, nil)
+	reqDel.AddCookie(cookie)
+	wDel := httptest.NewRecorder()
+	router.ServeHTTP(wDel, reqDel)
+
+	if wDel.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on delete session, got %d: %s", wDel.Code, wDel.Body.String())
+	}
+
+	var delResp struct {
+		Success bool `json:"success"`
+		Data    struct {
+			IsCurrent bool `json:"is_current"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(wDel.Body.Bytes(), &delResp)
+	if !delResp.Success || !delResp.Data.IsCurrent {
+		t.Errorf("Expected is_current=true on terminating current session")
 	}
 }

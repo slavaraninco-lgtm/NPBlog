@@ -3834,7 +3834,9 @@ function insertImageGrid(layout) {
                 placeholder.style.display = 'block';
                 formatBar.classList.add('is-floating');
                 if (floatingSaveBtn && submitButton) {
-                    floatingSaveBtn.textContent = submitButton.textContent;
+                    floatingSaveBtn.innerHTML = submitButton.innerHTML;
+                    floatingSaveBtn.className = submitButton.className;
+                    floatingSaveBtn.disabled = submitButton.disabled;
                     floatingSaveBtn.style.display = 'block';
                 }
             }

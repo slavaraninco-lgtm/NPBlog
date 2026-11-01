@@ -1,56 +1,50 @@
 {
     "1": {
         "postId": 1,
-        "postTitle": "Тест функций",
+        "postTitle": "sdfsdf",
         "backups": [
             {
                 "backupNumber": 1,
                 "filename": "1-1.html",
-                "date": "25.10.2026 00:00",
-                "title": "Тест функций"
+                "date": "01.11.2026 17:17",
+                "title": "sdfsdf"
             }
         ]
     },
-    "deleted_2_1792917995": {
-        "postId": 0,
-        "postTitle": "[УДАЛЕНО] аывавыаыв",
+    "2": {
+        "postId": 2,
+        "postTitle": "тест",
         "backups": [
             {
                 "backupNumber": 1,
                 "filename": "2-1.html",
-                "date": "25.10.2026 11:46",
-                "title": "аывавыаыв"
+                "date": "01.11.2026 17:30",
+                "title": "тест"
             }
-        ],
-        "deleted": true,
-        "deletedAt": "25.10.2026 11:46"
+        ]
     },
-    "deleted_2_1792917999": {
-        "postId": 0,
-        "postTitle": "[УДАЛЕНО] ываывавы",
+    "3": {
+        "postId": 3,
+        "postTitle": "ываыва",
         "backups": [
             {
                 "backupNumber": 1,
-                "filename": "2-1.html",
-                "date": "25.10.2026 11:46",
-                "title": "ываывавы"
+                "filename": "3-1.html",
+                "date": "01.11.2026 17:30",
+                "title": "ываыва"
             }
-        ],
-        "deleted": true,
-        "deletedAt": "25.10.2026 11:46"
+        ]
     },
-    "deleted_2_1792918008": {
-        "postId": 0,
-        "postTitle": "[УДАЛЕНО] 4",
+    "4": {
+        "postId": 4,
+        "postTitle": "ываыва",
         "backups": [
             {
                 "backupNumber": 1,
-                "filename": "2-1.html",
-                "date": "25.10.2026 11:46",
-                "title": "4"
+                "filename": "4-1.html",
+                "date": "01.11.2026 17:32",
+                "title": "ываыва"
             }
-        ],
-        "deleted": true,
-        "deletedAt": "25.10.2026 11:46"
+        ]
     }
 }

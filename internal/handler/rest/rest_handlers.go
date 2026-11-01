@@ -148,6 +148,57 @@ func (h *RestHandler) HandleMe(w http.ResponseWriter, r *http.Request) {
 	}, nil)
 }
 
+func (h *RestHandler) HandleGetSessions(w http.ResponseWriter, r *http.Request) {
+	currentCookie := ""
+	if cookie, err := r.Cookie("npblog_session"); err == nil {
+		currentCookie = cookie.Value
+	}
+	sessions := h.auth.GetActiveSessions(currentCookie)
+	h.jsonSuccess(w, http.StatusOK, "Список активных сессий", map[string]interface{}{
+		"sessions": sessions,
+	}, nil)
+}
+
+func (h *RestHandler) HandleTerminateSession(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		h.jsonError(w, http.StatusBadRequest, "invalid_id", "ID сессии не указан", nil)
+		return
+	}
+
+	currentCookie := ""
+	if cookie, err := r.Cookie("npblog_session"); err == nil {
+		currentCookie = cookie.Value
+	}
+
+	isCurrent := (id == currentCookie)
+	success := h.auth.TerminateSession(id)
+	if !success {
+		h.jsonError(w, http.StatusNotFound, "not_found", "Сессия не найдена", nil)
+		return
+	}
+
+	if isCurrent {
+		h.auth.DestroySession(w, currentCookie)
+	}
+
+	h.jsonSuccess(w, http.StatusOK, "Сессия успешно завершена", map[string]interface{}{
+		"is_current": isCurrent,
+	}, nil)
+}
+
+func (h *RestHandler) HandleTerminateOtherSessions(w http.ResponseWriter, r *http.Request) {
+	currentCookie := ""
+	if cookie, err := r.Cookie("npblog_session"); err == nil {
+		currentCookie = cookie.Value
+	}
+
+	count := h.auth.TerminateOtherSessions(currentCookie)
+	h.jsonSuccess(w, http.StatusOK, "Все остальные сессии успешно завершены", map[string]interface{}{
+		"terminated_count": count,
+	}, nil)
+}
+
 // --- Posts Routes ---
 
 func (h *RestHandler) HandleListPosts(w http.ResponseWriter, r *http.Request) {
@@ -657,7 +708,7 @@ func (h *RestHandler) HandleUpdateEditorSettings(w http.ResponseWriter, r *http.
 
 	if newPassword != "" {
 		h.auth.ResetLockout(h.auth.GetClientIP(r), middleware.GetActiveBlogPath(r))
-		_ = h.auth.CreateSession(w)
+		_ = h.auth.CreateSession(w, r)
 	}
 
 	sanitizedMap := make(map[string]interface{})

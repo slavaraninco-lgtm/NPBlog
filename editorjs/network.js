@@ -471,14 +471,29 @@ function handleSubmit(e) {
     const submitButton = document.getElementById('submitButton');
     const floatingSaveBtn = document.getElementById('floatingSaveBtn');
 
+    if (window.saveStatusTimer) {
+        clearTimeout(window.saveStatusTimer);
+        window.saveStatusTimer = null;
+    }
+
     isSavingArticle = true;
+
+    const savingLabel = window.t ? window.t('header.btn_saving', 'Сохранение') : 'Сохранение';
+    const savingContent = `<span class="btn-spinner" aria-hidden="true"></span><span>${savingLabel}</span>`;
+
     if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = 'Сохранение...';
+        submitButton.classList.remove('is-saved');
+        submitButton.classList.add('is-saving');
+        submitButton.setAttribute('data-i18n', 'header.btn_saving');
+        submitButton.innerHTML = savingContent;
     }
     if (floatingSaveBtn) {
         floatingSaveBtn.disabled = true;
-        floatingSaveBtn.textContent = 'Сохранение...';
+        floatingSaveBtn.classList.remove('is-saved');
+        floatingSaveBtn.classList.add('is-saving');
+        floatingSaveBtn.setAttribute('data-i18n', 'header.btn_saving');
+        floatingSaveBtn.innerHTML = savingContent;
     }
 
     const endpoint = currentEditId ? '/update_post.php' : '/save_post.php';
@@ -512,10 +527,6 @@ function handleSubmit(e) {
                 }
                 throw new Error(errorMsg);
             }
-            showNotification(
-                currentEditId ? 'Статья успешно обновлена!' : 'Статья успешно добавлена!',
-                'success'
-            );
 
             // Очищаем локальный черновик и сбрасываем признак несохраненных изменений
             clearLocalDraft();
@@ -544,39 +555,77 @@ function handleSubmit(e) {
             loadPosts();
 
             currentEditId = null;
-            if (submitButton) {
-                submitButton.textContent = 'Сохранить';
-                submitButton.classList.remove('editing');
-            }
-            if (floatingSaveBtn) {
-                floatingSaveBtn.textContent = 'Сохранить';
-                floatingSaveBtn.classList.remove('editing');
-            }
 
             // Очищаем историю
             clearHistory();
-        })
-        .catch((err) => {
-            const msg = err && err.message ? err.message : 'Ошибка при сохранении статьи';
-            showNotification(msg, 'error');
-        })
-        .finally(() => {
-            isSavingArticle = false;
+
+            // Показываем в кнопке статус "Сохранено!" на 3 секунды (кнопка остается неактивной)
+            const savedLabel = window.t ? window.t('header.btn_saved', 'Сохранено!') : 'Сохранено!';
             if (submitButton) {
-                submitButton.disabled = false;
-                if (currentEditId) {
-                    submitButton.textContent = 'Сохранить изменения';
-                } else {
-                    submitButton.textContent = 'Сохранить';
-                }
+                submitButton.classList.remove('is-saving', 'editing');
+                submitButton.classList.add('is-saved');
+                submitButton.setAttribute('data-i18n', 'header.btn_saved');
+                submitButton.textContent = savedLabel;
+                submitButton.disabled = true;
             }
             if (floatingSaveBtn) {
-                floatingSaveBtn.disabled = false;
-                if (currentEditId) {
-                    floatingSaveBtn.textContent = 'Сохранить изменения';
-                } else {
-                    floatingSaveBtn.textContent = 'Сохранить';
+                floatingSaveBtn.classList.remove('is-saving', 'editing');
+                floatingSaveBtn.classList.add('is-saved');
+                floatingSaveBtn.setAttribute('data-i18n', 'header.btn_saved');
+                floatingSaveBtn.textContent = savedLabel;
+                floatingSaveBtn.disabled = true;
+            }
+
+            window.saveStatusTimer = setTimeout(() => {
+                const saveLabel = window.t ? window.t('header.btn_save', 'Сохранить') : 'Сохранить';
+                if (submitButton) {
+                    submitButton.classList.remove('is-saved');
+                    submitButton.setAttribute('data-i18n', 'header.btn_save');
+                    submitButton.textContent = saveLabel;
+                    submitButton.disabled = false;
                 }
+                if (floatingSaveBtn) {
+                    floatingSaveBtn.classList.remove('is-saved');
+                    floatingSaveBtn.setAttribute('data-i18n', 'header.btn_save');
+                    floatingSaveBtn.textContent = saveLabel;
+                    floatingSaveBtn.disabled = false;
+                }
+                isSavingArticle = false;
+                window.saveStatusTimer = null;
+            }, 3000);
+        })
+        .catch((err) => {
+            isSavingArticle = false;
+            const msg = err && err.message ? err.message : 'Ошибка при сохранении статьи';
+            showNotification(msg, 'error');
+
+            const restoreLabel = currentEditId
+                ? (window.t ? window.t('common.save_changes', 'Сохранить изменения') : 'Сохранить изменения')
+                : (window.t ? window.t('header.btn_save', 'Сохранить') : 'Сохранить');
+
+            if (submitButton) {
+                submitButton.classList.remove('is-saving', 'is-saved');
+                if (currentEditId) {
+                    submitButton.classList.add('editing');
+                    submitButton.setAttribute('data-i18n', 'common.save_changes');
+                } else {
+                    submitButton.classList.remove('editing');
+                    submitButton.setAttribute('data-i18n', 'header.btn_save');
+                }
+                submitButton.textContent = restoreLabel;
+                submitButton.disabled = false;
+            }
+            if (floatingSaveBtn) {
+                floatingSaveBtn.classList.remove('is-saving', 'is-saved');
+                if (currentEditId) {
+                    floatingSaveBtn.classList.add('editing');
+                    floatingSaveBtn.setAttribute('data-i18n', 'common.save_changes');
+                } else {
+                    floatingSaveBtn.classList.remove('editing');
+                    floatingSaveBtn.setAttribute('data-i18n', 'header.btn_save');
+                }
+                floatingSaveBtn.textContent = restoreLabel;
+                floatingSaveBtn.disabled = false;
             }
         });
 }

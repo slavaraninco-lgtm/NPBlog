@@ -279,7 +279,7 @@ func (l *LegacyHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	if l.auth.VerifyPassword(body.Password) {
 		l.auth.ResetLockout(clientIP, activeBlog)
-		session := l.auth.CreateSession(w)
+		session := l.auth.CreateSession(w, r)
 		l.jsonResponse(w, map[string]interface{}{
 			"success":    true,
 			"csrf_token": session.CSRFToken,
@@ -305,6 +305,63 @@ func (l *LegacyHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	l.jsonResponse(w, map[string]interface{}{
 		"success": true,
+	})
+}
+
+func (l *LegacyHandler) HandleGetSessions(w http.ResponseWriter, r *http.Request) {
+	currentCookie := ""
+	if cookie, err := r.Cookie("npblog_session"); err == nil {
+		currentCookie = cookie.Value
+	}
+	sessions := l.auth.GetActiveSessions(currentCookie)
+	l.jsonResponse(w, map[string]interface{}{
+		"success":  true,
+		"sessions": sessions,
+	})
+}
+
+func (l *LegacyHandler) HandleTerminateSession(w http.ResponseWriter, r *http.Request) {
+	currentCookie := ""
+	if cookie, err := r.Cookie("npblog_session"); err == nil {
+		currentCookie = cookie.Value
+	}
+
+	var body struct {
+		ID        string `json:"id"`
+		AllOthers bool   `json:"all_others"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	if body.ID == "" && !body.AllOthers {
+		body.ID = r.FormValue("id")
+		if r.FormValue("all_others") == "true" || r.FormValue("all_others") == "1" {
+			body.AllOthers = true
+		}
+	}
+
+	if body.AllOthers {
+		count := l.auth.TerminateOtherSessions(currentCookie)
+		l.jsonResponse(w, map[string]interface{}{
+			"success":          true,
+			"terminated_count": count,
+		})
+		return
+	}
+
+	if body.ID == "" {
+		l.errorResponse(w, "Не указан ID сессии")
+		return
+	}
+
+	isCurrent := (body.ID == currentCookie)
+	success := l.auth.TerminateSession(body.ID)
+	if isCurrent {
+		l.auth.DestroySession(w, currentCookie)
+	}
+
+	l.jsonResponse(w, map[string]interface{}{
+		"success":    success,
+		"is_current": isCurrent,
 	})
 }
 
@@ -968,7 +1025,7 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 	l.cfg.ReloadSettings()
 	if newPassword != "" {
 		l.auth.ResetLockout(l.auth.GetClientIP(r), middleware.GetActiveBlogPath(r))
-		_ = l.auth.CreateSession(w)
+		_ = l.auth.CreateSession(w, r)
 	}
 	if _, ok := updateMap["active_blog_path"].(string); ok {
 		// Subsequent requests use the saved selection rather than a stale cookie.

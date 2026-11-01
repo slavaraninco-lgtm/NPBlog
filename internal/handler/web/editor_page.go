@@ -217,7 +217,7 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 		csrfToken = session.CSRFToken
 	} else {
 		// Создаем сессию для генерации CSRF токена
-		s := h.auth.CreateSession(w)
+		s := h.auth.CreateSession(w, r)
 		csrfToken = s.CSRFToken
 	}
 

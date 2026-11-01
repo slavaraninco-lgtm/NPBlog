@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -19,11 +20,18 @@ import (
 )
 
 type SessionData struct {
-	Authenticated  bool
-	AuthTime       int64
-	CSRFToken      string
-	ActiveBlogPath string
-	EditorLanguage string
+	ID             string `json:"id"`
+	Authenticated  bool   `json:"authenticated"`
+	AuthTime       int64  `json:"auth_time"`
+	CSRFToken      string `json:"csrf_token"`
+	ActiveBlogPath string `json:"active_blog_path"`
+	EditorLanguage string `json:"editor_language"`
+	IP             string `json:"ip"`
+	UserAgent      string `json:"user_agent"`
+	Device         string `json:"device"`
+	Browser        string `json:"browser"`
+	CreatedAt      int64  `json:"created_at"`
+	LastActivity   int64  `json:"last_activity"`
 }
 
 type AuthService struct {
@@ -35,11 +43,13 @@ type AuthService struct {
 }
 
 func NewAuthService(cfg *config.AppConfig, storage *StorageService) *AuthService {
-	return &AuthService{
+	a := &AuthService{
 		cfg:      cfg,
 		storage:  storage,
 		sessions: make(map[string]*SessionData),
 	}
+	a.loadSessionsFromDisk()
+	return a
 }
 
 // GetClientIP извлекает реальный IP-адрес клиента с учетом прокси
@@ -226,21 +236,38 @@ func (a *AuthService) VerifyHash(hash, password string) bool {
 }
 
 // CreateSession создает новую сессию для пользователя
-func (a *AuthService) CreateSession(w http.ResponseWriter) *SessionData {
+func (a *AuthService) CreateSession(w http.ResponseWriter, r *http.Request) *SessionData {
 	sessID := a.generateRandomToken(32)
 	csrfToken := a.generateRandomToken(32)
 
+	now := time.Now().Unix()
+	var clientIP, userAgent, device, browser string
+	if r != nil {
+		clientIP = a.GetClientIP(r)
+		userAgent = r.UserAgent()
+		device, browser = parseUserAgent(userAgent)
+	}
+
 	sess := &SessionData{
+		ID:             sessID,
 		Authenticated:  true,
-		AuthTime:       time.Now().Unix(),
+		AuthTime:       now,
+		CreatedAt:      now,
+		LastActivity:   now,
 		CSRFToken:      csrfToken,
 		ActiveBlogPath: a.cfg.GetSettings().ActiveBlogPath,
 		EditorLanguage: a.cfg.GetSettings().Language,
+		IP:             clientIP,
+		UserAgent:      userAgent,
+		Device:         device,
+		Browser:        browser,
 	}
 
 	a.sessionsMu.Lock()
 	a.sessions[sessID] = sess
 	a.sessionsMu.Unlock()
+
+	go a.saveSessionsToDisk()
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "npblog_session",
@@ -261,18 +288,41 @@ func (a *AuthService) GetSession(r *http.Request) *SessionData {
 		return nil
 	}
 
-	a.sessionsMu.RLock()
+	a.sessionsMu.Lock()
 	sess, exists := a.sessions[cookie.Value]
-	a.sessionsMu.RUnlock()
-
 	if !exists {
+		a.sessionsMu.Unlock()
 		return nil
 	}
 
+	now := time.Now().Unix()
 	// Проверяем срок действия сессии (24 часа)
-	if time.Now().Unix()-sess.AuthTime > 86400 {
-		a.DestroySession(nil, cookie.Value)
+	if now-sess.AuthTime > 86400 {
+		delete(a.sessions, cookie.Value)
+		a.sessionsMu.Unlock()
+		go a.saveSessionsToDisk()
 		return nil
+	}
+
+	var shouldSave bool
+	// Обновляем время последней активности (с задержкой записи на диск)
+	if now-sess.LastActivity >= 60 {
+		sess.LastActivity = now
+		if sess.IP == "" && r != nil {
+			sess.IP = a.GetClientIP(r)
+		}
+		if sess.UserAgent == "" && r != nil {
+			sess.UserAgent = r.UserAgent()
+			sess.Device, sess.Browser = parseUserAgent(sess.UserAgent)
+		}
+		shouldSave = true
+	} else {
+		sess.LastActivity = now
+	}
+	a.sessionsMu.Unlock()
+
+	if shouldSave {
+		go a.saveSessionsToDisk()
 	}
 
 	return sess
@@ -284,6 +334,8 @@ func (a *AuthService) DestroySession(w http.ResponseWriter, sessID string) {
 	delete(a.sessions, sessID)
 	a.sessionsMu.Unlock()
 
+	go a.saveSessionsToDisk()
+
 	if w != nil {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "npblog_session",
@@ -293,6 +345,203 @@ func (a *AuthService) DestroySession(w http.ResponseWriter, sessID string) {
 			HttpOnly: true,
 		})
 	}
+}
+
+// GetActiveSessions возвращает список всех активных сессий с пометкой текущей
+func (a *AuthService) GetActiveSessions(currentCookie string) []domain.SessionItem {
+	a.sessionsMu.RLock()
+	defer a.sessionsMu.RUnlock()
+
+	now := time.Now().Unix()
+	var items []domain.SessionItem
+	for id, s := range a.sessions {
+		if s == nil || now-s.AuthTime > 86400 {
+			continue
+		}
+		isCurrent := (id == currentCookie)
+		items = append(items, domain.SessionItem{
+			ID:           id,
+			IP:           s.IP,
+			UserAgent:    s.UserAgent,
+			Device:       s.Device,
+			Browser:      s.Browser,
+			CreatedAt:    s.CreatedAt,
+			LastActivity: s.LastActivity,
+			IsCurrent:    isCurrent,
+		})
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].IsCurrent != items[j].IsCurrent {
+			return items[i].IsCurrent // текущая сессия всегда сверху
+		}
+		return items[i].LastActivity > items[j].LastActivity
+	})
+
+	return items
+}
+
+// TerminateSession завершает сессию по ID
+func (a *AuthService) TerminateSession(targetID string) bool {
+	a.sessionsMu.Lock()
+	_, exists := a.sessions[targetID]
+	if exists {
+		delete(a.sessions, targetID)
+	}
+	a.sessionsMu.Unlock()
+
+	if exists {
+		go a.saveSessionsToDisk()
+	}
+	return exists
+}
+
+// TerminateOtherSessions завершает все остальные сессии кроме текущей
+func (a *AuthService) TerminateOtherSessions(currentCookie string) int {
+	a.sessionsMu.Lock()
+	count := 0
+	for id := range a.sessions {
+		if id != currentCookie {
+			delete(a.sessions, id)
+			count++
+		}
+	}
+	a.sessionsMu.Unlock()
+
+	if count > 0 {
+		go a.saveSessionsToDisk()
+	}
+	return count
+}
+
+func (a *AuthService) loadSessionsFromDisk() {
+	sessFile := filepath.Join(a.cfg.BaseDir, "data", "sessions.json")
+	var loaded map[string]*SessionData
+	if err := a.storage.SafeReadJSON(sessFile, &loaded); err != nil || loaded == nil {
+		return
+	}
+
+	now := time.Now().Unix()
+	a.sessionsMu.Lock()
+	defer a.sessionsMu.Unlock()
+	for k, v := range loaded {
+		if v != nil && (now-v.AuthTime <= 86400) {
+			if v.ID == "" {
+				v.ID = k
+			}
+			if v.CreatedAt == 0 {
+				v.CreatedAt = v.AuthTime
+			}
+			if v.LastActivity == 0 {
+				v.LastActivity = v.AuthTime
+			}
+			if v.Device == "" || v.Browser == "" {
+				v.Device, v.Browser = parseUserAgent(v.UserAgent)
+			}
+			a.sessions[k] = v
+		}
+	}
+}
+
+func (a *AuthService) saveSessionsToDisk() {
+	a.sessionsMu.RLock()
+	copyMap := make(map[string]*SessionData, len(a.sessions))
+	now := time.Now().Unix()
+	for k, v := range a.sessions {
+		if v != nil && (now-v.AuthTime <= 86400) {
+			copyMap[k] = v
+		}
+	}
+	a.sessionsMu.RUnlock()
+
+	sessFile := filepath.Join(a.cfg.BaseDir, "data", "sessions.json")
+	_ = a.storage.SafeWriteJSON(sessFile, copyMap)
+}
+
+func parseUserAgent(ua string) (string, string) {
+	if strings.TrimSpace(ua) == "" {
+		return "Компьютер", "Браузер"
+	}
+
+	device := "Компьютер"
+	switch {
+	case strings.Contains(ua, "Windows NT 10.0") || strings.Contains(ua, "Windows NT 11.0"):
+		device = "Windows"
+	case strings.Contains(ua, "Windows"):
+		device = "Windows"
+	case strings.Contains(ua, "iPhone"):
+		device = "iPhone"
+	case strings.Contains(ua, "iPad"):
+		device = "iPad"
+	case strings.Contains(ua, "Macintosh") || strings.Contains(ua, "Mac OS X"):
+		device = "macOS"
+	case strings.Contains(ua, "Android"):
+		device = "Android"
+	case strings.Contains(ua, "Linux"):
+		device = "Linux"
+	}
+
+	browser := "Браузер"
+	switch {
+	case strings.Contains(ua, "YaBrowser/"):
+		browser = "Яндекс Браузер"
+		if v := extractBrowserVersion(ua, "YaBrowser/"); v != "" {
+			browser += " " + v
+		}
+	case strings.Contains(ua, "Edg/"):
+		browser = "Microsoft Edge"
+		if v := extractBrowserVersion(ua, "Edg/"); v != "" {
+			browser += " " + v
+		}
+	case strings.Contains(ua, "OPR/") || strings.Contains(ua, "Opera/"):
+		browser = "Opera"
+		prefix := "OPR/"
+		if strings.Contains(ua, "Opera/") {
+			prefix = "Opera/"
+		}
+		if v := extractBrowserVersion(ua, prefix); v != "" {
+			browser += " " + v
+		}
+	case strings.Contains(ua, "Firefox/"):
+		browser = "Firefox"
+		if v := extractBrowserVersion(ua, "Firefox/"); v != "" {
+			browser += " " + v
+		}
+	case strings.Contains(ua, "Chrome/") || strings.Contains(ua, "CriOS/"):
+		browser = "Chrome"
+		prefix := "Chrome/"
+		if strings.Contains(ua, "CriOS/") {
+			prefix = "CriOS/"
+		}
+		if v := extractBrowserVersion(ua, prefix); v != "" {
+			browser += " " + v
+		}
+	case strings.Contains(ua, "Safari/"):
+		browser = "Safari"
+		if strings.Contains(ua, "Version/") {
+			if v := extractBrowserVersion(ua, "Version/"); v != "" {
+				browser += " " + v
+			}
+		}
+	}
+
+	return device, browser
+}
+
+func extractBrowserVersion(ua, prefix string) string {
+	idx := strings.Index(ua, prefix)
+	if idx == -1 {
+		return ""
+	}
+	sub := ua[idx+len(prefix):]
+	end := strings.IndexAny(sub, " .;/()")
+	if end != -1 {
+		return sub[:end]
+	}
+	if len(sub) > 4 {
+		return sub[:4]
+	}
+	return sub
 }
 
 // VerifyBearerToken проверяет Bearer API токен из api_tokens.json

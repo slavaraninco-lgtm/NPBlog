@@ -80,6 +80,9 @@ func main() {
 
 	r.Post("/login.php", legacyHandler.HandleLogin)
 	r.Post("/logout.php", legacyHandler.HandleLogout)
+	r.Get("/get_sessions.php", legacyHandler.HandleGetSessions)
+	r.Post("/get_sessions.php", legacyHandler.HandleGetSessions)
+	r.Post("/terminate_session.php", legacyHandler.HandleTerminateSession)
 
 	r.Post("/save_draft.php", legacyHandler.HandleSaveDraft)
 	r.Get("/get_drafts.php", legacyHandler.HandleGetDrafts)
@@ -195,6 +198,9 @@ func main() {
 		api.Post("/auth/login", restHandler.HandleLogin)
 		api.Post("/auth/logout", restHandler.HandleLogout)
 		api.Get("/auth/me", restHandler.HandleMe)
+		api.Get("/auth/sessions", restHandler.HandleGetSessions)
+		api.Delete("/auth/sessions/{id}", restHandler.HandleTerminateSession)
+		api.Post("/auth/sessions/terminate_others", restHandler.HandleTerminateOtherSessions)
 
 		api.Get("/blogs", restHandler.HandleListBlogs)
 

@@ -1,0 +1,16 @@
+{
+    "79fcc0fc4c808cbe6055a49a71b1821ca880f009a633ef09c10a4612e9347afe": {
+        "id": "79fcc0fc4c808cbe6055a49a71b1821ca880f009a633ef09c10a4612e9347afe",
+        "authenticated": true,
+        "auth_time": 1793545021,
+        "csrf_token": "7400f9169d2a1c6250818026e7189f495604f3d19b65edb7821e2e6586ffdcc9",
+        "active_blog_path": "data",
+        "editor_language": "ru",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0",
+        "device": "Windows",
+        "browser": "Firefox 159",
+        "created_at": 1793545021,
+        "last_activity": 1793546071
+    }
+}

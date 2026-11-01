@@ -4353,6 +4353,9 @@ window.addEventListener('load', function() {
                 <button type="button" id="nav-btn-security" onclick="showGlobalSection('security')" class="global-nav-btn" data-section="security" data-i18n="settings.nav_security" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
                     Безопасность
                 </button>
+                <button type="button" id="nav-btn-sessions" onclick="showGlobalSection('sessions')" class="global-nav-btn" data-section="sessions" data-i18n="settings.nav_sessions" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
+                    Сессии
+                </button>
                 <button type="button" onclick="showGlobalSection('seo')" class="global-nav-btn" data-section="seo" data-i18n="settings.nav_seo" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
                     SEO и соцсети
                 </button>
@@ -4951,6 +4954,30 @@ window.addEventListener('load', function() {
                             Для предотвращения прямого скачивания конфигурации из браузера, заблокируйте доступ к JSON-файлам в настройках вашего веб-сервера.
                         </p>
                     </div>
+                </div>
+
+                <!-- Секция: Сессии -->
+                <div id="globalSection-sessions" class="global-section" style="display: none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                        <p style="color: var(--text-color); opacity: 0.8; font-size: 13px; margin: 0; max-width: 550px;" data-i18n="settings.sessions_desc">Активные сессии входа в редактор. Вы можете завершить любую сессию или закрыть все сессии на других устройствах.</p>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" onclick="loadSessionsList()" class="modal-btn modal-btn-secondary" style="font-size: 12px;" data-i18n="settings.sessions_refresh_btn">Обновить</button>
+                            <button type="button" id="terminateOtherSessionsBtn" onclick="terminateOtherSessions()" class="modal-btn modal-btn-secondary" style="font-size: 12px; display: inline-flex; align-items: center; gap: 6px; color: var(--modal-color-danger, #ef4444); border-color: rgba(239, 68, 68, 0.3);">
+                                <span>⚠️</span> <span data-i18n="settings.sessions_terminate_others_btn">Завершить все остальные сессии</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="sessionsLoadingIndicator" style="display: none; text-align: center; padding: 32px 16px; color: var(--text-color); opacity: 0.7;">
+                        <span data-i18n="settings.sessions_loading">Загрузка списка сессий...</span>
+                    </div>
+
+                    <div id="sessionsEmptyState" style="display: none; text-align: center; padding: 32px 16px; border: 1px dashed var(--border-color); border-radius: 10px; color: var(--text-color); opacity: 0.7;">
+                        <span style="font-size: 28px; display: block; margin-bottom: 8px;">🔐</span>
+                        <span data-i18n="settings.sessions_empty">Нет активных сессий</span>
+                    </div>
+
+                    <div id="sessionsListContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
                 </div>
 
                 <!-- Секция 10: SEO и соцсети -->
@@ -8712,6 +8739,7 @@ function showGlobalSection(sectionName) {
         'rss_feed': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_rss_feed', 'RSS Лента (XML)') : 'RSS Лента (XML)'),
         'paths': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_paths', 'Пути к блoгам') : 'Пути к блoгам'),
         'security': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_security', 'Безопасность и доступ') : 'Безопасность и доступ'),
+        'sessions': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_sessions', 'Сессии') : 'Сессии'),
         'seo': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_seo', 'SEO и соцсети') : 'SEO и соцсети'),
         'language': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_language', 'Язык') : 'Язык'),
         'updates': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_updates', 'Обновления') : 'Обновления')
@@ -8736,6 +8764,8 @@ function showGlobalSection(sectionName) {
         loadPathsSettings();
     } else if (sectionName === 'security') {
         loadSecuritySettings();
+    } else if (sectionName === 'sessions') {
+        loadSessionsList();
     } else if (sectionName === 'seo') {
         loadSeoSettings();
     } else if (sectionName === 'language') {
@@ -10724,6 +10754,203 @@ function saveSecuritySettings() {
             showAlert(window.t ? window.t('notifications.error_with_param', 'Ошибка: ' + errMsg, { error: errMsg }) : 'Ошибка: ' + errMsg);
         });
 }
+
+// --- Функции управления активными сессиями ---
+
+async function loadSessionsList() {
+    const listContainer = document.getElementById('sessionsListContainer');
+    const loadingIndicator = document.getElementById('sessionsLoadingIndicator');
+    const emptyState = document.getElementById('sessionsEmptyState');
+    const terminateOthersBtn = document.getElementById('terminateOtherSessionsBtn');
+
+    if (!listContainer) return;
+
+    if (loadingIndicator) loadingIndicator.style.display = 'block';
+    if (emptyState) emptyState.style.display = 'none';
+    listContainer.innerHTML = '';
+
+    try {
+        let sessions = [];
+        if (window.api && window.api.auth && typeof window.api.auth.getSessions === 'function') {
+            sessions = await window.api.auth.getSessions();
+        } else {
+            const resp = await fetch('get_sessions.php');
+            const data = await resp.json();
+            sessions = data.sessions || [];
+        }
+
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+
+        if (!Array.isArray(sessions) || sessions.length === 0) {
+            if (emptyState) emptyState.style.display = 'block';
+            if (terminateOthersBtn) terminateOthersBtn.style.display = 'none';
+            return;
+        }
+
+        const otherSessionsCount = sessions.filter(s => !s.is_current).length;
+        if (terminateOthersBtn) {
+            terminateOthersBtn.style.display = otherSessionsCount > 0 ? 'inline-flex' : 'none';
+        }
+
+        const t = window.t || ((k, fallback) => fallback);
+        const safeEsc = (s) => (typeof escapeHtml === 'function' ? escapeHtml(s) : String(s || '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+
+        sessions.forEach(sess => {
+            const card = document.createElement('div');
+            card.className = 'session-card';
+            card.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--modal-bg-subtle, rgba(0,0,0,0.02)); transition: all 0.15s ease;';
+
+            const createdDate = sess.created_at ? new Date(sess.created_at * 1000).toLocaleString() : '—';
+            let activityStr = '—';
+            if (sess.last_activity) {
+                const diffSec = Math.floor(Date.now() / 1000) - sess.last_activity;
+                if (diffSec < 60) {
+                    activityStr = t('settings.sessions_just_now', 'только что');
+                } else if (diffSec < 3600) {
+                    const mins = Math.floor(diffSec / 60);
+                    activityStr = mins + ' мин. назад';
+                } else {
+                    activityStr = new Date(sess.last_activity * 1000).toLocaleString();
+                }
+            }
+
+            const deviceTitle = safeEsc(sess.device || 'Устройство') + ' • ' + safeEsc(sess.browser || 'Браузер');
+            const isCurrentBadge = sess.is_current
+                ? '<span class="template-badge template-badge-main">' + safeEsc(t('settings.sessions_current_badge', 'Текущая')) + '</span>'
+                : '';
+
+            const btnText = sess.is_current
+                ? t('settings.sessions_logout_btn', 'Выйти')
+                : t('settings.sessions_terminate_btn', 'Завершить');
+
+            card.innerHTML = 
+                '<div style="min-width: 0;">' +
+                    '<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">' +
+                        '<span style="font-weight: 600; font-size: 14px; color: var(--text-color);">' + deviceTitle + '</span>' +
+                        isCurrentBadge +
+                    '</div>' +
+                    '<div style="font-size: 12px; color: var(--text-color); opacity: 0.75; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 12px; row-gap: 2px;">' +
+                        '<span>' + safeEsc(t('settings.sessions_ip', 'IP')) + ': <b>' + safeEsc(sess.ip || '—') + '</b></span>' +
+                        '<span>' + safeEsc(t('settings.sessions_created', 'Вход')) + ': ' + createdDate + '</span>' +
+                        '<span>' + safeEsc(t('settings.sessions_activity', 'Активность')) + ': ' + activityStr + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="flex-shrink: 0;">' +
+                    '<button type="button" class="modal-btn modal-btn-secondary session-action-btn" style="font-size: 12px; white-space: nowrap;">' +
+                        safeEsc(btnText) +
+                    '</button>' +
+                '</div>';
+
+            const actionBtn = card.querySelector('.session-action-btn');
+            if (actionBtn) {
+                actionBtn.addEventListener('click', function() {
+                    terminateSession(sess.id, Boolean(sess.is_current));
+                });
+            }
+
+            listContainer.appendChild(card);
+        });
+    } catch (err) {
+        console.error('Ошибка загрузки сессий:', err);
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        const t = window.t || ((k, fallback) => fallback);
+        showAlert(t('settings.sessions_error_load', 'Не удалось загрузить список сессий'));
+    }
+}
+
+async function terminateSession(id, isCurrent) {
+    const t = window.t || ((k, fallback) => fallback);
+    const confirmMsg = isCurrent
+        ? t('settings.sessions_confirm_current', 'Вы завершаете текущую сессию. После этого вы вернетесь на страницу входа. Продолжить?')
+        : t('settings.sessions_confirm_terminate', 'Завершить выбранную сессию?');
+
+    let confirmed = false;
+    if (window.Modal && typeof window.Modal.confirm === 'function') {
+        confirmed = await window.Modal.confirm({
+            title: isCurrent ? t('settings.sessions_logout_btn', 'Выйти') : t('settings.sessions_terminate_btn', 'Завершить'),
+            message: confirmMsg,
+            danger: true,
+            confirmText: isCurrent ? t('settings.sessions_logout_btn', 'Выйти') : t('settings.sessions_terminate_btn', 'Завершить'),
+            cancelText: t('common.cancel', 'Отмена')
+        });
+    } else {
+        confirmed = window.confirm(confirmMsg);
+    }
+
+    if (!confirmed) return;
+
+    try {
+        if (window.api && window.api.auth && typeof window.api.auth.terminateSession === 'function') {
+            await window.api.auth.terminateSession(id);
+        } else {
+            const resp = await fetch('terminate_session.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            const data = await resp.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Ошибка');
+            }
+        }
+
+        if (isCurrent) {
+            window.location.reload();
+        } else {
+            showAlert(t('settings.sessions_terminated_success', 'Сессия успешно завершена'));
+            loadSessionsList();
+        }
+    } catch (err) {
+        console.error('Ошибка завершения сессии:', err);
+        showAlert(t('settings.sessions_error_terminate', 'Ошибка при завершении сессии') + ': ' + (err.message || err));
+    }
+}
+
+async function terminateOtherSessions() {
+    const t = window.t || ((k, fallback) => fallback);
+    const confirmMsg = t('settings.sessions_confirm_terminate_others', 'Вы действительно хотите завершить все остальные активные сессии кроме текущей?');
+
+    let confirmed = false;
+    if (window.Modal && typeof window.Modal.confirm === 'function') {
+        confirmed = await window.Modal.confirm({
+            title: t('settings.sessions_terminate_others_btn', 'Завершить все остальные сессии'),
+            message: confirmMsg,
+            danger: true,
+            confirmText: t('settings.sessions_terminate_btn', 'Завершить'),
+            cancelText: t('common.cancel', 'Отмена')
+        });
+    } else {
+        confirmed = window.confirm(confirmMsg);
+    }
+
+    if (!confirmed) return;
+
+    try {
+        if (window.api && window.api.auth && typeof window.api.auth.terminateOtherSessions === 'function') {
+            await window.api.auth.terminateOtherSessions();
+        } else {
+            const resp = await fetch('terminate_session.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ all_others: true })
+            });
+            const data = await resp.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Ошибка');
+            }
+        }
+
+        showAlert(t('settings.sessions_others_terminated_success', 'Все остальные сессии успешно завершены'));
+        loadSessionsList();
+    } catch (err) {
+        console.error('Ошибка завершения сессий:', err);
+        showAlert(t('settings.sessions_error_terminate', 'Ошибка при завершении сессии') + ': ' + (err.message || err));
+    }
+}
+
+window.loadSessionsList = loadSessionsList;
+window.terminateSession = terminateSession;
+window.terminateOtherSessions = terminateOtherSessions;
 
 // --- Функции управления путями к блогам ---
 function loadPathsSettings() {

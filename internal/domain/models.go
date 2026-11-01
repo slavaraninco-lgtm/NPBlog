@@ -145,6 +145,18 @@ type HistoryAction struct {
 	Details   string `json:"details,omitempty"`
 }
 
+// SessionItem представляет запись об активной сессии входа в редактор
+type SessionItem struct {
+	ID           string `json:"id"`
+	IP           string `json:"ip"`
+	UserAgent    string `json:"user_agent"`
+	Device       string `json:"device"`
+	Browser      string `json:"browser"`
+	CreatedAt    int64  `json:"created_at"`
+	LastActivity int64  `json:"last_activity"`
+	IsCurrent    bool   `json:"is_current"`
+}
+
 // IncludeMetaItem представляет запись сниппета в includes/includes-meta.json
 type IncludeMetaItem struct {
 	Name        string `json:"name"`
