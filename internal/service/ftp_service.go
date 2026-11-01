@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,19 +17,22 @@ import (
 	"github.com/jlaffaye/ftp"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 	"npblog/internal/config"
 )
 
 type FtpCredentials struct {
-	Server       string `json:"ftpServer"`
-	Protocol     string `json:"ftpProtocol"` // ftp | ftps | sftp
-	Port         int    `json:"ftpPort"`
-	Username     string `json:"ftpUsername"`
-	Password     string `json:"ftpPassword,omitempty"`
-	RemoteDir    string `json:"ftpDirectory"`
-	Ssl          int    `json:"ftpSsl,omitempty"`
-	SkipExisting int    `json:"ftpSkipExisting,omitempty"`
-	SavedAt      string `json:"saved_at,omitempty"`
+	Server          string `json:"ftpServer"`
+	Protocol        string `json:"ftpProtocol"` // ftp | ftps | sftp
+	Port            int    `json:"ftpPort"`
+	Username        string `json:"ftpUsername"`
+	Password        string `json:"ftpPassword,omitempty"`
+	RemoteDir       string `json:"ftpDirectory"`
+	Ssl             int    `json:"ftpSsl,omitempty"`
+	SkipExisting    int    `json:"ftpSkipExisting,omitempty"`
+	InsecureTLS     int    `json:"ftpInsecureTls,omitempty"`
+	InsecureHostKey int    `json:"ftpInsecureHostKey,omitempty"`
+	SavedAt         string `json:"saved_at,omitempty"`
 }
 
 func (c *FtpCredentials) UnmarshalJSON(data []byte) error {
@@ -87,8 +91,83 @@ func (f *FtpService) ResetCredentials() error {
 	return os.Remove(credsFile)
 }
 
+// validateRemoteHost блокирует попытки подключения к локальным и приватным адресам (защита от SSRF)
+func validateRemoteHost(server string) error {
+	trimmed := strings.TrimSpace(server)
+	if trimmed == "" {
+		return errors.New("адрес сервера не может быть пустым")
+	}
+	if strings.EqualFold(trimmed, "localhost") {
+		return errors.New("подключение к локальным адресам (localhost) запрещено в целях безопасности")
+	}
+
+	ips, err := net.LookupIP(trimmed)
+	if err != nil {
+		return fmt.Errorf("не удалось разрешить адрес сервера '%s': %w", trimmed, err)
+	}
+	if len(ips) == 0 {
+		return fmt.Errorf("не найдены IP-адреса для сервера '%s'", trimmed)
+	}
+
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return fmt.Errorf("подключение к локальным или приватным сетевым адресам (%s) запрещено в целях безопасности", ip.String())
+		}
+	}
+	return nil
+}
+
+func (f *FtpService) getSSHHostKeyCallback(host string, port int, creds *FtpCredentials) (ssh.HostKeyCallback, error) {
+	if creds != nil && creds.InsecureHostKey == 1 {
+		return ssh.InsecureIgnoreHostKey(), nil
+	}
+
+	dataDir := filepath.Join(f.cfg.BaseDir, "data")
+	_ = os.MkdirAll(dataDir, 0755)
+	knownHostsPath := filepath.Join(dataDir, "known_hosts")
+
+	if _, err := os.Stat(knownHostsPath); os.IsNotExist(err) {
+		if err := os.WriteFile(knownHostsPath, []byte{}, 0600); err != nil {
+			return nil, fmt.Errorf("не удалось создать known_hosts: %w", err)
+		}
+	}
+
+	kh, err := knownhosts.New(knownHostsPath)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка чтения known_hosts: %w", err)
+	}
+
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		err := kh(addr, remote, key)
+		if err == nil {
+			return nil
+		}
+		var keyErr *knownhosts.KeyError
+		if errors.As(err, &keyErr) {
+			if len(keyErr.Want) > 0 {
+				return fmt.Errorf("ВНИМАНИЕ: отпечаток SSH-ключа сервера %s изменился! Возможно MITM-перехват соединения: %w", addr, err)
+			}
+			// Хост ранее неизвестен: Trust-On-First-Use (TOFU) - сохраняем публичный ключ в known_hosts
+			line := knownhosts.Line([]string{knownhosts.Normalize(addr)}, key)
+			fHandle, fErr := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+			if fErr == nil {
+				defer fHandle.Close()
+				_, _ = fHandle.WriteString(line + "\n")
+			}
+			return nil
+		}
+		return err
+	}, nil
+}
+
 // TestConnection проверяет соединение с удаленным сервером
 func (f *FtpService) TestConnection(creds *FtpCredentials) error {
+	if err := validateRemoteHost(creds.Server); err != nil {
+		return err
+	}
+
 	if creds.Protocol == "sftp" {
 		client, err := f.connectSFTP(creds)
 		if err != nil {
@@ -107,6 +186,10 @@ func (f *FtpService) TestConnection(creds *FtpCredentials) error {
 }
 
 func (f *FtpService) connectFTP(creds *FtpCredentials) (*ftp.ServerConn, error) {
+	if err := validateRemoteHost(creds.Server); err != nil {
+		return nil, err
+	}
+
 	port := creds.Port
 	if port <= 0 {
 		port = 21
@@ -117,7 +200,13 @@ func (f *FtpService) connectFTP(creds *FtpCredentials) (*ftp.ServerConn, error) 
 	var err error
 
 	if creds.Protocol == "ftps" || creds.Ssl == 1 {
-		tlsConfig := &tls.Config{InsecureSkipVerify: true}
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: false,
+			ServerName:         creds.Server,
+		}
+		if creds.InsecureTLS == 1 {
+			tlsConfig.InsecureSkipVerify = true
+		}
 		conn, err = ftp.Dial(addr, ftp.DialWithTimeout(15*time.Second), ftp.DialWithTLS(tlsConfig))
 	} else {
 		conn, err = ftp.Dial(addr, ftp.DialWithTimeout(15*time.Second))
@@ -136,9 +225,18 @@ func (f *FtpService) connectFTP(creds *FtpCredentials) (*ftp.ServerConn, error) 
 }
 
 func (f *FtpService) connectSFTP(creds *FtpCredentials) (*sftp.Client, error) {
+	if err := validateRemoteHost(creds.Server); err != nil {
+		return nil, err
+	}
+
 	port := creds.Port
 	if port <= 0 {
 		port = 22
+	}
+
+	hostKeyCallback, err := f.getSSHHostKeyCallback(creds.Server, port, creds)
+	if err != nil {
+		return nil, err
 	}
 
 	sshConfig := &ssh.ClientConfig{
@@ -146,7 +244,7 @@ func (f *FtpService) connectSFTP(creds *FtpCredentials) (*sftp.Client, error) {
 		Auth: []ssh.AuthMethod{
 			ssh.Password(creds.Password),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         15 * time.Second,
 	}
 

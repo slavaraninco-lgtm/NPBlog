@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -52,27 +53,34 @@ func NewAuthService(cfg *config.AppConfig, storage *StorageService) *AuthService
 	return a
 }
 
-// GetClientIP извлекает реальный IP-адрес клиента с учетом прокси
+// GetClientIP извлекает реальный IP-адрес клиента с защитой от спуфинга заголовков
 func (a *AuthService) GetClientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		if len(parts) > 0 {
-			ip := strings.TrimSpace(parts[0])
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil || remoteIP == "" {
+		remoteIP = r.RemoteAddr
+	}
+
+	// Доверяем X-Forwarded-For и X-Real-IP только если непосредственный пир является локальным (обратный прокси Nginx/Apache)
+	parsedRemote := net.ParseIP(remoteIP)
+	if parsedRemote != nil && parsedRemote.IsLoopback() {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			parts := strings.Split(xff, ",")
+			if len(parts) > 0 {
+				ip := strings.TrimSpace(parts[0])
+				if net.ParseIP(ip) != nil {
+					return ip
+				}
+			}
+		}
+		if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+			ip := strings.TrimSpace(xrip)
 			if net.ParseIP(ip) != nil {
 				return ip
 			}
 		}
 	}
-	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
-		if net.ParseIP(xrip) != nil {
-			return xrip
-		}
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil && host != "" {
-		return host
-	}
-	return r.RemoteAddr
+
+	return remoteIP
 }
 
 // CheckIPWhitelist проверяет белый список IP-адресов
@@ -544,7 +552,7 @@ func extractBrowserVersion(ua, prefix string) string {
 	return sub
 }
 
-// VerifyBearerToken проверяет Bearer API токен из api_tokens.json
+// VerifyBearerToken проверяет Bearer API токен из api_tokens.json по криптографическому хэшу
 func (a *AuthService) VerifyBearerToken(token string) bool {
 	if token == "" {
 		return false
@@ -556,23 +564,41 @@ func (a *AuthService) VerifyBearerToken(token string) bool {
 	}
 
 	now := time.Now().Unix()
+	h := sha256.Sum256([]byte(token))
+	tokenHash := hex.EncodeToString(h[:])
+
+	needsMigration := false
 	for i, t := range tokens {
-		if t.Token == token {
+		matched := false
+		// 1. Проверка по SHA-256 хэшу токена
+		if subtle.ConstantTimeCompare([]byte(t.Token), []byte(tokenHash)) == 1 {
+			matched = true
+		} else if subtle.ConstantTimeCompare([]byte(t.Token), []byte(token)) == 1 {
+			// 2. Обратная совместимость: миграция ранее сохраненного открытого токена в хэш
+			matched = true
+			tokens[i].Token = tokenHash
+			needsMigration = true
+		}
+
+		if matched {
 			if t.ExpiresAt > 0 && t.ExpiresAt < now {
 				return false
 			}
-			// Продлеваем срок активности
 			tokens[i].LastUsedAt = now
-			go func() {
+			if needsMigration {
 				_ = a.storage.SafeWriteJSON(tokensFile, tokens)
-			}()
+			} else {
+				go func() {
+					_ = a.storage.SafeWriteJSON(tokensFile, tokens)
+				}()
+			}
 			return true
 		}
 	}
 	return false
 }
 
-// CreateApiToken создает новый токен для мобильного клиента
+// CreateApiToken создает новый токен для мобильного клиента и сохраняет его SHA-256 хэш
 func (a *AuthService) CreateApiToken(deviceName string) (*domain.ApiToken, error) {
 	tokensFile := filepath.Join(a.cfg.BaseDir, "api_tokens.json")
 	var tokens []domain.ApiToken
@@ -580,19 +606,27 @@ func (a *AuthService) CreateApiToken(deviceName string) (*domain.ApiToken, error
 
 	tokenVal := "npb_" + a.generateRandomToken(30)
 	now := time.Now().Unix()
-	newToken := domain.ApiToken{
-		Token:      tokenVal,
+
+	h := sha256.Sum256([]byte(tokenVal))
+	tokenHash := hex.EncodeToString(h[:])
+
+	storedToken := domain.ApiToken{
+		Token:      tokenHash,
 		DeviceName: deviceName,
 		CreatedAt:  now,
 		LastUsedAt: now,
 		ExpiresAt:  now + (30 * 86400), // 30 дней
 	}
 
-	tokens = append(tokens, newToken)
+	tokens = append(tokens, storedToken)
 	if err := a.storage.SafeWriteJSON(tokensFile, tokens); err != nil {
 		return nil, err
 	}
-	return &newToken, nil
+
+	// Возвращаем клиенту открытый токен для отображения/сохранения на устройстве
+	clientToken := storedToken
+	clientToken.Token = tokenVal
+	return &clientToken, nil
 }
 
 func (a *AuthService) generateRandomToken(bytesLen int) string {

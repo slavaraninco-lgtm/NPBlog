@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -295,10 +296,19 @@ func (t *TemplateService) GetTemplates(activeBlogPath string) ([]string, string,
 
 // ApplyTemplate переключает активный шаблон блога
 func (t *TemplateService) ApplyTemplate(activeBlogPath, templateName string) error {
-	templatesDir := t.storage.GetDataPath(activeBlogPath, "blog/templates")
-	targetTemplateDir := filepath.Join(templatesDir, templateName)
+	cleanName := filepath.Base(filepath.Clean(templateName))
+	if cleanName == "" || cleanName == "." || cleanName == ".." || cleanName == "/" || cleanName == "\\" {
+		return errors.New("некорректное имя шаблона")
+	}
 
-	if _, err := os.Stat(targetTemplateDir); os.IsNotExist(err) {
+	templatesDir := t.storage.GetDataPath(activeBlogPath, "blog/templates")
+	targetTemplateDir, err := t.storage.ValidateSafePath(templatesDir, cleanName)
+	if err != nil {
+		return fmt.Errorf("недопустимый путь к шаблону: %w", err)
+	}
+
+	fi, err := os.Stat(targetTemplateDir)
+	if os.IsNotExist(err) || !fi.IsDir() {
 		return errors.New("папка шаблона не найдена")
 	}
 
@@ -319,6 +329,6 @@ func (t *TemplateService) ApplyTemplate(activeBlogPath, templateName string) err
 	// Обновляем settings.json
 	settingsFile := filepath.Join(templatesDir, "settings.json")
 	return t.storage.SafeWriteJSON(settingsFile, map[string]string{
-		"activeTemplate": templateName,
+		"activeTemplate": cleanName,
 	})
 }

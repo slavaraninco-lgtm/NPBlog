@@ -3,12 +3,14 @@ package middleware
 import (
 	"bufio"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -129,6 +131,35 @@ func (m *MiddlewareManager) BlogContext(next http.Handler) http.Handler {
 			activeBlog = queryBlog
 		}
 
+		// Security: Валидация activeBlog против белого списка BlogPaths
+		settings := m.cfg.GetSettings()
+		cleanBlog := filepath.Clean(strings.TrimSpace(activeBlog))
+		isAllowed := false
+
+		if cleanBlog != "" && cleanBlog != "." && !strings.HasPrefix(cleanBlog, "..") {
+			for _, bp := range settings.BlogPaths {
+				if filepath.Clean(bp) == cleanBlog {
+					isAllowed = true
+					break
+				}
+			}
+			if !isAllowed && settings.ActiveBlogPath != "" && filepath.Clean(settings.ActiveBlogPath) == cleanBlog {
+				isAllowed = true
+			}
+		}
+
+		if isAllowed {
+			activeBlog = cleanBlog
+		} else {
+			activeBlog = settings.ActiveBlogPath
+			if activeBlog == "" && len(settings.BlogPaths) > 0 {
+				activeBlog = settings.BlogPaths[0]
+			}
+			if activeBlog == "" {
+				activeBlog = "data"
+			}
+		}
+
 		ctx := context.WithValue(r.Context(), BlogContextKey, activeBlog)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -167,15 +198,10 @@ func (m *MiddlewareManager) IPFilter(next http.Handler) http.Handler {
 func (m *MiddlewareManager) Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		settings := m.cfg.GetSettings()
-		if settings.PasswordHash == "" {
-			// Пароль не задан в блоге — разрешаем доступ
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Исключения для страницы входа и проверки логина
 		path := r.URL.Path
-		if path == "/login.php" || path == "/api/v1/auth/login" || path == "/serve_data.php" || strings.HasPrefix(path, "/assets/") || strings.HasPrefix(path, "/lang/") {
+
+		// Исключения для страницы входа и статики
+		if path == "/login.php" || path == "/api/v1/auth/login" || strings.HasPrefix(path, "/assets/") || strings.HasPrefix(path, "/lang/") {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -208,6 +234,25 @@ func (m *MiddlewareManager) Auth(next http.Handler) http.Handler {
 			return
 		}
 
+		// Если пароль в блоге не задан:
+		if settings.PasswordHash == "" {
+			// Если сессия существует, передаем ее в контекст
+			if session != nil {
+				ctx := context.WithValue(r.Context(), SessionKey, session)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Для /serve_data.php доступ без авторизации разрешается только для публичных медиа-ассетов
+		if path == "/serve_data.php" || strings.HasPrefix(path, "/serve_data.php/") {
+			// HandleServeData самостоятельно валидирует разрешенные типы и запрещает чувствительные файлы
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Если это API или Legacy скрипт — возвращаем 401 Unauthorized
 		if strings.HasPrefix(path, "/api/") || strings.HasSuffix(path, ".php") {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -234,7 +279,13 @@ func (m *MiddlewareManager) CSRF(next http.Handler) http.Handler {
 		}
 
 		path := r.URL.Path
-		if path == "/login.php" || path == "/api/v1/auth/login" || strings.HasPrefix(path, "/api/") {
+		if path == "/login.php" || path == "/api/v1/auth/login" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Bearer-токены защищены от CSRF на уровне браузерного Same-Origin / CORS
+		if r.Context().Value(BearerClaimsKey) != nil {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -244,7 +295,7 @@ func (m *MiddlewareManager) CSRF(next http.Handler) http.Handler {
 		if sessVal != nil {
 			sess := sessVal.(*service.SessionData)
 			clientToken := r.Header.Get("X-CSRF-Token")
-			if clientToken == "" || clientToken != sess.CSRFToken {
+			if clientToken == "" || subtle.ConstantTimeCompare([]byte(clientToken), []byte(sess.CSRFToken)) != 1 {
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(http.StatusForbidden)
 				_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -260,26 +311,30 @@ func (m *MiddlewareManager) CSRF(next http.Handler) http.Handler {
 	})
 }
 
-// Recovery перехватывает критические паники и отображает Safe Mode
+// Recovery перехватывает критические паники и отображает Safe Mode без раскрытия путей и стека
 func (m *MiddlewareManager) Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
+				incidentID := fmt.Sprintf("ERR-%d", time.Now().Unix())
 				stack := string(debug.Stack())
+				log.Printf("[%s] [PANIC RECOVERED] %v\n%s", incidentID, rec, stack)
+
 				if strings.HasPrefix(r.URL.Path, "/api/") || r.Header.Get("Accept") == "application/json" {
 					w.Header().Set("Content-Type", "application/json; charset=utf-8")
 					w.WriteHeader(http.StatusInternalServerError)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{
-						"success": false,
-						"error":   "server_error",
-						"message": fmt.Sprintf("Критическая ошибка сервера: %v", rec),
+						"success":     false,
+						"error":       "server_error",
+						"message":     "Критическая ошибка сервера. Подробности записаны в журнал сервера.",
+						"incident_id": incidentID,
 					})
 					return
 				}
 
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.WriteHeader(http.StatusOK)
-				fmt.Fprintf(w, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>NPBlog - Safe Mode</title><style>body{margin:0;background:#18191e;color:#f3f4f6;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;}.box{background:#23242a;border:2px solid #ef4444;border-radius:12px;padding:24px;max-width:700px;}pre{background:#000;color:#fca5a5;padding:12px;border-radius:6px;overflow-x:auto;}</style></head><body><div class="box"><h2 style="color:#ef4444;margin-top:0;">🛡️ Safe Mode — Критическая ошибка сервера</h2><p>Обнаружена неисправимая ошибка:</p><pre>%v\n\n%s</pre></div></body></html>`, rec, stack)
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>NPBlog - Ошибка сервера</title><style>body{margin:0;background:#18191e;color:#f3f4f6;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;}.box{background:#23242a;border:2px solid #ef4444;border-radius:12px;padding:32px;max-width:560px;text-align:center;}h2{color:#ef4444;margin-top:0;}p{color:#9ca3af;line-height:1.5;}.id{background:#111;padding:8px 14px;border-radius:6px;font-family:monospace;color:#fca5a5;display:inline-block;margin-top:10px;}</style></head><body><div class="box"><h2>🛡️ Ошибка сервера</h2><p>Произошла непредвиденная ошибка при обработке запроса. Технические подробности сохранены в системный журнал сервера.</p><div class="id">Код инцидента: %s</div></div></body></html>`, incidentID)
 			}
 		}()
 		next.ServeHTTP(w, r)

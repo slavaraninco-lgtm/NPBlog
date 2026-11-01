@@ -57,18 +57,38 @@ func (s *StorageService) GetDataPath(activeBlogPath, subpath string) string {
 	settings := s.cfg.GetSettings()
 	targetPath := activeBlogPath
 
-	if targetPath == "" || targetPath == "/CHANGE/ME" || targetPath == "CHANGE/ME" {
-		if settings.ActiveBlogPath != "" && settings.ActiveBlogPath != "/CHANGE/ME" {
+	if targetPath == "" || targetPath == "/CHANGE/ME" || targetPath == "CHANGE/ME" || targetPath == "." {
+		if settings.ActiveBlogPath != "" && settings.ActiveBlogPath != "/CHANGE/ME" && settings.ActiveBlogPath != "." {
 			targetPath = settings.ActiveBlogPath
-		} else if len(settings.BlogPaths) > 0 && settings.BlogPaths[0] != "/CHANGE/ME" && settings.BlogPaths[0] != "" {
+		} else if len(settings.BlogPaths) > 0 && settings.BlogPaths[0] != "/CHANGE/ME" && settings.BlogPaths[0] != "" && settings.BlogPaths[0] != "." {
 			targetPath = settings.BlogPaths[0]
 		} else {
 			targetPath = filepath.Join(s.cfg.BaseDir, "data")
 		}
 	}
 
-	if !filepath.IsAbs(targetPath) {
-		targetPath = filepath.Join(s.cfg.BaseDir, targetPath)
+	cleanRel := filepath.Clean(targetPath)
+	if cleanRel == "." || cleanRel == "" || strings.HasPrefix(cleanRel, "..") {
+		targetPath = filepath.Join(s.cfg.BaseDir, "data")
+	} else if !filepath.IsAbs(cleanRel) {
+		targetPath = filepath.Join(s.cfg.BaseDir, cleanRel)
+	} else {
+		// Если передан абсолютный путь, проверяем, что он находится внутри BaseDir или входит в settings.BlogPaths
+		isAllowed := false
+		if rel, err := filepath.Rel(s.cfg.BaseDir, cleanRel); err == nil && !strings.HasPrefix(rel, "..") {
+			isAllowed = true
+		}
+		for _, bp := range settings.BlogPaths {
+			if bp != "" && filepath.Clean(bp) == cleanRel {
+				isAllowed = true
+				break
+			}
+		}
+		if !isAllowed {
+			targetPath = filepath.Join(s.cfg.BaseDir, "data")
+		} else {
+			targetPath = cleanRel
+		}
 	}
 
 	_ = os.MkdirAll(targetPath, 0755)
@@ -78,7 +98,8 @@ func (s *StorageService) GetDataPath(activeBlogPath, subpath string) string {
 		if err == nil {
 			return safe
 		}
-		return filepath.Join(targetPath, subpath)
+		// Защита: при попытке Path Traversal возвращаем безопасный целевой каталог
+		return targetPath
 	}
 	return targetPath
 }
@@ -131,7 +152,8 @@ func (s *StorageService) GetBackupPath(subpath string) string {
 		if err == nil {
 			return safe
 		}
-		return filepath.Join(backupPath, subpath)
+		// Защита: при попытке Path Traversal не возвращаем небезопасный путь
+		return backupPath
 	}
 	return backupPath
 }
@@ -153,7 +175,8 @@ func (s *StorageService) GetAutosavePath(subpath string) string {
 		if err == nil {
 			return safe
 		}
-		return filepath.Join(autosavePath, subpath)
+		// Защита: при попытке Path Traversal не возвращаем небезопасный путь
+		return autosavePath
 	}
 	return autosavePath
 }

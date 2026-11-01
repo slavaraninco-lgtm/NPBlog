@@ -61,12 +61,34 @@ func (m *MediaService) generateID() string {
 	return fmt.Sprintf("%x%x", time.Now().Unix(), hex.EncodeToString(b)[:6])
 }
 
+func sanitizeSVG(data []byte) error {
+	lower := strings.ToLower(string(data))
+	if strings.Contains(lower, "<script") ||
+		strings.Contains(lower, "</script") ||
+		strings.Contains(lower, "<foreignobject") ||
+		strings.Contains(lower, "javascript:") ||
+		strings.Contains(lower, "data:text/html") {
+		return errors.New("svg файл содержит недопустимые исполняемые элементы (<script>, javascript:)")
+	}
+	onAttrRegex := regexp.MustCompile(`\son[a-z]+\s*=`)
+	if onAttrRegex.MatchString(lower) {
+		return errors.New("svg файл содержит недопустимые встроенные обработчики событий")
+	}
+	return nil
+}
+
 // UploadImage сохраняет изображение в data/uploads/
 func (m *MediaService) UploadImage(activeBlogPath, originalName string, data []byte) (string, error) {
 	ext := strings.ToLower(filepath.Ext(originalName))
 	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true, ".svg": true, ".avif": true}
 	if !allowed[ext] {
 		return "", errors.New("недопустимый тип файла. Разрешены: jpg, jpeg, png, gif, webp, svg, avif")
+	}
+
+	if ext == ".svg" {
+		if err := sanitizeSVG(data); err != nil {
+			return "", err
+		}
 	}
 
 	uploadsDir := m.storage.GetDataPath(activeBlogPath, "uploads")
@@ -146,10 +168,20 @@ func (m *MediaService) SaveEditedImage(activeBlogPath, dataURI string) (string, 
 
 // UploadDocument сохраняет документ в data/files/documents/
 func (m *MediaService) UploadDocument(activeBlogPath, originalName string, data []byte) (string, error) {
+	ext := strings.ToLower(filepath.Ext(originalName))
+	allowed := map[string]bool{
+		".pdf": true, ".doc": true, ".docx": true, ".xls": true, ".xlsx": true,
+		".ppt": true, ".pptx": true, ".txt": true, ".rtf": true, ".zip": true,
+		".csv": true, ".odt": true, ".ods": true, ".odp": true, ".tar": true,
+		".gz": true, ".7z": true,
+	}
+	if !allowed[ext] {
+		return "", errors.New("недопустимый тип документа. Разрешены только: pdf, doc, docx, xls, xlsx, ppt, pptx, txt, rtf, zip, csv, odt, ods, odp, tar, gz, 7z")
+	}
+
 	docDir := m.storage.GetDataPath(activeBlogPath, "files/documents")
 	_ = os.MkdirAll(docDir, 0755)
 
-	ext := strings.ToLower(filepath.Ext(originalName))
 	cleanBase := strings.TrimSuffix(filepath.Base(originalName), ext)
 	cleanBase = regexp.MustCompile(`[^a-zA-Z0-9_\-\sА-Яа-яЁё]`).ReplaceAllString(cleanBase, "")
 	if cleanBase == "" {
@@ -202,10 +234,17 @@ func (m *MediaService) GetDocuments(activeBlogPath string) ([]DocumentFileInfo, 
 
 // UploadAudio сохраняет аудио в data/files/audio/
 func (m *MediaService) UploadAudio(activeBlogPath, originalName string, data []byte) (string, error) {
+	ext := strings.ToLower(filepath.Ext(originalName))
+	allowed := map[string]bool{
+		".mp3": true, ".ogg": true, ".wav": true, ".m4a": true, ".aac": true, ".flac": true,
+	}
+	if !allowed[ext] {
+		return "", errors.New("недопустимый тип аудиофайла. Разрешены: mp3, ogg, wav, m4a, aac, flac")
+	}
+
 	audioDir := m.storage.GetDataPath(activeBlogPath, "files/audio")
 	_ = os.MkdirAll(audioDir, 0755)
 
-	ext := strings.ToLower(filepath.Ext(originalName))
 	newFilename := m.generateID() + ext
 	targetFile := filepath.Join(audioDir, newFilename)
 
@@ -246,10 +285,17 @@ func (m *MediaService) GetAudioFiles(activeBlogPath string) ([]MediaFileInfo, er
 
 // UploadVideo сохраняет видео в data/files/videos/
 func (m *MediaService) UploadVideo(activeBlogPath, originalName string, data []byte) (string, error) {
+	ext := strings.ToLower(filepath.Ext(originalName))
+	allowed := map[string]bool{
+		".mp4": true, ".webm": true, ".mov": true, ".mkv": true, ".ogv": true,
+	}
+	if !allowed[ext] {
+		return "", errors.New("недопустимый тип видеофайла. Разрешены: mp4, webm, mov, mkv, ogv")
+	}
+
 	videoDir := m.storage.GetDataPath(activeBlogPath, "files/videos")
 	_ = os.MkdirAll(videoDir, 0755)
 
-	ext := strings.ToLower(filepath.Ext(originalName))
 	newFilename := m.generateID() + ext
 	targetFile := filepath.Join(videoDir, newFilename)
 
@@ -290,6 +336,14 @@ func (m *MediaService) GetVideoFiles(activeBlogPath string) ([]MediaFileInfo, er
 
 // UploadFont сохраняет шрифт в data/fonts/
 func (m *MediaService) UploadFont(activeBlogPath, originalName string, data []byte) error {
+	ext := strings.ToLower(filepath.Ext(originalName))
+	allowed := map[string]bool{
+		".ttf": true, ".otf": true, ".woff": true, ".woff2": true,
+	}
+	if !allowed[ext] {
+		return errors.New("недопустимый тип шрифта. Разрешены только: ttf, otf, woff, woff2")
+	}
+
 	fontsDir := m.storage.GetDataPath(activeBlogPath, "fonts")
 	_ = os.MkdirAll(fontsDir, 0755)
 
@@ -331,6 +385,22 @@ func (m *MediaService) UploadSmiles(activeBlogPath, setName string, files []File
 	cleanSet = strings.TrimSpace(cleanSet)
 	if cleanSet == "" || cleanSet == "." || cleanSet == ".." {
 		return errors.New("неверное имя набора смайлов")
+	}
+
+	allowed := map[string]bool{
+		".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".svg": true,
+	}
+
+	for _, f := range files {
+		ext := strings.ToLower(filepath.Ext(f.Filename))
+		if !allowed[ext] {
+			return fmt.Errorf("недопустимый тип файла смайла '%s'. Разрешены: png, jpg, gif, webp, svg", f.Filename)
+		}
+		if ext == ".svg" {
+			if err := sanitizeSVG(f.Data); err != nil {
+				return err
+			}
+		}
 	}
 
 	setDir := m.storage.GetDataPath(activeBlogPath, filepath.Join("smiles", cleanSet))

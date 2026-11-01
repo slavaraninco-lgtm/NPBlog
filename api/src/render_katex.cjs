@@ -7,12 +7,10 @@ process.stdin.on('data', chunk => { input += chunk; });
 process.stdin.on('end', () => {
     try {
         const data = JSON.parse(input || '{}');
-        const primaryKatexPath = path.resolve(__dirname, '../../data/blog/assets/katex/katex.js');
-        const fallbackKatexPath = path.resolve(__dirname, '../../assets/katex/katex.js');
-        
-        let katexPath = primaryKatexPath;
-        if (!fs.existsSync(katexPath) && fs.existsSync(fallbackKatexPath)) {
-            katexPath = fallbackKatexPath;
+        // Загрузка KaTeX строго из неизменяемого системного каталога assets/
+        const katexPath = path.resolve(__dirname, '../../assets/katex/katex.js');
+        if (!fs.existsSync(katexPath)) {
+            throw new Error('KaTeX core library not found in assets/katex/katex.js');
         }
 
         const katex = require(katexPath);

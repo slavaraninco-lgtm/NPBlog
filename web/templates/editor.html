@@ -21,6 +21,18 @@
         const DATA_URL_PREFIX = '{{DATA_URL_PREFIX}}';
         window.isDevBuild = {{IS_DEV_BUILD}};
 
+        // Глобальный безопасный экранировщик HTML для защиты от XSS
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        window.escapeHtml = escapeHtml;
+
         // Отслеживание отсутствующих компонентов
         window._missingComponentsList = [];
         window.recordMissingComponent = function(name) {
@@ -6036,7 +6048,6 @@ function addFtpModalLog(message, level = 'info') {
     entry.style.wordBreak = 'break-word';
 
     const time = new Date().toLocaleTimeString('ru-RU');
-    const timeSpan = `<span style="opacity: 0.6; flex-shrink: 0; font-size: 11px;">[${time}]</span>`;
 
     if (level === 'success') {
         entry.style.background = 'rgba(16, 185, 129, 0.12)';
@@ -6051,7 +6062,15 @@ function addFtpModalLog(message, level = 'info') {
         entry.style.borderLeft = '3px solid #3b82f6';
     }
 
-    entry.innerHTML = `${timeSpan} <span>${message}</span>`;
+    const timeSpan = document.createElement('span');
+    timeSpan.style.cssText = 'opacity: 0.6; flex-shrink: 0; font-size: 11px;';
+    timeSpan.textContent = `[${time}]`;
+
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = String(message || '');
+
+    entry.appendChild(timeSpan);
+    entry.appendChild(msgSpan);
     logs.appendChild(entry);
     logs.scrollTop = logs.scrollHeight;
 }
@@ -8126,11 +8145,15 @@ function openRestoreModal() {
                     
                     el.innerHTML = `
                         <div style="color: var(--text-color);">
-                            <div style="font-weight: 600; margin-bottom: 2px;">${b.filename}</div>
-                            <div style="font-size: 12px; opacity: 0.7;">Создан: ${dt} | Размер: ${size}</div>
+                            <div style="font-weight: 600; margin-bottom: 2px;">${escapeHtml(b.filename)}</div>
+                            <div style="font-size: 12px; opacity: 0.7;">Создан: ${escapeHtml(dt)} | Размер: ${escapeHtml(size)}</div>
                         </div>
-                        <button class="modal-btn modal-btn-danger" style="padding: 6px 14px; font-size: 13px;" onclick="startRestore('${b.filename}')">Восстановить</button>
+                        <button type="button" class="modal-btn modal-btn-danger btn-restore-action" style="padding: 6px 14px; font-size: 13px;">Восстановить</button>
                     `;
+                    const restoreBtn = el.querySelector('.btn-restore-action');
+                    if (restoreBtn) {
+                        restoreBtn.addEventListener('click', () => startRestore(b.filename));
+                    }
                     list.appendChild(el);
                 });
             } else {
@@ -9719,8 +9742,8 @@ function loadAutosavesList() {
                                                 <div class="backup-date">${escapeHtml(dateStr)}</div>
                                             </div>
                                             <div class="backup-actions">
-                                                <button type="button" class="backup-btn" onclick="loadAutosaveById('${autosave.id}')">${loadText}</button>
-                                                <button type="button" class="backup-btn" onclick="deleteAutosaveById('${autosave.id}')" style="color: #dc3545; border-color: rgba(220, 53, 69, 0.3);">${deleteText}</button>
+                                                <button type="button" class="backup-btn btn-load-autosave" data-id="${escapeHtml(autosave.id)}">${loadText}</button>
+                                                <button type="button" class="backup-btn btn-delete-autosave" data-id="${escapeHtml(autosave.id)}" style="color: #dc3545; border-color: rgba(220, 53, 69, 0.3);">${deleteText}</button>
                                             </div>
                                         </div>
                                     `;
@@ -9731,6 +9754,12 @@ function loadAutosavesList() {
                     groupIndex++;
                 }
                 listDiv.innerHTML = html;
+                listDiv.querySelectorAll('.btn-load-autosave').forEach(btn => {
+                    btn.addEventListener('click', () => loadAutosaveById(btn.getAttribute('data-id')));
+                });
+                listDiv.querySelectorAll('.btn-delete-autosave').forEach(btn => {
+                    btn.addEventListener('click', () => deleteAutosaveById(btn.getAttribute('data-id')));
+                });
             } else {
                 listDiv.style.display = 'none';
                 emptyDiv.style.display = 'block';
@@ -9974,10 +10003,14 @@ function renderCrossBlogNavItems() {
         const btnUrlPh = window.t ? window.t('header.cross_nav_url_ph', 'URL (например: ../data2/blog.html)') : 'URL (например: ../data2/blog.html)';
         const btnDeleteTitle = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
         div.innerHTML = `
-            <input type="text" value="${item.text.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'text', this.value)" placeholder="${btnNamePh}" data-i18n-placeholder="header.cross_nav_btn_name_ph" style="flex: 1; min-width: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-            <input type="text" value="${item.url.replace(/"/g, '&quot;')}" onchange="updateCrossBlogNavItem(${index}, 'url', this.value)" placeholder="${btnUrlPh}" data-i18n-placeholder="header.cross_nav_url_ph" style="flex: 2; min-width: 150px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
-            <button type="button" onclick="removeCrossBlogNavItem(${index})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 18px; padding: 4px;" data-i18n-title="common.delete" title="${btnDeleteTitle}">✖</button>
+            <input type="text" value="${escapeHtml(item.text)}" onchange="updateCrossBlogNavItem(${index}, 'text', this.value)" placeholder="${escapeHtml(btnNamePh)}" data-i18n-placeholder="header.cross_nav_btn_name_ph" style="flex: 1; min-width: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
+            <input type="text" value="${escapeHtml(item.url)}" onchange="updateCrossBlogNavItem(${index}, 'url', this.value)" placeholder="${escapeHtml(btnUrlPh)}" data-i18n-placeholder="header.cross_nav_url_ph" style="flex: 2; min-width: 150px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-color);">
+            <button type="button" class="btn-remove-crossnav" data-index="${index}" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 18px; padding: 4px;" data-i18n-title="common.delete" title="${escapeHtml(btnDeleteTitle)}">✖</button>
         `;
+        const delBtn = div.querySelector('.btn-remove-crossnav');
+        if (delBtn) {
+            delBtn.addEventListener('click', () => removeCrossBlogNavItem(index));
+        }
         container.appendChild(div);
     });
 }

@@ -844,11 +844,66 @@ func (l *LegacyHandler) HandleServeData(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	baseName := strings.ToLower(filepath.Base(cleanRel))
+	ext := strings.ToLower(filepath.Ext(cleanRel))
+
+	// Запрет доступа к чувствительным конфигурационным и системным файлам
+	forbiddenFiles := map[string]bool{
+		"editor_settings.json":         true,
+		"editor_settings.example.json": true,
+		"api_tokens.json":              true,
+		"sessions.json":                true,
+		"allowed_ips.txt":              true,
+		"history.json":                 true,
+		"login_lockouts.json":          true,
+		"ftp.json":                     true,
+	}
+	forbiddenExts := map[string]bool{
+		".php": true, ".phtml": true, ".go": true, ".exe": true,
+		".bat": true, ".cmd": true, ".sh": true, ".env": true,
+		".lock": true, ".git": true, ".htaccess": true,
+	}
+
+	if forbiddenFiles[baseName] || forbiddenExts[ext] || strings.HasPrefix(baseName, ".") {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	// Проверка авторизации для непубличных файлов
+	allowedPublicExts := map[string]bool{
+		".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
+		".webp": true, ".avif": true, ".svg": true, ".ico": true,
+		".mp3": true, ".ogg": true, ".wav": true, ".m4a": true,
+		".mp4": true, ".webm": true,
+		".ttf": true, ".otf": true, ".woff": true, ".woff2": true,
+		".css": true, ".js": true, ".pdf": true,
+	}
+	allowedPublicJSON := map[string]bool{
+		"posts-meta.json":         true,
+		"global-settings.json":    true,
+		"blog-view-settings.json": true,
+	}
+
+	session := l.auth.GetSession(r)
+	isAuth := (session != nil && session.Authenticated) || l.cfg.GetSettings().PasswordHash == ""
+
+	if !isAuth {
+		if !allowedPublicExts[ext] && !allowedPublicJSON[baseName] {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	activeBlog := middleware.GetActiveBlogPath(r)
-	fullPath := l.storage.GetDataPath(activeBlog, cleanRel)
+	blogDir := l.storage.GetDataPath(activeBlog, "")
+	fullPath, err := l.storage.ValidateSafePath(blogDir, cleanRel)
+	if err != nil {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
 
 	if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
-		// Отключаем кеш для json настроек
+		// Отключаем кеш для json
 		if strings.HasSuffix(fullPath, ".json") {
 			w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		}

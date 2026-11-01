@@ -392,9 +392,25 @@ func (s *SystemService) RestoreSystemBackup(filename string) (int, error) {
 			continue
 		}
 
-		// Защита пользовательских папок
+		// Защита пользовательских данных и критических системных файлов
 		relLower := strings.ToLower(filepath.ToSlash(rel))
-		if strings.HasPrefix(relLower, "data/") || relLower == "editor_settings.json" || relLower == "allowed_ips.txt" {
+		if strings.HasPrefix(relLower, "data/") ||
+			strings.HasPrefix(relLower, ".git/") ||
+			strings.HasPrefix(relLower, "cmd/") ||
+			strings.HasPrefix(relLower, "internal/") ||
+			strings.HasPrefix(relLower, "api/") ||
+			strings.HasSuffix(relLower, ".exe") ||
+			strings.HasSuffix(relLower, ".go") ||
+			relLower == "editor_settings.json" ||
+			relLower == "allowed_ips.txt" ||
+			relLower == "api_tokens.json" ||
+			relLower == "ftp.json" ||
+			relLower == "sessions.json" ||
+			relLower == "history.json" ||
+			relLower == "login_lockouts.json" ||
+			relLower == ".env" ||
+			relLower == "go.mod" ||
+			relLower == "go.sum" {
 			continue
 		}
 
