@@ -2467,6 +2467,94 @@ button:hover {
 }
 
 /* Параметры */
+.global-settings-nav {
+    width: 230px;
+    min-width: 230px;
+    padding: 16px 12px;
+    overflow-y: auto;
+    background: var(--modal-bg-subtle, rgba(0, 0, 0, 0.03));
+    border-right: 1px solid var(--border-color);
+}
+
+.global-nav-group + .global-nav-group {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-color);
+}
+
+.global-nav-group-title {
+    padding: 0 10px 7px;
+    color: var(--text-color);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    opacity: 0.5;
+    text-transform: uppercase;
+}
+
+.global-nav-group .global-nav-btn {
+    display: block;
+    width: 100%;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-color);
+    background: transparent;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.global-settings-content {
+    flex: 1;
+    min-width: 0;
+    padding: 24px 28px;
+    overflow-y: auto;
+}
+
+.global-subnav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    padding: 4px;
+    overflow-x: auto;
+    background: var(--modal-bg-subtle, rgba(0, 0, 0, 0.03));
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.global-subnav-btn {
+    flex: 1;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 7px;
+    color: var(--text-color);
+    background: transparent;
+    font-size: 13px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.global-subnav-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.global-subnav-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+}
+
+.global-subnav-btn.active {
+    background: var(--modal-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    font-weight: 600;
+}
+
+[data-theme="dark"] .global-subnav-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
 .global-nav-btn {
     transition: background-color var(--anim-dur-fast) ease, color var(--anim-dur-fast) ease, transform var(--anim-dur-fast) var(--anim-ease-out);
 }
@@ -2480,6 +2568,11 @@ button:hover {
     transform: scale(0.98);
 }
 
+.global-nav-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
 .global-nav-btn.active {
     background: rgba(0, 0, 0, 0.1) !important;
     font-weight: 600;
@@ -2491,6 +2584,49 @@ button:hover {
 
 [data-theme="dark"] .global-nav-btn.active {
     background: rgba(255, 255, 255, 0.1) !important;
+}
+
+@media (max-width: 700px) {
+    #globalSettingsModal .modal-body {
+        flex-direction: column !important;
+    }
+
+    .global-settings-nav {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        padding: 10px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .global-nav-group {
+        display: flex;
+        flex-shrink: 0;
+        gap: 4px;
+    }
+
+    .global-nav-group + .global-nav-group {
+        margin: 0 0 0 10px;
+        padding: 0 0 0 10px;
+        border-top: none;
+        border-left: 1px solid var(--border-color);
+    }
+
+    .global-nav-group-title {
+        display: none;
+    }
+
+    .global-nav-group .global-nav-btn {
+        width: auto;
+        white-space: nowrap;
+    }
+
+    .global-settings-content {
+        padding: 20px 16px;
+    }
 }
 
 @keyframes globalSectionIn {

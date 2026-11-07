@@ -4335,58 +4335,43 @@ window.addEventListener('load', function() {
         <!-- Тело: Слева боковая навигация, справа контент разделов -->
         <div class="modal-body" style="padding: 0; display: flex; flex: 1; overflow: hidden;">
             <!-- Навигация слева -->
-            <div style="width: 210px; min-width: 210px; background: var(--modal-bg-subtle, rgba(0,0,0,0.03)); border-right: 1px solid var(--border-color); padding: 16px 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-color); opacity: 0.5; padding: 4px 8px; margin-bottom: 4px;" data-i18n="settings.nav_title">Навигация</div>
-                
-                <button type="button" id="nav-btn-backgrounds" onclick="showGlobalSection('backgrounds')" class="global-nav-btn active" data-section="backgrounds" data-i18n="settings.nav_backgrounds" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Фон статей
-                </button>
-                <button type="button" id="nav-btn-blogview" onclick="showGlobalSection('blogview')" class="global-nav-btn" data-section="blogview" data-i18n="settings.nav_blogview" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Вид blog.html
-                </button>
-                <button type="button" onclick="showGlobalSection('autosave')" class="global-nav-btn" data-section="autosave" data-i18n="settings.nav_autosave" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Автосохранение
-                </button>
-                <button type="button" onclick="showGlobalSection('appearance')" class="global-nav-btn" data-section="appearance" data-i18n="settings.nav_appearance" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Внешний вид
-                </button>
-                <button type="button" onclick="showGlobalSection('experimental')" class="global-nav-btn" data-section="experimental" data-i18n="settings.nav_experimental" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Экспериментальные
-                </button>
-                <button type="button" onclick="showGlobalSection('rss')" class="global-nav-btn" data-section="rss" data-i18n="settings.nav_rss" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    RSS Виджет
-                </button>
-                <button type="button" id="nav-btn-rss_feed" onclick="showGlobalSection('rss_feed')" class="global-nav-btn" data-section="rss_feed" data-i18n="settings.nav_rss_feed" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    RSS Лента
-                </button>
-                <button type="button" id="nav-btn-paths" onclick="showGlobalSection('paths')" class="global-nav-btn" data-section="paths" data-i18n="settings.nav_paths" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Пути
-                </button>
-                <button type="button" id="nav-btn-security" onclick="showGlobalSection('security')" class="global-nav-btn" data-section="security" data-i18n="settings.nav_security" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Безопасность
-                </button>
-                <button type="button" id="nav-btn-sessions" onclick="showGlobalSection('sessions')" class="global-nav-btn" data-section="sessions" data-i18n="settings.nav_sessions" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Сессии
-                </button>
-                <button type="button" onclick="showGlobalSection('seo')" class="global-nav-btn" data-section="seo" data-i18n="settings.nav_seo" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    SEO и соцсети
-                </button>
-                <button type="button" id="nav-btn-language" onclick="showGlobalSection('language')" class="global-nav-btn" data-section="language" data-i18n="settings.nav_language" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Язык
-                </button>
-                <button type="button" id="nav-btn-updates" onclick="showGlobalSection('updates')" class="global-nav-btn" data-section="updates" data-i18n="settings.nav_updates" style="display: block; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; color: var(--text-color); background: transparent; transition: all 0.15s ease;">
-                    Обновления
-                </button>
-            </div>
+            <nav class="global-settings-nav" aria-label="Разделы параметров" data-i18n-aria="settings.nav_title">
+                <div class="global-nav-group">
+                    <div class="global-nav-group-title" data-i18n="settings.nav_group_editor">Редактор</div>
+                    <button type="button" id="nav-btn-appearance" onclick="showGlobalSection('appearance')" class="global-nav-btn active" data-section="appearance" data-i18n="settings.nav_appearance">Внешний вид</button>
+                    <button type="button" id="nav-btn-autosave" onclick="showGlobalSection('autosave')" class="global-nav-btn" data-section="autosave" data-i18n="settings.nav_autosave">Автосохранение</button>
+                    <button type="button" id="nav-btn-language" onclick="showGlobalSection('language')" class="global-nav-btn" data-section="language" data-i18n="settings.nav_language">Язык</button>
+                    <button type="button" id="nav-btn-experimental" onclick="showGlobalSection('experimental')" class="global-nav-btn" data-section="experimental" data-i18n="settings.nav_experimental">Функции редактора</button>
+                </div>
+                <div class="global-nav-group">
+                    <div class="global-nav-group-title" data-i18n="settings.nav_group_blog">Блог и публикация</div>
+                    <button type="button" id="nav-btn-blogview" onclick="showGlobalSection('blogview')" class="global-nav-btn" data-section="blogview" data-i18n="settings.nav_blogview">Страница блога</button>
+                    <button type="button" id="nav-btn-backgrounds" onclick="showGlobalSection('backgrounds')" class="global-nav-btn" data-section="backgrounds" data-i18n="settings.nav_backgrounds">Фон статей</button>
+                    <button type="button" id="nav-btn-rss_feed" onclick="showGlobalSection('rss_feed')" class="global-nav-btn" data-section="rss_feed" data-i18n="settings.nav_rss_feed">RSS-лента</button>
+                    <button type="button" id="nav-btn-rss" onclick="showGlobalSection('rss')" class="global-nav-btn" data-section="rss" data-i18n="settings.nav_rss">RSS-виджет</button>
+                    <button type="button" id="nav-btn-seo" onclick="showGlobalSection('seo')" class="global-nav-btn" data-section="seo" data-i18n="settings.nav_seo">SEO и соцсети</button>
+                </div>
+                <div class="global-nav-group">
+                    <div class="global-nav-group-title" data-i18n="settings.nav_group_system">Система</div>
+                    <button type="button" id="nav-btn-paths" onclick="showGlobalSection('paths')" class="global-nav-btn" data-section="paths" data-i18n="settings.nav_paths">Пути и хранение</button>
+                    <button type="button" id="nav-btn-updates" onclick="showGlobalSection('updates')" class="global-nav-btn" data-section="updates" data-i18n="settings.nav_updates">Обновления</button>
+                    <button type="button" id="nav-btn-maintenance" onclick="showGlobalSection('maintenance')" class="global-nav-btn" data-section="maintenance" data-i18n="settings.nav_maintenance">Обслуживание</button>
+                </div>
+                <div class="global-nav-group">
+                    <div class="global-nav-group-title" data-i18n="settings.nav_group_access">Доступ</div>
+                    <button type="button" id="nav-btn-security" onclick="showGlobalSection('security')" class="global-nav-btn" data-section="security" data-i18n="settings.nav_security">Безопасность</button>
+                    <button type="button" id="nav-btn-sessions" onclick="showGlobalSection('sessions')" class="global-nav-btn" data-section="sessions" data-i18n="settings.nav_sessions">Сессии</button>
+                </div>
+            </nav>
             
             <!-- Контент справа -->
-            <div style="flex: 1; padding: 24px 28px; overflow-y: auto;">
+            <div class="global-settings-content">
                 <div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-                    <h3 style="margin: 0; color: var(--text-color); font-size: 18px; font-weight: 600;" id="globalSectionTitle" data-i18n="settings.bg_section_title">Фон статей</h3>
+                    <h3 style="margin: 0; color: var(--text-color); font-size: 18px; font-weight: 600;" id="globalSectionTitle" data-i18n="settings.nav_appearance">Внешний вид</h3>
                 </div>
             
                 <!-- Секция 1: Фон статей -->
-                <div id="globalSection-backgrounds" class="global-section">
+                <div id="globalSection-backgrounds" class="global-section" style="display: none;">
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.bg_desc">Загрузите фоновое изображение, которое будет применяться ко всем статьям по умолчанию.</p>
                     
                     <!-- Текущий глобальный фон -->
@@ -4423,11 +4408,7 @@ window.addEventListener('load', function() {
                             <option value="content" data-i18n="settings.bg_scope_content">Только статья (920px)</option>
                             <option value="fullpage" data-i18n="settings.bg_scope_fullpage">Вся страница</option>
                         </select>
-                        
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button type="button" onclick="uploadGlobalBackground()" class="modal-btn modal-btn-primary" data-i18n="settings.bg_upload_btn">Загрузить фон</button>
-                            <button type="button" onclick="removeGlobalBackground()" class="modal-btn modal-btn-secondary" data-i18n="settings.bg_remove_btn">Удалить фон</button>
-                        </div>
+
                     </div>
                     
                     <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); margin-bottom: 20px;">
@@ -4449,13 +4430,17 @@ window.addEventListener('load', function() {
                 
                 <!-- Секция 2: Вид blog.html -->
                 <div id="globalSection-blogview" class="global-section" style="display: none;">
-                    <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.blogview_desc">Настройте внешний вид страницы со списком статей (blog.html).</p>
-                    
+                    <p style="color: var(--text-color); margin-bottom: 16px; opacity: 0.8; font-size: 13px;" data-i18n="settings.blogview_desc">Настройте внешний вид страницы со списком статей (blog.html).</p>
+                    <div class="global-subnav" role="tablist" data-i18n-aria="settings.nav_blogview" aria-label="Страница блога">
+                        <button type="button" id="blogview-tab-general" class="global-subnav-btn active" onclick="showBlogViewSubsection('general')" role="tab" aria-selected="true" data-i18n="settings.blogview_tab_general">Основные</button>
+                        <button type="button" id="blogview-tab-background" class="global-subnav-btn" onclick="showBlogViewSubsection('background')" role="tab" aria-selected="false" data-i18n="settings.blogview_tab_background">Фон страницы</button>
+                        <button type="button" id="blogview-tab-navigation" class="global-subnav-btn" onclick="showBlogViewSubsection('navigation')" role="tab" aria-selected="false" data-i18n="settings.blogview_tab_navigation">Навигация</button>
+                    </div>
+
+                    <div id="blogview-subsection-general" class="blogview-subsection">
                     <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
                         <label class="modal-label" for="blogPageTitle" data-i18n="settings.blogview_page_title_label">Заголовок страницы:</label>
-                        <input type="text" id="blogPageTitle" data-i18n-placeholder="settings.blog_title_ph" placeholder="Блог" class="modal-input" style="margin-bottom: 14px;">
-                        
-                        <button type="button" onclick="saveBlogViewSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.blogview_save_btn">Сохранить настройки</button>
+                        <input type="text" id="blogPageTitle" data-i18n-placeholder="settings.blog_title_ph" placeholder="Блог" class="modal-input">
                     </div>
 
                     <!-- Отображение списка статей (Сетка / Список) -->
@@ -4467,13 +4452,11 @@ window.addEventListener('load', function() {
                             <option value="grid" data-i18n="settings.blogview_layout_grid">⊞ Сеткой (карточки с превью)</option>
                         </select>
                         
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button type="button" onclick="saveBlogViewLayout('save')" class="modal-btn modal-btn-primary" data-i18n="settings.blogview_save_layout_current">Сохранить для текущего блога</button>
-                            <button type="button" onclick="saveBlogViewLayout('apply_all')" class="modal-btn modal-btn-secondary" data-i18n="settings.blogview_apply_layout_all">Применить во всех блогах</button>
-                        </div>
+                        <button type="button" onclick="saveBlogViewLayout('apply_all')" class="modal-btn modal-btn-secondary" data-i18n="settings.blogview_apply_layout_all">Применить вид ко всем блогам</button>
+                    </div>
                     </div>
 
-                    <div style="margin-bottom: 20px;">
+                    <div id="blogview-subsection-background" class="blogview-subsection" style="display: none;">
                         <h4 style="margin: 0 0 14px 0; color: var(--text-color); font-size: 15px; font-weight: 600;" data-i18n="settings.blogview_bg_title">Фон страницы списка статей (blog.html)</h4>
                         
                         <!-- Текущий фон blog.html -->
@@ -4503,14 +4486,9 @@ window.addEventListener('load', function() {
                             <option value="contain" data-i18n="settings.bg_mode_contain">По размеру (contain)</option>
                             <option value="repeat" data-i18n="settings.bg_mode_repeat">Замостить (repeat)</option>
                         </select>
-
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button type="button" onclick="uploadBlogBackground()" class="modal-btn modal-btn-primary" data-i18n="settings.bg_upload_btn">Загрузить фон</button>
-                            <button type="button" onclick="removeBlogBackground()" class="modal-btn modal-btn-secondary" data-i18n="settings.bg_remove_btn">Удалить фон</button>
-                        </div>
                     </div>
 
-                    <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                    <div id="blogview-subsection-navigation" class="blogview-subsection" style="display: none;">
                         <h4 style="margin: 0 0 14px 0; color: var(--text-color); font-size: 15px; font-weight: 600;" data-i18n="settings.blogview_crossblog_title">Навигация между блогами</h4>
                         
                         <div id="crossBlogNavStatus" style="display: none; padding: 12px; background: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; margin-bottom: 15px; color: var(--text-color); font-size: 13px;" data-i18n="settings.blogview_crossblog_not_supported">
@@ -4532,10 +4510,7 @@ window.addEventListener('load', function() {
                                 <button type="button" onclick="addCrossBlogNavItem()" class="modal-btn modal-btn-secondary" style="font-size: 12px;" data-i18n="settings.blogview_add_btn">+ Добавить кнопку</button>
                             </div>
 
-                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button type="button" onclick="saveCrossBlogNav('save')" class="modal-btn modal-btn-primary" data-i18n="settings.blogview_save_current">Сохранить для текущего блога</button>
-                                <button type="button" onclick="saveCrossBlogNav('apply_all')" class="modal-btn modal-btn-secondary" data-i18n="settings.blogview_apply_all">Применить во всех блогах</button>
-                            </div>
+                            <button type="button" onclick="saveCrossBlogNav('apply_all')" class="modal-btn modal-btn-secondary" data-i18n="settings.blogview_apply_all">Применить навигацию ко всем блогам</button>
                         </div>
                     </div>
                 </div>
@@ -4556,10 +4531,7 @@ window.addEventListener('load', function() {
                         <label class="modal-label" for="autosaveInterval" data-i18n="settings.autosave_interval_label">Интервал автосохранения (секунды):</label>
                         <input type="number" id="autosaveInterval" min="10" max="600" value="60" class="modal-input" style="margin-bottom: 20px;">
                         
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button type="button" onclick="saveAutosaveSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.autosave_save_btn">Сохранить настройки</button>
-                            <button type="button" onclick="openAutosaveManager()" class="modal-btn modal-btn-secondary" data-i18n="settings.autosave_manager_btn">Менеджер автосохранений</button>
-                        </div>
+                        <button type="button" onclick="openAutosaveManager()" class="modal-btn modal-btn-secondary" data-i18n="settings.autosave_manager_btn">Менеджер автосохранений</button>
                     </div>
 
                     <div style="padding: 14px; background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px; margin-top: 20px;">
@@ -4570,7 +4542,7 @@ window.addEventListener('load', function() {
                 </div>
                 
                 <!-- Секция 4: Внешний вид -->
-                <div id="globalSection-appearance" class="global-section" style="display: none;">
+                <div id="globalSection-appearance" class="global-section">
                     <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.appearance_desc">Настройте внешний вид редактора статей.</p>
                     
                     <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
@@ -4612,7 +4584,6 @@ window.addEventListener('load', function() {
                         </div>
                         
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-                            <button type="button" onclick="saveAppearanceSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.app_save_btn">Сохранить настройки</button>
                             <button type="button" onclick="startHeaderCustomization()" class="modal-btn modal-btn-secondary" data-i18n="settings.app_customize_header_btn">Кастомизация верхней панели</button>
                             <button type="button" onclick="closeGlobalSettings(); openBottomBarCustomizer();" class="modal-btn modal-btn-secondary" data-i18n="bottom_bar.customize">Настроить панель</button>
                         </div>
@@ -4658,27 +4629,24 @@ window.addEventListener('load', function() {
                                 </div>
                             </label>
                         </div>
-                        
-                        <button type="button" onclick="saveExperimentalSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.exp_save_btn">Сохранить настройки</button>
                     </div>
 
-                    <div style="margin-bottom: 20px;">
-                        <h4 style="margin: 0 0 12px 0; color: var(--text-color); font-size: 15px; font-weight: 600;" data-i18n="settings.exp_maint_title">Обслуживание и обучение</h4>
-                        <p style="color: var(--text-color); margin-bottom: 14px; opacity: 0.8; font-size: 13px;" data-i18n="settings.exp_maint_desc">Запустите проверку целостности или сбросьте интерактивное руководство.</p>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button type="button" onclick="checkPostNumbering()" class="modal-btn modal-btn-primary" data-i18n="settings.exp_check_num_btn">Проверка нумерации</button>
-                            <button type="button" onclick="resetTutorial()" class="modal-btn modal-btn-secondary" data-i18n="settings.exp_reset_guide_btn">Сбросить обучение</button>
-                            <button type="button" onclick="closeGlobalSettings(); openInitialSetupModal();" class="modal-btn modal-btn-secondary" data-i18n="setup.rerun_setup_btn">🚀 Первоначальная настройка</button>
-                            <button type="button" onclick="closeGlobalSettings(); enterSafeMode('Тестовый запуск Safe Mode (проверка интерфейса аварийного восстановления)');" class="modal-btn modal-btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">🛡️ Safe Mode</button>
-                            <button type="button" onclick="deleteAllCustomTemplates()" class="modal-btn modal-btn-danger" data-i18n="settings.exp_delete_templates_btn">Удалить кастомные шаблоны</button>
-                            <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn">Сбросить все настройки</button>
-                        </div>
-                    </div>
-                    
                     <div style="padding: 14px; background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.4); border-radius: 8px; margin-top: 20px;">
                         <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;" data-i18n="settings.exp_warning">
                             ⚠️ Экспериментальные функции могут работать нестабильно. Используйте на свой риск.
                         </p>
+                    </div>
+                </div>
+
+                <!-- Обслуживание системы -->
+                <div id="globalSection-maintenance" class="global-section" style="display: none;">
+                    <p style="color: var(--text-color); margin-bottom: 20px; opacity: 0.8; font-size: 13px;" data-i18n="settings.exp_maint_desc">Запустите проверку целостности или сбросьте интерактивное руководство.</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" onclick="checkPostNumbering()" class="modal-btn modal-btn-primary" data-i18n="settings.exp_check_num_btn">Проверка нумерации</button>
+                        <button type="button" onclick="resetTutorial()" class="modal-btn modal-btn-secondary" data-i18n="settings.exp_reset_guide_btn">Сбросить обучение</button>
+                        <button type="button" onclick="closeGlobalSettings(); openInitialSetupModal();" class="modal-btn modal-btn-secondary" data-i18n="setup.rerun_setup_btn">🚀 Первоначальная настройка</button>
+                        <button type="button" onclick="closeGlobalSettings(); enterSafeMode('Тестовый запуск Safe Mode (проверка интерфейса аварийного восстановления)');" class="modal-btn modal-btn-secondary" style="color: var(--modal-color-danger); border-color: var(--modal-color-danger);">🛡️ Safe Mode</button>
+                        <button type="button" onclick="deleteAllCustomTemplates()" class="modal-btn modal-btn-danger" data-i18n="settings.exp_delete_templates_btn">Удалить кастомные шаблоны</button>
                     </div>
                 </div>
                 
@@ -4784,9 +4752,6 @@ window.addEventListener('load', function() {
                         </div>
                     </div>
 
-                    <div style="margin-bottom: 20px;">
-                        <button type="button" onclick="saveRssFeedSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.rss_feed_save_btn">Сохранить настройки RSS</button>
-                    </div>
                 </div>
 
                 <!-- Секция 8: Пути -->
@@ -4955,10 +4920,7 @@ window.addEventListener('load', function() {
                             Если включено, доступ к редактору и всем его функциям будет разрешен только с IP-адресов, перечисленных в файле <code>allowed_ips.txt</code> в корне проекта. При включении ваш текущий IP-адрес будет автоматически добавлен в список, чтобы вы не потеряли доступ.
                         </p>
                     </div>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <button type="button" onclick="saveSecuritySettings()" class="modal-btn modal-btn-primary" data-i18n="settings.sec_save_btn">Сохранить настройки безопасности</button>
-                    </div>
+
                     
                     <div style="padding: 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; margin-top: 20px;">
                         <p style="color: var(--text-color); font-size: 13px; margin: 0; line-height: 1.5;" data-i18n-html="settings.sec_notice">
@@ -5026,10 +4988,7 @@ window.addEventListener('load', function() {
                         </p>
                     </div>
 
-                    <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <button type="button" onclick="saveSeoSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.seo_save_btn">Сохранить настройки SEO</button>
-                        <button type="button" onclick="regenerateAllPostsMeta(this)" class="modal-btn modal-btn-secondary" data-i18n="settings.seo_regen_btn">Перегенерировать метатеги статей</button>
-                    </div>
+                    <button type="button" onclick="regenerateAllPostsMeta(this)" class="modal-btn modal-btn-secondary" data-i18n="settings.seo_regen_btn">Перегенерировать метатеги статей</button>
                 </div>
 
                 <!-- Секция 11: Язык -->
@@ -5177,9 +5136,7 @@ window.addEventListener('load', function() {
                         </div>
                     </div>
 
-                    <!-- 5. Кнопки сохранения и проверки -->
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px;">
-                        <button type="button" onclick="saveUpdateSettings()" class="modal-btn modal-btn-primary" data-i18n="common.save_changes">Сохранить настройки</button>
+                    <div style="margin-bottom: 24px;">
                         <button type="button" onclick="checkSystemAutoUpdate(true)" class="modal-btn modal-btn-secondary" id="manualCheckUpdateBtn" data-i18n="settings.updates_check_now_btn">🔍 Проверить обновления сейчас</button>
                     </div>
 
@@ -5202,11 +5159,13 @@ window.addEventListener('load', function() {
             <button type="button" onclick="confirmResetAllSettings()" class="modal-btn modal-btn-danger" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #ef4444;" data-i18n="settings.exp_reset_all_btn" data-i18n-title="settings.exp_reset_all_title" title="Сбросить все настройки редактора к значениям по умолчанию">
                 Сбросить настройки
             </button>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <button type="button" id="globalPathsSaveBtn" onclick="savePathsSettings()" class="modal-btn modal-btn-primary" data-i18n="settings.paths_save_btn" style="display: none;">
-                    Сохранить настройки путей
-                </button>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                <button type="button" id="globalBackgroundRemoveBtn" onclick="removeGlobalBackground()" class="modal-btn modal-btn-secondary" data-i18n="settings.bg_remove_btn" style="display: none;">Удалить фон</button>
+                <button type="button" id="globalBackgroundUploadBtn" onclick="uploadGlobalBackground()" class="modal-btn modal-btn-primary" data-i18n="settings.bg_upload_btn" style="display: none;">Загрузить фон</button>
+                <button type="button" id="blogBackgroundRemoveBtn" onclick="removeBlogBackground()" class="modal-btn modal-btn-secondary" data-i18n="settings.bg_remove_btn" style="display: none;">Удалить фон</button>
+                <button type="button" id="blogBackgroundUploadBtn" onclick="uploadBlogBackground()" class="modal-btn modal-btn-primary" data-i18n="settings.bg_upload_btn" style="display: none;">Загрузить фон</button>
                 <button type="button" onclick="closeGlobalSettings()" class="modal-btn modal-btn-ghost" data-modal-close data-i18n="common.close">Закрыть</button>
+                <button type="button" id="globalSettingsSaveBtn" onclick="saveCurrentGlobalSection()" class="modal-btn modal-btn-primary" data-i18n="common.save">Сохранить</button>
             </div>
         </div>
     </div>
@@ -8698,12 +8657,8 @@ function openGlobalSettings() {
         }
     }
     
-    // Синхронизируем видимость кнопки сохранения путей в подвале
     const activeNavBtn = document.querySelector('.global-nav-btn.active');
-    const pathsSaveBtn = document.getElementById('globalPathsSaveBtn');
-    if (pathsSaveBtn) {
-        pathsSaveBtn.style.display = (activeNavBtn && activeNavBtn.dataset.section === 'paths') ? 'inline-flex' : 'none';
-    }
+    showGlobalSection(activeNavBtn ? activeNavBtn.dataset.section : 'appearance');
 
     checkTemplateAndToggleTabs().then(() => {
         loadGlobalBackground();
@@ -8726,6 +8681,70 @@ function closeGlobalSettings() {
     if (bBg) { bBg.value = ''; if (window.resetModalFilePicker) resetModalFilePicker(bBg); }
 }
 
+function updateGlobalSettingsFooter(sectionName) {
+    const activeSubTab = document.querySelector('.global-subnav-btn.active');
+    const isBlogBackground = sectionName === 'blogview' && activeSubTab && activeSubTab.id === 'blogview-tab-background';
+    const visibility = {
+        globalBackgroundUploadBtn: sectionName === 'backgrounds',
+        globalBackgroundRemoveBtn: sectionName === 'backgrounds',
+        blogBackgroundUploadBtn: isBlogBackground,
+        blogBackgroundRemoveBtn: isBlogBackground
+    };
+    Object.keys(visibility).forEach(id => {
+        const button = document.getElementById(id);
+        if (button) button.style.display = visibility[id] ? 'inline-flex' : 'none';
+    });
+
+    const saveBtn = document.getElementById('globalSettingsSaveBtn');
+    const saveableSections = ['blogview', 'autosave', 'appearance', 'experimental', 'rss_feed', 'paths', 'security', 'seo', 'updates'];
+    if (saveBtn) {
+        saveBtn.style.display = saveableSections.includes(sectionName) && !isBlogBackground ? 'inline-flex' : 'none';
+    }
+}
+
+function showBlogViewSubsection(sectionName) {
+    document.querySelectorAll('.blogview-subsection').forEach(section => {
+        section.style.display = section.id === 'blogview-subsection-' + sectionName ? 'block' : 'none';
+    });
+    document.querySelectorAll('.global-subnav-btn').forEach(button => {
+        const isActive = button.id === 'blogview-tab-' + sectionName;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    updateGlobalSettingsFooter('blogview');
+}
+
+function saveCurrentGlobalSection() {
+    const activeBtn = document.querySelector('.global-nav-btn.active');
+    const sectionName = activeBtn ? activeBtn.dataset.section : '';
+    const saveHandlers = {
+        autosave: saveAutosaveSettings,
+        appearance: saveAppearanceSettings,
+        experimental: saveExperimentalSettings,
+        rss_feed: saveRssFeedSettings,
+        paths: savePathsSettings,
+        security: saveSecuritySettings,
+        seo: saveSeoSettings,
+        updates: saveUpdateSettings
+    };
+
+    if (sectionName === 'blogview') {
+        const saves = [saveBlogViewSettings(true)];
+        const navEditor = document.getElementById('crossBlogNavEditor');
+        if (navEditor && navEditor.style.display !== 'none') {
+            saves.push(saveCrossBlogNav('save', true));
+        }
+        Promise.all(saves).then(() => {
+            showAlert(window.t ? window.t('notifications.blogview_saved_notice', 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.') : 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
+        }).catch(error => {
+            console.error('Ошибка:', error);
+            showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+        });
+    } else if (saveHandlers[sectionName]) {
+        saveHandlers[sectionName]();
+    }
+}
+
 function showGlobalSection(sectionName) {
     const btn = document.getElementById('nav-btn-' + sectionName);
     if (btn && btn.style.display === 'none') {
@@ -8745,11 +8764,7 @@ function showGlobalSection(sectionName) {
     });
     document.getElementById('globalSection-' + sectionName).style.display = 'block';
 
-    // Управление видимостью кнопки сохранения путей в подвале
-    const pathsSaveBtn = document.getElementById('globalPathsSaveBtn');
-    if (pathsSaveBtn) {
-        pathsSaveBtn.style.display = (sectionName === 'paths') ? 'inline-flex' : 'none';
-    }
+    updateGlobalSettingsFooter(sectionName);
     
     // Обновляем заголовок
     const titles = {
@@ -8765,7 +8780,8 @@ function showGlobalSection(sectionName) {
         'sessions': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_sessions', 'Сессии') : 'Сессии'),
         'seo': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_seo', 'SEO и соцсети') : 'SEO и соцсети'),
         'language': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_language', 'Язык') : 'Язык'),
-        'updates': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_updates', 'Обновления') : 'Обновления')
+        'updates': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_updates', 'Обновления') : 'Обновления'),
+        'maintenance': (window.NPBlogI18n ? window.NPBlogI18n.t('settings.nav_maintenance', 'Обслуживание') : 'Обслуживание')
     };
     document.getElementById('globalSectionTitle').textContent = titles[sectionName] || '';
     
@@ -9890,7 +9906,7 @@ function deleteAutosaveById(id) {
     });
 }
 
-function saveBlogViewSettings() {
+function saveBlogViewSettings(silent) {
     const title = document.getElementById('blogPageTitle').value.trim() || 'Блог';
     const layout = document.getElementById('blogPostsLayout') ? document.getElementById('blogPostsLayout').value : 'list';
     
@@ -9902,13 +9918,11 @@ function saveBlogViewSettings() {
             body: JSON.stringify({ action: 'save', title: title, layout: layout })
         }).then(response => response.json());
 
-    savePromise
-    .then(data => {
-        showAlert(window.t ? window.t('notifications.blogview_saved_notice', 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.') : 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
-    })
-    .catch(error => {
-        console.error('Ошибка:', error);
-        showAlert(window.t ? window.t('notifications.settings_save_error', 'Ошибка сохранения настроек') : 'Ошибка сохранения настроек');
+    return savePromise.then(data => {
+        if (!silent) {
+            showAlert(window.t ? window.t('notifications.blogview_saved_notice', 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.') : 'Настройки сохранены! Изменения применятся при следующем обновлении списка статей.');
+        }
+        return data;
     });
 }
 
@@ -10033,7 +10047,7 @@ function syncCrossBlogNavFromDOM() {
     currentCrossBlogNavItems = items;
 }
 
-function saveCrossBlogNav(action) {
+function saveCrossBlogNav(action, silent) {
     syncCrossBlogNavFromDOM();
     const isEnabled = document.getElementById('enableCrossBlogNav').checked;
     const buttonsToSave = isEnabled ? currentCrossBlogNavItems : [];
@@ -10046,19 +10060,17 @@ function saveCrossBlogNav(action) {
             body: 'action=' + action + '&buttons=' + encodeURIComponent(JSON.stringify(buttonsToSave))
         }).then(r => r.json());
 
-    savePromise
-    .then(data => {
-        if (action === 'apply_all') {
-            const count = (data && data.updated_count) || (data && data.data && data.data.updated_count) || 1;
-            showAlert(window.t ? window.t('notifications.crossblog_applied_param', 'Кнопки успешно применены к ' + count + ' блогам со стандартными шаблонами!', { count: count }) : 'Кнопки успешно применены к ' + count + ' блогам со стандартными шаблонами!');
-        } else {
-            showAlert(window.t ? window.t('notifications.crossblog_saved', 'Кнопки навигации успешно сохранены!') : 'Кнопки навигации успешно сохранены!');
+    return savePromise.then(data => {
+        if (!silent) {
+            if (action === 'apply_all') {
+                const count = (data && data.updated_count) || (data && data.data && data.data.updated_count) || 1;
+                showAlert(window.t ? window.t('notifications.crossblog_applied_param', 'Кнопки успешно применены к ' + count + ' блогам со стандартными шаблонами!', { count: count }) : 'Кнопки успешно применены к ' + count + ' блогам со стандартными шаблонами!');
+            } else {
+                showAlert(window.t ? window.t('notifications.crossblog_saved', 'Кнопки навигации успешно сохранены!') : 'Кнопки навигации успешно сохранены!');
+            }
         }
         checkCrossBlogNavStatus();
-    })
-    .catch(err => {
-        showAlert(window.t ? window.t('notifications.crossblog_save_error', 'Произошла ошибка при сохранении кнопок.') : 'Произошла ошибка при сохранении кнопок.');
-        console.error(err);
+        return data;
     });
 }
 

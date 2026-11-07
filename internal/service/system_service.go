@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -79,6 +80,46 @@ func (s *SystemService) GetChangelog() []string {
 	return v.Changelog
 }
 
+func isNewerVersion(latest, current string) bool {
+	parse := func(version string) ([]int, bool) {
+		version = strings.TrimPrefix(strings.TrimSpace(version), "v")
+		if version == "" {
+			return nil, false
+		}
+
+		parts := strings.Split(version, ".")
+		numbers := make([]int, len(parts))
+		for i, part := range parts {
+			number, err := strconv.Atoi(part)
+			if err != nil {
+				return nil, false
+			}
+			numbers[i] = number
+		}
+		return numbers, true
+	}
+
+	latestParts, latestOK := parse(latest)
+	currentParts, currentOK := parse(current)
+	if !latestOK || !currentOK {
+		return false
+	}
+
+	for i := 0; i < len(latestParts) || i < len(currentParts); i++ {
+		latestPart, currentPart := 0, 0
+		if i < len(latestParts) {
+			latestPart = latestParts[i]
+		}
+		if i < len(currentParts) {
+			currentPart = currentParts[i]
+		}
+		if latestPart != currentPart {
+			return latestPart > currentPart
+		}
+	}
+	return false
+}
+
 // CheckAutoUpdate проверяет наличие обновлений на GitHub (Releases или Canary)
 func (s *SystemService) CheckAutoUpdate(channel, repo string, force bool, githubToken string) UpdateCheckResult {
 	current := s.GetVersion()
@@ -122,7 +163,7 @@ func (s *SystemService) CheckAutoUpdate(channel, repo string, force bool, github
 				if channel == "canary" {
 					cached.HasUpdate = cached.Commit != "" && cached.Commit != current.Commit
 				} else {
-					cached.HasUpdate = cached.LatestVersion != "" && cached.LatestVersion != current.Version
+					cached.HasUpdate = isNewerVersion(cached.LatestVersion, current.Version)
 				}
 				return cached
 			}
@@ -207,7 +248,7 @@ func (s *SystemService) CheckAutoUpdate(channel, repo string, force bool, github
 		if err := json.Unmarshal(bodyBytes, &releaseResp); err == nil {
 			res.Tag = releaseResp.TagName
 			res.LatestVersion = strings.TrimPrefix(releaseResp.TagName, "v")
-			res.HasUpdate = res.LatestVersion != "" && res.LatestVersion != current.Version
+			res.HasUpdate = isNewerVersion(res.LatestVersion, current.Version)
 			res.DownloadURL = releaseResp.ZipballURL
 			for _, asset := range releaseResp.Assets {
 				if strings.HasSuffix(strings.ToLower(asset.Name), ".zip") {
