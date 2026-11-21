@@ -4854,6 +4854,46 @@ button:hover {
         color var(--anim-dur-fast) ease;
 }
 
+.toolbar-row > .more-menu-item.toolbar-item-from-more {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    flex-shrink: 0;
+    white-space: nowrap;
+    opacity: 1;
+    transform: none;
+    transition: all var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+.toolbar-row > .more-menu-item.toolbar-item-from-more:hover,
+.toolbar-row > .more-menu-item.toolbar-item-from-more:focus-visible {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.08);
+    outline: none;
+}
+
+[data-theme="dark"] .toolbar-row > .more-menu-item.toolbar-item-from-more:hover,
+[data-theme="dark"] .toolbar-row > .more-menu-item.toolbar-item-from-more:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"][data-amoled="true"] .toolbar-row > .more-menu-item.toolbar-item-from-more:hover,
+[data-theme="dark"][data-amoled="true"] .toolbar-row > .more-menu-item.toolbar-item-from-more:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.toolbar-row > .more-menu-item.toolbar-item-from-more:active {
+    transform: scale(0.96);
+}
+
 /* Каскадное проявление пунктов меню по мере раскрытия стеклянного контейнера */
 .more-menu-wrap.is-open .more-menu-item {
     opacity: 1;

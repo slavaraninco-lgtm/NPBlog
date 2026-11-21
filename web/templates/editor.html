@@ -1090,11 +1090,11 @@ window.addEventListener('load', function() {
                             <div class="more-submenu-empty" data-i18n="common.loading">Загрузка...</div>
                         </div>
                     </div>
-                    <button type="button" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
-                    <button type="button" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
-                    <button type="button" class="more-menu-item" onclick="openFormulaDialog()" data-i18n="toolbar.formula">Вставить формулу</button>
-                    <button type="button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
-                    <button type="button" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
+                    <button type="button" id="btn-upload-file" class="more-menu-item" onclick="openFileUploadDialog()" data-i18n="more_menu.upload_file">Загрузить файл</button>
+                    <button type="button" id="btn-insert-code" class="more-menu-item" onclick="insertCode()" data-i18n="more_menu.insert_code">Вставить блок кода</button>
+                    <button type="button" id="btn-insert-formula" class="more-menu-item" onclick="openFormulaDialog()" data-i18n="toolbar.formula">Вставить формулу</button>
+                    <button type="button" id="btn-insert-button" class="more-menu-item" onclick="openInsertButtonDialog()" data-i18n="more_menu.insert_button">Вставить кнопку</button>
+                    <button type="button" id="btn-smile-sets" class="more-menu-item" onclick="openSmileSetsDialog()" data-i18n="more_menu.smile_sets">Наборы смайлов</button>
                 </div>
             </div>
             </div>
@@ -13579,6 +13579,12 @@ document.addEventListener('DOMContentLoaded', function() {
     window.organizeMoreMenuDropdown = organizeMoreMenuDropdown;
     document.addEventListener('DOMContentLoaded', organizeMoreMenuDropdown);
 
+    function syncHeaderItemLocation(el, inDropdown) {
+        if (el.classList.contains('more-menu-item')) {
+            el.classList.toggle('toolbar-item-from-more', !inDropdown);
+        }
+    }
+
     // Применяет сохраненный порядок и видимость кнопок хедера
     function applyHeaderLayout(layout) {
         const container = document.querySelector('.header-left');
@@ -13648,10 +13654,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     if (item.inDropdown === true && dropdown) {
+                        syncHeaderItemLocation(el, true);
                         dropdown.appendChild(el);
                     } else {
                         const targetRow = (item.row === 2 && row2) ? row2 : row1;
-                        if (targetRow) targetRow.appendChild(el);
+                        if (targetRow) {
+                            syncHeaderItemLocation(el, false);
+                            targetRow.appendChild(el);
+                        }
                     }
                 }
             });
@@ -13796,28 +13806,38 @@ document.addEventListener('DOMContentLoaded', function() {
         adjustHeaderPadding();
     }
     
-    function handleRightClick(e) {
-        if (!document.body.classList.contains('header-customizing')) return;
-        e.preventDefault();
-        e.stopPropagation();
-        
+    function getHeaderItem(target) {
         const dropdown = document.getElementById('moreMenuDropdown');
-        let target = e.target;
-        while (target && target.parentNode && !target.parentNode.classList.contains('toolbar-row') && target.parentNode !== dropdown) {
+        while (target && target.parentNode) {
+            if (target.parentNode.classList.contains('toolbar-row') || target.parentNode === dropdown) {
+                return target;
+            }
             target = target.parentNode;
         }
-        
-        if (!target || !target.id) return;
-        
+        return null;
+    }
+
+    function handleRightClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const isCustomizing = document.body.classList.contains('header-customizing');
+        const dropdown = document.getElementById('moreMenuDropdown');
+        const target = getHeaderItem(e.target);
+        if (!target || !target.id || target.id === 'moreMenuWrap') return;
+
         const menu = document.getElementById('customizerContextMenu');
-        if (!menu) return;
-        
-        // Позиционируем и показываем кастомное меню
+        const visibilityBtn = document.getElementById('ctxToggleVisibility');
+        const positionBtn = document.getElementById('ctxTogglePosition');
+        if (!menu || !visibilityBtn || !positionBtn) return;
+
+        const headerMenu = document.getElementById('headerContextMenu');
+        if (headerMenu) headerMenu.style.display = 'none';
         menu.style.display = 'block';
         let left = e.clientX;
         let top = e.clientY;
-        const menuWidth = 200;
-        const menuHeight = 90;
+        const menuWidth = menu.offsetWidth || 220;
+        const menuHeight = isCustomizing ? 90 : 50;
         if (left + menuWidth > window.innerWidth) {
             left = Math.max(10, window.innerWidth - menuWidth - 10);
         }
@@ -13826,9 +13846,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         menu.style.left = left + 'px';
         menu.style.top = top + 'px';
-        
-        // Обновляем пункт Скрыть/Показать / Удалить (для кастомных разделителей)
-        const visibilityBtn = document.getElementById('ctxToggleVisibility');
+
+        visibilityBtn.style.display = isCustomizing ? 'block' : 'none';
         if (target.id.startsWith('divider-custom-')) {
             visibilityBtn.innerText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
         } else if (target.classList.contains('customizer-hidden')) {
@@ -13836,11 +13855,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             visibilityBtn.innerText = window.t ? window.t('header.customizer_hide', 'Скрыть') : 'Скрыть';
         }
-        
-        // Обновляем пункт Переместить в меню / Вернуть на панель
-        const positionBtn = document.getElementById('ctxTogglePosition');
+
         if (target.id.startsWith('divider-')) {
-            // Разделители нельзя помещать в выпадающее меню
             positionBtn.style.display = 'none';
         } else {
             positionBtn.style.display = 'block';
@@ -13850,8 +13866,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 positionBtn.innerText = window.t ? window.t('header.customizer_move_to_more', 'Перенести в "Прочее"') : 'Перенести в "Прочее"';
             }
         }
-        
-        // Обработчики действий контекстного меню
+
         visibilityBtn.onclick = function() {
             if (target.id.startsWith('divider-custom-')) {
                 target.remove();
@@ -13868,30 +13883,63 @@ document.addEventListener('DOMContentLoaded', function() {
             menu.style.display = 'none';
             adjustHeaderPadding();
         };
-        
+
         positionBtn.onclick = function() {
-            if (target.parentNode === dropdown) {
-                // Возвращаем на главную панель (в первый ряд по умолчанию)
+            const previousParent = target.parentNode;
+            const previousNextSibling = target.nextSibling;
+            const movedToPanel = previousParent === dropdown;
+            let moved = false;
+
+            if (movedToPanel) {
                 const row1 = document.getElementById('toolbar-row-1');
                 if (row1) {
                     const dividerMore = document.getElementById('divider-more');
+                    syncHeaderItemLocation(target, false);
                     if (dividerMore && dividerMore.parentNode === row1) {
                         row1.insertBefore(target, dividerMore);
                     } else {
                         row1.appendChild(target);
                     }
+                    moved = true;
                 }
-                showNotification(window.t ? window.t('notifications.tb_item_restored', 'Элемент возвращен на панель') : 'Элемент возвращен на панель', 'success');
-            } else {
-                // Переносим в выпадающее меню
-                if (dropdown) {
-                    dropdown.appendChild(target);
-                    organizeMoreMenuDropdown();
-                    showNotification(window.t ? window.t('notifications.tb_item_moved_more', 'Элемент перенесен в меню "Прочее"') : 'Элемент перенесен в меню "Прочее"', 'info');
-                }
+            } else if (dropdown) {
+                syncHeaderItemLocation(target, true);
+                dropdown.appendChild(target);
+                organizeMoreMenuDropdown();
+                moved = true;
             }
+
             menu.style.display = 'none';
+            if (!moved) return;
             adjustHeaderPadding();
+
+            const notificationKey = movedToPanel ? 'notifications.tb_item_restored' : 'notifications.tb_item_moved_more';
+            const notificationText = movedToPanel ? 'Элемент возвращен на панель' : 'Элемент перенесен в меню "Прочее"';
+            const notificationType = movedToPanel ? 'success' : 'info';
+            if (isCustomizing) {
+                showNotification(window.t ? window.t(notificationKey, notificationText) : notificationText, notificationType);
+                return;
+            }
+
+            const moreMenuWrap = document.getElementById('moreMenuWrap');
+            if (moreMenuWrap) {
+                moreMenuWrap.classList.remove('is-open');
+                moreMenuWrap.querySelectorAll('.submenu-open').forEach(el => el.classList.remove('submenu-open'));
+            }
+            const moreMenuBtn = document.getElementById('moreMenuBtn');
+            if (moreMenuBtn) moreMenuBtn.setAttribute('aria-expanded', 'false');
+
+            saveHeaderLayout(false).then(saved => {
+                if (saved) {
+                    showNotification(window.t ? window.t(notificationKey, notificationText) : notificationText, notificationType);
+                    if (typeof updateHeaderHeightState === 'function') updateHeaderHeightState();
+                    return;
+                }
+                syncHeaderItemLocation(target, previousParent === dropdown);
+                previousParent.insertBefore(target, previousNextSibling && previousNextSibling.parentNode === previousParent ? previousNextSibling : null);
+                organizeMoreMenuDropdown();
+                adjustHeaderPadding();
+            });
         };
     }
     
@@ -14038,94 +14086,85 @@ document.addEventListener('DOMContentLoaded', function() {
         loadAndApplyAllSettings();
     }
     
-    function saveHeaderCustomization() {
+    function collectHeaderLayout() {
         const layout = [];
-        const container = document.querySelector('.header-left');
         const dropdown = document.getElementById('moreMenuDropdown');
-        
-        if (container) {
-            const row1 = document.getElementById('toolbar-row-1');
-            if (row1) {
-                row1.querySelectorAll('#toolbar-row-1 > *').forEach(el => {
-                    if (el.id) {
-                        const itemObj = {
-                            id: el.id,
-                            name: el.title || el.innerText || el.id,
-                            visible: !el.classList.contains('customizer-hidden'),
-                            inDropdown: false,
-                            row: 1
-                        };
-                        if (el.classList.contains('toolbar-spacer')) {
-                            itemObj.width = parseInt(el.style.width) || el.offsetWidth || 32;
-                        }
-                        layout.push(itemObj);
-                    }
-                });
-            }
-            const row2 = document.getElementById('toolbar-row-2');
-            if (row2) {
-                row2.querySelectorAll('#toolbar-row-2 > *').forEach(el => {
-                    if (el.id) {
-                        const itemObj = {
-                            id: el.id,
-                            name: el.title || el.innerText || el.id,
-                            visible: !el.classList.contains('customizer-hidden'),
-                            inDropdown: false,
-                            row: 2
-                        };
-                        if (el.classList.contains('toolbar-spacer')) {
-                            itemObj.width = parseInt(el.style.width) || el.offsetWidth || 32;
-                        }
-                        layout.push(itemObj);
-                    }
-                });
-            }
-        }
-        
+
+        [document.getElementById('toolbar-row-1'), document.getElementById('toolbar-row-2')].forEach((row, index) => {
+            if (!row) return;
+            Array.from(row.children).forEach(el => {
+                if (!el.id) return;
+                const item = {
+                    id: el.id,
+                    name: el.title || el.innerText || el.id,
+                    visible: !el.classList.contains('customizer-hidden'),
+                    inDropdown: false,
+                    row: index + 1
+                };
+                if (el.classList.contains('toolbar-spacer')) {
+                    item.width = parseInt(el.style.width) || el.offsetWidth || 32;
+                }
+                layout.push(item);
+            });
+        });
+
         if (dropdown) {
             organizeMoreMenuDropdown();
-            dropdown.querySelectorAll('*').forEach(el => {
-                if (el.id && el.parentNode === dropdown) {
-                    layout.push({
-                        id: el.id,
-                        name: el.title || el.innerText || el.id,
-                        visible: !el.classList.contains('customizer-hidden'),
-                        inDropdown: true
-                    });
-                }
+            Array.from(dropdown.children).forEach(el => {
+                if (!el.id) return;
+                layout.push({
+                    id: el.id,
+                    name: el.title || el.innerText || el.id,
+                    visible: !el.classList.contains('customizer-hidden'),
+                    inDropdown: true
+                });
             });
         }
-        
-        // Автоматически определяем двухрядность на основе видимых кнопок во втором ряду
+        return layout;
+    }
+
+    function saveHeaderLayout(showSuccessNotification) {
+        const layout = collectHeaderLayout();
         const isTwoRowsActive = layout.some(item => item.row === 2 && item.visible === true);
-        const currentHeaderHeight = isTwoRowsActive ? 108 : 64;
-        
-        fetch('save_editor_settings.php', {
+        return fetch('save_editor_settings.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 headerLayout: layout,
-                headerHeight: currentHeaderHeight,
+                headerHeight: isTwoRowsActive ? 108 : 64,
                 headerTwoRows: isTwoRowsActive
             })
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
         .then(data => {
-            if (data.success) {
-                showNotification(window.t ? window.t('notifications.tb_layout_saved', 'Раскладка панели успешно сохранена') : 'Раскладка панели успешно сохранена', 'success');
-                exitHeaderCustomizationMode();
-                if (typeof updateHeaderHeightState === 'function') {
-                    updateHeaderHeightState();
-                }
-            } else {
+            if (!data.success) {
                 showAlert(window.t ? window.t('notifications.image_save_error_param', 'Ошибка сохранения: ' + data.error, { error: data.error }) : 'Ошибка сохранения: ' + data.error);
+                return false;
             }
+            if (showSuccessNotification) {
+                showNotification(window.t ? window.t('notifications.tb_layout_saved', 'Раскладка панели успешно сохранена') : 'Раскладка панели успешно сохранена', 'success');
+            }
+            return true;
         })
         .catch(err => {
             console.error('Ошибка сохранения:', err);
             showAlert(window.t ? window.t('notifications.tb_save_network_error', 'Ошибка сети при сохранении раскладки') : 'Ошибка сети при сохранении раскладки');
+            return false;
+        });
+    }
+
+    function saveHeaderCustomization() {
+        saveHeaderLayout(true).then(saved => {
+            if (!saved) return;
+            exitHeaderCustomizationMode();
+            if (typeof updateHeaderHeightState === 'function') {
+                updateHeaderHeightState();
+            }
         });
     }
 
@@ -14184,7 +14223,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * Инициализация контекстного меню верхней панели (хедера).
-     * Обрабатывает открытие кастомного контекстного меню по ПКМ на верхней панели для запуска режима редактирования.
+     * По ПКМ на кнопке доступен перенос, на остальной панели — режим редактирования.
      */
     function setupHeaderContextMenu() {
         const header = document.querySelector('.editor-header');
@@ -14198,6 +14237,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Не перехватываем клики внутри открытого выпадающего меню редактора
             if (e.target.closest('.editor-menu-dropdown')) {
+                return;
+            }
+
+            const item = getHeaderItem(e.target);
+            if (item && item.id && item.id !== 'moreMenuWrap' && !item.id.startsWith('divider-')) {
+                handleRightClick(e);
                 return;
             }
 
