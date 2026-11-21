@@ -7978,8 +7978,8 @@ body.header-bottom {
     height: 18px;
     line-height: 18px;
     text-align: center;
-    font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Monaco, Consolas, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
-    font-size: 14px;
+    font-family: 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
+    font-size: 16px;
     font-weight: normal;
     color: var(--text-color);
     border: 1px solid rgba(128, 128, 128, 0.3);
@@ -8007,11 +8007,12 @@ body.header-bottom {
 .blog-ascii-art {
     margin: 0;
     padding: 0;
-    font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Monaco, Consolas, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
-    font-size: 14px;
-    line-height: 1.15;
+    font-family: 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
+    font-size: 16px;
+    line-height: 18px;
     font-weight: normal;
-    letter-spacing: 0;
+    font-variant-ligatures: none;
+    letter-spacing: calc(9px - 1ch);
     white-space: pre;
     overflow-x: auto;
     background: transparent !important;

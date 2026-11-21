@@ -10630,7 +10630,8 @@ function deleteAllCustomTemplates() {
         showNotification(window.t ? window.t('notifications.custom_templates_deleting', 'Удаление кастомных шаблонов...') : 'Удаление кастомных шаблонов...', 'info');
         
         fetch('delete_custom_templates.php', {
-            method: 'POST'
+            method: 'POST',
+            headers: typeof getMediaRequestHeaders === 'function' ? getMediaRequestHeaders() : {}
         })
         .then(response => response.json())
         .then(data => {

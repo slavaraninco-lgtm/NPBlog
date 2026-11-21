@@ -12,7 +12,8 @@ const assert = require('node:assert/strict');
         await page.goto('http://editor.test/');
         await page.evaluate(() => {
             window.editorMode = 'visual';
-            window.showNotification = () => {};
+            window.notifications = [];
+            window.showNotification = message => notifications.push(message);
             window.getMediaRequestHeaders = () => ({});
             window.escapeHtml = value => {
                 const el = document.createElement('span');
@@ -20,10 +21,16 @@ const assert = require('node:assert/strict');
                 return el.innerHTML;
             };
             window.pending = [];
-            window.fetch = () => new Promise(resolve => pending.push(resolve));
+            window.uploadRequests = [];
+            window.fetch = (url, options) => {
+                uploadRequests.push({ url, body: options.body });
+                return new Promise(resolve => pending.push(resolve));
+            };
         });
         const root = path.join(__dirname, '..');
         await page.addScriptTag({ path: path.join(root, 'editorjs/formatting.js') });
+        await page.addScriptTag({ path: path.join(root, 'editorjs/file-upload.js') });
+        await page.evaluate(() => { window.loadDocumentsList = () => {}; });
         const source = fs.readFileSync(path.join(root, 'editorjs/media.js'), 'utf8');
         await page.addScriptTag({ content: source.slice(source.indexOf('function initEditorMediaDragDrop()'), source.indexOf('function renderGridPreview()')) });
         await page.evaluate(() => {
@@ -112,7 +119,76 @@ const assert = require('node:assert/strict');
             await new Promise(resolve => setTimeout(resolve, 0));
         });
         assert.equal(await page.locator('#contentVisual').innerHTML(), '<p>another article</p>');
-        console.log('PASS: formatted split, atomic batch drop, second caret drop, reverse completion, discarded late response');
+
+        // Documents and media share one batch, keeping their original order
+        // even when the image response arrives first.
+        await page.evaluate(() => {
+            const ed = document.getElementById('contentVisual');
+            ed.innerHTML = '<p>mixed files</p>';
+            const dt = new DataTransfer();
+            dt.items.add(new File(['pdf'], 'manual.pdf', { type: 'application/pdf' }));
+            dt.items.add(new File(['image'], 'mixed.png', { type: 'image/png' }));
+            const rect = ed.getBoundingClientRect();
+            ed.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientX: rect.left + 5, clientY: rect.bottom - 5, dataTransfer: dt }));
+        });
+        assert.equal(await page.locator('#contentVisual > .media-upload-placeholder').count(), 2);
+        assert.equal(await page.evaluate(() => activeMediaUploadsCount), 2);
+        await page.evaluate(async () => {
+            pending[5]({ text: async () => JSON.stringify({ success: true, url: 'mixed.png' }) });
+            await new Promise(resolve => setTimeout(resolve, 0));
+            pending[4]({ text: async () => JSON.stringify({ success: true, url: '/data/files/documents/manual.pdf' }) });
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        assert.equal(await page.locator('#contentVisual .blog-file-button').count(), 1);
+        assert.equal(await page.locator('#contentVisual .blog-file-button').getAttribute('href'), '/data/files/documents/manual.pdf');
+        assert.equal(await page.locator('#contentVisual .blog-file-name').textContent(), 'manual.pdf');
+        assert.equal(await page.locator('#contentVisual .blog-file-size').textContent(), '3 Б');
+        assert.equal(await page.locator('#contentVisual img').getAttribute('src'), 'mixed.png');
+        assert.equal(await page.evaluate(() => Boolean(document.querySelector('.blog-file-button').compareDocumentPosition(document.querySelector('#contentVisual img')) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
+        assert.equal(await page.evaluate(() => uploadRequests[4].url), 'upload_document.php');
+        assert.equal(await page.evaluate(() => uploadRequests[4].body.get('file').name), 'manual.pdf');
+        assert.equal(await page.evaluate(() => activeMediaUploadsCount), 0);
+
+        // A rejected document upload removes only its placeholder and releases
+        // the article save lock.
+        await page.evaluate(async () => {
+            const ed = document.getElementById('contentVisual');
+            const dt = new DataTransfer();
+            dt.items.add(new File(['bad'], 'invalid.exe', { type: 'application/octet-stream' }));
+            const rect = ed.getBoundingClientRect();
+            ed.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientX: rect.left + 5, clientY: rect.bottom - 5, dataTransfer: dt }));
+            pending[6]({ text: async () => JSON.stringify({ success: false, error: 'Недопустимый тип документа' }) });
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        assert.equal(await page.locator('#contentVisual > .media-upload-placeholder').count(), 0);
+        assert.equal(await page.evaluate(() => activeMediaUploadsCount), 0);
+        assert.match(await page.evaluate(() => notifications[notifications.length - 1]), /Недопустимый тип документа/);
+
+        // Code-mode files are inserted at the original drop caret, not at a
+        // later caret position, and multiple files retain their order.
+        await page.evaluate(async () => {
+            window.editorMode = 'code';
+            const ta = document.getElementById('content');
+            ta.value = 'before after';
+            ta.focus();
+            ta.setSelectionRange(6, 6);
+            const dt = new DataTransfer();
+            dt.items.add(new File(['txt'], 'notes.txt', { type: 'text/plain' }));
+            dt.items.add(new File(['zip'], 'archive.zip', { type: 'application/zip' }));
+            ta.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+            ta.setSelectionRange(0, 0);
+            pending[7]({ text: async () => JSON.stringify({ success: true, path: 'data/files/documents/notes.txt' }) });
+            await new Promise(resolve => setTimeout(resolve, 0));
+            pending[8]({ text: async () => JSON.stringify({ success: true, path: 'data/files/documents/archive.zip' }) });
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        const codeValue = await page.locator('#content').inputValue();
+        assert.match(codeValue, /^before\n<div class="blog-image-align-wrap"/);
+        assert.ok(codeValue.indexOf('notes.txt') < codeValue.indexOf('archive.zip'));
+        assert.ok(codeValue.endsWith(' after'));
+        assert.equal(await page.locator('#content .blog-file-button').count(), 0);
+        assert.equal(await page.evaluate(() => activeMediaUploadsCount), 0);
+        console.log('PASS: formatted split, atomic media/document batch, second caret drop, reverse completion, discarded late response, upload error, ordered code insertion');
     } finally {
         await browser.close();
     }

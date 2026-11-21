@@ -1242,6 +1242,42 @@ func (l *LegacyHandler) HandleSaveBlogViewSettings(w http.ResponseWriter, r *htt
 
 // --- Шаблоны и сниппеты ---
 
+func (l *LegacyHandler) HandleUploadTemplate(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		l.errorResponse(w, "Ошибка чтения формы или размер файла превышает 50 МБ")
+		return
+	}
+
+	file, header, err := r.FormFile("template_file")
+	if err != nil {
+		l.errorResponse(w, "Файл не был передан")
+		return
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		l.errorResponse(w, "Ошибка чтения файла")
+		return
+	}
+	name, missing, err := l.template.UploadTemplate(activeBlog, header.Filename, data)
+	if err != nil {
+		if len(missing) > 0 {
+			l.jsonResponse(w, map[string]interface{}{
+				"success": false,
+				"error":   err.Error(),
+				"missing": missing,
+			})
+			return
+		}
+		l.errorResponse(w, err.Error())
+		return
+	}
+	l.jsonResponse(w, map[string]interface{}{"success": true, "name": name})
+}
+
 func (l *LegacyHandler) HandleGetTemplates(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
 	// The editor needs HTML and metadata; keep the compact response for older clients.
@@ -1262,18 +1298,114 @@ func (l *LegacyHandler) HandleGetTemplates(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func (l *LegacyHandler) HandleApplyTemplate(w http.ResponseWriter, r *http.Request) {
+func (l *LegacyHandler) HandleSaveTemplate(w http.ResponseWriter, r *http.Request) {
 	activeBlog := middleware.GetActiveBlogPath(r)
 	var body struct {
-		TemplateName string `json:"templateName"`
+		Name        string `json:"name"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Code        string `json:"code"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		l.errorResponse(w, "Отсутствуют необходимые данные")
+		return
+	}
+	missing, err := l.template.SaveTemplate(activeBlog, body.Name, body.Title, body.Description, []byte(body.Code))
+	if err != nil {
+		response := map[string]interface{}{"success": false, "error": err.Error()}
+		if len(missing) > 0 {
+			response["missing"] = missing
+		}
+		l.jsonResponse(w, response)
+		return
+	}
+	l.jsonResponse(w, map[string]interface{}{"success": true})
+}
 
-	if err := l.template.ApplyTemplate(activeBlog, body.TemplateName); err != nil {
+func (l *LegacyHandler) HandleDeleteTemplate(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
+		l.errorResponse(w, "Отсутствуют необходимые данные")
+		return
+	}
+	if err := l.template.DeleteTemplate(activeBlog, body.Name); err != nil {
 		l.errorResponse(w, err.Error())
 		return
 	}
 	l.jsonResponse(w, map[string]interface{}{"success": true})
+}
+
+func (l *LegacyHandler) HandleApplyTemplate(w http.ResponseWriter, r *http.Request) {
+	activeBlog := middleware.GetActiveBlogPath(r)
+	var body struct {
+		TemplateName       string `json:"template_name"`
+		LegacyTemplateName string `json:"templateName"`
+		Mode               string `json:"mode"`
+		PostID             int    `json:"post_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		l.errorResponse(w, "Отсутствуют необходимые данные")
+		return
+	}
+	if body.TemplateName == "" {
+		body.TemplateName = body.LegacyTemplateName
+	}
+	if body.TemplateName == "" {
+		l.errorResponse(w, "Имя шаблона не указано")
+		return
+	}
+	if body.Mode == "" {
+		body.Mode = "default"
+	}
+
+	switch body.Mode {
+	case "default":
+		templateHTML, err := l.template.SetDefaultTemplate(activeBlog, body.TemplateName)
+		if err != nil {
+			l.errorResponse(w, err.Error())
+			return
+		}
+		var posts []domain.PostMeta
+		if err := l.storage.SafeReadJSON(l.storage.GetDataPath(activeBlog, "blog/posts-meta.json"), &posts); err != nil && !os.IsNotExist(err) {
+			l.errorResponse(w, "Не удалось прочитать список статей")
+			return
+		}
+		successCount := 0
+		failCount := 0
+		for _, post := range posts {
+			if err := l.post.RegeneratePostWithTemplate(activeBlog, post.ID, templateHTML); err != nil {
+				failCount++
+			} else {
+				successCount++
+			}
+		}
+		_ = l.post.GenerateRSS(activeBlog)
+		l.jsonResponse(w, map[string]interface{}{
+			"success": true,
+			"message": fmt.Sprintf("Шаблон успешно установлен по умолчанию и применен ко всем статьям. Успешно пересоздано: %d, ошибок: %d.", successCount, failCount),
+		})
+	case "post":
+		if body.PostID <= 0 {
+			l.errorResponse(w, "Не указан ID статьи")
+			return
+		}
+		templateHTML, err := l.template.AssignTemplateToPost(activeBlog, body.TemplateName, body.PostID)
+		if err != nil {
+			l.errorResponse(w, err.Error())
+			return
+		}
+		if err := l.post.RegeneratePostWithTemplate(activeBlog, body.PostID, templateHTML); err != nil {
+			l.errorResponse(w, "Не удалось пересобрать HTML файл статьи: "+err.Error())
+			return
+		}
+		_ = l.post.GenerateRSS(activeBlog)
+		l.jsonResponse(w, map[string]interface{}{"success": true, "message": "Шаблон успешно применен к выбранной статье"})
+	default:
+		l.errorResponse(w, "Неизвестный режим")
+	}
 }
 
 func (l *LegacyHandler) HandleGetIncludes(w http.ResponseWriter, r *http.Request) {
@@ -2532,9 +2664,15 @@ func (l *LegacyHandler) HandleSaveAutosaveSettings(w http.ResponseWriter, r *htt
 }
 
 func (l *LegacyHandler) HandleDeleteCustomTemplates(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	activeBlog := middleware.GetActiveBlogPath(r)
+	count, err := l.template.DeleteCustomTemplates(activeBlog)
+	if err != nil {
+		l.errorResponse(w, err.Error())
+		return
+	}
+	l.jsonResponse(w, map[string]interface{}{
 		"success": true,
+		"deleted": count,
 		"message": "Пользовательские шаблоны удалены",
 	})
 }
@@ -2557,4 +2695,3 @@ func (l *LegacyHandler) HandleUpdateBackgroundStyles(w http.ResponseWriter, r *h
 		"updated": 0,
 	})
 }
-

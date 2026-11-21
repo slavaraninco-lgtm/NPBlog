@@ -437,10 +437,10 @@ document.addEventListener('DOMContentLoaded', function () {
     initEditorMediaDragDrop();
 });
 
-// --- Drag and Drop Медиа (Фото и Видео) в поле статьи ---
+// --- Drag and Drop медиа и документов в поле статьи ---
 
 /**
- * Инициализирует возможность вставки фото и видео файлов в статью путем drag & drop
+ * Инициализирует вставку изображений, видео и документов в статью через drag & drop.
  */
 function initEditorMediaDragDrop() {
     const visualEditor = document.getElementById('contentVisual');
@@ -661,31 +661,20 @@ function initEditorMediaDragDrop() {
     }
 
     /**
-     * Обработка сброшенных медиа файлов
+     * Обработка сброшенных изображений, видео и документов.
      */
     function handleDroppedMediaFiles(files, mode, dropRange) {
-        const mediaFiles = [];
-        files.forEach(function (file) {
-            if (isImageFile(file) || isVideoFile(file)) {
-                mediaFiles.push(file);
-            } else {
-                const warnMsg = window.t
-                    ? window.t('notifications.drag_drop_unsupported_file', 'Формат файла "{filename}" не поддерживается (разрешены только фото и видео)', { filename: file.name })
-                    : 'Формат файла "' + file.name + '" не поддерживается (разрешены только фото и видео)';
-                showNotification(warnMsg, 'warning');
-            }
-        });
-
-        if (!mediaFiles.length) return;
+        if (!files.length) return;
 
         if (mode === 'visual') {
             const itemsToUpload = [];
             const placeholders = [];
 
-            mediaFiles.forEach(function (file) {
+            files.forEach(function (file) {
                 const uploadId = 'media-upload-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
                 const isVid = isVideoFile(file);
-                const icon = isVid ? '🎬' : '🖼️';
+                const isDocument = !isVid && !isImageFile(file);
+                const icon = isVid ? '🎬' : (isDocument ? '📄' : '🖼️');
                 const safeName = typeof escapeHtml === 'function' ? escapeHtml(file.name) : file.name;
                 const placeholderHtml = '<div class="blog-image-align-wrap media-upload-placeholder" data-upload-id="' + uploadId + '" contenteditable="false" style="text-align: center; margin: 14px 0; width: 100%; clear: both;">' +
                     '<div class="media-upload-card">' +
@@ -699,7 +688,7 @@ function initEditorMediaDragDrop() {
 
                 placeholders.push(placeholderHtml);
 
-                itemsToUpload.push({ file: file, uploadId: uploadId, isVideo: isVid });
+                itemsToUpload.push({ file: file, uploadId: uploadId, isVideo: isVid, isDocument: isDocument });
             });
 
             // One insertion keeps the batch together even when the next block
@@ -715,43 +704,47 @@ function initEditorMediaDragDrop() {
 
             // Запускаем загрузку каждого файла параллельно
             itemsToUpload.forEach(function (item) {
-                uploadDroppedMediaFile(item.file, 'visual', item.uploadId, item.isVideo);
+                uploadDroppedMediaFile(item.file, 'visual', item.uploadId, item.isVideo, item.isDocument, null);
             });
         } else {
             // В режиме кода загружаем файлы последовательно, сохраняя порядок вставки
             (async function () {
-                for (const file of mediaFiles) {
-                    await uploadDroppedMediaFile(file, 'code', null, isVideoFile(file));
+                let insertPosition = codeEditor && typeof codeEditor.selectionStart === 'number' ? codeEditor.selectionStart : 0;
+                for (const file of files) {
+                    const isVid = isVideoFile(file);
+                    const isDocument = !isVid && !isImageFile(file);
+                    const insertedLength = await uploadDroppedMediaFile(file, 'code', null, isVid, isDocument, { start: insertPosition, end: insertPosition });
+                    insertPosition += insertedLength || 0;
                 }
             })();
         }
     }
 
     /**
-     * Загрузка отдельного медиа файла (фото или видео) на сервер
+     * Загрузка отдельного файла и вставка соответствующего блока в статью.
      */
-    async function uploadDroppedMediaFile(file, mode, uploadId, isVideo) {
+    async function uploadDroppedMediaFile(file, mode, uploadId, isVideo, isDocument, codeRange) {
         const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
         const MAX_IMG_SIZE = 25 * 1024 * 1024;    // 25 MB
 
-        if (isVideo && file.size > MAX_VIDEO_SIZE) {
+        if (!isDocument && isVideo && file.size > MAX_VIDEO_SIZE) {
             removeUploadPlaceholder(uploadId);
             const sizeMb = (file.size / 1024 / 1024).toFixed(1);
             const msg = window.t
                 ? window.t('notifications.video_too_big_param', 'Видео файл слишком большой ({size} МБ). Максимальный размер: 100 МБ.', { size: sizeMb })
                 : 'Видео файл слишком большой (' + sizeMb + ' МБ). Максимальный размер: 100 МБ.';
             showNotification(msg, 'error');
-            return;
+            return 0;
         }
 
-        if (!isVideo && file.size > MAX_IMG_SIZE) {
+        if (!isDocument && !isVideo && file.size > MAX_IMG_SIZE) {
             removeUploadPlaceholder(uploadId);
             const sizeMb = (file.size / 1024 / 1024).toFixed(1);
             const msg = window.t
                 ? window.t('notifications.file_too_big_param', 'Файл "{filename}" слишком большой ({size} МБ). Максимум 25 МБ.', { filename: file.name, size: sizeMb })
                 : 'Файл "' + file.name + '" слишком большой (' + sizeMb + ' МБ). Максимум 25 МБ.';
             showNotification(msg, 'error');
-            return;
+            return 0;
         }
 
         window.activeMediaUploadsCount = (window.activeMediaUploadsCount || 0) + 1;
@@ -763,51 +756,74 @@ function initEditorMediaDragDrop() {
             showNotification(startMsg, 'info');
         }
 
-        const formData = new FormData();
-        const endpoint = isVideo ? '/upload_video.php' : '/upload_image.php';
-        if (isVideo) {
-            formData.append('video', file);
-        } else {
-            formData.append('image', file);
-        }
-
         try {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: getMediaRequestHeaders(),
-                body: formData
-            });
-
-            const text = await response.text();
             let data;
-            try {
-                data = JSON.parse(text);
-            } catch (jsonErr) {
-                const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-                throw new Error(clean || ('HTTP ' + response.status));
+            if (isDocument) {
+                data = await uploadDocumentFile(file);
+            } else {
+                const formData = new FormData();
+                const endpoint = isVideo ? '/upload_video.php' : '/upload_image.php';
+                if (isVideo) {
+                    formData.append('video', file);
+                } else {
+                    formData.append('image', file);
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: getMediaRequestHeaders(),
+                    body: formData
+                });
+
+                const text = await response.text();
+                try {
+                    data = JSON.parse(text);
+                } catch (jsonErr) {
+                    const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                    throw new Error(clean || ('HTTP ' + response.status));
+                }
+
+                if (!data.success) {
+                    throw new Error(data.error || (isVideo ? 'Не удалось загрузить видео' : 'Не удалось загрузить изображение'));
+                }
             }
 
-            if (!data.success) {
-                throw new Error(data.error || (isVideo ? 'Не удалось загрузить видео' : 'Не удалось загрузить изображение'));
+            if (isDocument) {
+                const insertedLength = insertFileButton(file.name, data.url || data.path, file.size, {
+                    mode: mode,
+                    uploadId: uploadId,
+                    codeRange: codeRange,
+                    insertAsHyperlink: false,
+                    closeDialog: false,
+                    notify: false
+                });
+                const successMsg = window.t
+                    ? window.t('notifications.file_added', 'Файл добавлен в статью')
+                    : 'Файл добавлен в статью';
+                showNotification(successMsg, 'success');
+                if (typeof loadDocumentsList === 'function') loadDocumentsList();
+                return insertedLength;
             }
 
             if (isVideo) {
                 const videoPath = data.path || ('data/files/videos/' + (data.filename || file.name));
                 const fileName = data.filename || file.name;
-                insertUploadedMediaContent(videoPath, fileName, 'video', mode, uploadId);
+                const insertedLength = insertUploadedMediaContent(videoPath, fileName, 'video', mode, uploadId);
                 const successMsg = window.t
                     ? window.t('notifications.drag_drop_video_success', 'Видео "{filename}" успешно добавлено', { filename: file.name })
                     : 'Видео "' + file.name + '" успешно добавлено';
                 showNotification(successMsg, 'success');
                 if (typeof loadVideoFilesList === 'function') loadVideoFilesList();
-            } else {
-                const imgUrl = data.url;
-                insertUploadedMediaContent(imgUrl, file.name, 'image', mode, uploadId);
-                const successMsg = window.t
-                    ? window.t('notifications.drag_drop_image_success', 'Изображение "{filename}" успешно добавлено', { filename: file.name })
-                    : 'Изображение "' + file.name + '" успешно добавлено';
-                showNotification(successMsg, 'success');
+                return insertedLength;
             }
+
+            const imgUrl = data.url;
+            const insertedLength = insertUploadedMediaContent(imgUrl, file.name, 'image', mode, uploadId);
+            const successMsg = window.t
+                ? window.t('notifications.drag_drop_image_success', 'Изображение "{filename}" успешно добавлено', { filename: file.name })
+                : 'Изображение "' + file.name + '" успешно добавлено';
+            showNotification(successMsg, 'success');
+            return insertedLength;
         } catch (err) {
             console.error('Drag & Drop media upload error:', err);
             removeUploadPlaceholder(uploadId);
@@ -815,6 +831,7 @@ function initEditorMediaDragDrop() {
                 ? window.t('notifications.error_with_param', 'Ошибка: {error}', { error: err.message || 'Ошибка сети' })
                 : 'Ошибка: ' + (err.message || 'Ошибка сети');
             showNotification(errMsg, 'error');
+            return 0;
         } finally {
             window.activeMediaUploadsCount = Math.max(0, (window.activeMediaUploadsCount || 1) - 1);
         }
@@ -901,8 +918,10 @@ function initEditorMediaDragDrop() {
 
                 if (typeof markEditorDirty === 'function') markEditorDirty();
                 if (typeof saveToHistory === 'function') saveToHistory();
+                return codeSnippet.length;
             }
         }
+        return 0;
     }
 }
 

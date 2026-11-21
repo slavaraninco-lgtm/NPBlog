@@ -505,7 +505,7 @@ function saveAsciiArt() {
     const plainText = textLines.join('\n');
 
     const gridJson = JSON.stringify(gridData).replace(/"/g, '&quot;');
-    const asciiHtml = `<pre class="blog-ascii-art">${plainText}</pre>`;
+    const asciiHtml = `<pre class="blog-ascii-art">${escapeHtml(plainText)}</pre>`;
 
     if (asciiTargetWrap) {
         asciiTargetWrap.setAttribute('data-ascii-width', asciiGridWidth);

@@ -5,6 +5,12 @@ let currentTemplateName = null;
 let postTemplatesMeta = {};
 let defaultTemplateName = 'main';
 
+function getTemplateRequestHeaders() {
+    const headers = typeof getMediaRequestHeaders === 'function' ? getMediaRequestHeaders() : {};
+    headers['Content-Type'] = 'application/json';
+    return headers;
+}
+
 function openTemplateManager() {
     return fetch('/get_templates.php?details=1')
         .then(res => res.json())
@@ -250,6 +256,7 @@ async function handleTemplateUpload(input) {
         try {
             const res = await fetch('/upload_template.php', {
                 method: 'POST',
+                headers: typeof getMediaRequestHeaders === 'function' ? getMediaRequestHeaders() : {},
                 body: formData
             });
             const data = await res.json();
@@ -357,7 +364,7 @@ function saveTemplateData() {
 
     return fetch('/save_template.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTemplateRequestHeaders(),
         body: JSON.stringify({
             name: currentTemplateName,
             title: title,
@@ -385,7 +392,7 @@ function saveAndApplyTemplateToAll() {
         .then(() => {
             return fetch('/apply_template.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getTemplateRequestHeaders(),
                 body: JSON.stringify({
                     template_name: currentTemplateName,
                     mode: 'default'
@@ -483,7 +490,7 @@ function filterTemplatePosts() {
 function applyTemplateToPost(postId) {
     fetch('/apply_template.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTemplateRequestHeaders(),
         body: JSON.stringify({
             template_name: currentTemplateName,
             mode: 'post',
@@ -512,7 +519,7 @@ function deleteCurrentTemplate() {
 
         fetch('/delete_template.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getTemplateRequestHeaders(),
             body: JSON.stringify({
                 name: currentTemplateName
             })

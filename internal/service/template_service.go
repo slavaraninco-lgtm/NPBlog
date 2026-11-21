@@ -2,11 +2,11 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"npblog/internal/config"
@@ -14,8 +14,9 @@ import (
 )
 
 type TemplateService struct {
-	cfg     *config.AppConfig
-	storage *StorageService
+	cfg      *config.AppConfig
+	storage  *StorageService
+	uploadMu sync.Mutex
 }
 
 func NewTemplateService(cfg *config.AppConfig, storage *StorageService) *TemplateService {
@@ -294,41 +295,8 @@ func (t *TemplateService) GetTemplates(activeBlogPath string) ([]string, string,
 	return list, s.ActiveTemplate, nil
 }
 
-// ApplyTemplate переключает активный шаблон блога
+// ApplyTemplate сохраняет совместимость REST API с выбором шаблона по умолчанию.
 func (t *TemplateService) ApplyTemplate(activeBlogPath, templateName string) error {
-	cleanName := filepath.Base(filepath.Clean(templateName))
-	if cleanName == "" || cleanName == "." || cleanName == ".." || cleanName == "/" || cleanName == "\\" {
-		return errors.New("некорректное имя шаблона")
-	}
-
-	templatesDir := t.storage.GetDataPath(activeBlogPath, "blog/templates")
-	targetTemplateDir, err := t.storage.ValidateSafePath(templatesDir, cleanName)
-	if err != nil {
-		return fmt.Errorf("недопустимый путь к шаблону: %w", err)
-	}
-
-	fi, err := os.Stat(targetTemplateDir)
-	if os.IsNotExist(err) || !fi.IsDir() {
-		return errors.New("папка шаблона не найдена")
-	}
-
-	// Копируем template_post.html из шаблона в blog/
-	srcPost := filepath.Join(targetTemplateDir, "template_post.html")
-	dstPost := t.storage.GetDataPath(activeBlogPath, "blog/template_post.html")
-	if bytes, err := os.ReadFile(srcPost); err == nil {
-		_ = t.storage.SafeWriteFile(dstPost, bytes)
-	}
-
-	// Копируем blog.html
-	srcBlog := filepath.Join(targetTemplateDir, "blog.html")
-	dstBlog := t.storage.GetDataPath(activeBlogPath, "blog.html")
-	if bytes, err := os.ReadFile(srcBlog); err == nil {
-		_ = t.storage.SafeWriteFile(dstBlog, bytes)
-	}
-
-	// Обновляем settings.json
-	settingsFile := filepath.Join(templatesDir, "settings.json")
-	return t.storage.SafeWriteJSON(settingsFile, map[string]string{
-		"activeTemplate": cleanName,
-	})
+	_, err := t.SetDefaultTemplate(activeBlogPath, templateName)
+	return err
 }

@@ -277,7 +277,7 @@ func (p *PostService) UpdatePost(activeBlogPath string, id int, title, rawConten
 
 	dateStr := time.Now().Format("02.01.2006 15:04") + " (отредактировано)"
 
-	templateHTML, err := p.getTemplateHTML(activeBlogPath)
+	templateHTML, err := p.getTemplateHTML(activeBlogPath, id)
 	if err != nil {
 		return err
 	}
@@ -773,7 +773,47 @@ func (p *PostService) GenerateRSS(activeBlogPath string) error {
 	return p.storage.SafeWriteFile(rssFile, append(xmlHeader, bytes...))
 }
 
-func (p *PostService) getTemplateHTML(activeBlogPath string) (string, error) {
+func (p *PostService) getTemplateHTML(activeBlogPath string, postIDs ...int) (string, error) {
+	templatesDir := p.storage.GetDataPath(activeBlogPath, "blog/templates")
+	var catalog struct {
+		Default       string            `json:"default"`
+		PostTemplates map[string]string `json:"post_templates"`
+		Templates     map[string]struct {
+			Path string `json:"path"`
+		} `json:"templates"`
+	}
+	if err := p.storage.SafeReadJSON(filepath.Join(templatesDir, "settings.json"), &catalog); err == nil {
+		name := catalog.Default
+		if len(postIDs) > 0 {
+			if assigned := catalog.PostTemplates[strconv.Itoa(postIDs[0])]; assigned != "" {
+				name = assigned
+			}
+		}
+		if name == "" {
+			name = "main"
+		}
+		meta := catalog.Templates[name]
+		rel := meta.Path
+		if rel == "" {
+			rel = name + ".html"
+			if name == "main" {
+				rel = "NPBlog/main.html"
+			}
+		}
+		if templatePath, err := p.storage.ValidateSafePath(templatesDir, rel); err == nil {
+			if resolved, err := filepath.EvalSymlinks(templatePath); err == nil {
+				if root, err := filepath.EvalSymlinks(templatesDir); err == nil {
+					relative, relErr := filepath.Rel(root, resolved)
+					if relErr == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+						if bytes, err := os.ReadFile(resolved); err == nil {
+							return string(bytes), nil
+						}
+					}
+				}
+			}
+		}
+	}
+
 	templatePath := p.storage.GetDataPath(activeBlogPath, "blog/template_post.html")
 	if bytes, err := os.ReadFile(templatePath); err == nil {
 		return string(bytes), nil

@@ -248,6 +248,33 @@ function loadDocumentsList() {
         });
 }
 
+/**
+ * Загружает документ через общий endpoint и возвращает данные для вставки в статью.
+ * @param {File} file
+ * @returns {Promise<Object>}
+ */
+async function uploadDocumentFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('upload_document.php', {
+        method: 'POST',
+        body: formData
+    });
+    const text = await response.text();
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (error) {
+        const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        throw new Error(clean || ('HTTP ' + response.status));
+    }
+    if (!data.success) {
+        throw new Error(data.error || 'Не удалось загрузить файл');
+    }
+    return data;
+}
+
 function uploadDocument(fileToUpload = null) {
     const fileInput = document.getElementById('documentFile');
     const file = fileToUpload || (fileInput ? fileInput.files[0] : null);
@@ -264,39 +291,31 @@ function uploadDocument(fileToUpload = null) {
     if (dropzoneText) {
         originalText = dropzoneText.textContent;
         const uploadingText = window.t ? window.t('notifications.file_uploading_param', `Загрузка "${file.name}"...`, { name: file.name }) : `Загрузка "${file.name}"...`;
-        dropzoneText.innerHTML = `<span class="loading-spinner"></span> ${uploadingText}`;
+        dropzoneText.innerHTML = '<span class="loading-spinner"></span>';
+        dropzoneText.appendChild(document.createTextNode(' ' + uploadingText));
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
-    fetch('upload_document.php', {
-        method: 'POST',
-        body: formData
-    })
-        .then(response => response.json())
+    return uploadDocumentFile(file)
         .then(data => {
-            if (dropzoneText) {
-                dropzoneText.textContent = originalText;
+            showNotification(window.t ? window.t('notifications.file_uploaded', 'Файл успешно загружен') : 'Файл успешно загружен', 'success');
+            if (fileInput) fileInput.value = '';
+            const fileNameEl = document.getElementById('documentFileName');
+            if (fileNameEl) {
+                fileNameEl.textContent = window.t ? window.t('modals.file_none', 'Файл не выбран') : 'Файл не выбран';
             }
-            if (data.success) {
-                showNotification(window.t ? window.t('notifications.file_uploaded', 'Файл успешно загружен') : 'Файл успешно загружен', 'success');
-                if (fileInput) fileInput.value = '';
-                const fileNameEl = document.getElementById('documentFileName');
-                if (fileNameEl) {
-                    fileNameEl.textContent = window.t ? window.t('modals.file_none', 'Файл не выбран') : 'Файл не выбран';
-                }
-                loadDocumentsList();
-            } else {
-                showNotification(window.t ? window.t('notifications.file_upload_error_param', 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), { error: data.error || 'Неизвестная ошибка' }) : 'Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'), 'error');
-            }
+            loadDocumentsList();
+            return data;
         })
         .catch(error => {
+            console.error('Ошибка:', error);
+            const errorText = error.message || (window.t ? window.t('notifications.file_upload_network_error', 'Ошибка загрузки файла') : 'Ошибка загрузки файла');
+            showNotification(window.t ? window.t('notifications.file_upload_error_param', 'Ошибка загрузки: {error}', { error: errorText }) : 'Ошибка загрузки: ' + errorText, 'error');
+            return null;
+        })
+        .finally(() => {
             if (dropzoneText) {
                 dropzoneText.textContent = originalText;
             }
-            console.error('Ошибка:', error);
-            showNotification(window.t ? window.t('notifications.file_upload_network_error', 'Ошибка загрузки файла') : 'Ошибка загрузки файла', 'error');
         });
 }
 
@@ -321,15 +340,26 @@ function deleteDocument(filePath) {
     });
 }
 
-function insertFileButton(fileName, filePath, fileSize) {
+/**
+ * Вставляет существующую карточку документа в статью.
+ * Позиция и отключение действий диалога нужны для асинхронного drag & drop.
+ * @param {string} fileName
+ * @param {string} filePath
+ * @param {number} fileSize
+ * @param {Object} [options]
+ * @returns {number} Длина вставленного текста в режиме кода
+ */
+function insertFileButton(fileName, filePath, fileSize, options = {}) {
     // Преобразуем путь к файлу, добавляя / в начало если его нет
     if (!filePath.startsWith('/')) {
         filePath = '/' + filePath;
     }
 
-    // Проверяем, нужно ли вставить как гиперссылку
+    const mode = options.mode || (typeof editorMode !== 'undefined' ? editorMode : 'visual');
+    const closeDialog = options.closeDialog !== false;
+    const notify = options.notify !== false;
     const chk = document.getElementById('insertAsHyperlink');
-    const insertAsHyperlink = chk ? chk.checked : false;
+    const insertAsHyperlink = typeof options.insertAsHyperlink === 'boolean' ? options.insertAsHyperlink : (chk ? chk.checked : false);
 
     // Создаем стандартную структуру медиа-обертки для кнопки скачивания файла
     const alignWrap = document.createElement('div');
@@ -375,11 +405,13 @@ function insertFileButton(fileName, filePath, fileSize) {
     alignWrap.appendChild(mediaWrap);
 
     // Поддержка режима кода
-    if (typeof editorMode !== 'undefined' && editorMode === 'code') {
+    if (mode === 'code') {
         const ta = document.getElementById('content');
+        let insertedLength = 0;
         if (ta) {
-            const start = (fileInsertStart !== null && fileInsertStart !== undefined) ? fileInsertStart : ((typeof ta.selectionStart === 'number') ? ta.selectionStart : ta.value.length);
-            const end = (fileInsertEnd !== null && fileInsertEnd !== undefined) ? fileInsertEnd : ((typeof ta.selectionEnd === 'number') ? ta.selectionEnd : start);
+            const range = options.codeRange || {};
+            const start = (range.start !== null && range.start !== undefined) ? range.start : ((fileInsertStart !== null && fileInsertStart !== undefined) ? fileInsertStart : ((typeof ta.selectionStart === 'number') ? ta.selectionStart : ta.value.length));
+            const end = (range.end !== null && range.end !== undefined) ? range.end : ((fileInsertEnd !== null && fileInsertEnd !== undefined) ? fileInsertEnd : ((typeof ta.selectionEnd === 'number') ? ta.selectionEnd : start));
 
             let insertText = '';
             if (insertAsHyperlink) {
@@ -395,19 +427,20 @@ function insertFileButton(fileName, filePath, fileSize) {
             ta.focus();
             ta.value = ta.value.substring(0, start) + insertText + ta.value.substring(end);
             ta.selectionStart = ta.selectionEnd = start + insertText.length;
+            insertedLength = insertText.length;
             if (typeof triggerInputEvent === 'function') triggerInputEvent(ta);
         }
         if (typeof saveToHistory === 'function') saveToHistory();
-        closeFileUploadDialog();
-        showNotification(window.t ? window.t('notifications.file_added', 'Файл добавлен в статью') : 'Файл добавлен в статью', 'success');
-        return;
+        if (closeDialog) closeFileUploadDialog();
+        if (notify) showNotification(window.t ? window.t('notifications.file_added', 'Файл добавлен в статью') : 'Файл добавлен в статью', 'success');
+        return insertedLength;
     }
 
     const ve = document.getElementById('contentVisual');
 
     if (insertAsHyperlink) {
         // Вставляем как простую гиперссылку в текущую позицию каретки
-        if (window.VisualEngine && typeof window.VisualEngine.restoreFocus === 'function') {
+        if (!options.dropRange && window.VisualEngine && typeof window.VisualEngine.restoreFocus === 'function') {
             window.VisualEngine.restoreFocus();
         } else if (ve) {
             ve.focus();
@@ -420,7 +453,7 @@ function insertFileButton(fileName, filePath, fileSize) {
         link.setAttribute('download', fileName);
 
         const sel = window.getSelection();
-        const saved = (window.VisualEngine && window.VisualEngine.savedRange) || window.savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null) || (typeof savedRange !== 'undefined' ? savedRange : null);
+        const saved = options.dropRange || (window.VisualEngine && window.VisualEngine.savedRange) || window.savedRange || (typeof window.getSavedRange === 'function' ? window.getSavedRange() : null) || (typeof savedRange !== 'undefined' ? savedRange : null);
         let range = (saved && ve && ve.contains(saved.commonAncestorContainer)) ? saved : ((sel && sel.rangeCount > 0 && ve && ve.contains(sel.getRangeAt(0).commonAncestorContainer)) ? sel.getRangeAt(0) : null);
 
         if (!range || !ve || !ve.contains(range.commonAncestorContainer)) {
@@ -453,9 +486,14 @@ function insertFileButton(fileName, filePath, fileSize) {
             window.VisualEngine.saveSelection();
         }
     } else {
-        // Вставляем блок файла точно по текущей позиции каретки через VisualEngine
-        if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
-            window.VisualEngine.insertBlockMedia(alignWrap.outerHTML);
+        // Асинхронный ответ заменяет только свой placeholder: удалённый блок не должен появиться снова.
+        const placeholder = options.uploadId && ve ? ve.querySelector('[data-upload-id="' + options.uploadId + '"]') : null;
+        if (options.uploadId && !placeholder) return 0;
+        if (placeholder) {
+            placeholder.insertAdjacentHTML('beforebegin', alignWrap.outerHTML);
+            placeholder.parentNode.removeChild(placeholder);
+        } else if (window.VisualEngine && typeof window.VisualEngine.insertBlockMedia === 'function') {
+            window.VisualEngine.insertBlockMedia(alignWrap.outerHTML, options.dropRange || null);
         } else if (typeof insertImageBlockAtCaret === 'function') {
             insertImageBlockAtCaret(alignWrap.outerHTML);
         } else if (ve) {
@@ -463,8 +501,10 @@ function insertFileButton(fileName, filePath, fileSize) {
         }
     }
 
+    if (typeof markEditorDirty === 'function') markEditorDirty();
     if (typeof saveToHistory === 'function') saveToHistory();
-    closeFileUploadDialog();
-    showNotification(window.t ? window.t('notifications.file_added', 'Файл добавлен в статью') : 'Файл добавлен в статью', 'success');
+    if (closeDialog) closeFileUploadDialog();
+    if (notify) showNotification(window.t ? window.t('notifications.file_added', 'Файл добавлен в статью') : 'Файл добавлен в статью', 'success');
+    return 0;
 }
 

@@ -1,16 +1,16 @@
 {
-    "57526e52629bf2bcf6014027c7263227aa0dd1b2e28e88f87ee59c3ca7ae428e": {
-        "id": "57526e52629bf2bcf6014027c7263227aa0dd1b2e28e88f87ee59c3ca7ae428e",
+    "265e5a6eff215a39d507f38638ffb9f054c742d1facc99a2283d63873a448f31": {
+        "id": "265e5a6eff215a39d507f38638ffb9f054c742d1facc99a2283d63873a448f31",
         "authenticated": true,
-        "auth_time": 1794042978,
-        "csrf_token": "eca24e3ef7b27eca37146ee9aac04dfcfe54237d658f7a03d2be686605669b4f",
+        "auth_time": 1795251182,
+        "csrf_token": "05138862fd4bf3728c5b66a6e26d188c0772d4dd0002d2e400a33a0d9b223570",
         "active_blog_path": "data",
         "editor_language": "ru",
-        "ip": "::1",
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0",
         "device": "Windows",
-        "browser": "Firefox 159",
-        "created_at": 1794042978,
-        "last_activity": 1794089210
+        "browser": "Firefox 160",
+        "created_at": 1795251182,
+        "last_activity": 1795254276
     }
 }

@@ -121,6 +121,9 @@ func main() {
 
 	r.Get("/get_templates.php", legacyHandler.HandleGetTemplates)
 	r.Post("/get_templates.php", legacyHandler.HandleGetTemplates)
+	r.Post("/upload_template.php", legacyHandler.HandleUploadTemplate)
+	r.Post("/save_template.php", legacyHandler.HandleSaveTemplate)
+	r.Post("/delete_template.php", legacyHandler.HandleDeleteTemplate)
 	r.Post("/apply_template.php", legacyHandler.HandleApplyTemplate)
 	r.Get("/get_includes.php", legacyHandler.HandleGetIncludes)
 	r.Post("/get_includes.php", legacyHandler.HandleGetIncludes)
