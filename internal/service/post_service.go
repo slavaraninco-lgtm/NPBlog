@@ -707,7 +707,7 @@ func (p *PostService) GenerateSEOTags(id int, title, cleanContent string) string
 	return sb.String()
 }
 
-// GenerateRSS компилирует data/blog/rss.xml
+// GenerateRSS компилирует feed.xml и совместимую копию blog/rss.xml
 func (p *PostService) GenerateRSS(activeBlogPath string) error {
 	settings := p.cfg.GetSettings()
 	if !settings.RssEnabled {
@@ -742,18 +742,32 @@ func (p *PostService) GenerateRSS(activeBlogPath string) error {
 		Channel RssChannel `xml:"channel"`
 	}
 
+	baseURL := strings.TrimRight(strings.TrimSpace(settings.RssBaseURL), "/")
+	rssTitle := strings.TrimSpace(settings.RssTitle)
+	if rssTitle == "" {
+		rssTitle = "NPBlog Feed"
+	}
+	rssDescription := strings.TrimSpace(settings.RssDescription)
+	if rssDescription == "" {
+		rssDescription = "NPBlog RSS Feed"
+	}
+
 	feed := RssFeed{
 		Version: "2.0",
 		Channel: RssChannel{
-			Title:       settings.RssTitle,
-			Link:        settings.RssBaseURL,
-			Description: settings.RssDescription,
+			Title:       rssTitle,
+			Link:        baseURL,
+			Description: rssDescription,
 			Language:    settings.Language,
 		},
 	}
 
+	sort.Slice(posts, func(i, j int) bool { return posts[i].ID > posts[j].ID })
 	for _, post := range posts {
-		itemLink := fmt.Sprintf("%s/blog/%s", strings.TrimRight(settings.RssBaseURL, "/"), post.Filename)
+		itemLink := p.storage.GetDataURL(activeBlogPath, "blog/"+post.Filename)
+		if baseURL != "" {
+			itemLink = baseURL + itemLink
+		}
 		feed.Channel.Items = append(feed.Channel.Items, RssItem{
 			Title:       post.Title,
 			Link:        itemLink,
@@ -768,9 +782,13 @@ func (p *PostService) GenerateRSS(activeBlogPath string) error {
 		return err
 	}
 
-	xmlHeader := []byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-	rssFile := p.storage.GetDataPath(activeBlogPath, "blog/rss.xml")
-	return p.storage.SafeWriteFile(rssFile, append(xmlHeader, bytes...))
+	xmlData := append([]byte("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"), bytes...)
+	feedFile := p.storage.GetDataPath(activeBlogPath, "feed.xml")
+	if err := p.storage.SafeWriteFile(feedFile, xmlData); err != nil {
+		return err
+	}
+	legacyFeedFile := p.storage.GetDataPath(activeBlogPath, "blog/rss.xml")
+	return p.storage.SafeWriteFile(legacyFeedFile, xmlData)
 }
 
 func (p *PostService) getTemplateHTML(activeBlogPath string, postIDs ...int) (string, error) {

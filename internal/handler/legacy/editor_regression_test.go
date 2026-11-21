@@ -78,3 +78,37 @@ func TestCreateBlogAndServeVideo(t *testing.T) {
 		t.Fatal("existing data lost")
 	}
 }
+
+func TestEnablingRSSGeneratesFeedImmediately(t *testing.T) {
+	h, root := setupTestHandler(t)
+	defer os.RemoveAll(root)
+
+	blogDir := filepath.Join(root, "data", "blog")
+	if err := os.MkdirAll(blogDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	posts := `[{"id":1,"title":"Существующая статья","date":"01.11.2026 10:00","filename":"post-1.html"}]`
+	if err := os.WriteFile(filepath.Join(blogDir, "posts-meta.json"), []byte(posts), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	body := `{"rss_enabled":true,"rss_base_url":"https://example.com","rss_title":"RSS после включения","rss_description":"Описание"}`
+	req := httptest.NewRequest("POST", "/save_editor_settings.php", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.HandleSaveEditorSettings(rec, req)
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response["success"] != true {
+		t.Fatalf("RSS settings were not saved: %s", rec.Body.String())
+	}
+	feed, err := os.ReadFile(filepath.Join(root, "data", "feed.xml"))
+	if err != nil {
+		t.Fatalf("feed.xml was not generated after enabling RSS: %v", err)
+	}
+	if !strings.Contains(string(feed), "Существующая статья") || !strings.Contains(string(feed), "RSS после включения") {
+		t.Fatalf("Generated feed does not contain existing post or new settings: %s", string(feed))
+	}
+}

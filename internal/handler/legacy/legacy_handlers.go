@@ -1078,6 +1078,12 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 	}
 
 	l.cfg.ReloadSettings()
+	if _, ok := updateMap["rss_enabled"]; ok && l.cfg.GetSettings().RssEnabled {
+		if err := l.post.GenerateRSS(middleware.GetActiveBlogPath(r)); err != nil {
+			l.errorResponse(w, "Настройки сохранены, но не удалось создать RSS-ленту")
+			return
+		}
+	}
 	if newPassword != "" {
 		l.auth.ResetLockout(l.auth.GetClientIP(r), middleware.GetActiveBlogPath(r))
 		_ = l.auth.CreateSession(w, r)

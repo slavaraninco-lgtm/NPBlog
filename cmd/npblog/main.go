@@ -109,6 +109,8 @@ func main() {
 	r.Post("/upload_image.php", legacyHandler.HandleUploadImage)
 	r.Post("/upload_images_grid.php", legacyHandler.HandleUploadImagesGrid)
 	r.Post("/save_edited_image.php", legacyHandler.HandleSaveEditedImage)
+	r.Post("/upload_custom_theme.php", legacyHandler.HandleUploadCustomTheme)
+	r.Get("/download_theme.php", legacy.HandleDownloadTheme(hybridFS))
 
 	r.Get("/serve_data.php", legacyHandler.HandleServeData)
 	r.Get("/serve_data.php/*", legacyHandler.HandleServeData)
@@ -239,7 +241,9 @@ func main() {
 
 		api.Route("/backups", func(sub chi.Router) {
 			sub.Get("/", restHandler.HandleListBackups)
+			sub.Delete("/", restHandler.HandleDeleteBackup)
 			sub.Get("/view", restHandler.HandleViewBackup)
+			sub.Get("/content", restHandler.HandleGetBackupContent)
 			sub.Post("/restore", restHandler.HandleRestoreBackup)
 			sub.Get("/{filename}", restHandler.HandleGetBackupContent)
 			sub.Delete("/{filename}", restHandler.HandleDeleteBackup)

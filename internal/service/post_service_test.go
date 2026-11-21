@@ -172,3 +172,46 @@ func TestPostService_DeleteAndRenumber(t *testing.T) {
 		t.Errorf("Expected 0 numbering issues, got %d: %+v", len(issuesAfter), issuesAfter)
 	}
 }
+
+func TestGenerateRSSCreatesFeedForExistingPosts(t *testing.T) {
+	tempDir := t.TempDir()
+	settings := `{"blog_paths":["data"],"active_blog_path":"data","rss_enabled":true,"rss_base_url":"https://example.com/","rss_title":"Мой блог","rss_description":"Новые статьи","language":"ru"}`
+	if err := os.WriteFile(filepath.Join(tempDir, "editor_settings.json"), []byte(settings), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.AppConfig{BaseDir: tempDir, AssetsDir: tempDir}
+	cfg.ReloadSettings()
+	storage := service.NewStorageService(cfg)
+	postSvc := service.NewPostService(cfg, storage)
+
+	blogDir := storage.GetDataPath("data", "blog")
+	if err := os.MkdirAll(blogDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	posts := []domain.PostMeta{
+		{ID: 1, Title: "Первая", Date: "01.11.2026 10:00", Filename: "post-1.html"},
+		{ID: 2, Title: "Вторая", Date: "02.11.2026 10:00", Filename: "post-2.html"},
+	}
+	if err := storage.SafeWriteJSON(filepath.Join(blogDir, "posts-meta.json"), posts); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := postSvc.GenerateRSS("data"); err != nil {
+		t.Fatalf("GenerateRSS failed: %v", err)
+	}
+	feed, err := os.ReadFile(filepath.Join(tempDir, "data", "feed.xml"))
+	if err != nil {
+		t.Fatalf("feed.xml was not created: %v", err)
+	}
+	legacyFeed, err := os.ReadFile(filepath.Join(blogDir, "rss.xml"))
+	if err != nil || string(feed) != string(legacyFeed) {
+		t.Fatalf("Compatibility RSS copy mismatch: %v", err)
+	}
+	xmlText := string(feed)
+	if !strings.Contains(xmlText, "<title>Мой блог</title>") || !strings.Contains(xmlText, "https://example.com/data/blog/post-2.html") {
+		t.Fatalf("RSS settings or article URL were not applied: %s", xmlText)
+	}
+	if strings.Index(xmlText, "<title>Вторая</title>") > strings.Index(xmlText, "<title>Первая</title>") {
+		t.Fatalf("RSS items are not sorted newest first: %s", xmlText)
+	}
+}

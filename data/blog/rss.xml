@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+    <channel>
+        <title>NPBlog Feed</title>
+        <link>https://npblog.narod.ws</link>
+        <description>NPBlog RSS Feed</description>
+        <language>ru</language>
+        <item>
+            <title>тест статья 228228228</title>
+            <link>https://npblog.narod.ws/data/blog/post-5.html</link>
+            <description>тест статья 228228228</description>
+            <pubDate>13.11.2026 21:47</pubDate>
+            <guid>https://npblog.narod.ws/data/blog/post-5.html</guid>
+        </item>
+        <item>
+            <title>ываыва</title>
+            <link>https://npblog.narod.ws/data/blog/post-4.html</link>
+            <description>ываыва</description>
+            <pubDate>01.11.2026 17:32</pubDate>
+            <guid>https://npblog.narod.ws/data/blog/post-4.html</guid>
+        </item>
+        <item>
+            <title>ываыва</title>
+            <link>https://npblog.narod.ws/data/blog/post-3.html</link>
+            <description>ываыва</description>
+            <pubDate>01.11.2026 17:30</pubDate>
+            <guid>https://npblog.narod.ws/data/blog/post-3.html</guid>
+        </item>
+        <item>
+            <title>тест</title>
+            <link>https://npblog.narod.ws/data/blog/post-2.html</link>
+            <description>тест</description>
+            <pubDate>01.11.2026 17:30</pubDate>
+            <guid>https://npblog.narod.ws/data/blog/post-2.html</guid>
+        </item>
+        <item>
+            <title>sdfsdf</title>
+            <link>https://npblog.narod.ws/data/blog/post-1.html</link>
+            <description>sdfsdf</description>
+            <pubDate>21.11.2026 21:01 (отредактировано)</pubDate>
+            <guid>https://npblog.narod.ws/data/blog/post-1.html</guid>
+        </item>
+    </channel>
+</rss>

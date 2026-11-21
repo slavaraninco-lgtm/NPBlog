@@ -96,6 +96,13 @@ func setupTestRouter(t *testing.T) (http.Handler, string) {
 			sub.Delete("/sessions/{id}", restHandler.HandleTerminateSession)
 			sub.Post("/sessions/terminate_others", restHandler.HandleTerminateOtherSessions)
 		})
+
+		api.Route("/backups", func(sub chi.Router) {
+			sub.Get("/", restHandler.HandleListBackups)
+			sub.Delete("/", restHandler.HandleDeleteBackup)
+			sub.Get("/content", restHandler.HandleGetBackupContent)
+			sub.Delete("/{filename}", restHandler.HandleDeleteBackup)
+		})
 	})
 
 	return r, tmpDir
@@ -571,5 +578,74 @@ func TestSessions_REST(t *testing.T) {
 	_ = json.Unmarshal(wDel.Body.Bytes(), &delResp)
 	if !delResp.Success || !delResp.Data.IsCurrent {
 		t.Errorf("Expected is_current=true on terminating current session")
+	}
+}
+
+func TestRestBackupContentAndDeleteRoutes(t *testing.T) {
+	router, tmpDir := setupTestRouter(t)
+	defer os.RemoveAll(tmpDir)
+
+	backupDir := filepath.Join(tmpDir, "data_backup", "1")
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	backupPath := filepath.Join(backupDir, "1-1.html")
+	if err := os.WriteFile(backupPath, []byte("<p>backup</p>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	contentReq := httptest.NewRequest(http.MethodGet, "/api/v1/backups/content?postId=1&backup=1", nil)
+	contentRec := httptest.NewRecorder()
+	router.ServeHTTP(contentRec, contentReq)
+	if contentRec.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on backup content, got %d: %s", contentRec.Code, contentRec.Body.String())
+	}
+	var contentResp struct {
+		Data struct {
+			Content string `json:"content"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(contentRec.Body.Bytes(), &contentResp); err != nil {
+		t.Fatal(err)
+	}
+	if contentResp.Data.Content != "<p>backup</p>" {
+		t.Fatalf("Unexpected backup content: %q", contentResp.Data.Content)
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/backups?postId=1&backup=1", nil)
+	deleteRec := httptest.NewRecorder()
+	router.ServeHTTP(deleteRec, deleteReq)
+	if deleteRec.Code != http.StatusOK {
+		t.Fatalf("Expected 200 on backup delete, got %d: %s", deleteRec.Code, deleteRec.Body.String())
+	}
+	if _, err := os.Stat(backupPath); !os.IsNotExist(err) {
+		t.Fatalf("Backup file still exists after delete, err=%v", err)
+	}
+}
+
+func TestRestEnablingRSSGeneratesFeedImmediately(t *testing.T) {
+	router, tmpDir := setupTestRouter(t)
+	defer os.RemoveAll(tmpDir)
+
+	blogDir := filepath.Join(tmpDir, "data", "blog")
+	if err := os.MkdirAll(blogDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	posts := `[{"id":1,"title":"REST RSS статья","date":"01.11.2026 10:00","filename":"post-1.html"}]`
+	if err := os.WriteFile(filepath.Join(blogDir, "posts-meta.json"), []byte(posts), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	payload := bytes.NewBufferString(`{"rss_enabled":true,"rss_title":"REST RSS"}`)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/settings/editor", payload)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Expected 200 when enabling RSS, got %d: %s", rec.Code, rec.Body.String())
+	}
+	feed, err := os.ReadFile(filepath.Join(tmpDir, "data", "feed.xml"))
+	if err != nil || !strings.Contains(string(feed), "REST RSS статья") {
+		t.Fatalf("REST settings did not generate feed with existing post: %q, err=%v", string(feed), err)
 	}
 }

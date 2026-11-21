@@ -705,6 +705,12 @@ func (h *RestHandler) HandleUpdateEditorSettings(w http.ResponseWriter, r *http.
 	}
 
 	h.cfg.ReloadSettings()
+	if _, ok := updateMap["rss_enabled"]; ok && h.cfg.GetSettings().RssEnabled {
+		if err := h.post.GenerateRSS(middleware.GetActiveBlogPath(r)); err != nil {
+			h.jsonError(w, http.StatusInternalServerError, "rss_generation_error", "Настройки сохранены, но не удалось создать RSS-ленту", nil)
+			return
+		}
+	}
 
 	if newPassword != "" {
 		h.auth.ResetLockout(h.auth.GetClientIP(r), middleware.GetActiveBlogPath(r))
@@ -1430,4 +1436,3 @@ func (h *RestHandler) HandleRegeneratePosts(w http.ResponseWriter, r *http.Reque
 	}
 	h.jsonSuccess(w, http.StatusOK, "Статика блога успешно перегенерирована", nil, nil)
 }
-
