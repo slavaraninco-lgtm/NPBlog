@@ -2518,26 +2518,44 @@ button:hover {
     margin-bottom: 24px;
     padding: 4px;
     overflow-x: auto;
-    background: var(--modal-bg-subtle, rgba(0, 0, 0, 0.03));
+    background: rgba(0, 0, 0, 0.04);
     border: 1px solid var(--border-color);
     border-radius: 10px;
+}
+
+[data-theme="dark"] .global-subnav {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"][data-amoled="true"] .global-subnav {
+    background: #09090b;
+    border-color: #222222;
 }
 
 .global-subnav-btn {
     flex: 1;
     padding: 8px 14px;
-    border: none;
+    border: 1px solid transparent;
     border-radius: 7px;
-    color: var(--text-color);
+    color: var(--modal-text, var(--text-color));
     background: transparent;
     font-size: 13px;
+    font-weight: 500;
+    opacity: 0.7;
     white-space: nowrap;
     cursor: pointer;
+    user-select: none;
     transition: all var(--anim-dur-fast) var(--anim-ease-out);
 }
 
-.global-subnav-btn:hover {
-    background: rgba(0, 0, 0, 0.08);
+.global-subnav-btn:hover:not(.active) {
+    opacity: 0.95;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.global-subnav-btn:active {
+    transform: scale(0.98);
 }
 
 .global-subnav-btn:focus-visible {
@@ -2545,14 +2563,39 @@ button:hover {
     outline-offset: 1px;
 }
 
-.global-subnav-btn.active {
-    background: var(--modal-bg);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+.global-subnav-btn.active,
+.global-subnav-btn[aria-selected="true"] {
+    background: var(--modal-bg, #ffffff);
+    color: var(--modal-text, var(--text-color));
     font-weight: 600;
+    opacity: 1;
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-[data-theme="dark"] .global-subnav-btn:hover {
+[data-theme="dark"] .global-subnav-btn:hover:not(.active) {
+    opacity: 0.95;
     background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .global-subnav-btn.active,
+[data-theme="dark"] .global-subnav-btn[aria-selected="true"] {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-weight: 600;
+    opacity: 1;
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"][data-amoled="true"] .global-subnav-btn.active,
+[data-theme="dark"][data-amoled="true"] .global-subnav-btn[aria-selected="true"] {
+    background: #242428;
+    color: #ffffff;
+    font-weight: 600;
+    opacity: 1;
+    border-color: #3e3e46;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 
 .global-nav-btn {
