@@ -169,7 +169,7 @@
             };
         })();
     </script>
-    <link rel="stylesheet" href="editor-style.css?v=1795455850">
+    <link rel="stylesheet" href="editor-style.css?v=1795711700">
     <link rel="stylesheet" href="assets/katex/katex.min.css?v=499162500">
     <script src="assets/katex/katex.min.js?v=499162500"></script>
     <link rel="stylesheet" href="assets/mathlive/mathlive-static.css?v=499162500">
@@ -1134,9 +1134,10 @@ window.addEventListener('load', function() {
     <!-- Нижняя полоса редактора (Статус-бар) -->
     <footer class="editor-bottom-bar" id="editorBottomBar">
         <div class="editor-bottom-bar-left">
-            <div class="mode-toggle bottom-bar-mode-toggle" id="bottomModeToggle" onmousedown="event.preventDefault()">
-                <button type="button" id="modeVisualBtn" class="format-btn" title="Визуальный режим" data-i18n="tabs.visual" data-i18n-title="tabs.visual">Визуально</button>
-                <button type="button" id="modeCodeBtn" class="format-btn" title="Режим кода" data-i18n="tabs.code" data-i18n-title="tabs.code">Код</button>
+            <div class="mode-toggle bottom-bar-mode-toggle" id="bottomModeToggle" role="tablist" onmousedown="event.preventDefault()">
+                <span class="mode-toggle-indicator" aria-hidden="true"></span>
+                <button type="button" id="modeVisualBtn" class="format-btn" role="tab" aria-selected="true" title="Визуальный режим" data-i18n="tabs.visual" data-i18n-title="tabs.visual">Визуально</button>
+                <button type="button" id="modeCodeBtn" class="format-btn" role="tab" aria-selected="false" title="Режим кода" data-i18n="tabs.code" data-i18n-title="tabs.code">Код</button>
             </div>
             <div id="blogSelectorContainer" class="bottom-bar-blog-selector" style="display: none;">
                 <label for="blogSelector" class="bottom-bar-blog-label" data-i18n="header.manage_posts_blog_label">Блог:</label>
@@ -4093,7 +4094,7 @@ window.addEventListener('load', function() {
 <script src="editorjs/notifications.js?v=1788459283"></script>
 <script src="editorjs/drafts.js?v=1792233378"></script>
 <script src="editorjs/history.js?v=1792334209"></script>
-<script src="editorjs/formatting.js?v=1792791200"></script>
+<script src="editorjs/formatting.js?v=1795711700"></script>
 <script src="editorjs/tables.js?v=1788448476"></script>
 <script src="editorjs/media.js?v=1792791200"></script>
 <script src="editorjs/network.js?v=1792265012"></script>
@@ -4432,6 +4433,7 @@ window.addEventListener('load', function() {
                 <div id="globalSection-blogview" class="global-section" style="display: none;">
                     <p style="color: var(--text-color); margin-bottom: 16px; opacity: 0.8; font-size: 13px;" data-i18n="settings.blogview_desc">Настройте внешний вид страницы со списком статей (blog.html).</p>
                     <div class="global-subnav" role="tablist" data-i18n-aria="settings.nav_blogview" aria-label="Страница блога">
+                        <span class="global-subnav-indicator" aria-hidden="true"></span>
                         <button type="button" id="blogview-tab-general" class="global-subnav-btn active" onclick="showBlogViewSubsection('general')" role="tab" aria-selected="true" data-i18n="settings.blogview_tab_general">Основные</button>
                         <button type="button" id="blogview-tab-background" class="global-subnav-btn" onclick="showBlogViewSubsection('background')" role="tab" aria-selected="false" data-i18n="settings.blogview_tab_background">Фон страницы</button>
                         <button type="button" id="blogview-tab-navigation" class="global-subnav-btn" onclick="showBlogViewSubsection('navigation')" role="tab" aria-selected="false" data-i18n="settings.blogview_tab_navigation">Навигация</button>
@@ -8714,6 +8716,9 @@ function showBlogViewSubsection(sectionName) {
         button.classList.toggle('active', isActive);
         button.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
+    if (typeof updateGlobalSubnavIndicator === 'function') {
+        updateGlobalSubnavIndicator(false);
+    }
     updateGlobalSettingsFooter('blogview');
 }
 
@@ -8790,6 +8795,9 @@ function showGlobalSection(sectionName) {
     
     // Загружаем настройки для секции
     if (sectionName === 'blogview') {
+        if (typeof updateGlobalSubnavIndicator === 'function') {
+            updateGlobalSubnavIndicator(true);
+        }
         loadBlogViewSettings();
         checkCrossBlogNavStatus();
     } else if (sectionName === 'autosave') {
@@ -14498,6 +14506,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof setMode === 'function') setMode('visual');
             } else {
                 modeToggle.style.display = 'inline-flex';
+                if (typeof updateModeToggleIndicator === 'function') {
+                    updateModeToggleIndicator(true);
+                }
             }
         }
 

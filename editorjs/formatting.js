@@ -1781,6 +1781,67 @@
     };
     window.insertHr = window.insertHorizontalRule;
 
+    /**
+     * Позиционирует плавающий индикатор активной вкладки внутри сегментированного переключателя.
+     * При первом рендере или смене размеров/перевода перемещает без анимации (is-instant),
+     * чтобы избежать визуального скачка; при клике пользователя — плавно скользит.
+     *
+     * @param {HTMLElement|string|null} container Контейнер переключателя или его ID
+     * @param {string} indicatorSelector Селектор элемента-индикатора
+     * @param {string} activeSelector Селектор активной кнопки
+     * @param {boolean} [immediate=false] Отключить переход при расчете позиции
+     */
+    window.syncSegmentedIndicator = function (container, indicatorSelector, activeSelector, immediate) {
+        const root = typeof container === 'string' ? document.getElementById(container) : container;
+        if (!root) return;
+        const indicator = root.querySelector(indicatorSelector);
+        if (!indicator) return;
+
+        const activeBtn = root.querySelector(activeSelector);
+        if (!activeBtn || root.offsetParent === null || activeBtn.offsetWidth === 0) {
+            indicator.style.opacity = '0';
+            delete indicator.dataset.ready;
+            return;
+        }
+
+        const shouldSnap = immediate === true || indicator.dataset.ready !== '1';
+        if (shouldSnap) {
+            indicator.classList.add('is-instant');
+        }
+
+        indicator.style.width = activeBtn.offsetWidth + 'px';
+        indicator.style.height = activeBtn.offsetHeight + 'px';
+        indicator.style.transform = 'translate3d(' + activeBtn.offsetLeft + 'px, ' + activeBtn.offsetTop + 'px, 0)';
+        indicator.style.opacity = '1';
+
+        if (shouldSnap) {
+            // Принудительный reflow нужен, чтобы снятие is-instant не анимировало стартовую позицию
+            void indicator.offsetWidth;
+            indicator.classList.remove('is-instant');
+            indicator.dataset.ready = '1';
+        }
+    };
+
+    /**
+     * Обновляет позицию индикатора переключателя режимов редактора на нижней панели.
+     *
+     * @param {boolean} [immediate=false] Отключить переход при расчете позиции
+     */
+    window.updateModeToggleIndicator = function (immediate) {
+        window.syncSegmentedIndicator('bottomModeToggle', '.mode-toggle-indicator', '.format-btn.active', immediate);
+    };
+
+    /**
+     * Обновляет позицию индикатора вкладок секции параметров («Страница блога»).
+     *
+     * @param {boolean} [immediate=false] Отключить переход при расчете позиции
+     */
+    window.updateGlobalSubnavIndicator = function (immediate) {
+        document.querySelectorAll('.global-subnav').forEach(function (subnav) {
+            window.syncSegmentedIndicator(subnav, '.global-subnav-indicator', '.global-subnav-btn.active', immediate);
+        });
+    };
+
     window.setMode = function (mode) {
         editorMode = mode;
         const ta = DOM.getCodeEditor();
@@ -1802,8 +1863,14 @@
             VisualEngine.normalizeDOM(ve);
             ve.style.display = '';
             ta.style.display = 'none';
-            if (visualBtn) visualBtn.classList.add('active');
-            if (codeBtn) codeBtn.classList.remove('active');
+            if (visualBtn) {
+                visualBtn.classList.add('active');
+                visualBtn.setAttribute('aria-selected', 'true');
+            }
+            if (codeBtn) {
+                codeBtn.classList.remove('active');
+                codeBtn.setAttribute('aria-selected', 'false');
+            }
         } else {
             if (typeof hideGlobalMediaOverlay === 'function') hideGlobalMediaOverlay();
             ve.contentEditable = 'true';
@@ -1818,9 +1885,16 @@
             }
             ta.style.display = '';
             ve.style.display = 'none';
-            if (codeBtn) codeBtn.classList.add('active');
-            if (visualBtn) visualBtn.classList.remove('active');
+            if (codeBtn) {
+                codeBtn.classList.add('active');
+                codeBtn.setAttribute('aria-selected', 'true');
+            }
+            if (visualBtn) {
+                visualBtn.classList.remove('active');
+                visualBtn.setAttribute('aria-selected', 'false');
+            }
         }
+        window.updateModeToggleIndicator(false);
         if (typeof updateAutosaveBadge === 'function') updateAutosaveBadge();
         if (typeof updateBottomBarStats === 'function') updateBottomBarStats();
     };
@@ -1909,6 +1983,36 @@
 
         // Initial DOM Normalization
         VisualEngine.normalizeDOM(editor);
+
+        // Синхронизируем индикаторы сегментированных переключателей при изменении шрифтов/перевода/размеров
+        function bindSegmentedIndicatorObserver(root, syncFn, buttonSelector) {
+            if (!root) return;
+            syncFn(true);
+            if (typeof ResizeObserver === 'function') {
+                const observer = new ResizeObserver(function () {
+                    syncFn(true);
+                });
+                observer.observe(root);
+                root.querySelectorAll(buttonSelector).forEach(function (btn) {
+                    observer.observe(btn);
+                });
+            }
+        }
+
+        bindSegmentedIndicatorObserver(
+            document.getElementById('bottomModeToggle'),
+            window.updateModeToggleIndicator,
+            '.format-btn'
+        );
+        document.querySelectorAll('.global-subnav').forEach(function (subnav) {
+            bindSegmentedIndicatorObserver(subnav, window.updateGlobalSubnavIndicator, '.global-subnav-btn');
+        });
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(function () {
+                window.updateModeToggleIndicator(true);
+                window.updateGlobalSubnavIndicator(true);
+            });
+        }
     });
 
 })(window, document);
