@@ -40,6 +40,21 @@
         'OBJECT', 'EMBED', 'CANVAS', 'SVG'
     ]);
 
+    const INLINE_TAG_ALIASES = {
+        'STRONG': ['STRONG', 'B'],
+        'B': ['STRONG', 'B'],
+        'EM': ['EM', 'I'],
+        'I': ['EM', 'I'],
+        'S': ['S', 'STRIKE', 'DEL'],
+        'STRIKE': ['S', 'STRIKE', 'DEL'],
+        'DEL': ['S', 'STRIKE', 'DEL'],
+        'U': ['U'],
+        'SUP': ['SUP'],
+        'SUB': ['SUB'],
+        'CODE': ['CODE'],
+        'MARK': ['MARK']
+    };
+
     const INLINE_FORMAT_MAP = {
         'b': 'STRONG',
         'strong': 'STRONG',
@@ -483,17 +498,70 @@
      * =========================================================================
      */
     const InlineFormatter = {
+        getTagVariants(tagName) {
+            const upper = String(tagName || '').toUpperCase();
+            return INLINE_TAG_ALIASES[upper] || [upper];
+        },
+
+        getTagSelector(tagName) {
+            return this.getTagVariants(tagName).map(t => t.toLowerCase()).join(', ');
+        },
+
         findAncestor(node, tagName, editor) {
+            if (!node) return null;
             const ed = editor || DOM.getEditor();
             let curr = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
-            const target = tagName.toUpperCase();
+            const variants = this.getTagVariants(tagName);
             while (curr && curr !== ed) {
-                if (curr.nodeType === Node.ELEMENT_NODE && curr.tagName.toUpperCase() === target) {
+                if (curr.nodeType === Node.ELEMENT_NODE && variants.includes(curr.tagName.toUpperCase())) {
                     return curr;
                 }
                 curr = curr.parentNode;
             }
             return null;
+        },
+
+        getMatchingAncestors(node, tagName, boundary) {
+            const list = [];
+            let curr = (node && node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
+            const variants = this.getTagVariants(tagName);
+            while (curr && curr !== boundary && !DOM.isBlock(curr)) {
+                if (curr.nodeType === Node.ELEMENT_NODE && variants.includes(curr.tagName.toUpperCase())) {
+                    list.push(curr);
+                }
+                curr = curr.parentNode;
+            }
+            return list;
+        },
+
+        unwrapMatchingDescendants(root, tagName) {
+            if (!root || !root.querySelectorAll) return;
+            const sel = this.getTagSelector(tagName);
+            if (!sel) return;
+            root.querySelectorAll(sel).forEach(nested => {
+                const parent = nested.parentNode;
+                if (parent) {
+                    while (nested.firstChild) parent.insertBefore(nested.firstChild, nested);
+                    parent.removeChild(nested);
+                }
+            });
+        },
+
+        mergeAdjacentInline(root, targetTag) {
+            if (!root || !root.querySelectorAll) return;
+            const variants = this.getTagVariants(targetTag);
+            const sel = this.getTagSelector(targetTag);
+            if (!sel) return;
+            root.querySelectorAll(sel).forEach(el => {
+                if (!el.parentNode || el.attributes.length > 0) return;
+                while (el.nextSibling && el.nextSibling.nodeType === Node.ELEMENT_NODE &&
+                    variants.includes(el.nextSibling.tagName.toUpperCase()) &&
+                    el.nextSibling.attributes.length === 0) {
+                    const next = el.nextSibling;
+                    while (next.firstChild) el.appendChild(next.firstChild);
+                    next.parentNode.removeChild(next);
+                }
+            });
         },
 
         findAncestorWithStyle(node, styleProp, editor) {
@@ -510,18 +578,45 @@
 
         isFormatActive(range, tagName) {
             const ed = DOM.getEditor();
-            const target = tagName.toUpperCase();
+            if (!ed || !range) return false;
 
             if (range.collapsed) {
-                return !!this.findAncestor(range.startContainer, target, ed);
+                return !!this.findAncestor(range.startContainer, tagName, ed);
             }
 
-            const ancestor = this.findAncestor(range.commonAncestorContainer, target, ed);
-            if (ancestor) return true;
+            if (this.findAncestor(range.commonAncestorContainer, tagName, ed)) {
+                return true;
+            }
 
-            const startAncestor = this.findAncestor(range.startContainer, target, ed);
-            const endAncestor = this.findAncestor(range.endContainer, target, ed);
-            return !!(startAncestor && endAncestor);
+            const startAncestor = this.findAncestor(range.startContainer, tagName, ed);
+            const endAncestor = this.findAncestor(range.endContainer, tagName, ed);
+            if (startAncestor && endAncestor && startAncestor === endAncestor) {
+                return true;
+            }
+
+            // Active across non-contiguous fragments only if all visible selected text nodes carry the format
+            try {
+                const walker = document.createTreeWalker(
+                    range.commonAncestorContainer.nodeType === Node.TEXT_NODE ? range.commonAncestorContainer.parentNode : range.commonAncestorContainer,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                let textNode;
+                let hasText = false;
+                while ((textNode = walker.nextNode())) {
+                    if (!range.intersectsNode(textNode)) continue;
+                    const cleaned = (textNode.nodeValue || '').replace(/[\s\u00A0\u200B\u200C\u200D\uFEFF]/g, '');
+                    if (cleaned.length === 0) continue;
+                    hasText = true;
+                    if (!this.findAncestor(textNode, tagName, ed)) {
+                        return false;
+                    }
+                }
+                return hasText;
+            } catch (e) {
+                return !!(startAncestor && endAncestor);
+            }
         },
 
         formatInline(formatType) {
@@ -530,25 +625,57 @@
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return;
 
+            const ed = DOM.getEditor();
             const range = sel.getRangeAt(0);
+            const currBlock = DOM.getClosestBlock(range.startContainer, ed) || ed;
 
-            // Caret collapsed: toggle state for subsequent typing
+            // Caret collapsed: toggle state for subsequent typing cleanly without affecting surrounding text
             if (range.collapsed) {
-                const existing = this.findAncestor(range.startContainer, targetTag);
-                if (existing) {
-                    // Turn off format: break out of tag
-                    const textNode = document.createTextNode('\u200B');
-                    if (existing.nextSibling) {
-                        existing.parentNode.insertBefore(textNode, existing.nextSibling);
+                const ancestors = this.getMatchingAncestors(range.startContainer, targetTag, currBlock);
+                if (ancestors.length > 0) {
+                    const outerAnc = ancestors[ancestors.length - 1];
+                    if (!this.hasVisibleInlineContent(outerAnc)) {
+                        // Empty formatted placeholder: remove the tag directly
+                        const textNode = document.createTextNode('\u200B');
+                        outerAnc.parentNode.insertBefore(textNode, outerAnc);
+                        outerAnc.parentNode.removeChild(outerAnc);
+                        const newRange = document.createRange();
+                        newRange.setStart(textNode, 1);
+                        newRange.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(newRange);
                     } else {
-                        existing.parentNode.appendChild(textNode);
+                        // Split formatted tag at caret so unformatted typing continues cleanly in place
+                        let postFrag = null;
+                        try {
+                            const postRange = document.createRange();
+                            postRange.setStart(range.endContainer, range.endOffset);
+                            postRange.setEnd(outerAnc, outerAnc.childNodes.length);
+                            postFrag = postRange.extractContents();
+                        } catch (e) { }
+
+                        const textNode = document.createTextNode('\u200B');
+                        const parent = outerAnc.parentNode;
+                        if (parent) {
+                            if (this.hasVisibleInlineContent(outerAnc)) {
+                                parent.insertBefore(textNode, outerAnc.nextSibling);
+                            } else {
+                                parent.insertBefore(textNode, outerAnc);
+                                parent.removeChild(outerAnc);
+                            }
+                            if (postFrag && this.hasVisibleInlineContent(postFrag)) {
+                                const postWrap = outerAnc.cloneNode(false);
+                                postWrap.appendChild(postFrag);
+                                parent.insertBefore(postWrap, textNode.nextSibling);
+                            }
+                        }
+
+                        const newRange = document.createRange();
+                        newRange.setStart(textNode, 1);
+                        newRange.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(newRange);
                     }
-                    const newRange = document.createRange();
-                    newRange.setStart(textNode, 1);
-                    newRange.collapse(true);
-                    sel.removeAllRanges();
-                    sel.addRange(newRange);
-                    SelectionManager.save(newRange);
                 } else {
                     // Turn on format: insert tag with zero-width placeholder
                     const el = document.createElement(targetTag);
@@ -556,6 +683,9 @@
                     range.insertNode(el);
                     SelectionManager.setCursorToStart(el);
                 }
+
+                DOM.cleanEmptyInline(currBlock, true);
+                SelectionManager.save();
                 VisualEngine.updateActiveButtons();
                 if (typeof saveToHistory === 'function') saveToHistory();
                 return;
@@ -565,20 +695,13 @@
             const isActive = this.isFormatActive(range, targetTag);
 
             if (isActive) {
-                // Unwrap / Remove format from selection
+                // Split & unwrap format strictly within the selected range
                 this.removeFormat(range, targetTag);
             } else {
                 // Apply format to selection
                 try {
                     const contents = range.extractContents();
-                    // Clean internal duplicate tags
-                    contents.querySelectorAll(targetTag).forEach(nested => {
-                        const parent = nested.parentNode;
-                        if (parent) {
-                            while (nested.firstChild) parent.insertBefore(nested.firstChild, nested);
-                            parent.removeChild(nested);
-                        }
-                    });
+                    this.unwrapMatchingDescendants(contents, targetTag);
 
                     const wrapper = document.createElement(targetTag);
                     wrapper.appendChild(contents);
@@ -593,6 +716,8 @@
                 }
             }
 
+            this.mergeAdjacentInline(currBlock, targetTag);
+            DOM.cleanEmptyInline(ed, true);
             SelectionManager.save();
             VisualEngine.updateActiveButtons();
             if (typeof saveToHistory === 'function') saveToHistory();
@@ -600,26 +725,106 @@
 
         removeFormat(range, targetTag) {
             const ed = DOM.getEditor();
-            const target = targetTag.toUpperCase();
-            const startAncestor = this.findAncestor(range.startContainer, target, ed);
+            if (!ed || !range) return;
+            const sel = window.getSelection();
 
-            if (startAncestor) {
-                const parent = startAncestor.parentNode;
-                while (startAncestor.firstChild) {
-                    parent.insertBefore(startAncestor.firstChild, startAncestor);
-                }
-                parent.removeChild(startAncestor);
-            }
+            const selectNodeSlice = (nodes) => {
+                if (!sel || !nodes || nodes.length === 0) return;
+                const visible = nodes.filter(n => n.parentNode);
+                if (visible.length === 0) return;
+                const newRange = document.createRange();
+                newRange.setStartBefore(visible[0]);
+                newRange.setEndAfter(visible[visible.length - 1]);
+                sel.removeAllRanges();
+                sel.addRange(newRange);
+            };
 
-            ed.querySelectorAll(target).forEach(el => {
-                if (range.intersectsNode(el)) {
-                    const parent = el.parentNode;
-                    while (el.firstChild) {
-                        parent.insertBefore(el.firstChild, el);
+            try {
+                // 1. Selection sits strictly inside one or more matching ancestor tags: split around selection
+                const commonAncestors = this.getMatchingAncestors(range.commonAncestorContainer, targetTag, ed);
+                if (commonAncestors.length > 0) {
+                    const outerAnc = commonAncestors[commonAncestors.length - 1];
+
+                    const postRange = document.createRange();
+                    postRange.setStart(range.endContainer, range.endOffset);
+                    postRange.setEnd(outerAnc, outerAnc.childNodes.length);
+                    const postFrag = postRange.extractContents();
+
+                    const midFrag = range.extractContents();
+                    this.unwrapMatchingDescendants(midFrag, targetTag);
+                    const midNodes = Array.from(midFrag.childNodes);
+
+                    const parent = outerAnc.parentNode;
+                    if (parent) {
+                        const insertAnchor = this.hasVisibleInlineContent(outerAnc) ? outerAnc.nextSibling : outerAnc;
+                        parent.insertBefore(midFrag, insertAnchor);
+                        if (!this.hasVisibleInlineContent(outerAnc)) {
+                            parent.removeChild(outerAnc);
+                        }
+                        if (this.hasVisibleInlineContent(postFrag)) {
+                            const postWrap = outerAnc.cloneNode(false);
+                            postWrap.appendChild(postFrag);
+                            const lastMid = midNodes[midNodes.length - 1];
+                            if (lastMid && lastMid.parentNode === parent) {
+                                parent.insertBefore(postWrap, lastMid.nextSibling);
+                            } else {
+                                parent.appendChild(postWrap);
+                            }
+                        }
                     }
-                    parent.removeChild(el);
+                    selectNodeSlice(midNodes);
+                    return;
                 }
-            });
+
+                // 2. Selection crosses boundaries of separate matching tags: extract selection and preserve unhighlighted ends
+                const startAncestors = this.getMatchingAncestors(range.startContainer, targetTag, ed);
+                if (startAncestors.length > 0) {
+                    const startOuter = startAncestors[startAncestors.length - 1];
+                    const tailRange = document.createRange();
+                    tailRange.setStart(range.startContainer, range.startOffset);
+                    tailRange.setEnd(startOuter, startOuter.childNodes.length);
+                    const tailFrag = tailRange.extractContents();
+                    this.unwrapMatchingDescendants(tailFrag, targetTag);
+                    const tailNodes = Array.from(tailFrag.childNodes);
+                    if (tailNodes.length > 0 && startOuter.parentNode) {
+                        startOuter.parentNode.insertBefore(tailFrag, startOuter.nextSibling);
+                        range.setStartBefore(tailNodes[0]);
+                    } else {
+                        range.setStartAfter(startOuter);
+                    }
+                    if (!this.hasVisibleInlineContent(startOuter) && startOuter.parentNode) {
+                        startOuter.parentNode.removeChild(startOuter);
+                    }
+                }
+
+                const endAncestors = this.getMatchingAncestors(range.endContainer, targetTag, ed);
+                if (endAncestors.length > 0) {
+                    const endOuter = endAncestors[endAncestors.length - 1];
+                    const headRange = document.createRange();
+                    headRange.setStart(endOuter, 0);
+                    headRange.setEnd(range.endContainer, range.endOffset);
+                    const headFrag = headRange.extractContents();
+                    this.unwrapMatchingDescendants(headFrag, targetTag);
+                    const headNodes = Array.from(headFrag.childNodes);
+                    if (headNodes.length > 0 && endOuter.parentNode) {
+                        endOuter.parentNode.insertBefore(headFrag, endOuter);
+                        range.setEndAfter(headNodes[headNodes.length - 1]);
+                    } else {
+                        range.setEndBefore(endOuter);
+                    }
+                    if (!this.hasVisibleInlineContent(endOuter) && endOuter.parentNode) {
+                        endOuter.parentNode.removeChild(endOuter);
+                    }
+                }
+
+                const contents = range.extractContents();
+                this.unwrapMatchingDescendants(contents, targetTag);
+                const extractedNodes = Array.from(contents.childNodes);
+                range.insertNode(contents);
+                selectNodeSlice(extractedNodes);
+            } catch (e) {
+                console.warn('Inline format removal error:', e);
+            }
         },
 
         stripStyleProp(el, styleProp) {
@@ -853,22 +1058,54 @@
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return;
 
+            const ed = DOM.getEditor();
             const range = sel.getRangeAt(0);
-            const block = DOM.getClosestBlock(range.startContainer);
+            const block = DOM.getClosestBlock(range.startContainer, ed);
             const targetTag = tag.toUpperCase();
+            const isHeadingTarget = /^H[1-6]$/.test(targetTag);
 
-            if (block && block.id !== 'contentVisual') {
+            const stripFontSizes = (root) => {
+                if (!root) return;
+                if (root.style && root.style.fontSize) {
+                    InlineFormatter.stripStyleProp(root, 'fontSize');
+                }
+                root.querySelectorAll('span, [style]').forEach(el => {
+                    if (el.tagName === 'SPAN') {
+                        InlineFormatter.stripStyleProp(el, 'fontSize');
+                    } else if (el.style && el.style.fontSize) {
+                        el.style.fontSize = '';
+                        const rem = el.getAttribute('style');
+                        if (!rem || rem.trim() === '' || rem.trim() === ';') el.removeAttribute('style');
+                    }
+                });
+            };
+
+            if (block && block !== ed && block.id !== 'contentVisual') {
                 if (block.tagName.toUpperCase() === targetTag) {
                     // Toggle back to P
                     const p = document.createElement('p');
                     p.innerHTML = block.innerHTML;
                     block.parentNode.replaceChild(p, block);
-                    SelectionManager.setCursorToEnd(p);
+                    if (DOM.isEmpty(p)) {
+                        SelectionManager.setCursorToStart(p);
+                    } else {
+                        SelectionManager.setCursorToEnd(p);
+                    }
                 } else {
                     const newBlock = document.createElement(targetTag);
                     newBlock.innerHTML = block.innerHTML;
+                    if (isHeadingTarget) {
+                        stripFontSizes(newBlock);
+                    }
+                    if (DOM.isEmpty(newBlock) && !newBlock.querySelector('img, video, audio, iframe, hr, table')) {
+                        newBlock.innerHTML = '<br>';
+                    }
                     block.parentNode.replaceChild(newBlock, block);
-                    SelectionManager.setCursorToEnd(newBlock);
+                    if (DOM.isEmpty(newBlock)) {
+                        SelectionManager.setCursorToStart(newBlock);
+                    } else {
+                        SelectionManager.setCursorToEnd(newBlock);
+                    }
                 }
             } else {
                 const newBlock = document.createElement(targetTag);
@@ -2039,7 +2276,7 @@
 
                 // Inspect active font, size, and color
                 let fontName = 'Arial';
-                let fontSize = '14px';
+                let fontSize = '';
                 let currentColor = '';
                 let check = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
 
@@ -2048,7 +2285,7 @@
                         if (check.style && check.style.fontFamily && fontName === 'Arial') {
                             fontName = check.style.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
                         }
-                        if (check.style && check.style.fontSize && fontSize === '14px') {
+                        if (check.style && check.style.fontSize && !fontSize) {
                             fontSize = check.style.fontSize;
                         }
                         if (check.style && check.style.color && !currentColor) {
@@ -2056,6 +2293,15 @@
                         }
                     }
                     check = check.parentNode;
+                }
+
+                if (!fontSize) {
+                    if (block && /^H[1-6]$/.test(block.tagName)) {
+                        const computedPx = parseFloat(window.getComputedStyle(block).fontSize);
+                        fontSize = (!isNaN(computedPx) && computedPx > 0) ? (Math.round(computedPx) + 'px') : '14px';
+                    } else {
+                        fontSize = '14px';
+                    }
                 }
 
                 const fontBtn = document.getElementById('fontFamilyBtn');

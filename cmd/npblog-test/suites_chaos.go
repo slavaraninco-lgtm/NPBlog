@@ -630,6 +630,110 @@ func runChaosAndUISuites(tr *TestRunner, baseURL, workspaceRoot, canaryPath stri
 			}
 			return nil
 		})
+
+		s.Case("Подзаголовок сбрасывает пользовательский font-size и использует размер заголовка", func() error {
+			var hRes struct {
+				H2HTML     string  `json:"h2HTML"`
+				ComputedPx float64 `json:"computedPx"`
+				NormalPx   float64 `json:"normalPx"`
+				BtnText    string  `json:"btnText"`
+			}
+			script := `(() => {
+				const ve = document.getElementById('contentVisual');
+				ve.innerHTML = '<p>Текст для подзаголовка</p><p>Обычный абзац</p>';
+				ve.focus();
+
+				const p1 = ve.children[0];
+				const p2 = ve.children[1];
+				const r = document.createRange();
+				r.selectNodeContents(p1);
+				const sel = window.getSelection();
+				sel.removeAllRanges();
+				sel.addRange(r);
+				VisualEngine.saveSelection();
+
+				// Ставим нестандартный мелкий размер (12px), затем применяем подзаголовок H2
+				setFontSize('12');
+				formatText('h2');
+
+				const h2 = ve.children[0];
+				const computedPx = parseFloat(getComputedStyle(h2).fontSize);
+				const normalPx = parseFloat(getComputedStyle(p2).fontSize);
+				const sizeBtn = document.getElementById('fontSizeBtn');
+				return {
+					h2HTML: h2.outerHTML,
+					computedPx,
+					normalPx,
+					btnText: sizeBtn ? sizeBtn.textContent.trim() : ''
+				};
+			})()`
+			if err := cdp.Eval(script, &hRes); err != nil {
+				return err
+			}
+			if strings.Contains(hRes.H2HTML, "12px") || strings.Contains(hRes.H2HTML, "font-size") {
+				return fmt.Errorf("в H2 остался inline font-size: %s", hRes.H2HTML)
+			}
+			if hRes.ComputedPx <= hRes.NormalPx+2 {
+				return fmt.Errorf("размер H2 (%.1fpx) не больше обычного текста (%.1fpx)", hRes.ComputedPx, hRes.NormalPx)
+			}
+			return nil
+		})
+
+		s.Case("Частичное снятие форматирования (u, b, i, s, sup, sub) не сбрасывает весь фрагмент", func() error {
+			var fmtRes map[string]string
+			script := `(() => {
+				const ve = document.getElementById('contentVisual');
+				const formats = ['u', 'b', 'i', 's', 'sup', 'sub'];
+				const out = {};
+				const sel = window.getSelection();
+
+				for (const f of formats) {
+					ve.innerHTML = '<p>начало середина конец</p>';
+					ve.focus();
+					const p = ve.firstElementChild;
+
+					// Выделяем весь текст и применяем формат f
+					const rAll = document.createRange();
+					rAll.selectNodeContents(p);
+					sel.removeAllRanges();
+					sel.addRange(rAll);
+					VisualEngine.saveSelection();
+					formatText(f);
+
+					// Находим текстовый узел внутри тега и выделяем только "середина" (индексы 7..15)
+					const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null, false);
+					const tn = walker.nextNode();
+					const rMid = document.createRange();
+					rMid.setStart(tn, 7);
+					rMid.setEnd(tn, 15);
+					sel.removeAllRanges();
+					sel.addRange(rMid);
+					VisualEngine.saveSelection();
+
+					// Снимаем форматирование только у выделенного фрагмента
+					formatText(f);
+					out[f] = p.innerHTML;
+				}
+				return out;
+			})()`
+			if err := cdp.Eval(script, &fmtRes); err != nil {
+				return err
+			}
+			expectations := map[string]string{
+				"u":   "<u>начало </u>середина<u> конец</u>",
+				"b":   "<strong>начало </strong>середина<strong> конец</strong>",
+				"i":   "<em>начало </em>середина<em> конец</em>",
+				"s":   "<s>начало </s>середина<s> конец</s>",
+				"sup": "<sup>начало </sup>середина<sup> конец</sup>",
+				"sub": "<sub>начало </sub>середина<sub> конец</sub>",
+			}
+			for k, want := range expectations {
+				if got := fmtRes[k]; got != want {
+					return fmt.Errorf("[%s] ожидалось %q, получено %q", k, want, got)
+				}
+			}
+			return nil
+		})
 	})
 }
 
