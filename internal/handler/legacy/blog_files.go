@@ -48,6 +48,9 @@ func (l *LegacyHandler) HandleBlogFile(w http.ResponseWriter, r *http.Request) {
 	}
 	settings := l.cfg.GetSettings()
 	paths := append([]string{"data"}, settings.BlogPaths...)
+	if effective := l.storage.EffectiveActiveBlog(settings); effective != "" {
+		paths = append(paths, effective)
+	}
 	for _, root := range paths {
 		if !filepath.IsAbs(root) {
 			root = filepath.Join(l.cfg.BaseDir, root)

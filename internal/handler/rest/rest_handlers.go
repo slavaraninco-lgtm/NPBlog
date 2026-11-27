@@ -347,9 +347,11 @@ func (h *RestHandler) HandleSystemIntegrity(w http.ResponseWriter, r *http.Reque
 
 func (h *RestHandler) HandleListBlogs(w http.ResponseWriter, r *http.Request) {
 	settings := h.cfg.GetSettings()
+	effectiveActive := h.storage.EffectiveActiveBlog(settings)
 	h.jsonSuccess(w, http.StatusOK, "Список блогов получен", map[string]interface{}{
-		"blogs":       settings.BlogPaths,
-		"active_blog": settings.ActiveBlogPath,
+		"blogs":           settings.BlogPaths,
+		"active_blog":     effectiveActive,
+		"data_url_prefix": strings.TrimSuffix(h.storage.GetDataURL(effectiveActive, ""), "/") + "/",
 	}, nil)
 }
 
@@ -573,6 +575,9 @@ func (h *RestHandler) HandleGetEditorSettings(w http.ResponseWriter, r *http.Req
 	settings["resolved_editor_backup_path"] = filepath.Join(h.cfg.BaseDir, "data_backup")
 	settings["app_dir"] = h.cfg.BaseDir
 	settings["suggested_data_path"] = filepath.Join(h.cfg.BaseDir, "data")
+	effectiveActive := h.storage.EffectiveActiveBlog(h.cfg.GetSettings())
+	settings["active_blog_path"] = effectiveActive
+	settings["data_url_prefix"] = strings.TrimSuffix(h.storage.GetDataURL(effectiveActive, ""), "/") + "/"
 
 	h.jsonSuccess(w, http.StatusOK, "Настройки редактора получены", map[string]interface{}{
 		"settings": settings,
@@ -675,6 +680,8 @@ func (h *RestHandler) HandleUpdateEditorSettings(w http.ResponseWriter, r *http.
 		existingMap[k] = v
 	}
 
+	activeChanged, effectiveActive := h.storage.ReconcileBlogSettings(existingMap, updateMap)
+
 	if err := h.storage.SafeWriteJSON(settingsPath, existingMap); err != nil {
 		h.jsonError(w, http.StatusInternalServerError, "server_error", "Ошибка сохранения настроек", nil)
 		return
@@ -716,16 +723,23 @@ func (h *RestHandler) HandleUpdateEditorSettings(w http.ResponseWriter, r *http.
 		h.auth.ResetLockout(h.auth.GetClientIP(r), middleware.GetActiveBlogPath(r))
 		_ = h.auth.CreateSession(w, r)
 	}
+	if activeChanged {
+		http.SetCookie(w, &http.Cookie{Name: "active_blog_path", Value: "", Path: "/", MaxAge: -1})
+		h.auth.UpdateSessionActiveBlog(r, effectiveActive)
+	}
 
 	sanitizedMap := make(map[string]interface{})
 	for k, v := range existingMap {
 		sanitizedMap[k] = v
 	}
 	delete(sanitizedMap, "password_hash")
+	dataURLPrefix := strings.TrimSuffix(h.storage.GetDataURL(effectiveActive, ""), "/") + "/"
 
 	h.jsonSuccess(w, http.StatusOK, "Настройки редактора обновлены", map[string]interface{}{
-		"settings": sanitizedMap,
-		"blogUrl":  "/" + filepath.Base(h.storage.GetDataPath(h.cfg.GetSettings().ActiveBlogPath, "")) + "/blog.html",
+		"settings":         sanitizedMap,
+		"active_blog_path": effectiveActive,
+		"dataUrlPrefix":    dataURLPrefix,
+		"blogUrl":          dataURLPrefix + "blog.html",
 	}, nil)
 }
 

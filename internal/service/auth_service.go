@@ -263,7 +263,7 @@ func (a *AuthService) CreateSession(w http.ResponseWriter, r *http.Request) *Ses
 		CreatedAt:      now,
 		LastActivity:   now,
 		CSRFToken:      csrfToken,
-		ActiveBlogPath: a.cfg.GetSettings().ActiveBlogPath,
+		ActiveBlogPath: a.storage.EffectiveActiveBlog(a.cfg.GetSettings()),
 		EditorLanguage: a.cfg.GetSettings().Language,
 		IP:             clientIP,
 		UserAgent:      userAgent,
@@ -334,6 +334,26 @@ func (a *AuthService) GetSession(r *http.Request) *SessionData {
 	}
 
 	return sess
+}
+
+// UpdateSessionActiveBlog synchronizes the active blog path stored on the current session.
+func (a *AuthService) UpdateSessionActiveBlog(r *http.Request, activeBlog string) {
+	if r == nil || activeBlog == "" {
+		return
+	}
+	cookie, err := r.Cookie("npblog_session")
+	if err != nil || cookie.Value == "" {
+		return
+	}
+	a.sessionsMu.Lock()
+	sess, exists := a.sessions[cookie.Value]
+	if exists {
+		sess.ActiveBlogPath = activeBlog
+	}
+	a.sessionsMu.Unlock()
+	if exists {
+		go a.saveSessionsToDisk()
+	}
 }
 
 // DestroySession удаляет сессию

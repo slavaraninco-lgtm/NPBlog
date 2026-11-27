@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"npblog/internal/config"
+	"npblog/internal/domain"
 )
 
 type StorageService struct {
@@ -52,19 +54,115 @@ func (s *StorageService) ValidateSafePath(baseDir, relPath string) (string, erro
 	return target, nil
 }
 
+func isPlaceholderBlogPath(p string) bool {
+	trimmed := strings.TrimSpace(p)
+	return trimmed == "" || trimmed == "." || trimmed == "/CHANGE/ME" || trimmed == "CHANGE/ME"
+}
+
+// ResolveBlogAbsPath normalizes relative or absolute blog paths against BaseDir for reliable comparison.
+func (s *StorageService) ResolveBlogAbsPath(p string) string {
+	if isPlaceholderBlogPath(p) {
+		return ""
+	}
+	clean := filepath.Clean(strings.TrimSpace(p))
+	if clean == "." || strings.HasPrefix(clean, "..") {
+		return ""
+	}
+	if !filepath.IsAbs(clean) {
+		clean = filepath.Join(s.cfg.BaseDir, clean)
+	}
+	return filepath.Clean(clean)
+}
+
+// SameBlogPath compares two blog paths after resolving relative paths and platform case rules.
+func (s *StorageService) SameBlogPath(a, b string) bool {
+	absA := s.ResolveBlogAbsPath(a)
+	absB := s.ResolveBlogAbsPath(b)
+	if absA == "" || absB == "" {
+		return false
+	}
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(absA, absB)
+	}
+	return absA == absB
+}
+
+// EffectiveActiveBlog returns the active blog path, guaranteeing it belongs to BlogPaths when BlogPaths is non-empty.
+func (s *StorageService) EffectiveActiveBlog(settings domain.EditorSettings) string {
+	validPaths := make([]string, 0, len(settings.BlogPaths))
+	for _, bp := range settings.BlogPaths {
+		if !isPlaceholderBlogPath(bp) {
+			validPaths = append(validPaths, strings.TrimSpace(bp))
+		}
+	}
+	if len(validPaths) > 0 {
+		if !isPlaceholderBlogPath(settings.ActiveBlogPath) {
+			for _, bp := range validPaths {
+				if s.SameBlogPath(bp, settings.ActiveBlogPath) {
+					return settings.ActiveBlogPath
+				}
+			}
+		}
+		// Previously active blog was removed from BlogPaths; fall back to the first configured blog.
+		return validPaths[0]
+	}
+	if !isPlaceholderBlogPath(settings.ActiveBlogPath) {
+		return settings.ActiveBlogPath
+	}
+	return "data"
+}
+
+// ReconcileBlogSettings keeps active_blog_path valid inside blog_paths whenever settings are saved.
+func (s *StorageService) ReconcileBlogSettings(existingMap, updateMap map[string]interface{}) (bool, string) {
+	var validPaths []string
+	if rawList, ok := existingMap["blog_paths"].([]interface{}); ok {
+		for _, item := range rawList {
+			if str, ok := item.(string); ok && !isPlaceholderBlogPath(str) {
+				validPaths = append(validPaths, strings.TrimSpace(str))
+			}
+		}
+	} else if strList, ok := existingMap["blog_paths"].([]string); ok {
+		for _, str := range strList {
+			if !isPlaceholderBlogPath(str) {
+				validPaths = append(validPaths, strings.TrimSpace(str))
+			}
+		}
+	}
+
+	curActive, _ := existingMap["active_blog_path"].(string)
+	_, activeExplicitlyUpdated := updateMap["active_blog_path"].(string)
+	activeChanged := activeExplicitlyUpdated
+
+	if len(validPaths) > 0 {
+		matched := ""
+		if !isPlaceholderBlogPath(curActive) {
+			for _, bp := range validPaths {
+				if s.SameBlogPath(bp, curActive) {
+					matched = curActive
+					break
+				}
+			}
+		}
+		if matched == "" {
+			existingMap["active_blog_path"] = validPaths[0]
+			curActive = validPaths[0]
+			activeChanged = true
+		}
+	} else if isPlaceholderBlogPath(curActive) {
+		existingMap["active_blog_path"] = "data"
+		curActive = "data"
+	}
+
+	return activeChanged, curActive
+}
+
 // GetDataPath возвращает абсолютный путь к активному каталогу данных блога
 func (s *StorageService) GetDataPath(activeBlogPath, subpath string) string {
 	settings := s.cfg.GetSettings()
 	targetPath := activeBlogPath
 
-	if targetPath == "" || targetPath == "/CHANGE/ME" || targetPath == "CHANGE/ME" || targetPath == "." {
-		if settings.ActiveBlogPath != "" && settings.ActiveBlogPath != "/CHANGE/ME" && settings.ActiveBlogPath != "." {
-			targetPath = settings.ActiveBlogPath
-		} else if len(settings.BlogPaths) > 0 && settings.BlogPaths[0] != "/CHANGE/ME" && settings.BlogPaths[0] != "" && settings.BlogPaths[0] != "." {
-			targetPath = settings.BlogPaths[0]
-		} else {
-			targetPath = filepath.Join(s.cfg.BaseDir, "data")
-		}
+	if isPlaceholderBlogPath(targetPath) {
+		targetPath = s.EffectiveActiveBlog(settings)
 	}
 
 	cleanRel := filepath.Clean(targetPath)
@@ -79,10 +177,13 @@ func (s *StorageService) GetDataPath(activeBlogPath, subpath string) string {
 			isAllowed = true
 		}
 		for _, bp := range settings.BlogPaths {
-			if bp != "" && filepath.Clean(bp) == cleanRel {
+			if s.SameBlogPath(bp, cleanRel) {
 				isAllowed = true
 				break
 			}
+		}
+		if !isAllowed && s.SameBlogPath(settings.ActiveBlogPath, cleanRel) {
+			isAllowed = true
 		}
 		if !isAllowed {
 			targetPath = filepath.Join(s.cfg.BaseDir, "data")
@@ -108,23 +209,20 @@ func (s *StorageService) GetDataPath(activeBlogPath, subpath string) string {
 func (s *StorageService) GetDataURL(activeBlogPath, subpath string) string {
 	target := activeBlogPath
 	settings := s.cfg.GetSettings()
-	if target == "" || target == "/CHANGE/ME" || target == "CHANGE/ME" {
-		if settings.ActiveBlogPath != "" && settings.ActiveBlogPath != "/CHANGE/ME" {
-			target = settings.ActiveBlogPath
-		} else if len(settings.BlogPaths) > 0 && settings.BlogPaths[0] != "/CHANGE/ME" && settings.BlogPaths[0] != "" {
-			target = settings.BlogPaths[0]
-		} else {
-			target = "data"
-		}
+	if isPlaceholderBlogPath(target) {
+		target = s.EffectiveActiveBlog(settings)
 	}
 	if filepath.IsAbs(target) {
-		if rel, err := filepath.Rel(s.cfg.BaseDir, target); err == nil && !strings.HasPrefix(rel, "..") {
+		if rel, err := filepath.Rel(s.cfg.BaseDir, target); err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, "..") {
 			target = rel
+		} else {
+			// Для внешних путей за пределами BaseDir используем имя папки, как в HandleBlogFile
+			target = filepath.Base(filepath.Clean(target))
 		}
 	}
 	target = filepath.ToSlash(target)
 	target = strings.Trim(target, "/")
-	if target == "" {
+	if target == "" || target == "." {
 		target = "data"
 	}
 	sub := filepath.ToSlash(subpath)

@@ -7,6 +7,7 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -941,6 +942,9 @@ func (l *LegacyHandler) HandleGetEditorSettings(w http.ResponseWriter, r *http.R
 	settingsMap["resolved_editor_backup_path"] = filepath.Join(l.cfg.BaseDir, "data_backup")
 	settingsMap["app_dir"] = l.cfg.BaseDir
 	settingsMap["suggested_data_path"] = filepath.Join(l.cfg.BaseDir, "data")
+	effectiveActive := l.storage.EffectiveActiveBlog(l.cfg.GetSettings())
+	settingsMap["active_blog_path"] = effectiveActive
+	settingsMap["data_url_prefix"] = strings.TrimSuffix(l.storage.GetDataURL(effectiveActive, ""), "/") + "/"
 
 	resp := make(map[string]interface{})
 	for k, v := range settingsMap {
@@ -1048,6 +1052,8 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 		existingMap[k] = v
 	}
 
+	activeChanged, effectiveActive := l.storage.ReconcileBlogSettings(existingMap, updateMap)
+
 	if err := l.storage.SafeWriteJSON(settingsPath, existingMap); err != nil {
 		l.errorResponse(w, "Ошибка сохранения настроек")
 		return
@@ -1088,13 +1094,17 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 		l.auth.ResetLockout(l.auth.GetClientIP(r), middleware.GetActiveBlogPath(r))
 		_ = l.auth.CreateSession(w, r)
 	}
-	if _, ok := updateMap["active_blog_path"].(string); ok {
-		// Subsequent requests use the saved selection rather than a stale cookie.
+	if activeChanged {
+		// Subsequent requests use the reconciled selection rather than a stale cookie or session field.
 		http.SetCookie(w, &http.Cookie{Name: "active_blog_path", Value: "", Path: "/", MaxAge: -1})
+		l.auth.UpdateSessionActiveBlog(r, effectiveActive)
 	}
+	dataURLPrefix := strings.TrimSuffix(l.storage.GetDataURL(effectiveActive, ""), "/") + "/"
 	l.jsonResponse(w, map[string]interface{}{
-		"success": true,
-		"blogUrl": "/" + filepath.Base(l.storage.GetDataPath(l.cfg.GetSettings().ActiveBlogPath, "")) + "/blog.html",
+		"success":          true,
+		"active_blog_path": effectiveActive,
+		"dataUrlPrefix":    dataURLPrefix,
+		"blogUrl":          dataURLPrefix + "blog.html",
 	})
 }
 
@@ -1609,14 +1619,16 @@ func (l *LegacyHandler) HandleCreateBlog(w http.ResponseWriter, r *http.Request)
 
 	if body.MakeActive {
 		http.SetCookie(w, &http.Cookie{Name: "active_blog_path", Value: "", Path: "/", MaxAge: -1})
+		l.auth.UpdateSessionActiveBlog(r, folder)
 	}
 	l.jsonResponse(w, map[string]interface{}{
-		"success":     true,
-		"folder":      folder,
-		"path":        folder,
-		"title":       body.Title,
-		"make_active": body.MakeActive,
-		"blogUrl":     "/" + folder + "/blog.html",
+		"success":       true,
+		"folder":        folder,
+		"path":          folder,
+		"title":         body.Title,
+		"make_active":   body.MakeActive,
+		"dataUrlPrefix": "/" + folder + "/",
+		"blogUrl":       "/" + folder + "/blog.html",
 	})
 }
 
@@ -1838,7 +1850,9 @@ func (l *LegacyHandler) HandleGetCustomFontsCSS(w http.ResponseWriter, r *http.R
 		} else if f.Format == "otf" {
 			fontFmt = "opentype"
 		}
-		sb.WriteString(fmt.Sprintf("@font-face { font-family: '%s'; src: url('data/fonts/%s') format('%s'); font-display: swap; }\n", f.Name, f.File, fontFmt))
+		safeName := strings.ReplaceAll(f.Name, "'", "\\'")
+		fontURL := l.storage.GetDataURL(activeBlog, "fonts/"+url.PathEscape(f.File))
+		sb.WriteString(fmt.Sprintf("@font-face { font-family: '%s'; src: url('%s') format('%s'); font-display: swap; }\n", safeName, fontURL, fontFmt))
 	}
 
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")

@@ -214,10 +214,13 @@ function getTemplatePreviewHtml(templateCode, isThumbnail = false) {
     }
 
     // Inject base tag and head styles/scripts
+    const baseBlogHref = (typeof DATA_URL_PREFIX === 'string' && DATA_URL_PREFIX
+        ? DATA_URL_PREFIX.replace(/^\/+/, '')
+        : 'data/') + 'blog/';
     if (!preview.includes('<base ') && preview.includes('<head>')) {
-        preview = preview.replace('<head>', '<head>\n    <base href="data/blog/">' + headInject);
+        preview = preview.replace('<head>', `<head>\n    <base href="${baseBlogHref}">` + headInject);
     } else if (!preview.includes('<base ')) {
-        preview = '<base href="data/blog/">' + headInject + preview;
+        preview = `<base href="${baseBlogHref}">` + headInject + preview;
     } else if (preview.includes('</head>')) {
         preview = preview.replace('</head>', headInject + '\n</head>');
     } else {

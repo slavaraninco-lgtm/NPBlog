@@ -3640,6 +3640,17 @@ button:hover {
     box-sizing: border-box;
 }
 
+/* Меню выбора размера шрифта подстраивается под высоту содержимого без прокрутки */
+.font-size-popover,
+.font-size-popover-inner {
+    height: auto;
+    max-height: none;
+}
+
+.font-size-popover-inner {
+    overflow: visible;
+}
+
 .font-size-popover-inner::-webkit-scrollbar,
 .font-family-popover-inner::-webkit-scrollbar {
     width: 5px;
@@ -3912,6 +3923,94 @@ button:hover {
 [data-theme="dark"][data-amoled="true"] .font-family-custom button:hover,
 [data-theme="dark"][data-amoled="true"] .font-family-custom button:focus-visible {
     background: rgba(255, 255, 255, 0.14);
+}
+
+/* Карточки пользовательских шрифтов в модальном окне (изолированы от .font-family-item с opacity: 0) */
+#customFontsList .custom-font-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--modal-radius-inner, 8px);
+    border: 1px solid var(--modal-border, var(--border-color));
+    background: var(--modal-input-bg, rgba(128, 128, 128, 0.06));
+    color: var(--modal-text, var(--text-color));
+    font-size: 16px;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+    opacity: 1;
+    transform: none;
+    transition: all var(--anim-dur-fast) var(--anim-ease-out);
+}
+
+#customFontsList .custom-font-item:hover,
+#customFontsList .custom-font-item:focus-visible {
+    border-color: var(--modal-color-primary, var(--primary-color));
+    background: rgba(128, 128, 128, 0.12);
+    outline: none;
+}
+
+#customFontsList .custom-font-item:active {
+    transform: scale(0.99);
+}
+
+[data-theme="dark"] #customFontsList .custom-font-item {
+    background: var(--modal-input-bg, rgba(255, 255, 255, 0.06));
+    border-color: var(--modal-border, rgba(255, 255, 255, 0.14));
+    color: var(--modal-text, #f5f5f5);
+}
+
+[data-theme="dark"] #customFontsList .custom-font-item:hover,
+[data-theme="dark"] #customFontsList .custom-font-item:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--modal-color-primary, var(--primary-color));
+}
+
+[data-theme="dark"][data-amoled="true"] #customFontsList .custom-font-item {
+    background: #0c0c0e;
+    border-color: #262626;
+    color: #ffffff;
+}
+
+[data-theme="dark"][data-amoled="true"] #customFontsList .custom-font-item:hover,
+[data-theme="dark"][data-amoled="true"] #customFontsList .custom-font-item:focus-visible {
+    background: #161619;
+    border-color: var(--modal-color-primary, #ffffff);
+}
+
+#customFontsList .custom-font-name {
+    color: inherit;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#customFontsList .custom-font-badge {
+    flex-shrink: 0;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--modal-text-muted, var(--text-color));
+    background: rgba(128, 128, 128, 0.14);
+    border: 1px solid var(--modal-border-subtle, transparent);
+}
+
+[data-theme="dark"] #customFontsList .custom-font-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--modal-text-muted, #c8c8d0);
+}
+
+[data-theme="dark"][data-amoled="true"] #customFontsList .custom-font-badge {
+    background: #1a1a1d;
+    border-color: #2c2c30;
+    color: #b4b4bc;
 }
 
 .font-family-custom button:active {

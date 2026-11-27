@@ -5,8 +5,8 @@ function loadEditorCustomFonts() {
 
     fetchFonts
         .then(data => {
-            if (data.success && data.fonts.length > 0) {
-                let styleTag = document.getElementById('editorCustomFontsStyles');
+            let styleTag = document.getElementById('editorCustomFontsStyles');
+            if (data.success && Array.isArray(data.fonts) && data.fonts.length > 0) {
                 if (!styleTag) {
                     styleTag = document.createElement('style');
                     styleTag.id = 'editorCustomFontsStyles';
@@ -21,17 +21,20 @@ function loadEditorCustomFonts() {
                     else if (font.format === 'woff2') format = 'woff2';
                     else if (font.format === 'otf') format = 'opentype';
 
+                    const safeFontName = String(font.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     const fontUrl = (typeof DATA_URL_PREFIX === 'string' ? DATA_URL_PREFIX : '/data/') +
                         'fonts/' + encodeURIComponent(font.file);
                     fontFaceRules += `
                             @font-face {
-                                font-family: '${font.name}';
+                                font-family: '${safeFontName}';
                                 src: url('${fontUrl}') format('${format}');
                             }
                         `;
                 });
 
                 styleTag.textContent = fontFaceRules;
+            } else if (styleTag) {
+                styleTag.textContent = '';
             }
         })
         .catch(error => {

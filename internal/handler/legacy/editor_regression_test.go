@@ -3,11 +3,16 @@ package legacy_test
 import (
 	"encoding/json"
 	"golang.org/x/crypto/bcrypt"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"npblog/internal/config"
+	"npblog/internal/middleware"
+	"npblog/internal/service"
 )
 
 func TestPasswordSettingsHashAndVerify(t *testing.T) {
@@ -111,4 +116,96 @@ func TestEnablingRSSGeneratesFeedImmediately(t *testing.T) {
 	if !strings.Contains(string(feed), "Существующая статья") || !strings.Contains(string(feed), "RSS после включения") {
 		t.Fatalf("Generated feed does not contain existing post or new settings: %s", string(feed))
 	}
+}
+
+func TestMultiBlogPathReconciliationAndCustomFonts(t *testing.T) {
+	h, root := setupTestHandler(t)
+	t.Cleanup(func() { os.RemoveAll(root) })
+
+	// Create custom font in primary blog (data) and another font in secondary blog (data_alt)
+	dataFontsDir := filepath.Join(root, "data", "fonts")
+	altFontsDir := filepath.Join(root, "data_alt", "fonts")
+	if err := os.MkdirAll(dataFontsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(altFontsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataFontsDir, "MainFont.ttf"), []byte("ttf"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(altFontsDir, "AltFont.woff2"), []byte("woff2"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate orphaned active_blog_path pointing to removed "data2" while blog_paths only keeps abs "data"
+	absData := filepath.Join(root, "data")
+	absData2 := filepath.Join(root, "data2")
+	orphaned := map[string]interface{}{
+		"blog_paths":       []string{absData},
+		"active_blog_path": absData2,
+	}
+	rawOrphaned, _ := json.Marshal(orphaned)
+	if err := os.WriteFile(filepath.Join(root, "editor_settings.json"), rawOrphaned, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.AppConfig{BaseDir: root, AssetsDir: root}
+	cfg.ReloadSettings()
+	storage := service.NewStorageService(cfg)
+	auth := service.NewAuthService(cfg, storage)
+	mw := middleware.NewMiddlewareManager(cfg, auth, storage)
+
+	// 1. Even with stale cookie pointing to removed data2, BlogContext must resolve to effective active blog (data)
+	req := httptest.NewRequest(http.MethodGet, "/get_custom_fonts.php", nil)
+	req.AddCookie(&http.Cookie{Name: "active_blog_path", Value: absData2})
+	rec := httptest.NewRecorder()
+	mw.BlogContext(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.HandleGetCustomFonts(w, r)
+	})).ServeHTTP(rec, req)
+
+	var fontsResp struct {
+		Success bool `json:"success"`
+		Fonts   []struct {
+			Name string `json:"name"`
+		} `json:"fonts"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &fontsResp); err != nil {
+		t.Fatal(err)
+	}
+	if !fontsResp.Success || len(fontsResp.Fonts) != 1 || fontsResp.Fonts[0].Name != "MainFont" {
+		t.Fatalf("expected MainFont from data after orphaned active_blog_path fallback, got: %s", rec.Body.String())
+	}
+
+	// 2. Saving blog_paths via HandleSaveEditorSettings reconciles orphaned active_blog_path to blog_paths[0]
+	saveReq := httptest.NewRequest(http.MethodPost, "/save_editor_settings.php", strings.NewReader(`{"blog_paths":[`+jsonQuote(absData)+`,"data_alt"]}`))
+	saveRec := httptest.NewRecorder()
+	h.HandleSaveEditorSettings(saveRec, saveReq)
+
+	var saveResp map[string]interface{}
+	if err := json.Unmarshal(saveRec.Body.Bytes(), &saveResp); err != nil {
+		t.Fatal(err)
+	}
+	if saveResp["success"] != true || !storage.SameBlogPath(saveResp["active_blog_path"].(string), absData) {
+		t.Fatalf("expected active_blog_path reconciled to %s, got: %s", absData, saveRec.Body.String())
+	}
+
+	// 3. Relative header "data_alt" matches and HandleGetCustomFontsCSS generates /data_alt/fonts/... URL (not hardcoded data/)
+	cfg.ReloadSettings()
+	cssReq := httptest.NewRequest(http.MethodGet, "/get_custom_fonts_css.php", nil)
+	cssReq.Header.Set("X-Blog-Path", "data_alt")
+	cssRec := httptest.NewRecorder()
+	mw.BlogContext(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.HandleGetCustomFontsCSS(w, r)
+	})).ServeHTTP(cssRec, cssReq)
+
+	cssBody := cssRec.Body.String()
+	if !strings.Contains(cssBody, "AltFont") || !strings.Contains(cssBody, "/data_alt/fonts/AltFont.woff2") {
+		t.Fatalf("expected /data_alt/fonts/AltFont.woff2 in custom fonts CSS, got: %s", cssBody)
+	}
+}
+
+func jsonQuote(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }

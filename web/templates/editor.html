@@ -18,7 +18,8 @@
             document.documentElement.setAttribute('data-theme', 'custom');
         }
         if(/Android/i.test(navigator.userAgent)) document.documentElement.classList.add('is-android');
-        const DATA_URL_PREFIX = '{{DATA_URL_PREFIX}}';
+        let DATA_URL_PREFIX = '{{DATA_URL_PREFIX}}';
+        window.DATA_URL_PREFIX = DATA_URL_PREFIX;
         window.isDevBuild = {{IS_DEV_BUILD}};
 
         // Глобальный безопасный экранировщик HTML для защиты от XSS
@@ -169,7 +170,7 @@
             };
         })();
     </script>
-    <link rel="stylesheet" href="editor-style.css?v=1795712000">
+    <link rel="stylesheet" href="editor-style.css?v=1795820000">
     <link rel="stylesheet" href="assets/katex/katex.min.css?v=499162500">
     <script src="assets/katex/katex.min.js?v=499162500"></script>
     <link rel="stylesheet" href="assets/mathlive/mathlive-static.css?v=499162500">
@@ -1144,7 +1145,7 @@ window.addEventListener('load', function() {
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openAutosaveManager()" data-i18n="header.menu_autosave_manager">Менеджер автосохранений</button>
                     <button type="button" class="editor-menu-item" id="theme-toggle" role="menuitem" onclick="openThemeManager()" data-i18n="header.menu_theme_manager">Изменить тему</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openFtpModal()" data-i18n="header.menu_ftp_publish">Опубликовать по FTP</button>
-                    <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='/data/blog.html'" data-i18n="header.menu_go_to_blog">Перейти к Blog.html</button>
+                    <button type="button" class="editor-menu-item" id="goToBlogBtn" role="menuitem" onclick="window.location.href='{{DATA_URL_PREFIX}}blog.html'" data-i18n="header.menu_go_to_blog">Перейти к Blog.html</button>
                     <button type="button" class="editor-menu-item" role="menuitem" onclick="openSystemUpdateModal()" data-i18n="header.menu_update_npblog">Обновить NPBlog</button>
                     <button type="button" class="editor-menu-item editor-menu-item-lock" id="lockEditorBtn" role="menuitem" onclick="lockEditor()" style="display: {{LOCK_BTN_DISPLAY}};" data-i18n="header.menu_lock">Заблокировать</button>
                     <div class="editor-menu-version">ver dev</div>
@@ -1275,10 +1276,10 @@ window.addEventListener('load', function() {
             </div>
             <div class="modal-header-actions">
                 <button type="button" class="modal-btn modal-btn-secondary" onclick="showTemplateInstructions()" style="font-size: 13px;" data-i18n="modals.tpl_guide_btn">
-                    ℹ️ Инструкция
+                    Инструкция
                 </button>
                 <button type="button" class="modal-btn modal-btn-primary" onclick="triggerTemplateUpload()" style="font-size: 13px;" data-i18n="modals.tpl_upload_btn">
-                    📥 Загрузить шаблон
+                    Загрузить шаблон
                 </button>
                 <input type="file" id="templateFileInput" accept=".html,.htm,.zip" multiple style="display: none;" onchange="handleTemplateUpload(this)">
                 <button type="button" class="modal-close-btn" onclick="closeTemplateManager()" data-modal-close data-i18n-title="common.close" title="Закрыть">×</button>
@@ -4126,7 +4127,7 @@ window.addEventListener('load', function() {
 <script src="editorjs/tables.js?v=1788448476"></script>
 <script src="editorjs/media.js?v=1792791200"></script>
 <script src="editorjs/network.js?v=1792265012"></script>
-<script src="editorjs/ui.js?v=1792791200"></script>
+<script src="editorjs/ui.js?v=1795813000"></script>
 <script src="editorjs/integrity.js?v=1788254967"></script>
 <script src="editorjs/backups.js?v=1795712000"></script>
 <script src="editorjs/includes.js?v=1791637702"></script>
@@ -4135,7 +4136,7 @@ window.addEventListener('load', function() {
 <script src="editorjs/ascii-drawer.js?v=1788254967"></script>
 <script src="editorjs/smooth-typing.js?v=1792335627"></script>
 <script src="editorjs/markdown.js?v=1789428596"></script>
-<script src="editorjs/templates.js?v=1792791202"></script>
+<script src="editorjs/templates.js?v=1795813000"></script>
 <script src="editorjs/smiles.js?v=1788254967"></script>
 <script src="editorjs/custom-button.js?v=1788254967"></script>
 <script src="editorjs/formula.js?v=1790341498"></script>
@@ -10464,6 +10465,9 @@ function loadAndApplyAllSettings() {
                 }
                 window.allBlogPaths = blogPaths;
                 window.currentActiveBlogPath = settings.active_blog_path || blogPaths[0];
+                if (typeof syncDataUrlPrefix === 'function') {
+                    syncDataUrlPrefix(settings.data_url_prefix, window.currentActiveBlogPath);
+                }
                 window.serverAppDir = settings.app_dir || '';
                 window.suggestedServerDataPath = settings.suggested_data_path || '';
                 
@@ -10644,6 +10648,12 @@ function autoFixBlogPath() {
                 alert('Путь к блогу успешно настроен: ' + suggested);
             }
             closeBlogPathWarningModal();
+            if (typeof refreshActiveBlogContext === 'function') {
+                refreshActiveBlogContext(data, suggested);
+            }
+            if (typeof loadAndApplyAllSettings === 'function') {
+                loadAndApplyAllSettings();
+            }
             if (typeof loadAppearanceSettings === 'function') {
                 loadAppearanceSettings();
             }
@@ -11311,6 +11321,9 @@ function savePathsSettings() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+            if (typeof refreshActiveBlogContext === 'function') {
+                refreshActiveBlogContext(data, data.active_blog_path);
+            }
             loadAndApplyAllSettings();
             showAlert(window.t ? window.t('notifications.paths_saved', 'Настройки путей сохранены!') : 'Настройки путей сохранены!');
         } else {
@@ -11471,16 +11484,7 @@ function submitCreateBlog() {
             
             // Если выбран режим сделать активным
             if (data.make_active) {
-                window.currentActiveBlogPath = data.path;
-                if (typeof loadPosts === 'function') {
-                    loadPosts();
-                }
-                if (data.blogUrl) {
-                    const goToBlogBtn = document.getElementById('goToBlogBtn');
-                    if (goToBlogBtn) {
-                        goToBlogBtn.onclick = function() { window.location.href = data.blogUrl; };
-                    }
-                }
+                refreshActiveBlogContext(data, data.path);
             }
         } else {
             showAlert(window.t ? window.t('notifications.blog_create_error_param', 'Ошибка при создании блога: ' + data.error, { error: data.error }) : 'Ошибка при создании блога: ' + data.error);
@@ -11547,6 +11551,75 @@ function updateBlogSelectorUI(paths, activePath) {
     }
 }
 
+/**
+ * Синхронизирует глобальный URL-префикс активного блога и кнопку перехода к blog.html.
+ *
+ * @param {string} [explicitPrefix] Префикс от сервера (например, "/data/")
+ * @param {string} [blogPath] Путь к активному блогу на диске
+ */
+function syncDataUrlPrefix(explicitPrefix, blogPath) {
+    let prefix = explicitPrefix;
+    if (!prefix && blogPath) {
+        const clean = String(blogPath).replace(/\\/g, '/').replace(/\/+$/, '');
+        const parts = clean.split('/');
+        const folder = parts[parts.length - 1] || 'data';
+        prefix = '/' + folder + '/';
+    }
+    if (prefix) {
+        if (!prefix.startsWith('/')) prefix = '/' + prefix;
+        if (!prefix.endsWith('/')) prefix += '/';
+        DATA_URL_PREFIX = prefix;
+        window.DATA_URL_PREFIX = prefix;
+    }
+    const goToBlogBtn = document.getElementById('goToBlogBtn');
+    if (goToBlogBtn) {
+        const targetUrl = (DATA_URL_PREFIX || '/data/') + 'blog.html';
+        goToBlogBtn.onclick = function() { window.location.href = targetUrl; };
+    }
+}
+
+/**
+ * Обновляет состояние редактора (префиксы, статьи, шрифты, настройки вида и фон)
+ * после переключения, создания или изменения активного блога.
+ *
+ * @param {Object} [responseData] Ответ сервера
+ * @param {string} [fallbackBlogPath] Путь к активному блогу
+ */
+function refreshActiveBlogContext(responseData, fallbackBlogPath) {
+    const resolvedPath = (responseData && responseData.active_blog_path) || fallbackBlogPath || window.currentActiveBlogPath;
+    if (resolvedPath) {
+        window.currentActiveBlogPath = resolvedPath;
+    }
+    const prefixFromResp = responseData && (responseData.dataUrlPrefix || responseData.data_url_prefix);
+    syncDataUrlPrefix(prefixFromResp, window.currentActiveBlogPath);
+
+    if (responseData && responseData.blogUrl) {
+        const goToBlogBtn = document.getElementById('goToBlogBtn');
+        if (goToBlogBtn) {
+            goToBlogBtn.onclick = function() { window.location.href = responseData.blogUrl; };
+        }
+    }
+    if (typeof loadPosts === 'function') {
+        loadPosts();
+    }
+    if (typeof loadEditorCustomFonts === 'function') {
+        loadEditorCustomFonts();
+    }
+    const fontsModal = document.getElementById('customFontsModal');
+    if (fontsModal && (fontsModal.classList.contains('is-active') || fontsModal.style.display === 'flex')) {
+        if (typeof loadCustomFonts === 'function') loadCustomFonts();
+    }
+    if (typeof loadBlogViewSettings === 'function') {
+        loadBlogViewSettings();
+    }
+    if (typeof loadGlobalBackground === 'function') {
+        loadGlobalBackground();
+    }
+    if (typeof checkCrossBlogNavStatus === 'function') {
+        checkCrossBlogNavStatus();
+    }
+}
+
 function selectActiveBlog(selectedPath) {
     fetch('save_editor_settings.php', {
         method: 'POST',
@@ -11556,20 +11629,12 @@ function selectActiveBlog(selectedPath) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            window.currentActiveBlogPath = selectedPath;
-            const folderName = getBlogFolderName(selectedPath, window.allBlogPaths);
+            const effectivePath = data.active_blog_path || selectedPath;
+            const folderName = getBlogFolderName(effectivePath, window.allBlogPaths);
             if (typeof showNotification === 'function') {
                 showNotification(window.t ? window.t('notifications.blog_selected_param', 'Выбран блог: ' + folderName, { name: folderName }) : 'Выбран блог: ' + folderName, 'info');
             }
-            if (typeof loadPosts === 'function') {
-                loadPosts();
-            }
-            if (data.blogUrl) {
-                const goToBlogBtn = document.getElementById('goToBlogBtn');
-                if (goToBlogBtn) {
-                    goToBlogBtn.onclick = function() { window.location.href = data.blogUrl; };
-                }
-            }
+            refreshActiveBlogContext(data, effectivePath);
         } else {
             showAlert(window.t ? window.t('notifications.blog_select_error_param', 'Ошибка при выборе блога: ' + data.error, { error: data.error }) : 'Ошибка при выборе блога: ' + data.error);
         }
@@ -11984,76 +12049,63 @@ function loadCustomFonts() {
             const fontsList = document.getElementById('customFontsList');
             const fontsEmpty = document.getElementById('customFontsEmpty');
             if (!fontsList || !fontsEmpty) return;
-            
-            if (data.success && data.fonts && data.fonts.length > 0) {
+
+            let styleTag = document.getElementById('customFontsStyles');
+            if (data.success && Array.isArray(data.fonts) && data.fonts.length > 0) {
                 fontsList.innerHTML = '';
                 fontsEmpty.style.display = 'none';
                 fontsList.style.display = 'grid';
-                
+
                 // Создаём @font-face правила для каждого шрифта
-                let styleTag = document.getElementById('customFontsStyles');
                 if (!styleTag) {
                     styleTag = document.createElement('style');
                     styleTag.id = 'customFontsStyles';
                     document.head.appendChild(styleTag);
                 }
-                
+
                 let fontFaceRules = '';
-                
+
                 data.fonts.forEach(font => {
                     let format = 'truetype';
                     if (font.format === 'woff') format = 'woff';
                     else if (font.format === 'woff2') format = 'woff2';
                     else if (font.format === 'otf') format = 'opentype';
-                    
+
+                    const safeFontName = String(font.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     const fontUrl = DATA_URL_PREFIX + 'fonts/' + encodeURIComponent(font.file);
                     fontFaceRules += `
                         @font-face {
-                            font-family: '${font.name}';
+                            font-family: '${safeFontName}';
                             src: url('${fontUrl}') format('${format}');
                         }
                     `;
-                    
+
                     const fontBtn = document.createElement('button');
                     fontBtn.type = 'button';
-                    fontBtn.className = 'font-family-item modal-section-card';
-                    fontBtn.style.fontFamily = `'${font.name}', sans-serif`;
-                    fontBtn.style.padding = '12px 16px';
-                    fontBtn.style.fontSize = '16px';
-                    fontBtn.style.cursor = 'pointer';
-                    fontBtn.style.textAlign = 'left';
-                    fontBtn.style.width = '100%';
-                    fontBtn.style.display = 'flex';
-                    fontBtn.style.justifyContent = 'space-between';
-                    fontBtn.style.alignItems = 'center';
-                    fontBtn.style.borderRadius = '8px';
-                    fontBtn.style.border = '1px solid var(--border-color)';
-                    fontBtn.style.background = 'var(--bg-card, rgba(0,0,0,0.03))';
-                    fontBtn.style.color = 'var(--text-color)';
-                    
+                    fontBtn.className = 'custom-font-item modal-section-card';
+                    fontBtn.style.fontFamily = `'${safeFontName}', sans-serif`;
+
                     const nameSpan = document.createElement('span');
+                    nameSpan.className = 'custom-font-name';
                     nameSpan.textContent = font.name;
-                    
+
                     const tagSpan = document.createElement('span');
+                    tagSpan.className = 'custom-font-badge';
                     tagSpan.textContent = (font.format || 'ttf').toUpperCase();
-                    tagSpan.style.fontSize = '11px';
-                    tagSpan.style.opacity = '0.6';
-                    tagSpan.style.fontFamily = 'sans-serif';
-                    tagSpan.style.padding = '2px 6px';
-                    tagSpan.style.borderRadius = '4px';
-                    tagSpan.style.background = 'rgba(0,0,0,0.08)';
-                    
+
                     fontBtn.appendChild(nameSpan);
                     fontBtn.appendChild(tagSpan);
                     fontBtn.onclick = () => applyCustomFont(font.name);
-                    
+
                     fontsList.appendChild(fontBtn);
                 });
                 
                 styleTag.textContent = fontFaceRules;
             } else {
+                fontsList.innerHTML = '';
                 fontsList.style.display = 'none';
                 fontsEmpty.style.display = 'block';
+                if (styleTag) styleTag.textContent = '';
             }
         })
         .catch(error => {

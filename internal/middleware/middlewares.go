@@ -131,33 +131,27 @@ func (m *MiddlewareManager) BlogContext(next http.Handler) http.Handler {
 			activeBlog = queryBlog
 		}
 
-		// Security: Валидация activeBlog против белого списка BlogPaths
+		// Security: Валидация activeBlog против белого списка BlogPaths (с учётом относительных путей и регистра)
 		settings := m.cfg.GetSettings()
-		cleanBlog := filepath.Clean(strings.TrimSpace(activeBlog))
+		cleanBlog := strings.TrimSpace(activeBlog)
 		isAllowed := false
 
-		if cleanBlog != "" && cleanBlog != "." && !strings.HasPrefix(cleanBlog, "..") {
+		if cleanBlog != "" {
 			for _, bp := range settings.BlogPaths {
-				if filepath.Clean(bp) == cleanBlog {
+				if m.storage.SameBlogPath(bp, cleanBlog) {
 					isAllowed = true
 					break
 				}
 			}
-			if !isAllowed && settings.ActiveBlogPath != "" && filepath.Clean(settings.ActiveBlogPath) == cleanBlog {
+			if !isAllowed && len(settings.BlogPaths) == 0 && settings.ActiveBlogPath != "" && m.storage.SameBlogPath(settings.ActiveBlogPath, cleanBlog) {
 				isAllowed = true
 			}
 		}
 
 		if isAllowed {
-			activeBlog = cleanBlog
+			activeBlog = filepath.Clean(cleanBlog)
 		} else {
-			activeBlog = settings.ActiveBlogPath
-			if activeBlog == "" && len(settings.BlogPaths) > 0 {
-				activeBlog = settings.BlogPaths[0]
-			}
-			if activeBlog == "" {
-				activeBlog = "data"
-			}
+			activeBlog = m.storage.EffectiveActiveBlog(settings)
 		}
 
 		ctx := context.WithValue(r.Context(), BlogContextKey, activeBlog)
