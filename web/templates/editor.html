@@ -169,7 +169,7 @@
             };
         })();
     </script>
-    <link rel="stylesheet" href="editor-style.css?v=1795711700">
+    <link rel="stylesheet" href="editor-style.css?v=1795712000">
     <link rel="stylesheet" href="assets/katex/katex.min.css?v=499162500">
     <script src="assets/katex/katex.min.js?v=499162500"></script>
     <link rel="stylesheet" href="assets/mathlive/mathlive-static.css?v=499162500">
@@ -850,7 +850,13 @@ window.addEventListener('load', function() {
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                
+                <div class="modal-icon" aria-hidden="true">
+                    <svg class="stroke-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 8v13H3V8"></path>
+                        <path d="M1 3h22v5H1z"></path>
+                        <path d="M10 12h4"></path>
+                    </svg>
+                </div>
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.backup_manager_title">Менеджер бэкапов</h3>
                     <p class="modal-subtitle" data-i18n="modals.backup_manager_subtitle">История версий и резервные копии статей блога</p>
@@ -861,10 +867,32 @@ window.addEventListener('load', function() {
             </div>
         </div>
 
+        <!-- Панель поиска и управления -->
+        <div id="backupManagerToolbar" class="manager-toolbar" style="display: none;">
+            <div class="manager-search-box">
+                <svg class="manager-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="backupSearchInput" class="manager-search-input" data-i18n-placeholder="modals.manager_search_ph" placeholder="Поиск по названию..." autocomplete="off">
+                <button type="button" id="backupSearchClear" class="manager-search-clear" style="display: none;" data-i18n-title="modals.manager_clear_search" title="Сбросить поиск" aria-label="Сбросить поиск">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="manager-toolbar-actions">
+                <span id="backupManagerStats" class="manager-stats-pill"></span>
+                <button type="button" id="backupToggleAllBtn" class="modal-btn modal-btn-secondary manager-toggle-all-btn" data-i18n="modals.manager_expand_all">Развернуть все</button>
+            </div>
+        </div>
+
         <!-- Содержимое со списком бэкапов -->
-        <div class="modal-body" id="backupManagerContent" style="padding: 20px; overflow-y: auto; flex: 1;">
-            <div style="text-align: center; opacity: 0.6; padding: 20px; color: var(--text-color);">
-                <span data-i18n="modals.loading">Загрузка...</span>
+        <div class="modal-body manager-modal-body" id="backupManagerContent">
+            <div class="manager-state-box">
+                <div class="manager-spinner" aria-hidden="true"></div>
+                <p class="manager-state-title" data-i18n="modals.loading">Загрузка...</p>
             </div>
         </div>
 
@@ -4100,7 +4128,7 @@ window.addEventListener('load', function() {
 <script src="editorjs/network.js?v=1792265012"></script>
 <script src="editorjs/ui.js?v=1792791200"></script>
 <script src="editorjs/integrity.js?v=1788254967"></script>
-<script src="editorjs/backups.js?v=1788795400"></script>
+<script src="editorjs/backups.js?v=1795712000"></script>
 <script src="editorjs/includes.js?v=1791637702"></script>
 <script src="editorjs/tour.js?v=1791582022"></script>
 <script src="editorjs/file-upload.js?v=1788821164"></script>
@@ -5285,7 +5313,13 @@ window.addEventListener('load', function() {
         <!-- Шапка окна -->
         <div class="modal-header">
             <div class="modal-header-start">
-                
+                <div class="modal-icon" aria-hidden="true">
+                    <svg class="stroke-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                        <path d="M12 7v5l3 2"></path>
+                    </svg>
+                </div>
                 <div class="modal-titles">
                     <h3 class="modal-title" data-i18n="modals.as_title">Менеджер автосохранений</h3>
                     <p class="modal-subtitle" data-i18n="modals.as_subtitle">Автоматические снимки и черновики статей</p>
@@ -5296,14 +5330,56 @@ window.addEventListener('load', function() {
             </div>
         </div>
 
+        <!-- Панель поиска и управления -->
+        <div id="autosaveManagerToolbar" class="manager-toolbar" style="display: none;">
+            <div class="manager-search-box">
+                <svg class="manager-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="autosaveSearchInput" class="manager-search-input" data-i18n-placeholder="modals.manager_search_ph" placeholder="Поиск по названию..." autocomplete="off">
+                <button type="button" id="autosaveSearchClear" class="manager-search-clear" style="display: none;" data-i18n-title="modals.manager_clear_search" title="Сбросить поиск" aria-label="Сбросить поиск">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="manager-toolbar-actions">
+                <span id="autosaveManagerStats" class="manager-stats-pill"></span>
+                <button type="button" id="autosaveToggleAllBtn" class="modal-btn modal-btn-secondary manager-toggle-all-btn" data-i18n="modals.manager_expand_all">Развернуть все</button>
+            </div>
+        </div>
+
         <!-- Список автосохранений -->
-        <div class="modal-body" style="padding: 20px; overflow-y: auto; flex: 1;">
-            <div id="autosavesList" style="display: grid; gap: 12px;">
+        <div class="modal-body manager-modal-body">
+            <div id="autosavesLoading" class="manager-state-box" style="display: none;">
+                <div class="manager-spinner" aria-hidden="true"></div>
+                <p class="manager-state-title" data-i18n="modals.loading">Загрузка...</p>
+            </div>
+            <div id="autosavesList" class="manager-groups-list">
                 <!-- Список автосохранений загружается динамически -->
             </div>
-            <div id="autosavesEmpty" style="display: none; text-align: center; padding: 40px; color: var(--text-color); opacity: 0.6;">
-                <p data-i18n="modals.as_empty_title" style="font-weight: 600; font-size: 15px; margin-bottom: 6px;">Нет автосохранений</p>
-                <p style="font-size: 13px; margin: 0; opacity: 0.8;" data-i18n="modals.as_empty_hint">Автосохранения появятся здесь после включения функции автосохранения</p>
+            <div id="autosavesSearchEmpty" class="manager-state-box" style="display: none;">
+                <div class="manager-state-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </div>
+                <p class="manager-state-title" data-i18n="modals.manager_nothing_found">Ничего не найдено</p>
+                <p class="manager-state-hint" data-i18n="modals.manager_nothing_found_hint">Попробуйте изменить поисковый запрос</p>
+            </div>
+            <div id="autosavesEmpty" class="manager-state-box" style="display: none;">
+                <div class="manager-state-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                        <path d="M12 7v5l3 2"></path>
+                    </svg>
+                </div>
+                <p class="manager-state-title" data-i18n="modals.as_empty_title">Нет автосохранений</p>
+                <p class="manager-state-hint" data-i18n="modals.as_empty_hint">Автосохранения появятся здесь после включения функции автосохранения</p>
             </div>
         </div>
 
@@ -9715,93 +9791,191 @@ function closeAutosaveManager() {
 }
 
 function loadAutosavesList() {
+    const ui = window.NPBlogManagerUI;
+    const listDiv = document.getElementById('autosavesList');
+    const emptyDiv = document.getElementById('autosavesEmpty');
+    const loadingDiv = document.getElementById('autosavesLoading');
+    const searchEmptyDiv = document.getElementById('autosavesSearchEmpty');
+
+    if (loadingDiv) loadingDiv.style.display = 'flex';
+    if (listDiv) {
+        listDiv.innerHTML = '';
+        listDiv.style.display = 'none';
+    }
+    if (emptyDiv) emptyDiv.style.display = 'none';
+    if (searchEmptyDiv) searchEmptyDiv.style.display = 'none';
+    if (ui) {
+        ui.initToolbar({
+            toolbarId: 'autosaveManagerToolbar',
+            visible: false
+        });
+    }
+
     const listPromise = window.api
         ? window.api.autosaves.list()
         : fetch('get_all_autosaves.php').then(response => response.json()).then(data => (data && data.autosaves) ? data.autosaves : []);
 
     listPromise
         .then(autosaves => {
-            const listDiv = document.getElementById('autosavesList');
-            const emptyDiv = document.getElementById('autosavesEmpty');
-            
+            if (loadingDiv) loadingDiv.style.display = 'none';
+
             if (autosaves && autosaves.length > 0) {
                 listDiv.innerHTML = '';
-                listDiv.style.display = 'block';
+                listDiv.style.display = 'flex';
                 emptyDiv.style.display = 'none';
-                
-                const untitledText = window.t ? window.t('common.untitled', 'Без названия') : 'Без названия';
-                const autosaveLabel = window.t ? window.t('modals.autosave_item_label', 'Автосохранение') : 'Автосохранение';
-                const loadText = window.t ? window.t('common.load', 'Загрузить') : 'Загрузить';
-                const deleteText = window.t ? window.t('common.delete', 'Удалить') : 'Удалить';
 
-                const groupedAutosaves = {};
+                const untitledText = ui.t('common.untitled', 'Без названия');
+                const autosaveLabel = ui.t('modals.autosave_item_label', 'Автосохранение');
+                const loadText = ui.t('common.load', 'Загрузить');
+                const deleteText = ui.t('common.delete', 'Удалить');
+                const latestBadgeText = ui.t('modals.manager_latest_badge', 'Последний');
+                const emptyPreviewText = ui.t('modals.manager_empty_preview', 'Пустой снимок');
+
+                const groupedMap = new Map();
                 autosaves.forEach(autosave => {
                     const title = autosave.title || untitledText;
-                    if (!groupedAutosaves[title]) {
-                        groupedAutosaves[title] = [];
+                    if (!groupedMap.has(title)) {
+                        groupedMap.set(title, []);
                     }
-                    groupedAutosaves[title].push(autosave);
+                    groupedMap.get(title).push(autosave);
                 });
-                
+
+                // Сортируем снимки внутри групп и сами группы от самых свежих к более старым
+                const groups = Array.from(groupedMap.entries()).map(([title, saves]) => {
+                    const sortedSaves = saves.slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    const maxTs = sortedSaves.length > 0 ? (sortedSaves[0].timestamp || 0) : 0;
+                    return { title, saves: sortedSaves, maxTs };
+                }).sort((a, b) => b.maxTs - a.maxTs);
+
+                const formatTs = (ts) => {
+                    if (!ts) return '';
+                    return new Date(ts * 1000).toLocaleString('ru-RU', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                };
+
                 let html = '';
-                let groupIndex = 0;
-                for (const title in groupedAutosaves) {
-                    const saves = groupedAutosaves[title];
-                    const safeTitle = escapeHtml(title);
-                    
-                    html += `
-                        <div class="backup-post-group" id="autosave-group-${groupIndex}">
-                            <div class="backup-post-header" onclick="toggleAutosaveGroup(${groupIndex})">
-                                <h3 class="backup-post-title">${safeTitle}</h3>
-                                <span class="backup-post-toggle">▼</span>
-                            </div>
-                            <div class="backup-list">
-                                ${saves.map(autosave => {
-                                    const dateObj = new Date(autosave.timestamp * 1000);
-                                    const dateStr = dateObj.toLocaleString('ru-RU', {
-                                        day: '2-digit', month: '2-digit', year: 'numeric',
-                                        hour: '2-digit', minute: '2-digit'
-                                    });
-                                    return `
-                                        <div class="backup-item">
-                                            <div class="backup-info">
-                                                <div class="backup-number">${autosaveLabel}</div>
-                                                <div class="backup-date">${escapeHtml(dateStr)}</div>
-                                            </div>
-                                            <div class="backup-actions">
-                                                <button type="button" class="backup-btn btn-load-autosave" data-id="${escapeHtml(autosave.id)}">${loadText}</button>
-                                                <button type="button" class="backup-btn btn-delete-autosave" data-id="${escapeHtml(autosave.id)}" style="color: #dc3545; border-color: rgba(220, 53, 69, 0.3);">${deleteText}</button>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                    groupIndex++;
-                }
+                groups.forEach((group, groupIndex) => {
+                    const safeTitle = ui.escapeHtml(group.title);
+                    const isExpanded = groupIndex === 0;
+                    const latestDate = formatTs(group.maxTs);
+                    const countLabel = ui.t('modals.manager_autosaves_count', 'Снимков: {count}', { count: group.saves.length });
+
+                    const itemsHtml = group.saves.map((autosave, idx) => {
+                        const dateStr = formatTs(autosave.timestamp) || autosave.date || '';
+                        const preview = ui.extractPlainPreview(autosave.content || '', 110);
+                        const latestPill = idx === 0
+                            ? '<span class="manager-badge manager-badge-accent">' + ui.escapeHtml(latestBadgeText) + '</span>'
+                            : '';
+                        const safeId = ui.escapeHtml(autosave.id);
+
+                        return (
+                            '<div class="backup-item">' +
+                                '<div class="backup-info">' +
+                                    '<div class="manager-item-head">' +
+                                        '<span class="backup-number">' + ui.escapeHtml(autosaveLabel) + '</span>' +
+                                        latestPill +
+                                    '</div>' +
+                                    '<div class="manager-item-meta">' +
+                                        '<span class="manager-meta-icon" aria-hidden="true">' + ui.icons.clock + '</span>' +
+                                        '<span class="backup-date">' + ui.escapeHtml(dateStr) + '</span>' +
+                                    '</div>' +
+                                    '<div class="manager-item-preview' + (!preview ? ' is-empty' : '') + '">' +
+                                        ui.escapeHtml(preview || emptyPreviewText) +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="backup-actions">' +
+                                    '<button type="button" class="backup-btn restore btn-load-autosave" data-id="' + safeId + '">' +
+                                        ui.icons.restore + '<span>' + ui.escapeHtml(loadText) + '</span>' +
+                                    '</button>' +
+                                    '<button type="button" class="backup-btn delete btn-delete-autosave" data-id="' + safeId + '">' +
+                                        ui.icons.trash + '<span>' + ui.escapeHtml(deleteText) + '</span>' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>'
+                        );
+                    }).join('');
+
+                    html +=
+                        '<div class="backup-post-group' + (isExpanded ? ' expanded' : '') + '" id="autosave-group-' + groupIndex + '" data-search-text="' + safeTitle.toLowerCase() + '">' +
+                            '<button type="button" class="backup-post-header" aria-expanded="' + (isExpanded ? 'true' : 'false') + '">' +
+                                '<span class="manager-group-main">' +
+                                    '<span class="manager-group-icon" aria-hidden="true">' + ui.icons.fileText + '</span>' +
+                                    '<span class="manager-group-text">' +
+                                        '<span class="manager-group-title-row">' +
+                                            '<span class="backup-post-title">' + safeTitle + '</span>' +
+                                        '</span>' +
+                                        '<span class="manager-group-meta">' +
+                                            ui.escapeHtml(countLabel) +
+                                            (latestDate ? ' • ' + ui.escapeHtml(latestDate) : '') +
+                                        '</span>' +
+                                    '</span>' +
+                                '</span>' +
+                                '<span class="manager-group-right">' +
+                                    '<span class="manager-count-pill">' + group.saves.length + '</span>' +
+                                    '<span class="backup-post-toggle" aria-hidden="true">' + ui.icons.chevronDown + '</span>' +
+                                '</span>' +
+                            '</button>' +
+                            '<div class="backup-list-collapse">' +
+                                '<div class="backup-list-inner">' +
+                                    '<div class="backup-list">' + itemsHtml + '</div>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                });
+
                 listDiv.innerHTML = html;
+
+                const toggleAllBtn = document.getElementById('autosaveToggleAllBtn');
+                listDiv.querySelectorAll('.backup-post-header').forEach(headerBtn => {
+                    headerBtn.addEventListener('click', () => {
+                        ui.toggleGroupElement(headerBtn.closest('.backup-post-group'), toggleAllBtn, listDiv);
+                    });
+                });
                 listDiv.querySelectorAll('.btn-load-autosave').forEach(btn => {
                     btn.addEventListener('click', () => loadAutosaveById(btn.getAttribute('data-id')));
                 });
                 listDiv.querySelectorAll('.btn-delete-autosave').forEach(btn => {
                     btn.addEventListener('click', () => deleteAutosaveById(btn.getAttribute('data-id')));
                 });
+
+                ui.initToolbar({
+                    toolbarId: 'autosaveManagerToolbar',
+                    searchInputId: 'autosaveSearchInput',
+                    searchClearId: 'autosaveSearchClear',
+                    toggleAllBtnId: 'autosaveToggleAllBtn',
+                    statsId: 'autosaveManagerStats',
+                    listEl: listDiv,
+                    emptySearchEl: searchEmptyDiv,
+                    visible: true,
+                    groupCount: groups.length,
+                    itemCount: autosaves.length,
+                    itemCountKey: 'modals.manager_autosaves_count',
+                    itemCountFallback: 'Снимков: {count}'
+                });
             } else {
                 listDiv.style.display = 'none';
-                emptyDiv.style.display = 'block';
+                emptyDiv.style.display = 'flex';
             }
         })
         .catch(error => {
             console.error('Ошибка загрузки автосохранений:', error);
-            document.getElementById('autosavesList').style.display = 'none';
-            document.getElementById('autosavesEmpty').style.display = 'block';
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (listDiv) listDiv.style.display = 'none';
+            if (emptyDiv) emptyDiv.style.display = 'flex';
         });
 }
 
 function toggleAutosaveGroup(index) {
     const group = document.getElementById('autosave-group-' + index);
-    if (group) {
+    if (window.NPBlogManagerUI) {
+        window.NPBlogManagerUI.toggleGroupElement(
+            group,
+            document.getElementById('autosaveToggleAllBtn'),
+            document.getElementById('autosavesList')
+        );
+    } else if (group) {
         group.classList.toggle('expanded');
     }
 }
