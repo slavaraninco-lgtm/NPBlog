@@ -4089,6 +4089,8 @@ button:hover {
     min-height: 200px;
     resize: vertical;
     white-space: pre-wrap;
+    tab-size: 4;
+    -moz-tab-size: 4;
     padding-bottom: 24px;
 }
 

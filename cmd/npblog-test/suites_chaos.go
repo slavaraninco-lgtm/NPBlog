@@ -502,6 +502,134 @@ func runChaosAndUISuites(tr *TestRunner, baseURL, workspaceRoot, canaryPath stri
 			}
 			return nil
 		})
+
+		s.Case("Увеличение и уменьшение размера шрифта в статье не оставляет лишний вертикальный отступ", func() error {
+			var res struct {
+				Line1H   float64 `json:"line1H"`
+				After32H float64 `json:"after32H"`
+				After14H float64 `json:"after14H"`
+				Col14H   float64 `json:"col14H"`
+				Line2    string  `json:"line2"`
+				Line3    string  `json:"line3"`
+			}
+			script := `(() => {
+				const ve = document.getElementById('contentVisual');
+				ve.innerHTML = '<p>Первая строка обычного текста</p><p>Вторая строка для проверки шрифта</p><p>Пустая строка</p>';
+				ve.focus();
+
+				const p1 = ve.children[0];
+				const p2 = ve.children[1];
+				const p3 = ve.children[2];
+
+				// 1. Выделение текста на строке 2 -> 32px -> сразу 14px
+				const r = document.createRange();
+				r.selectNodeContents(p2);
+				const sel = window.getSelection();
+				sel.removeAllRanges();
+				sel.addRange(r);
+				VisualEngine.saveSelection();
+
+				setFontSize('32');
+				const after32H = p2.getBoundingClientRect().height;
+				setFontSize('14');
+				const after14H = p2.getBoundingClientRect().height;
+
+				// 2. Схлопнутый курсор на строке 3 -> 32px -> сразу 14px
+				const rCol = document.createRange();
+				rCol.selectNodeContents(p3);
+				rCol.collapse(true);
+				sel.removeAllRanges();
+				sel.addRange(rCol);
+				VisualEngine.saveSelection();
+				setFontSize('32');
+				setFontSize('14');
+				const col14H = p3.getBoundingClientRect().height;
+
+				return {
+					line1H: p1.getBoundingClientRect().height,
+					after32H,
+					after14H,
+					col14H,
+					line2: p2.innerHTML,
+					line3: p3.innerHTML
+				};
+			})()`
+			if err := cdp.Eval(script, &res); err != nil {
+				return err
+			}
+			if res.After32H <= res.Line1H+10 {
+				return fmt.Errorf("32px не увеличил высоту строки: line1=%.1f after32=%.1f", res.Line1H, res.After32H)
+			}
+			if res.After14H > res.Line1H+4 || strings.Contains(res.Line2, "32px") {
+				return fmt.Errorf("после уменьшения до 14px остался лишний отступ/обёртка 32px: line1=%.1f after14=%.1f html=%s", res.Line1H, res.After14H, res.Line2)
+			}
+			if res.Col14H > res.Line1H+4 || strings.Contains(res.Line3, "32px") {
+				return fmt.Errorf("при схлопнутом курсоре после 32px->14px остался лишний отступ/32px: line1=%.1f col14=%.1f html=%s", res.Line1H, res.Col14H, res.Line3)
+			}
+			return nil
+		})
+
+		s.Case("Поддержка табуляции (Tab и Shift+Tab) в визуальном и кодовом режимах", func() error {
+			var tabRes struct {
+				AfterTabHTML    string `json:"afterTabHTML"`
+				AfterShiftHTML  string `json:"afterShiftHTML"`
+				SavedHTML       string `json:"savedHTML"`
+				CodeAfterTab    string `json:"codeAfterTab"`
+				CodeAfterShift  string `json:"codeAfterShift"`
+			}
+			script := `(() => {
+				if (typeof setEditorMode === 'function') setEditorMode('visual');
+				const ve = document.getElementById('contentVisual');
+				ve.innerHTML = '<p>Абзац с табом</p>';
+				ve.focus();
+
+				const p = ve.firstElementChild;
+				const r = document.createRange();
+				r.setStart(p.firstChild, 0);
+				r.collapse(true);
+				const sel = window.getSelection();
+				sel.removeAllRanges();
+				sel.addRange(r);
+				VisualEngine.saveSelection();
+
+				ve.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+				const afterTabHTML = p.innerHTML;
+				const savedHTML = VisualEngine.cleanContentForSave(ve.innerHTML);
+
+				ve.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+				const afterShiftHTML = p.innerHTML;
+
+				if (typeof setEditorMode === 'function') setEditorMode('code');
+				const ta = document.getElementById('content');
+				ta.value = '<p>Строка</p>';
+				ta.selectionStart = 0;
+				ta.selectionEnd = 0;
+				ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+				const codeAfterTab = ta.value;
+
+				ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+				const codeAfterShift = ta.value;
+				if (typeof setEditorMode === 'function') setEditorMode('visual');
+
+				return { afterTabHTML, afterShiftHTML, savedHTML, codeAfterTab, codeAfterShift };
+			})()`
+			if err := cdp.Eval(script, &tabRes); err != nil {
+				return err
+			}
+			if tabRes.AfterTabHTML != "&nbsp;&nbsp;&nbsp;&nbsp;Абзац с табом" {
+				return fmt.Errorf("Tab в визуальном режиме сработал неверно: %q", tabRes.AfterTabHTML)
+			}
+			if !strings.Contains(tabRes.SavedHTML, "&nbsp;&nbsp;&nbsp;&nbsp;Абзац с табом") {
+				return fmt.Errorf("табуляция потерялась при cleanContentForSave: %q", tabRes.SavedHTML)
+			}
+			if tabRes.AfterShiftHTML != "Абзац с табом" {
+				return fmt.Errorf("Shift+Tab в визуальном режиме не убрал отступ: %q", tabRes.AfterShiftHTML)
+			}
+			if tabRes.CodeAfterTab != "\t<p>Строка</p>" || tabRes.CodeAfterShift != "<p>Строка</p>" {
+				return fmt.Errorf("Tab/Shift+Tab в кодовом режиме неверны: tab=%q shift=%q", tabRes.CodeAfterTab, tabRes.CodeAfterShift)
+			}
+			return nil
+		})
 	})
 }
 

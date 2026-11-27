@@ -272,8 +272,12 @@
                     if (el.closest('.npblog-formula, .npblog-formula-block, .katex, math')) return;
                     if (el.id === 'customCaret' || el.dataset.npblogAnchor || el.classList.contains('npblog-formula') || el.classList.contains('npblog-formula-block') || el.hasAttribute('data-formula') || el.classList.contains('katex')) return;
                     if (el.querySelector('img, video, audio, iframe, table, svg, canvas, [data-npblog-anchor], [data-formula]')) return;
+                    const hasBr = !!el.querySelector('br');
                     const text = el.textContent.replace(/[\s\u00A0\u200B\uFEFF]/g, '');
                     if (text.length === 0 && el.parentNode) {
+                        if (hasBr) {
+                            el.parentNode.insertBefore(document.createElement('br'), el);
+                        }
                         el.parentNode.removeChild(el);
                         changed = true;
                     }
@@ -618,39 +622,202 @@
             });
         },
 
+        stripStyleProp(el, styleProp) {
+            if (!el || !el.style) return;
+            el.style[styleProp] = '';
+            const rem = el.getAttribute('style');
+            if (!rem || rem.trim() === '' || rem.trim() === ';') {
+                el.removeAttribute('style');
+            }
+            if (el.attributes.length === 0 && el.parentNode) {
+                const parent = el.parentNode;
+                while (el.firstChild) parent.insertBefore(el.firstChild, el);
+                parent.removeChild(el);
+            }
+        },
+
+        hasVisibleInlineContent(root) {
+            if (!root) return false;
+            if (root.querySelector && root.querySelector('img, video, audio, iframe, table, svg, canvas, hr, [data-npblog-anchor], [data-formula]')) {
+                return true;
+            }
+            const cleaned = (root.textContent || '').replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+            return cleaned.length > 0;
+        },
+
+        getStyledSpanAncestors(node, styleProp, boundary) {
+            const list = [];
+            let curr = (node && node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
+            while (curr && curr !== boundary && !DOM.isBlock(curr)) {
+                if (curr.nodeType === Node.ELEMENT_NODE && curr.tagName === 'SPAN' && curr.style && curr.style[styleProp]) {
+                    list.push(curr);
+                }
+                curr = curr.parentNode;
+            }
+            return list;
+        },
+
         applyInlineStyle(styleProp, value) {
             if (!SelectionManager.restore()) return;
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return;
 
+            const ed = DOM.getEditor();
             const range = sel.getRangeAt(0);
+            const currBlock = DOM.getClosestBlock(range.startContainer, ed) || ed;
 
             const cleanStyles = (root) => {
-                if (!root) return;
+                if (!root || !root.querySelectorAll) return;
                 root.querySelectorAll('span').forEach(el => {
-                    if (el.style && el.style[styleProp]) {
-                        el.style[styleProp] = '';
-                        const rem = el.getAttribute('style');
-                        if (!rem || rem.trim() === '' || rem.trim() === ';') el.removeAttribute('style');
-                    }
-                    if (el.attributes.length === 0) {
-                        const p = el.parentNode;
-                        if (p) {
-                            while (el.firstChild) p.insertBefore(el.firstChild, el);
-                            p.removeChild(el);
-                        }
-                    }
+                    this.stripStyleProp(el, styleProp);
                 });
             };
 
             if (range.collapsed) {
-                const span = document.createElement('span');
-                span.style[styleProp] = value;
-                span.appendChild(document.createTextNode('\u200B'));
-                range.insertNode(span);
-                SelectionManager.setCursorToStart(span);
-            } else {
-                try {
+                const ancestors = this.getStyledSpanAncestors(range.startContainer, styleProp, currBlock);
+                if (ancestors.length > 0) {
+                    const outerSpan = ancestors[ancestors.length - 1];
+                    if (!this.hasVisibleInlineContent(outerSpan)) {
+                        // Empty or zero-width-only span: update in place instead of nesting a child span whose outer font-size keeps inflating line-height
+                        cleanStyles(outerSpan);
+                        outerSpan.style[styleProp] = value;
+                        const textOnly = (outerSpan.textContent || '').replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+                        if (textOnly.length === 0 && !outerSpan.querySelector('img, video, audio, iframe, table, svg, canvas')) {
+                            outerSpan.innerHTML = '';
+                            outerSpan.appendChild(document.createTextNode('\u200B'));
+                        }
+                        SelectionManager.setCursorToStart(outerSpan);
+                    } else {
+                        // Split the styled ancestor at caret so the new size becomes a flat sibling, never trapped inside an old larger wrapper
+                        let postFrag = null;
+                        try {
+                            const postRange = document.createRange();
+                            postRange.setStart(range.endContainer, range.endOffset);
+                            postRange.setEnd(outerSpan, outerSpan.childNodes.length);
+                            postFrag = postRange.extractContents();
+                        } catch (e) { }
+
+                        const span = document.createElement('span');
+                        if (outerSpan.style.cssText) span.style.cssText = outerSpan.style.cssText;
+                        span.style[styleProp] = value;
+                        span.appendChild(document.createTextNode('\u200B'));
+
+                        const refParent = outerSpan.parentNode;
+                        if (refParent) {
+                            const hasPre = this.hasVisibleInlineContent(outerSpan);
+                            if (hasPre) {
+                                refParent.insertBefore(span, outerSpan.nextSibling);
+                            } else {
+                                refParent.insertBefore(span, outerSpan);
+                                refParent.removeChild(outerSpan);
+                            }
+                            if (postFrag && this.hasVisibleInlineContent(postFrag)) {
+                                const postSpan = outerSpan.cloneNode(false);
+                                postSpan.appendChild(postFrag);
+                                refParent.insertBefore(postSpan, span.nextSibling);
+                            }
+                        }
+                        SelectionManager.setCursorToStart(span);
+                    }
+                } else {
+                    const span = document.createElement('span');
+                    span.style[styleProp] = value;
+                    span.appendChild(document.createTextNode('\u200B'));
+                    range.insertNode(span);
+                    SelectionManager.setCursorToStart(span);
+                }
+
+                DOM.cleanEmptyInline(currBlock, true);
+                SelectionManager.save();
+                VisualEngine.updateActiveButtons();
+                if (typeof saveToHistory === 'function') saveToHistory();
+                return;
+            }
+
+            try {
+                // 1. If selection boundaries start or end midway through an existing styled span without spanning its full container, split those edge spans
+                const startAncestors = this.getStyledSpanAncestors(range.startContainer, styleProp, ed);
+                for (let i = startAncestors.length - 1; i >= 0; i--) {
+                    const anc = startAncestors[i];
+                    if (anc.contains(range.endContainer)) break;
+                    const tailRange = document.createRange();
+                    tailRange.setStart(range.startContainer, range.startOffset);
+                    tailRange.setEnd(anc, anc.childNodes.length);
+                    const tailFrag = tailRange.extractContents();
+                    if (this.hasVisibleInlineContent(tailFrag)) {
+                        const tailSpan = anc.cloneNode(false);
+                        tailSpan.appendChild(tailFrag);
+                        anc.parentNode.insertBefore(tailSpan, anc.nextSibling);
+                        range.setStartBefore(tailSpan);
+                    } else {
+                        range.setStartAfter(anc);
+                    }
+                    if (!this.hasVisibleInlineContent(anc) && anc.parentNode) {
+                        anc.parentNode.removeChild(anc);
+                    }
+                    break;
+                }
+
+                const endAncestors = this.getStyledSpanAncestors(range.endContainer, styleProp, ed);
+                for (let i = endAncestors.length - 1; i >= 0; i--) {
+                    const anc = endAncestors[i];
+                    if (anc.contains(range.startContainer)) break;
+                    const headRange = document.createRange();
+                    headRange.setStart(anc, 0);
+                    headRange.setEnd(range.endContainer, range.endOffset);
+                    const headFrag = headRange.extractContents();
+                    if (this.hasVisibleInlineContent(headFrag)) {
+                        const headSpan = anc.cloneNode(false);
+                        headSpan.appendChild(headFrag);
+                        anc.parentNode.insertBefore(headSpan, anc);
+                        range.setEndAfter(headSpan);
+                    } else {
+                        range.setEndBefore(anc);
+                    }
+                    if (!this.hasVisibleInlineContent(anc) && anc.parentNode) {
+                        anc.parentNode.removeChild(anc);
+                    }
+                    break;
+                }
+
+                // 2. If the whole selection sits inside a styled span (e.g. selecting text after applying 32px, then changing to 14px), split/replace it flatly instead of nesting
+                const commonAncestors = this.getStyledSpanAncestors(range.commonAncestorContainer, styleProp, ed);
+                if (commonAncestors.length > 0) {
+                    const outerSpan = commonAncestors[commonAncestors.length - 1];
+
+                    const postRange = document.createRange();
+                    postRange.setStart(range.endContainer, range.endOffset);
+                    postRange.setEnd(outerSpan, outerSpan.childNodes.length);
+                    const postFrag = postRange.extractContents();
+
+                    const midFrag = range.extractContents();
+                    cleanStyles(midFrag);
+
+                    const span = document.createElement('span');
+                    if (outerSpan.style.cssText) span.style.cssText = outerSpan.style.cssText;
+                    span.style[styleProp] = value;
+                    span.appendChild(midFrag);
+
+                    const parent = outerSpan.parentNode;
+                    if (parent) {
+                        if (this.hasVisibleInlineContent(outerSpan)) {
+                            parent.insertBefore(span, outerSpan.nextSibling);
+                        } else {
+                            parent.insertBefore(span, outerSpan);
+                            parent.removeChild(outerSpan);
+                        }
+                        if (this.hasVisibleInlineContent(postFrag)) {
+                            const postSpan = outerSpan.cloneNode(false);
+                            postSpan.appendChild(postFrag);
+                            parent.insertBefore(postSpan, span.nextSibling);
+                        }
+                    }
+
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(span);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                } else {
                     const contents = range.extractContents();
                     cleanStyles(contents);
 
@@ -663,11 +830,12 @@
                     newRange.selectNodeContents(span);
                     sel.removeAllRanges();
                     sel.addRange(newRange);
-                } catch (e) {
-                    console.warn('Style application error:', e);
                 }
+            } catch (e) {
+                console.warn('Style application error:', e);
             }
 
+            DOM.cleanEmptyInline(ed, true);
             SelectionManager.save();
             VisualEngine.updateActiveButtons();
             if (typeof saveToHistory === 'function') saveToHistory();
@@ -1223,39 +1391,254 @@
             }
         },
 
+        /**
+         * Inserts or removes tab indentation in the code/markdown textarea (#content).
+         */
+        handleTextareaTab(e, ta) {
+            if (!ta || e.ctrlKey || e.metaKey || e.altKey) return false;
+            e.preventDefault();
+
+            const start = ta.selectionStart || 0;
+            const end = ta.selectionEnd || 0;
+            const val = ta.value || '';
+
+            const unindentLine = (line) => {
+                if (line.startsWith('\t')) return { text: line.slice(1), removed: 1 };
+                const m = line.match(/^( {1,4})/);
+                if (m) return { text: line.slice(m[1].length), removed: m[1].length };
+                return { text: line, removed: 0 };
+            };
+
+            const hasMultiline = val.slice(start, end).includes('\n');
+            if (e.shiftKey) {
+                const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+                if (hasMultiline) {
+                    const blockEndIdx = val.indexOf('\n', end);
+                    const blockEnd = blockEndIdx === -1 ? val.length : blockEndIdx;
+                    const lines = val.slice(lineStart, blockEnd).split('\n');
+                    let totalRemoved = 0;
+                    let firstRemoved = 0;
+                    const updated = lines.map((line, idx) => {
+                        const res = unindentLine(line);
+                        if (idx === 0) firstRemoved = res.removed;
+                        totalRemoved += res.removed;
+                        return res.text;
+                    }).join('\n');
+                    ta.setRangeText(updated, lineStart, blockEnd, 'preserve');
+                    ta.selectionStart = Math.max(lineStart, start - firstRemoved);
+                    ta.selectionEnd = Math.max(ta.selectionStart, end - totalRemoved);
+                } else {
+                    const lineEndIdx = val.indexOf('\n', start);
+                    const lineEnd = lineEndIdx === -1 ? val.length : lineEndIdx;
+                    const res = unindentLine(val.slice(lineStart, lineEnd));
+                    if (res.removed > 0) {
+                        ta.setRangeText(res.text, lineStart, lineEnd, 'preserve');
+                        const nextPos = Math.max(lineStart, start - res.removed);
+                        ta.selectionStart = nextPos;
+                        ta.selectionEnd = Math.max(nextPos, end - res.removed);
+                    }
+                }
+            } else if (hasMultiline) {
+                const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+                const blockEndIdx = val.indexOf('\n', end);
+                const blockEnd = blockEndIdx === -1 ? val.length : blockEndIdx;
+                const lines = val.slice(lineStart, blockEnd).split('\n');
+                const updated = lines.map(l => '\t' + l).join('\n');
+                ta.setRangeText(updated, lineStart, blockEnd, 'preserve');
+                ta.selectionStart = start + 1;
+                ta.selectionEnd = end + lines.length;
+            } else {
+                ta.setRangeText('\t', start, end, 'end');
+            }
+
+            ta.dispatchEvent(new Event('input', { bubbles: true }));
+            if (typeof saveToHistory === 'function') saveToHistory();
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            if (typeof updateAutosaveBadge === 'function') updateAutosaveBadge();
+            return true;
+        },
+
+        /**
+         * Handles Tab/Shift+Tab inside visual mode: navigates table cells or inserts/removes 4-nbsp tab stops.
+         */
         handleTab(e) {
             const editor = DOM.getEditor();
             if (!editor || (typeof editorMode !== 'undefined' && editorMode !== 'visual')) return false;
+            if (e.ctrlKey || e.metaKey || e.altKey) return false;
 
             const sel = window.getSelection();
             if (!sel || !sel.rangeCount) return false;
 
             const range = sel.getRangeAt(0);
-            const container = range.startContainer;
-            const cell = (container.nodeType === Node.ELEMENT_NODE ? container : container.parentNode).closest('td, th');
-            if (!cell || !DOM.isInside(cell, editor)) return false;
+            if (!DOM.isInside(range.startContainer, editor)) return false;
+
+            const startEl = range.startContainer.nodeType === Node.ELEMENT_NODE
+                ? range.startContainer
+                : range.startContainer.parentNode;
+            const cell = startEl && startEl.closest ? startEl.closest('td, th') : null;
+
+            if (cell && DOM.isInside(cell, editor)) {
+                e.preventDefault();
+                const table = cell.closest('table');
+                if (!table) return false;
+
+                const allCells = Array.from(new Set(table.querySelectorAll('thead th, thead td, tbody td, tbody th, tr td, tr th')));
+                const idx = allCells.indexOf(cell);
+
+                if (e.shiftKey) {
+                    if (idx > 0) {
+                        SelectionManager.setCursorToStart(allCells[idx - 1]);
+                        SelectionManager.save();
+                    }
+                } else {
+                    if (idx < allCells.length - 1) {
+                        SelectionManager.setCursorToStart(allCells[idx + 1]);
+                        SelectionManager.save();
+                    } else if (typeof addTableRow === 'function') {
+                        window.contextMenuTableRow = cell.closest('tr');
+                        addTableRow();
+                    }
+                }
+                return true;
+            }
 
             e.preventDefault();
-            const table = cell.closest('table');
-            if (!table) return false;
+            const TAB_UNIT = '\u00A0\u00A0\u00A0\u00A0';
 
-            const allCells = Array.from(new Set(table.querySelectorAll('thead th, thead td, tbody td, tbody th, tr td, tr th')));
-            const idx = allCells.indexOf(cell);
+            const getBlocksInRange = () => {
+                const startBlock = DOM.getClosestBlock(range.startContainer, editor);
+                const endBlock = DOM.getClosestBlock(range.endContainer, editor);
+                if (!startBlock || startBlock === editor) return [];
+                if (!endBlock || startBlock === endBlock) return [startBlock];
+                const blocks = [];
+                let started = false;
+                Array.from(editor.children).forEach(child => {
+                    if (child === startBlock || child.contains(startBlock)) started = true;
+                    if (started) {
+                        if (BLOCK_TAGS.has(child.tagName.toUpperCase())) blocks.push(child);
+                    }
+                    if (child === endBlock || child.contains(endBlock)) started = false;
+                });
+                return blocks.length ? blocks : [startBlock];
+            };
+
+            const prependIndentToBlock = (block) => {
+                if (!block) return;
+                if (block.innerHTML === '<br>' || block.innerHTML === '<br/>') {
+                    block.innerHTML = '';
+                }
+                const first = block.firstChild;
+                if (first && first.nodeType === Node.TEXT_NODE) {
+                    first.insertData(0, TAB_UNIT);
+                } else {
+                    block.insertBefore(document.createTextNode(TAB_UNIT), first);
+                }
+            };
+
+            const stripIndentFromBlockStart = (block) => {
+                if (!block) return 0;
+                let removed = 0;
+                const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null, false);
+                let node;
+                while ((node = walker.nextNode()) && removed < 4) {
+                    if (node.parentElement && node.parentElement.closest('.npblog-formula, .npblog-formula-block, .katex, math')) continue;
+                    const text = node.nodeValue || '';
+                    if (/^[\u200B\u200C\u200D\uFEFF]+$/.test(text)) continue;
+                    const m = text.match(/^([\u00A0 \t]{1,4})/);
+                    if (m) {
+                        const cut = Math.min(m[1].length, 4 - removed);
+                        node.deleteData(0, cut);
+                        removed += cut;
+                        break;
+                    }
+                    if (text.length > 0) break;
+                }
+                if (DOM.isEmpty(block) && !block.querySelector('img, video, audio, iframe, hr, table')) {
+                    block.innerHTML = '<br>';
+                }
+                return removed;
+            };
 
             if (e.shiftKey) {
-                if (idx > 0) {
-                    SelectionManager.setCursorToStart(allCells[idx - 1]);
-                    SelectionManager.save();
+                if (range.collapsed) {
+                    const sc = range.startContainer;
+                    let removedHere = 0;
+                    if (sc.nodeType === Node.TEXT_NODE && range.startOffset > 0) {
+                        const before = sc.nodeValue.slice(0, range.startOffset);
+                        const m = before.match(/([\u00A0 \t]{1,4})$/);
+                        if (m) {
+                            const cut = m[1].length;
+                            const delStart = range.startOffset - cut;
+                            sc.deleteData(delStart, cut);
+                            const nr = document.createRange();
+                            nr.setStart(sc, delStart);
+                            nr.collapse(true);
+                            sel.removeAllRanges();
+                            sel.addRange(nr);
+                            removedHere = cut;
+                        }
+                    }
+                    if (removedHere === 0) {
+                        const block = DOM.getClosestBlock(sc, editor);
+                        if (block && block !== editor) {
+                            stripIndentFromBlockStart(block);
+                        }
+                    }
+                } else {
+                    getBlocksInRange().forEach(b => stripIndentFromBlockStart(b));
                 }
             } else {
-                if (idx < allCells.length - 1) {
-                    SelectionManager.setCursorToStart(allCells[idx + 1]);
-                    SelectionManager.save();
-                } else if (typeof addTableRow === 'function') {
-                    window.contextMenuTableRow = cell.closest('tr');
-                    addTableRow();
+                const startBlock = DOM.getClosestBlock(range.startContainer, editor);
+                const endBlock = DOM.getClosestBlock(range.endContainer, editor);
+                if (!range.collapsed && startBlock && endBlock && startBlock !== endBlock) {
+                    getBlocksInRange().forEach(b => prependIndentToBlock(b));
+                } else {
+                    if (!range.collapsed) {
+                        range.deleteContents();
+                    }
+                    const sc = range.startContainer;
+                    if (sc.nodeType === Node.TEXT_NODE) {
+                        let offset = range.startOffset;
+                        const val = sc.nodeValue || '';
+                        if (/^[\u200B\u200C\u200D\uFEFF]$/.test(val)) {
+                            sc.nodeValue = TAB_UNIT;
+                            offset = TAB_UNIT.length;
+                        } else {
+                            sc.insertData(offset, TAB_UNIT);
+                            offset += TAB_UNIT.length;
+                        }
+                        const nr = document.createRange();
+                        nr.setStart(sc, offset);
+                        nr.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(nr);
+                    } else {
+                        if (sc.nodeType === Node.ELEMENT_NODE && sc.childNodes.length === 1 && sc.firstChild.tagName === 'BR') {
+                            const tabNode = document.createTextNode(TAB_UNIT);
+                            sc.insertBefore(tabNode, sc.firstChild);
+                            const nr = document.createRange();
+                            nr.setStart(tabNode, TAB_UNIT.length);
+                            nr.collapse(true);
+                            sel.removeAllRanges();
+                            sel.addRange(nr);
+                        } else {
+                            const tabNode = document.createTextNode(TAB_UNIT);
+                            range.insertNode(tabNode);
+                            const nr = document.createRange();
+                            nr.setStart(tabNode, TAB_UNIT.length);
+                            nr.collapse(true);
+                            sel.removeAllRanges();
+                            sel.addRange(nr);
+                        }
+                    }
                 }
             }
+
+            SelectionManager.save();
+            VisualEngine.updateActiveButtons();
+            if (typeof saveToHistory === 'function') saveToHistory();
+            if (typeof markEditorDirty === 'function') markEditorDirty();
+            if (typeof updateAutosaveBadge === 'function') updateAutosaveBadge();
             return true;
         }
     };
@@ -1944,6 +2327,16 @@
                 if (typeof updateAutosaveBadge === 'function') updateAutosaveBadge();
             }
         });
+
+        // Keyboard Handling (Code/Markdown Textarea Tab support)
+        const contentTextarea = document.getElementById('content');
+        if (contentTextarea) {
+            contentTextarea.addEventListener('keydown', function (e) {
+                if (e.key === 'Tab') {
+                    KeyHandler.handleTextareaTab(e, contentTextarea);
+                }
+            });
+        }
 
         // Keyboard Handling
         editor.addEventListener('keydown', function (e) {
