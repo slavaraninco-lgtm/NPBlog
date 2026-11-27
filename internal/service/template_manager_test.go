@@ -42,3 +42,36 @@ func TestTemplateManagerReadsExistingCatalog(t *testing.T) {
 		t.Fatal("unsafe path accepted")
 	}
 }
+
+func TestTemplateManagerInitializesMissingCatalogWithoutOverwritingCorrupt(t *testing.T) {
+	root := t.TempDir()
+	cfg := &config.AppConfig{BaseDir: root}
+	svc := NewTemplateService(cfg, NewStorageService(cfg))
+
+	// Empty blog folder without settings.json should auto-initialize the default template catalog.
+	data, err := svc.GetTemplateManagerData(root)
+	if err != nil {
+		t.Fatalf("expected missing catalog to auto-initialize, got error: %v", err)
+	}
+	items := data["templates"].([]map[string]interface{})
+	if len(items) != 1 || items[0]["name"] != "main" || data["default"] != "main" {
+		t.Fatalf("unexpected initialized templates: %#v", data)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "blog", "templates", "NPBlog", "main.html")); statErr != nil {
+		t.Fatalf("expected default main.html to be created: %v", statErr)
+	}
+
+	// Corrupt settings.json must never be overwritten or repaired silently.
+	settingsPath := filepath.Join(root, "blog", "templates", "settings.json")
+	corrupt := []byte("{not-valid-json")
+	if err := os.WriteFile(settingsPath, corrupt, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.GetTemplateManagerData(root); err == nil {
+		t.Fatal("expected corrupt settings.json to fail")
+	}
+	after, err := os.ReadFile(settingsPath)
+	if err != nil || string(after) != string(corrupt) {
+		t.Fatal("corrupt settings.json was modified")
+	}
+}

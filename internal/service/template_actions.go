@@ -21,7 +21,14 @@ func (t *TemplateService) readTemplateCatalog(activeBlogPath string) (*templateC
 	settingsFile := filepath.Join(dir, "settings.json")
 	catalog := &templateCatalogData{Raw: make(map[string]json.RawMessage)}
 	if err := t.storage.SafeReadJSON(settingsFile, &catalog.Raw); err != nil {
-		return nil, "", errors.New("настройки шаблонов не найдены или повреждены")
+		if os.IsNotExist(err) {
+			if initErr := t.ensureTemplateCatalogLocked(activeBlogPath, dir); initErr == nil {
+				err = t.storage.SafeReadJSON(settingsFile, &catalog.Raw)
+			}
+		}
+		if err != nil {
+			return nil, "", errors.New("настройки шаблонов не найдены или повреждены")
+		}
 	}
 	if raw, ok := catalog.Raw["default"]; ok {
 		_ = json.Unmarshal(raw, &catalog.Default)

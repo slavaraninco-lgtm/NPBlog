@@ -188,7 +188,115 @@ func (t *TemplateService) DeleteInclude(activeBlogPath, filename string) error {
 	return nil
 }
 
-// GetTemplateManagerData reads the existing PHP-era catalog without migrating or writing user data.
+const defaultMainTemplateHTML = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TITLE}}</title>
+    <meta name="post-id" content="{{POST_ID}}">
+    {{META_TAGS}}
+    <script>
+        if(localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        if(/Android/i.test(navigator.userAgent)) document.documentElement.classList.add('is-android');
+    </script>
+    <link rel="stylesheet" href="assets/blog-post.css?v=1.0.9">
+    <link rel="stylesheet" href="assets/katex/katex.min.css">
+    <style>
+{{CUSTOM_FONTS}}
+    </style>
+</head>
+<body {{BODY_STYLE}}>
+    <button class="theme-toggle" onclick="toggleTheme()">Тема</button>
+    
+    {{CONTENT_WRAPPER_START}}
+    <h1>{{TITLE}}</h1>
+    <div class="date">📅 {{DATE}}</div>
+    
+    <article id="npblog-post-content" class="content">
+{{CONTENT}}
+    </article>
+    
+    <a href="../blog.html" class="back-link">← Назад к списку статей</a>
+    {{CONTENT_WRAPPER_END}}
+    
+    <div class="powered-by">Powered by NPBlog</div>
+
+    <!-- Модальное окно для просмотра изображений -->
+    <div class="image-modal" id="imageModal">
+        <button class="image-modal-close" onclick="closeImageModal()">×</button>
+        <button class="image-modal-nav image-modal-prev" onclick="navigateModalImage(-1)" title="Предыдущее изображение">‹</button>
+        <button class="image-modal-nav image-modal-next" onclick="navigateModalImage(1)" title="Следующее изображение">›</button>
+        <div class="image-modal-container" id="imageContainer">
+            <img class="image-modal-content" id="modalImage" src="" alt="">
+        </div>
+        <div class="image-modal-toolbar">
+            <button class="image-modal-btn" onclick="zoomOut()" title="Уменьшить">−</button>
+            <div class="image-modal-zoom-level" id="zoomLevel">100%</div>
+            <button class="image-modal-btn" onclick="zoomIn()" title="Увеличить">+</button>
+            <button class="image-modal-btn" onclick="resetZoom()" title="Сбросить">⟲</button>
+            <button class="image-modal-btn" onclick="downloadImage()" title="Скачать">⬇</button>
+        </div>
+    </div>
+
+    <script src="assets/katex/katex.min.js" defer></script>
+    <script src="assets/blog-post.js" defer></script>
+</body>
+</html>`
+
+// ensureTemplateCatalogLocked initializes NPBlog/main.html and settings.json only when
+// settings.json does not exist yet (e.g. a newly pointed or uninitialized blog directory).
+// Existing or corrupt settings.json files are never overwritten.
+func (t *TemplateService) ensureTemplateCatalogLocked(activeBlogPath, dir string) error {
+	settingsFile := filepath.Join(dir, "settings.json")
+	if _, err := os.Stat(settingsFile); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	mainFile := filepath.Join(dir, "NPBlog", "main.html")
+	if _, err := os.Stat(mainFile); os.IsNotExist(err) {
+		var templateBytes []byte
+		candidates := []string{
+			filepath.Join(dir, "main.html"),
+			t.storage.GetDataPath(activeBlogPath, "blog/template_post.html"),
+			filepath.Join(t.cfg.BaseDir, "data", "blog", "templates", "NPBlog", "main.html"),
+		}
+		for _, cand := range candidates {
+			if cand == "" {
+				continue
+			}
+			if b, readErr := os.ReadFile(cand); readErr == nil && len(b) > 0 {
+				templateBytes = b
+				break
+			}
+		}
+		if len(templateBytes) == 0 {
+			templateBytes = []byte(defaultMainTemplateHTML)
+		}
+		if err := t.storage.SafeWriteFile(mainFile, templateBytes); err != nil {
+			return err
+		}
+	}
+
+	defaultCatalog := map[string]interface{}{
+		"activeTemplate": "main",
+		"default":        "main",
+		"post_templates": map[string]string{},
+		"templates": map[string]interface{}{
+			"main": map[string]interface{}{
+				"title":       "Стандартный шаблон",
+				"description": "Стандартный шаблон блога с поддержкой темной темы, адаптивным дизайном и подложкой.",
+				"is_system":   true,
+				"path":        "NPBlog/main.html",
+			},
+		},
+	}
+	return t.storage.SafeWriteJSON(settingsFile, defaultCatalog)
+}
+
+// GetTemplateManagerData reads the existing catalog, initializing default files only if settings.json is absent.
 func (t *TemplateService) GetTemplateManagerData(activeBlogPath string) (map[string]interface{}, error) {
 	dir := t.storage.GetDataPath(activeBlogPath, "blog/templates")
 	var settings struct {
@@ -201,8 +309,19 @@ func (t *TemplateService) GetTemplateManagerData(activeBlogPath string) (map[str
 			Path        string `json:"path"`
 		} `json:"templates"`
 	}
-	if err := t.storage.SafeReadJSON(filepath.Join(dir, "settings.json"), &settings); err != nil {
-		return nil, errors.New("настройки шаблонов не найдены или повреждены")
+	settingsFile := filepath.Join(dir, "settings.json")
+	if err := t.storage.SafeReadJSON(settingsFile, &settings); err != nil {
+		if os.IsNotExist(err) {
+			t.uploadMu.Lock()
+			initErr := t.ensureTemplateCatalogLocked(activeBlogPath, dir)
+			t.uploadMu.Unlock()
+			if initErr == nil {
+				err = t.storage.SafeReadJSON(settingsFile, &settings)
+			}
+		}
+		if err != nil {
+			return nil, errors.New("настройки шаблонов не найдены или повреждены")
+		}
 	}
 	names := make([]string, 0, len(settings.Templates))
 	for name := range settings.Templates {

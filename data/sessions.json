@@ -1,16 +1,16 @@
 {
-    "4ed8e6cae9198b80dba5759358de9612ef41fe96617090b1472c6265301629be": {
-        "id": "4ed8e6cae9198b80dba5759358de9612ef41fe96617090b1472c6265301629be",
+    "1613dbba2070bd7d310b842e58d0c2d29372fc285a9fb11cd46fe737e877acc6": {
+        "id": "1613dbba2070bd7d310b842e58d0c2d29372fc285a9fb11cd46fe737e877acc6",
         "authenticated": true,
-        "auth_time": 1795711238,
-        "csrf_token": "b277172933248ff5e8a3bc12f0f7f9d211e19d97703d67076a95cc5d81097a1e",
-        "active_blog_path": "data",
+        "auth_time": 1795811240,
+        "csrf_token": "5ba6523934e2e028a47eab395ace80e6dc7c335b0b4602f12a03ac2904aebf3f",
+        "active_blog_path": "C:\\xampp\\htdocs\\data2",
         "editor_language": "ru",
-        "ip": "::1",
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:161.0) Gecko/20100101 Firefox/161.0",
         "device": "Windows",
-        "browser": "Firefox 160",
-        "created_at": 1795711238,
-        "last_activity": 1795794036
+        "browser": "Firefox 161",
+        "created_at": 1795811240,
+        "last_activity": 1795811800
     }
 }
