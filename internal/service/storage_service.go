@@ -40,8 +40,16 @@ func (s *StorageService) ValidateSafePath(baseDir, relPath string) (string, erro
 		cleanBase = filepath.Clean(baseDir)
 	}
 
+	// Защита от нулевых байт, Windows drive/ADS двоеточий и абсолютных относительных путей
+	if strings.ContainsRune(relPath, 0) || strings.ContainsRune(relPath, ':') {
+		return "", errors.New("security_violation: недопустимые символы в пути")
+	}
+
 	// Нормализация разделителей
 	unifiedRel := filepath.FromSlash(strings.ReplaceAll(relPath, "\\", "/"))
+	if filepath.IsAbs(unifiedRel) || strings.HasPrefix(unifiedRel, string(filepath.Separator)) {
+		return "", errors.New("security_violation: абсолютный путь запрещён")
+	}
 	target := filepath.Join(cleanBase, unifiedRel)
 	target = filepath.Clean(target)
 

@@ -213,14 +213,19 @@ function getTemplatePreviewHtml(templateCode, isThumbnail = false) {
     </style>`;
     }
 
-    // Inject base tag and head styles/scripts
-    const baseBlogHref = (typeof DATA_URL_PREFIX === 'string' && DATA_URL_PREFIX
-        ? DATA_URL_PREFIX.replace(/^\/+/, '')
-        : 'data/') + 'blog/';
-    if (!preview.includes('<base ') && preview.includes('<head>')) {
-        preview = preview.replace('<head>', `<head>\n    <base href="${baseBlogHref}">` + headInject);
-    } else if (!preview.includes('<base ')) {
-        preview = `<base href="${baseBlogHref}">` + headInject + preview;
+    // Inject absolute base URL so about:srcdoc preview iframes resolve blog/assets/* cleanly
+    const rawPrefix = (typeof DATA_URL_PREFIX === 'string' && DATA_URL_PREFIX)
+        ? DATA_URL_PREFIX
+        : ((window.DATA_URL_PREFIX || '/data/'));
+    const relBlogHref = rawPrefix.replace(/\/+$/, '') + '/blog/';
+    let baseBlogHref = relBlogHref.startsWith('/') ? relBlogHref : '/' + relBlogHref;
+    try {
+        baseBlogHref = new URL(baseBlogHref, window.location.href).href;
+    } catch (e) {}
+    if (!/<base[\s>]/i.test(preview) && preview.includes('<head>')) {
+        preview = preview.replace('<head>', `<head>\n    <base href="${escapeHtml(baseBlogHref)}">` + headInject);
+    } else if (!/<base[\s>]/i.test(preview)) {
+        preview = `<base href="${escapeHtml(baseBlogHref)}">` + headInject + preview;
     } else if (preview.includes('</head>')) {
         preview = preview.replace('</head>', headInject + '\n</head>');
     } else {
