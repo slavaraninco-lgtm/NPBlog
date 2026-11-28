@@ -5137,15 +5137,16 @@ window.addEventListener('load', function() {
                         </div>
                     </div>
 
-                    <!-- 2. Выбор канала (Stable / Canary) -->
+                    <!-- 2. Выбор канала (Stable / Canary / Go) -->
                     <div class="modal-form-group" style="margin-bottom: 20px;">
                         <label class="modal-label" for="settingUpdateChannel" style="font-weight: 600;" data-i18n="settings.updates_channel_label">Канал обновлений:</label>
                         <select id="settingUpdateChannel" class="modal-select" onchange="handleUpdateChannelChange(this.value)">
                             <option value="stable" data-i18n="settings.updates_channel_stable">Stable — Релизы GitHub (рекомендуется)</option>
                             <option value="canary" data-i18n="settings.updates_channel_canary">Canary — Экспериментальная dev-ветка</option>
+                            <option value="go" data-i18n="settings.updates_channel_go">Go — Ветка go (коммиты)</option>
                         </select>
                         <div class="modal-help-text" style="font-size: 12px; opacity: 0.75; margin-top: 5px;" data-i18n="settings.updates_channel_hint">
-                            В режиме Stable загружаются проверенные релизы по тегам. В режиме Canary загружаются новейшие коммиты из ветки dev.
+                            Рекомендуется использовать Stable. Canary и Go обновляются по коммитам (ветки dev и go).
                         </div>
                     </div>
 
@@ -5694,6 +5695,7 @@ window.addEventListener('load', function() {
             <div id="autoUpdateSuccessContainer" style="display: none; flex-direction: column; gap: 14px; align-items: center; text-align: center; padding: 20px 0;">
                 <div style="font-size: 42px;">🎉</div>
                 <p style="color: var(--text-color); font-weight: 700; font-size: 18px; margin: 0;" data-i18n="modals.auto_update_success_title">Обновление успешно установлено!</p>
+                <p id="autoUpdateRestartHint" style="display: none; color: var(--text-color); font-size: 13px; opacity: 0.8; margin: 0; max-width: 420px;" data-i18n="modals.auto_update_restart_hint">Система и корневой исполняемый файл безопасно обновлены. Перезапустите сервер, чтобы запустить новую сборку.</p>
                 <button type="button" onclick="try { localStorage.setItem('npblog_just_updated', 'true'); } catch(e){} window.location.reload();" class="modal-btn modal-btn-primary" style="padding: 10px 24px;" data-i18n="modals.sys_reload_page">
                     🔄 Обновить страницу
                 </button>
@@ -12200,7 +12202,11 @@ function checkGitHubUpdateInModal(force = false) {
             // Обновляем бейдж канала
             if (badgeEl) {
                 badgeEl.style.display = 'inline-block';
-                if (data.channel === 'canary') {
+                if (data.channel === 'go') {
+                    badgeEl.textContent = 'Go';
+                    badgeEl.style.background = '#0891b2';
+                    badgeEl.style.color = '#fff';
+                } else if (data.channel === 'canary') {
                     badgeEl.textContent = 'Canary';
                     badgeEl.style.background = '#f59e0b';
                     badgeEl.style.color = '#fff';
@@ -12215,7 +12221,10 @@ function checkGitHubUpdateInModal(force = false) {
             if (data.currentVersion) {
                 const versionEl = document.getElementById('currentSysVersion');
                 if (versionEl) {
-                    versionEl.textContent = data.currentVersion;
+                    const shortCommit = (!data.hasUpdate && data.commit && (data.channel === 'go' || data.channel === 'canary'))
+                        ? ` (${data.commit.slice(0, 7)})`
+                        : '';
+                    versionEl.textContent = data.currentVersion + shortCommit;
                 }
             }
 
@@ -12553,7 +12562,7 @@ function handleUpdateChannelChange(newVal) {
     if (newVal === 'canary') {
         openCanaryWarningModal();
     } else {
-        previousUpdateChannel = 'stable';
+        previousUpdateChannel = newVal || 'stable';
     }
 }
 
@@ -12686,7 +12695,11 @@ function openAutoUpdateModal(updateData) {
     if (newVerEl) newVerEl.textContent = updateData.latestVersion || 'Unknown';
     
     if (badgeEl) {
-        if (updateData.channel === 'canary') {
+        if (updateData.channel === 'go') {
+            badgeEl.textContent = 'Go';
+            badgeEl.style.background = '#0891b2';
+            badgeEl.style.color = '#fff';
+        } else if (updateData.channel === 'canary') {
             badgeEl.textContent = 'Canary';
             badgeEl.style.background = '#f59e0b';
             badgeEl.style.color = '#fff';
@@ -12871,6 +12884,10 @@ function startAutoUpdateProcess() {
                 localStorage.setItem('npblog_just_updated', 'true');
             } catch (e) {}
             
+            const restartHint = document.getElementById('autoUpdateRestartHint');
+            if (restartHint) {
+                restartHint.style.display = updateResult.restartRequired ? 'block' : 'none';
+            }
             if (progressBar) progressBar.style.width = '100%';
             if (percentText) percentText.textContent = '100%';
             if (progBox) progBox.style.display = 'none';

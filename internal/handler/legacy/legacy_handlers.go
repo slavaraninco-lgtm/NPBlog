@@ -2507,12 +2507,15 @@ func (l *LegacyHandler) HandleUpdateSystem(w http.ResponseWriter, r *http.Reques
 	switch action {
 	case "get_version":
 		v := l.system.GetVersion()
+		settings := l.cfg.GetSettings()
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success":      true,
-			"version":      v.Version,
-			"dev":          v.Dev,
-			"last_updated": v.LastUpdated,
-			"commit":       v.Commit,
+			"success":            true,
+			"version":            v.Version,
+			"dev":                v.Dev,
+			"channel":            v.Channel,
+			"configured_channel": settings.UpdateChannel,
+			"last_updated":       v.LastUpdated,
+			"commit":             v.Commit,
 		})
 
 	case "get_changelog":
@@ -2542,41 +2545,68 @@ func (l *LegacyHandler) HandleUpdateSystem(w http.ResponseWriter, r *http.Reques
 		})
 
 	case "prepare_auto_update":
-		token := fmt.Sprintf("upd_%d", time.Now().Unix())
-		l.system.SetUpdateProgress(token, 100, "Файлы обновления подготовлены")
+		var body service.UpdatePrepareRequest
+		if r.Body != nil {
+			_ = json.NewDecoder(r.Body).Decode(&body)
+		}
+		meta, err := l.system.PrepareAutoUpdate(body)
+		if err != nil {
+			l.errorResponse(w, err.Error())
+			return
+		}
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"token":   token,
+			"success":          true,
+			"token":            meta.Token,
+			"rootFolder":       meta.RootFolder,
+			"totalFiles":       meta.TotalFiles,
+			"newVersion":       meta.NewVersion,
+			"hasBinaryUpdate":  meta.HasBinaryUpdate,
+			"skippedProtected": meta.SkippedProtected,
 		})
 
 	case "preview":
+		r.Body = http.MaxBytesReader(w, r.Body, 200<<20)
 		file, header, err := r.FormFile("updateFile")
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success": false,
-				"error":   "Файл обновления не загружен",
-			})
+			l.errorResponse(w, "Файл обновления не загружен")
 			return
 		}
 		defer file.Close()
-		prev, err := l.system.PreviewUpdateZip(file, header.Size)
+		prev, err := l.system.PreviewUploadedUpdateZip(file, header.Size)
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success": false,
-				"error":   err.Error(),
-			})
+			l.errorResponse(w, err.Error())
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		resp := map[string]interface{}{
 			"success": true,
 			"preview": prev,
-		})
+		}
+		for k, v := range prev {
+			resp[k] = v
+		}
+		json.NewEncoder(w).Encode(resp)
 
 	case "update":
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"message": "Обновление успешно завершено",
-		})
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			var body struct {
+				Token string `json:"token"`
+			}
+			if r.Body != nil {
+				_ = json.NewDecoder(r.Body).Decode(&body)
+			}
+			token = body.Token
+		}
+		if token == "" {
+			token = r.FormValue("token")
+		}
+		res, err := l.system.ApplyUpdate(token)
+		if err != nil {
+			l.errorResponse(w, err.Error())
+			return
+		}
+		_ = l.integrity.SaveHistoryAction("system_update", fmt.Sprintf("Обновление системы (%s), бэкап: %s", res.NewVersion, res.BackupFile))
+		json.NewEncoder(w).Encode(res)
 
 	case "export_package":
 		if err := l.system.ExportPackage(w); err != nil {

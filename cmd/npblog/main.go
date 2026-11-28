@@ -12,6 +12,7 @@ import (
 
 	"npblog/internal/app"
 	"npblog/internal/config"
+	"npblog/internal/service"
 )
 
 func main() {
@@ -19,6 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Ошибка загрузки конфигурации: %v", err)
 	}
+	service.CleanupOldBinaries(cfg.BaseDir)
 
 	srvComp := app.NewServer(cfg, true)
 	fmt.Print(srvComp.SelfTest.FormatConsoleReport(srvComp.SelfTestReport))

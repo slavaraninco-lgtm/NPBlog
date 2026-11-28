@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -1044,11 +1043,34 @@ func (h *RestHandler) HandleCheckAutoUpdate(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *RestHandler) HandlePrepareAutoUpdate(w http.ResponseWriter, r *http.Request) {
-	token := fmt.Sprintf("upd_%d", time.Now().Unix())
-	h.system.SetUpdateProgress(token, 100, "Обновление готово к установке")
-	h.jsonSuccess(w, http.StatusOK, "Обновление подготовлено", map[string]interface{}{
-		"token": token,
-	}, nil)
+	var body service.UpdatePrepareRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		h.jsonError(w, http.StatusBadRequest, "INVALID_JSON", "Некорректные параметры обновления", nil)
+		return
+	}
+	meta, err := h.system.PrepareAutoUpdate(body)
+	if err != nil {
+		h.jsonError(w, http.StatusBadRequest, "UPDATE_PREPARE_ERROR", err.Error(), nil)
+		return
+	}
+	h.jsonSuccess(w, http.StatusOK, "Обновление подготовлено", meta, nil)
+}
+
+func (h *RestHandler) HandleApplyAutoUpdate(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Token == "" {
+		h.jsonError(w, http.StatusBadRequest, "INVALID_TOKEN", "Не указан токен обновления", nil)
+		return
+	}
+	res, err := h.system.ApplyUpdate(body.Token)
+	if err != nil {
+		h.jsonError(w, http.StatusInternalServerError, "UPDATE_APPLY_ERROR", err.Error(), nil)
+		return
+	}
+	_ = h.integrity.SaveHistoryAction("system_update", fmt.Sprintf("Обновление системы (%s), бэкап: %s", res.NewVersion, res.BackupFile))
+	h.jsonSuccess(w, http.StatusOK, res.Message, res, nil)
 }
 
 func (h *RestHandler) HandleGetUpdateProgress(w http.ResponseWriter, r *http.Request) {

@@ -11,6 +11,20 @@
         "device": "Windows",
         "browser": "Firefox 161",
         "created_at": 1795811240,
-        "last_activity": 1795820898
+        "last_activity": 1795878317
+    },
+    "f8e5082d0bc3362131c72ad3294228b4a6b836be67e83a33feaee59ac236b541": {
+        "id": "f8e5082d0bc3362131c72ad3294228b4a6b836be67e83a33feaee59ac236b541",
+        "authenticated": true,
+        "auth_time": 1795878307,
+        "csrf_token": "297c86648a20aa0b2e2c8c8d5fa19f2e7484909be092c9c277537d192d42e72c",
+        "active_blog_path": "C:\\xampp\\htdocs\\data",
+        "editor_language": "ru",
+        "ip": "::1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+        "device": "Windows",
+        "browser": "Microsoft Edge 158",
+        "created_at": 1795878307,
+        "last_activity": 1795878324
     }
 }

@@ -445,6 +445,19 @@ func runChaosAndUISuites(tr *TestRunner, baseURL, workspaceRoot, canaryPath stri
 			// Проверка модалки бэкапов и автосейвов + настроек
 			err := cdp.Eval(`(async () => {
 				if (typeof openGlobalSettings === 'function') openGlobalSettings();
+				if (typeof switchGlobalSection === 'function') switchGlobalSection('updates');
+				const updSel = document.getElementById('settingUpdateChannel');
+				if (!updSel || ![...updSel.options].some(o => o.value === 'go')) {
+					throw new Error('в #settingUpdateChannel отсутствует канал go');
+				}
+				const prevCh = updSel.value;
+				updSel.value = 'go';
+				if (typeof handleUpdateChannelChange === 'function') handleUpdateChannelChange('go');
+				if (typeof previousUpdateChannel !== 'undefined' && previousUpdateChannel !== 'go') {
+					throw new Error('handleUpdateChannelChange не сохранил канал go: ' + previousUpdateChannel);
+				}
+				updSel.value = prevCh;
+				if (typeof handleUpdateChannelChange === 'function') handleUpdateChannelChange(prevCh);
 				if (typeof switchGlobalSection === 'function') switchGlobalSection('blogview');
 				if (typeof closeGlobalSettings === 'function') closeGlobalSettings();
 

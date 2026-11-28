@@ -718,6 +718,63 @@ func runFeatureSuites(tr *TestRunner, baseURL, workspaceRoot string) {
 				return fmt.Errorf("/api/v1/system/version вернул %d", verResp.Status)
 			}
 
+			// Проверяем legacy get_version + возврат канала обновлений
+			legacyVerResp, err := c.JSONReq(http.MethodGet, "/update_system.php?action=get_version", nil, nil)
+			if err != nil {
+				return err
+			}
+			if _, err := legacyVerResp.MustSuccessJSON(); err != nil {
+				return fmt.Errorf("/update_system.php?action=get_version: %w", err)
+			}
+
+			// Проверяем сохранение и чтение канала обновлений "go"
+			origSettings, err := c.JSONReq(http.MethodGet, "/get_editor_settings.php", nil, nil)
+			if err != nil {
+				return err
+			}
+			origChannel := "stable"
+			if origJSON, jErr := origSettings.JSON(); jErr == nil {
+				if sObj, ok := origJSON["settings"].(map[string]interface{}); ok {
+					if ch, ok := sObj["update_channel"].(string); ok && ch != "" {
+						origChannel = ch
+					}
+				}
+			}
+			saveGoResp, err := c.JSONReq(http.MethodPost, "/save_editor_settings.php", map[string]interface{}{
+				"update_channel": "go",
+			}, nil)
+			if err != nil {
+				return err
+			}
+			if _, err := saveGoResp.MustSuccessJSON(); err != nil {
+				return fmt.Errorf("сохранение update_channel=go не удалось: %w", err)
+			}
+			verAfterGo, err := c.JSONReq(http.MethodGet, "/update_system.php?action=get_version", nil, nil)
+			if err != nil {
+				return err
+			}
+			verAfterJSON, err := verAfterGo.MustSuccessJSON()
+			if err != nil {
+				return fmt.Errorf("get_version после сохранения go: %w", err)
+			}
+			if ch, _ := verAfterJSON["configured_channel"].(string); ch != "go" {
+				return fmt.Errorf("ожидался configured_channel='go' в get_version, получено: %#v", verAfterJSON["configured_channel"])
+			}
+			// Безопасность: отклоняем сторонние (не GitHub) URL архивов в prepare_auto_update
+			badPrep, err := c.JSONReq(http.MethodPost, "/api/v1/system/updates/prepare", map[string]interface{}{
+				"channel":    "go",
+				"repo":       "slavaraninco-lgtm/NPBlog",
+				"archiveUrl": "https://evil.example.com/malicious.zip",
+			}, nil)
+			if err == nil && badPrep.Status == 200 {
+				if j, jErr := badPrep.JSON(); jErr == nil && j["success"] == true {
+					return fmt.Errorf("prepare_auto_update принял недопустимый URL архива")
+				}
+			}
+			_, _ = c.JSONReq(http.MethodPost, "/save_editor_settings.php", map[string]interface{}{
+				"update_channel": origChannel,
+			}, nil)
+
 			expResp, err := c.RawReq(http.MethodGet, "/api/v1/system/updates/export", nil, nil)
 			if err != nil {
 				return err

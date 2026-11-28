@@ -303,6 +303,7 @@ func NewServer(cfg *config.AppConfig, enableLogger bool) *ServerComponents {
 
 			sub.Get("/updates/check", restHandler.HandleCheckAutoUpdate)
 			sub.Post("/updates/prepare", restHandler.HandlePrepareAutoUpdate)
+			sub.Post("/updates/apply", restHandler.HandleApplyAutoUpdate)
 			sub.Get("/updates/progress", restHandler.HandleGetUpdateProgress)
 			sub.Get("/updates/export", restHandler.HandleExportPackage)
 			sub.Get("/backups", restHandler.HandleListSystemBackups)
