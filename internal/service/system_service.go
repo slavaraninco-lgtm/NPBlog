@@ -13,9 +13,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -176,7 +178,171 @@ func isCommitChannel(channel string) bool {
 	return channel == "canary" || channel == "go"
 }
 
-// GetVersion читает version.json
+func isHexSHA(s string) bool {
+	if len(s) < 7 || len(s) > 64 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+func resolveGitDir(baseDir string) string {
+	dotGit := filepath.Join(baseDir, ".git")
+	info, err := os.Stat(dotGit)
+	if err != nil {
+		return ""
+	}
+	if info.IsDir() {
+		return dotGit
+	}
+	// Поддержка worktree/submodule (.git как файл с gitdir: ...)
+	raw, err := os.ReadFile(dotGit)
+	if err != nil {
+		return ""
+	}
+	line := strings.TrimSpace(string(raw))
+	if !strings.HasPrefix(line, "gitdir:") {
+		return ""
+	}
+	target := strings.TrimSpace(strings.TrimPrefix(line, "gitdir:"))
+	if target == "" {
+		return ""
+	}
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(baseDir, target)
+	}
+	if st, err := os.Stat(target); err == nil && st.IsDir() {
+		return target
+	}
+	return ""
+}
+
+// readLocalGitCommit читает SHA текущего HEAD из локального .git без обязательного запуска git CLI.
+func readLocalGitCommit(baseDir string) string {
+	gitDir := resolveGitDir(baseDir)
+	if gitDir == "" {
+		return ""
+	}
+
+	headBytes, err := os.ReadFile(filepath.Join(gitDir, "HEAD"))
+	if err == nil {
+		headStr := strings.TrimSpace(string(headBytes))
+		if strings.HasPrefix(headStr, "ref:") {
+			refName := strings.TrimSpace(strings.TrimPrefix(headStr, "ref:"))
+			refFile := filepath.Join(gitDir, filepath.FromSlash(refName))
+			if refBytes, rErr := os.ReadFile(refFile); rErr == nil {
+				sha := strings.TrimSpace(string(refBytes))
+				if isHexSHA(sha) {
+					return sha
+				}
+			}
+			// Поиск ссылки в packed-refs
+			if packedBytes, pErr := os.ReadFile(filepath.Join(gitDir, "packed-refs")); pErr == nil {
+				for _, line := range strings.Split(string(packedBytes), "\n") {
+					line = strings.TrimSpace(line)
+					if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "^") {
+						continue
+					}
+					parts := strings.Fields(line)
+					if len(parts) >= 2 && parts[1] == refName && isHexSHA(parts[0]) {
+						return parts[0]
+					}
+				}
+			}
+		} else if isHexSHA(headStr) {
+			return headStr
+		}
+	}
+
+	// Fallback на git rev-parse HEAD
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "git", "-C", baseDir, "rev-parse", "HEAD").Output()
+	if err == nil {
+		sha := strings.TrimSpace(string(out))
+		if isHexSHA(sha) {
+			return sha
+		}
+	}
+	return ""
+}
+
+// isGitAncestorOrEqual проверяет, присутствует ли указанный коммит в истории текущего HEAD локального .git.
+func isGitAncestorOrEqual(baseDir, commitSHA string) bool {
+	if !isHexSHA(commitSHA) || resolveGitDir(baseDir) == "" {
+		return false
+	}
+	if localHead := readLocalGitCommit(baseDir); localHead != "" && strings.EqualFold(localHead, commitSHA) {
+		return true
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", "-C", baseDir, "merge-base", "--is-ancestor", commitSHA, "HEAD")
+	return cmd.Run() == nil
+}
+
+// readBuildVCSRevision извлекает Git-коммит сборки из Go BuildInfo (vcs.revision).
+func readBuildVCSRevision() string {
+	bi, ok := debug.ReadBuildInfo()
+	if !ok || bi == nil {
+		return ""
+	}
+	for _, s := range bi.Settings {
+		if s.Key == "vcs.revision" {
+			val := strings.TrimSpace(s.Value)
+			if isHexSHA(val) {
+				return val
+			}
+		}
+	}
+	return ""
+}
+
+func (s *SystemService) resolveEffectiveCommit(v VersionData) (effectiveCommit, localGitHead string) {
+	vCommit := strings.TrimSpace(v.Commit)
+	localGitHead = readLocalGitCommit(s.cfg.BaseDir)
+
+	if localGitHead != "" {
+		if vCommit == "" {
+			return localGitHead, localGitHead
+		}
+		// Если локальный git ушёл вперёд (например после git pull), используем HEAD
+		if !strings.EqualFold(localGitHead, vCommit) && isGitAncestorOrEqual(s.cfg.BaseDir, vCommit) {
+			return localGitHead, localGitHead
+		}
+		return vCommit, localGitHead
+	}
+
+	if vCommit != "" {
+		return vCommit, ""
+	}
+	if buildRev := readBuildVCSRevision(); buildRev != "" {
+		return buildRev, ""
+	}
+	return "", ""
+}
+
+func (s *SystemService) isRemoteCommitUpToDate(remoteSHA string, rawVersion VersionData) bool {
+	remoteSHA = strings.TrimSpace(remoteSHA)
+	if !isHexSHA(remoteSHA) {
+		return false
+	}
+	effCommit, localGitHead := s.resolveEffectiveCommit(rawVersion)
+	if effCommit != "" && strings.EqualFold(effCommit, remoteSHA) {
+		return true
+	}
+	if localGitHead != "" && isGitAncestorOrEqual(s.cfg.BaseDir, remoteSHA) {
+		return true
+	}
+	return false
+}
+
+// GetVersion читает version.json и дополняет текущий commit из локального git/сборки если не задан
 func (s *SystemService) GetVersion() VersionData {
 	vFile := filepath.Join(s.cfg.BaseDir, "version.json")
 	var v VersionData
@@ -186,6 +352,9 @@ func (s *SystemService) GetVersion() VersionData {
 			Dev:         true,
 			LastUpdated: time.Now().Format(time.RFC3339),
 		}
+	}
+	if eff, _ := s.resolveEffectiveCommit(v); eff != "" {
+		v.Commit = eff
 	}
 	return v
 }
@@ -287,8 +456,14 @@ func (s *SystemService) CheckAutoUpdate(channel, repo string, force bool, github
 			if err := s.storage.SafeReadJSON(cacheFile, &cached); err == nil && cached.Success {
 				cached.CurrentVersion = current.Version
 				cached.CurrentCommit = current.Commit
+				if cached.Channel == "" {
+					cached.Channel = channel
+				}
+				if cached.Branch == "" {
+					cached.Branch = branch
+				}
 				if isCommitChannel(channel) {
-					cached.HasUpdate = cached.Commit != "" && cached.Commit != current.Commit
+					cached.HasUpdate = cached.Commit != "" && !s.isRemoteCommitUpToDate(cached.Commit, current)
 				} else {
 					cached.HasUpdate = isNewerVersion(cached.LatestVersion, current.Version)
 				}
@@ -376,23 +551,26 @@ func (s *SystemService) CheckAutoUpdate(channel, repo string, force bool, github
 			shortSha = shortSha[:7]
 		}
 		res.LatestVersion = fmt.Sprintf("%s (%s)", branch, shortSha)
-		res.HasUpdate = head.SHA != "" && head.SHA != current.Commit
+		upToDate := head.SHA != "" && s.isRemoteCommitUpToDate(head.SHA, current)
+		res.HasUpdate = head.SHA != "" && !upToDate
 		archiveURL := fmt.Sprintf("%s/%s/archive/refs/heads/%s.zip", archBase, repo, branch)
 		res.DownloadURL = archiveURL
 		res.ArchiveURL = archiveURL
 
 		var cl []string
-		for _, c := range commits {
-			if current.Commit != "" && c.SHA == current.Commit {
-				break
-			}
-			firstLine := strings.TrimSpace(strings.Split(c.Commit.Message, "\n")[0])
-			cShort := c.SHA
-			if len(cShort) > 7 {
-				cShort = cShort[:7]
-			}
-			if firstLine != "" {
-				cl = append(cl, fmt.Sprintf("[%s] %s", cShort, firstLine))
+		if !upToDate {
+			for _, c := range commits {
+				if (current.Commit != "" && strings.EqualFold(c.SHA, current.Commit)) || s.isRemoteCommitUpToDate(c.SHA, current) {
+					break
+				}
+				firstLine := strings.TrimSpace(strings.Split(c.Commit.Message, "\n")[0])
+				cShort := c.SHA
+				if len(cShort) > 7 {
+					cShort = cShort[:7]
+				}
+				if firstLine != "" {
+					cl = append(cl, fmt.Sprintf("[%s] %s", cShort, firstLine))
+				}
 			}
 		}
 		if len(cl) == 0 && head.Commit.Message != "" {

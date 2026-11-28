@@ -280,5 +280,6 @@ func (h *EditorPageHandler) renderEditor(w http.ResponseWriter, r *http.Request)
 	content = strings.ReplaceAll(content, "{{DISABLE_ANIMATIONS_ATTR}}", disableAnimAttr)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 	_, _ = w.Write([]byte(content))
 }

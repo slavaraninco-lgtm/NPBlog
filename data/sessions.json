@@ -11,7 +11,7 @@
         "device": "Windows",
         "browser": "Firefox 161",
         "created_at": 1795811240,
-        "last_activity": 1795878317
+        "last_activity": 1795878781
     },
     "f8e5082d0bc3362131c72ad3294228b4a6b836be67e83a33feaee59ac236b541": {
         "id": "f8e5082d0bc3362131c72ad3294228b4a6b836be67e83a33feaee59ac236b541",
@@ -25,6 +25,6 @@
         "device": "Windows",
         "browser": "Microsoft Edge 158",
         "created_at": 1795878307,
-        "last_activity": 1795878324
+        "last_activity": 1795878786
     }
 }

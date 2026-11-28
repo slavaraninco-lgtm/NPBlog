@@ -12221,8 +12221,9 @@ function checkGitHubUpdateInModal(force = false) {
             if (data.currentVersion) {
                 const versionEl = document.getElementById('currentSysVersion');
                 if (versionEl) {
-                    const shortCommit = (!data.hasUpdate && data.commit && (data.channel === 'go' || data.channel === 'canary'))
-                        ? ` (${data.commit.slice(0, 7)})`
+                    const commitSha = data.currentCommit || (!data.hasUpdate ? data.commit : '');
+                    const shortCommit = (commitSha && (data.channel === 'go' || data.channel === 'canary'))
+                        ? ` (${String(commitSha).slice(0, 7)})`
                         : '';
                     versionEl.textContent = data.currentVersion + shortCommit;
                 }
@@ -12691,15 +12692,21 @@ function openAutoUpdateModal(updateData) {
     const badgeEl = document.getElementById('autoUpdateChannelBadge');
     const clContainer = document.getElementById('autoUpdateChangelogList');
     
-    if (curVerEl) curVerEl.textContent = updateData.currentVersion || 'Unknown';
+    const resolvedChannel = String(updateData.channel || '').toLowerCase() ||
+        (String(updateData.latestVersion || '').toLowerCase().startsWith('go (') ? 'go' :
+         String(updateData.latestVersion || '').toLowerCase().startsWith('canary (') ? 'canary' : 'stable');
+    const shortCurCommit = (updateData.currentCommit && (resolvedChannel === 'go' || resolvedChannel === 'canary'))
+        ? ` (${String(updateData.currentCommit).slice(0, 7)})`
+        : '';
+    if (curVerEl) curVerEl.textContent = (updateData.currentVersion || 'Unknown') + shortCurCommit;
     if (newVerEl) newVerEl.textContent = updateData.latestVersion || 'Unknown';
     
     if (badgeEl) {
-        if (updateData.channel === 'go') {
+        if (resolvedChannel === 'go') {
             badgeEl.textContent = 'Go';
             badgeEl.style.background = '#0891b2';
             badgeEl.style.color = '#fff';
-        } else if (updateData.channel === 'canary') {
+        } else if (resolvedChannel === 'canary') {
             badgeEl.textContent = 'Canary';
             badgeEl.style.background = '#f59e0b';
             badgeEl.style.color = '#fff';

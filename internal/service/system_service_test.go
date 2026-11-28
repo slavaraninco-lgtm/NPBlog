@@ -275,3 +275,79 @@ func TestPreviewUploadedUpdateZipRejectsZipSlip(t *testing.T) {
 		t.Fatal("expected Zip-Slip archive to be rejected by PreviewUploadedUpdateZip")
 	}
 }
+
+func TestGoChannelRecognizesLocalGitRepoUpToDateWithoutCommitInVersionJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	headSHA := "c25309c498f774b71ca7d241d68d4c3c77f55016"
+	newerSHA := "d999999999999999999999999999999999999999"
+
+	// Имитируем локальный git-репозиторий без поля commit в version.json
+	if err := os.WriteFile(filepath.Join(tmpDir, "version.json"), []byte(`{"version":"2.361","dev":true}`), 0644); err != nil {
+		t.Fatalf("write version.json: %v", err)
+	}
+	refDir := filepath.Join(tmpDir, ".git", "refs", "heads")
+	if err := os.MkdirAll(refDir, 0755); err != nil {
+		t.Fatalf("mkdir .git refs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".git", "HEAD"), []byte("ref: refs/heads/go\n"), 0644); err != nil {
+		t.Fatalf("write .git/HEAD: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(refDir, "go"), []byte(headSHA+"\n"), 0644); err != nil {
+		t.Fatalf("write .git/refs/heads/go: %v", err)
+	}
+
+	cfg := &config.AppConfig{
+		BaseDir:   tmpDir,
+		AssetsDir: tmpDir,
+		Settings: domain.EditorSettings{
+			UpdateChannel: "go",
+			UpdateRepo:    "owner/repo",
+		},
+	}
+	sysSvc := NewSystemService(cfg, NewStorageService(cfg))
+
+	remoteSHA := headSHA
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/repos/owner/repo/commits" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode([]map[string]interface{}{
+				{
+					"sha": remoteSHA,
+					"commit": map[string]interface{}{
+						"message": "билд 22, доработка системы обновления",
+					},
+				},
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	sysSvc.SetGitHubURLs(srv.URL, srv.URL)
+
+	// 1. Локальный HEAD == удалённому SHA -> проект актуален, даже если в version.json нет commit
+	res := sysSvc.CheckAutoUpdate("go", "owner/repo", false, "")
+	if !res.Success {
+		t.Fatalf("CheckAutoUpdate failed: %s", res.Error)
+	}
+	if res.HasUpdate {
+		t.Fatalf("expected HasUpdate=false for up-to-date local git repo, got true: %+v", res)
+	}
+	if res.CurrentCommit != headSHA {
+		t.Fatalf("expected CurrentCommit=%q, got %q", headSHA, res.CurrentCommit)
+	}
+
+	// Проверяет также повторный вызов из кэша (!force)
+	cachedRes := sysSvc.CheckAutoUpdate("go", "owner/repo", false, "")
+	if cachedRes.HasUpdate || cachedRes.Channel != "go" {
+		t.Fatalf("unexpected cached CheckAutoUpdate result: %+v", cachedRes)
+	}
+
+	// 2. Появляется новый коммит на GitHub -> теперь HasUpdate должен стать true
+	remoteSHA = newerSHA
+	resNext := sysSvc.CheckAutoUpdate("go", "owner/repo", true, "")
+	if !resNext.Success || !resNext.HasUpdate || resNext.Commit != newerSHA {
+		t.Fatalf("expected HasUpdate=true for newer commit, got: %+v", resNext)
+	}
+}
