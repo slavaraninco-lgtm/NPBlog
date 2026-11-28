@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -20,6 +21,10 @@ func main() {
 	}
 
 	srvComp := app.NewServer(cfg, true)
+	fmt.Print(srvComp.SelfTest.FormatConsoleReport(srvComp.SelfTestReport))
+	if !srvComp.SelfTestReport.Passed {
+		log.Printf("⚠️ ВНИМАНИЕ: %s", srvComp.SelfTestReport.Summary)
+	}
 	serverAddr := app.ListenAddress(cfg)
 
 	srv := &http.Server{

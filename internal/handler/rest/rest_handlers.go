@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/crypto/bcrypt"
+	"npblog"
 	"npblog/internal/config"
 	"npblog/internal/domain"
 	"npblog/internal/middleware"
@@ -554,6 +555,12 @@ func (h *RestHandler) HandleDeleteInclude(w http.ResponseWriter, r *http.Request
 // --- Settings Routes ---
 
 func (h *RestHandler) HandleGetEditorSettings(w http.ResponseWriter, r *http.Request) {
+	if created, _, initErr := config.EnsureEditorSettings(h.cfg.BaseDir, npblog.EmbeddedAssets); initErr != nil {
+		h.jsonError(w, http.StatusInternalServerError, "read_error", "Не удалось инициализировать настройки: "+initErr.Error(), nil)
+		return
+	} else if created {
+		h.cfg.ReloadSettings()
+	}
 	settingsPath := filepath.Join(h.cfg.BaseDir, "editor_settings.json")
 	var settings map[string]interface{}
 	_ = h.storage.SafeReadJSON(settingsPath, &settings)
@@ -591,6 +598,10 @@ func (h *RestHandler) HandleUpdateEditorSettings(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if _, _, initErr := config.EnsureEditorSettings(h.cfg.BaseDir, npblog.EmbeddedAssets); initErr != nil {
+		h.jsonError(w, http.StatusInternalServerError, "read_error", "Не удалось инициализировать настройки: "+initErr.Error(), nil)
+		return
+	}
 	settingsPath := filepath.Join(h.cfg.BaseDir, "editor_settings.json")
 	existingMap := make(map[string]interface{})
 	existingBytes, err := os.ReadFile(settingsPath)

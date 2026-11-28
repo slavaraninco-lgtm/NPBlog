@@ -19,17 +19,19 @@ import (
 
 // ServerComponents holds initialized router and core services for production and automated testing.
 type ServerComponents struct {
-	Router   http.Handler
-	Config   *config.AppConfig
-	HybridFS *assets.HybridFS
-	Storage  *service.StorageService
-	Auth     *service.AuthService
-	Post     *service.PostService
-	Draft    *service.DraftService
-	Backup   *service.BackupService
-	Media    *service.MediaService
-	Template *service.TemplateService
-	System   *service.SystemService
+	Router         http.Handler
+	Config         *config.AppConfig
+	HybridFS       *assets.HybridFS
+	Storage        *service.StorageService
+	Auth           *service.AuthService
+	Post           *service.PostService
+	Draft          *service.DraftService
+	Backup         *service.BackupService
+	Media          *service.MediaService
+	Template       *service.TemplateService
+	System         *service.SystemService
+	SelfTest       *service.SelfTestService
+	SelfTestReport service.SelfTestReport
 }
 
 // NewServer constructs the full NPBlog HTTP router and service graph from cfg without binding a port.
@@ -37,6 +39,9 @@ func NewServer(cfg *config.AppConfig, enableLogger bool) *ServerComponents {
 	hybridFS := assets.NewHybridFS(cfg.AssetsDir, npblog.EmbeddedAssets)
 
 	storageService := service.NewStorageService(cfg)
+	selfTestService := service.NewSelfTestService(cfg, storageService, hybridFS)
+	selfTestReport := selfTestService.Run()
+
 	authService := service.NewAuthService(cfg, storageService)
 	postService := service.NewPostService(cfg, storageService)
 	draftService := service.NewDraftService(cfg, storageService)
@@ -66,6 +71,7 @@ func NewServer(cfg *config.AppConfig, enableLogger bool) *ServerComponents {
 		r.Use(mw.Logger)
 	}
 	r.Use(mw.Recovery)
+	r.Use(mw.SelfTestGate(selfTestService))
 	r.Use(mw.IPFilter)
 	r.Use(mw.BlogContext)
 	r.Use(mw.Auth)
@@ -334,17 +340,19 @@ func NewServer(cfg *config.AppConfig, enableLogger bool) *ServerComponents {
 	r.Get("/{blog}/*", legacyHandler.HandleBlogFile)
 
 	return &ServerComponents{
-		Router:   r,
-		Config:   cfg,
-		HybridFS: hybridFS,
-		Storage:  storageService,
-		Auth:     authService,
-		Post:     postService,
-		Draft:    draftService,
-		Backup:   backupService,
-		Media:    mediaService,
-		Template: templateService,
-		System:   systemService,
+		Router:         r,
+		Config:         cfg,
+		HybridFS:       hybridFS,
+		Storage:        storageService,
+		Auth:           authService,
+		Post:           postService,
+		Draft:          draftService,
+		Backup:         backupService,
+		Media:          mediaService,
+		Template:       templateService,
+		System:         systemService,
+		SelfTest:       selfTestService,
+		SelfTestReport: selfTestReport,
 	}
 }
 

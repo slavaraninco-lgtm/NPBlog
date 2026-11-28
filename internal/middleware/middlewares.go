@@ -335,6 +335,63 @@ func (m *MiddlewareManager) Recovery(next http.Handler) http.Handler {
 	})
 }
 
+// SelfTestGate blocks backend routes when startup diagnostics failed and renders the diagnostic report to console/browser/API.
+func (m *MiddlewareManager) SelfTestGate(selfTest *service.SelfTestService) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if selfTest == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			path := r.URL.Path
+			if path == "/_selftest" {
+				rep := selfTest.Run()
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				if !rep.Passed {
+					w.WriteHeader(http.StatusServiceUnavailable)
+				}
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+					"success":  rep.Passed,
+					"selftest": rep,
+				})
+				return
+			}
+
+			rep := selfTest.LastReport()
+			if rep.Passed {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Allow reloading the main page to recover immediately after permissions or config are repaired on disk.
+			if path == "/" || path == "/index.php" {
+				rep = selfTest.Run()
+				if rep.Passed {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			if strings.HasPrefix(path, "/api/") || (strings.HasSuffix(path, ".php") && path != "/index.php") || strings.Contains(r.Header.Get("Accept"), "application/json") {
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+					"success":  false,
+					"error":    "self_test_failed",
+					"message":  rep.Summary,
+					"selftest": rep,
+				})
+				return
+			}
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(selfTest.RenderBrowserErrorHTML(rep)))
+		})
+	}
+}
+
 // GetActiveBlogPath извлекает активный путь из контекста
 func GetActiveBlogPath(r *http.Request) string {
 	if val := r.Context().Value(BlogContextKey); val != nil {

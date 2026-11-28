@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"npblog"
 	"npblog/internal/config"
 	"npblog/internal/domain"
 	"npblog/internal/middleware"
@@ -918,6 +919,12 @@ func (l *LegacyHandler) HandleServeData(w http.ResponseWriter, r *http.Request) 
 // --- Настройки ---
 
 func (l *LegacyHandler) HandleGetEditorSettings(w http.ResponseWriter, r *http.Request) {
+	if created, _, initErr := config.EnsureEditorSettings(l.cfg.BaseDir, npblog.EmbeddedAssets); initErr != nil {
+		l.errorResponse(w, "Не удалось инициализировать настройки: "+initErr.Error())
+		return
+	} else if created {
+		l.cfg.ReloadSettings()
+	}
 	settingsPath := filepath.Join(l.cfg.BaseDir, "editor_settings.json")
 	var settingsMap map[string]interface{}
 	data, err := os.ReadFile(settingsPath)
@@ -965,6 +972,10 @@ func (l *LegacyHandler) HandleSaveEditorSettings(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if _, _, initErr := config.EnsureEditorSettings(l.cfg.BaseDir, npblog.EmbeddedAssets); initErr != nil {
+		l.errorResponse(w, "Не удалось инициализировать настройки: "+initErr.Error())
+		return
+	}
 	settingsPath := filepath.Join(l.cfg.BaseDir, "editor_settings.json")
 	existingMap := make(map[string]interface{})
 	existingBytes, err := os.ReadFile(settingsPath)
@@ -1582,6 +1593,10 @@ func (l *LegacyHandler) HandleCreateBlog(w http.ResponseWriter, r *http.Request)
 	targetDir, err := l.storage.ValidateSafePath(l.cfg.BaseDir, folder)
 	if err != nil {
 		l.errorResponse(w, "Недопустимый путь")
+		return
+	}
+	if _, _, initErr := config.EnsureEditorSettings(l.cfg.BaseDir, npblog.EmbeddedAssets); initErr != nil {
+		l.errorResponse(w, "Не удалось инициализировать настройки: "+initErr.Error())
 		return
 	}
 	settingsPath := filepath.Join(l.cfg.BaseDir, "editor_settings.json")

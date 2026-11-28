@@ -102,6 +102,7 @@ func run(seed int64, fuzzOps, concurrency int, noBrowser bool, browserBin, filte
 	runCoreSuites(runner, ts.URL, tmpRoot)
 	runFeatureSuites(runner, ts.URL, tmpRoot)
 	runChaosAndUISuites(runner, ts.URL, tmpRoot, canaryPath, seed, fuzzOps, concurrency, noBrowser, browserBin)
+	runSelfTestSuite(runner)
 
 	elapsed := time.Since(runner.StartAt).Round(time.Millisecond)
 	fmt.Println("\n======================================================================")

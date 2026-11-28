@@ -360,8 +360,7 @@ func (c *cdpClient) handleMessage(raw []byte) {
 			} `json:"entry"`
 		}
 		if json.Unmarshal(msg.Params, &p) == nil && p.Entry.Level == "error" {
-			// Игнорируем ожидаемые проверки 404/favicon если они не относятся к JS ошибкам, но фиксируем реальные сбои
-			if !strings.Contains(p.Entry.URL, "favicon.ico") {
+			if !isIgnoredOptionalURL(p.Entry.URL) {
 				c.eventsMu.Lock()
 				c.netErrors = append(c.netErrors, fmt.Sprintf("%s (%s)", p.Entry.Text, p.Entry.URL))
 				c.eventsMu.Unlock()
@@ -375,13 +374,21 @@ func (c *cdpClient) handleMessage(raw []byte) {
 			} `json:"response"`
 		}
 		if json.Unmarshal(msg.Params, &p) == nil && p.Response.Status >= 400 {
-			if !strings.Contains(p.Response.URL, "favicon.ico") {
+			if !isIgnoredOptionalURL(p.Response.URL) {
 				c.eventsMu.Lock()
 				c.netErrors = append(c.netErrors, fmt.Sprintf("HTTP %d %s", p.Response.Status, p.Response.URL))
 				c.eventsMu.Unlock()
 			}
 		}
 	}
+}
+
+func isIgnoredOptionalURL(rawURL string) bool {
+	if strings.Contains(rawURL, "favicon.ico") {
+		return true
+	}
+	return strings.Contains(rawURL, "serve_data.php?file=global-settings.json") ||
+		strings.Contains(rawURL, "serve_data.php?file=blog-view-settings.json")
 }
 
 // Call invokes a CDP method synchronously with timeout.

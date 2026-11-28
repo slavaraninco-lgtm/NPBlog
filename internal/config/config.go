@@ -2,22 +2,26 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"npblog"
 	"npblog/internal/domain"
 )
 
 type AppConfig struct {
-	Host       string
-	Port       string
-	BaseDir    string
-	AssetsDir  string
-	DevMode    bool
-	mu         sync.RWMutex
-	Settings   domain.EditorSettings
+	Host     string
+	Port     string
+	BaseDir  string
+	AssetsDir string
+	DevMode  bool
+	mu       sync.RWMutex
+	Settings domain.EditorSettings
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -51,8 +55,76 @@ func LoadConfig() (*AppConfig, error) {
 		DevMode:   *devFlag,
 	}
 
+	_, _, _ = EnsureEditorSettings(absDir, npblog.EmbeddedAssets)
 	cfg.ReloadSettings()
 	return cfg, nil
+}
+
+// EnsureEditorSettings creates editor_settings.json from editor_settings.example.json
+// ONLY when editor_settings.json does not yet exist on disk. Existing files (including
+// corrupt ones) are never overwritten so user configuration is preserved.
+func EnsureEditorSettings(baseDir string, fallbackFS fs.FS) (bool, string, error) {
+	if baseDir == "" {
+		return false, "", errors.New("не указан рабочий каталог конфигурации")
+	}
+	settingsPath := filepath.Join(baseDir, "editor_settings.json")
+	if _, err := os.Stat(settingsPath); err == nil {
+		return false, "existing", nil
+	} else if !os.IsNotExist(err) {
+		return false, "", fmt.Errorf("не удалось проверить editor_settings.json: %w", err)
+	}
+
+	var data []byte
+	var source string
+
+	diskExample := filepath.Join(baseDir, "editor_settings.example.json")
+	if raw, err := os.ReadFile(diskExample); err == nil && isValidSettingsObject(raw) {
+		data = raw
+		source = diskExample
+	}
+
+	if len(data) == 0 && fallbackFS != nil {
+		if raw, err := fs.ReadFile(fallbackFS, "editor_settings.example.json"); err == nil && isValidSettingsObject(raw) {
+			data = raw
+			source = "embedded:editor_settings.example.json"
+		}
+	}
+
+	if len(data) == 0 {
+		return false, "", errors.New("не найден валидный шаблон конфигурации editor_settings.example.json")
+	}
+
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return false, source, fmt.Errorf("не удалось подготовить каталог для editor_settings.json: %w", err)
+	}
+
+	// Atomically write editor_settings.json so concurrent or interrupted starts never leave partial JSON.
+	tmpFile, err := os.CreateTemp(baseDir, ".editor_settings_*.tmp")
+	if err != nil {
+		return false, source, fmt.Errorf("не удалось создать editor_settings.json из %s: %w", source, err)
+	}
+	tmpName := tmpFile.Name()
+	if _, err := tmpFile.Write(data); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpName)
+		return false, source, fmt.Errorf("ошибка записи editor_settings.json: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return false, source, fmt.Errorf("ошибка закрытия editor_settings.json: %w", err)
+	}
+	_ = os.Chmod(tmpName, 0644)
+	if err := os.Rename(tmpName, settingsPath); err != nil {
+		_ = os.Remove(tmpName)
+		return false, source, fmt.Errorf("ошибка сохранения editor_settings.json: %w", err)
+	}
+
+	return true, source, nil
+}
+
+func isValidSettingsObject(raw []byte) bool {
+	var m map[string]interface{}
+	return json.Unmarshal(raw, &m) == nil && m != nil
 }
 
 func (c *AppConfig) ReloadSettings() {
@@ -65,6 +137,9 @@ func (c *AppConfig) ReloadSettings() {
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
 		data, err = os.ReadFile(examplePath)
+	}
+	if err != nil {
+		data, err = fs.ReadFile(npblog.EmbeddedAssets, "editor_settings.example.json")
 	}
 
 	var settings domain.EditorSettings
